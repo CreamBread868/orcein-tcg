@@ -398,22 +398,26 @@
     callGas(fnName, args, onSuccess, onFailure) {
       const cleanArgs = (args || []).map(arg => this.stripFunctions(arg));
 
-      if (window.google && google.script && google.script.run && typeof google.script.run[fnName] === 'function') {
+      if (window.google && google.script && google.script.run && !window._is_mock_gas) {
         try {
           console.log('📡 [GAS Call]', fnName, cleanArgs);
           const self = this;
           const runner = google.script.run
             .withSuccessHandler(function (res) {
+              console.log('✅ [GAS Success for ' + fnName + ']:', res);
               if (typeof onSuccess === 'function') onSuccess(res);
             })
             .withFailureHandler(function (err) {
-              console.warn('⚠️ [GAS Failure for ' + fnName + '], switching to Client Online Engine:', err);
+              console.warn('⚠️ [GAS Failure for ' + fnName + '], switching to Cloud State Engine:', err);
               self.executeClientOnlineEngine(fnName, cleanArgs, onSuccess, onFailure);
             });
-          runner[fnName].apply(runner, cleanArgs);
-          return;
+
+          if (typeof runner[fnName] === 'function') {
+            runner[fnName].apply(runner, cleanArgs);
+            return;
+          }
         } catch (e) {
-          console.warn('❌ [GAS Exception for ' + fnName + '], fallback to Client Online Engine:', e);
+          console.warn('❌ [GAS Exception for ' + fnName + '], fallback to Cloud State Engine:', e);
         }
       }
 
@@ -421,36 +425,410 @@
     },
 
     executeClientOnlineEngine(fnName, args, onSuccess, onFailure) {
-      console.log('⚡ [Client Online Engine]', fnName, args);
+      console.log('⚡ [Cloud State Engine]', fnName, args);
+      if (fnName === 'createOnlineRoom') {
+        this.cloudCreateOnlineRoom(args[0], args[1], args[2], args[3], onSuccess, onFailure);
+      } else if (fnName === 'joinOnlineRoom') {
+        this.cloudJoinOnlineRoom(args[0], args[1], args[2], onSuccess, onFailure);
+      } else if (fnName === 'pollOnlineRoom') {
+        this.cloudPollOnlineRoom(args[0], args[1], args[2], onSuccess, onFailure);
+      } else if (fnName === 'submitOnlineAction') {
+        this.cloudSubmitOnlineAction(args[0], args[1], args[2], onSuccess, onFailure);
+      } else if (fnName === 'getOnlineRoomList') {
+        this.cloudGetOnlineRoomList(onSuccess, onFailure);
+      } else if (fnName === 'leaveOnlineRoom') {
+        this.cloudLeaveOnlineRoom(args[0], args[1], onSuccess, onFailure);
+      } else {
+        if (typeof onFailure === 'function') onFailure(new Error('Unknown function: ' + fnName));
+      }
+    },
+
+    cloudCreateOnlineRoom(deck, roomName, userEmail, rules, onSuccess, onFailure) {
+      const hostEmail = userEmail || (window.DeckSystem && DeckSystem.state && DeckSystem.state.currentUser ? DeckSystem.state.currentUser.email : '') || 'player@gmail.com';
+      const hostName = hostEmail.split('@')[0] || 'プレイヤー';
+      const roomId = 'ROOM-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+      const name = String(roomName || (hostName + 'の部屋')).trim();
+      const now = Date.now();
+
+      const room = {
+        roomId: roomId,
+        name: name,
+        status: 'waiting',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        timestamp: now,
+        hostConnectedAt: now,
+        hostReady: true,
+        guestConnectedAt: null,
+        guestReady: false,
+        rules: rules || { prizeCount: 6 },
+        host: { role: 'host', email: hostEmail, name: hostName, deck: deck },
+        guest: null,
+        turnPlayer: 'host',
+        turnNumber: 1,
+        actions: [],
+        lastSeq: 0
+      };
+
+      const rooms = this.getClientRooms().filter(r => r.roomId !== roomId);
+      rooms.unshift(room);
+      this.saveClientRooms(rooms);
+
+      const statePayload = JSON.stringify({ type: 'room_state', room: room });
+      fetch('https://ntfy.sh/orbital_tcg_state_' + roomId, { method: 'POST', body: statePayload }).catch(() => {});
+      fetch('https://ntfy.sh/orbital_tcg_lobby_state', { method: 'POST', body: statePayload }).catch(() => {});
+
+      if (typeof onSuccess === 'function') {
+        onSuccess({
+          ok: true,
+          roomId: roomId,
+          role: 'host',
+          room: { roomId: roomId, name: name, status: 'waiting', host: { name: hostName, email: hostEmail }, rules: room.rules }
+        });
+      }
+    },
+
+    cloudJoinOnlineRoom(roomId, deck, userEmail, onSuccess, onFailure) {
+      const cleanRoomId = String(roomId).trim().toUpperCase();
+      const guestEmail = userEmail || (window.DeckSystem && DeckSystem.state && DeckSystem.state.currentUser ? DeckSystem.state.currentUser.email : '') || 'guest@gmail.com';
+      const guestName = guestEmail.split('@')[0] || 'ゲスト';
+      const now = Date.now();
       const self = this;
-      setTimeout(function () {
-        try {
-          if (fnName === 'createOnlineRoom') {
-            const res = self.clientCreateOnlineRoom(args[0], args[1], args[2], args[3]);
-            if (typeof onSuccess === 'function') onSuccess(res);
-          } else if (fnName === 'joinOnlineRoom') {
-            const res = self.clientJoinOnlineRoom(args[0], args[1], args[2]);
-            if (typeof onSuccess === 'function') onSuccess(res);
-          } else if (fnName === 'pollOnlineRoom') {
-            const res = self.clientPollOnlineRoom(args[0], args[1], args[2]);
-            if (typeof onSuccess === 'function') onSuccess(res);
-          } else if (fnName === 'submitOnlineAction') {
-            const res = self.clientSubmitOnlineAction(args[0], args[1], args[2]);
-            if (typeof onSuccess === 'function') onSuccess(res);
-          } else if (fnName === 'getOnlineRoomList') {
-            const res = self.clientGetOnlineRoomList();
-            if (typeof onSuccess === 'function') onSuccess(res);
-          } else if (fnName === 'leaveOnlineRoom') {
-            const res = self.clientLeaveOnlineRoom(args[0], args[1]);
-            if (typeof onSuccess === 'function') onSuccess(res);
-          } else {
-            if (typeof onFailure === 'function') onFailure(new Error('Unknown function: ' + fnName));
+
+      const guestObj = { role: 'guest', email: guestEmail, name: guestName, deck: deck };
+
+      fetch('https://ntfy.sh/orbital_tcg_state_' + cleanRoomId + '/json?poll=1&since=24h')
+        .then(res => res.text())
+        .then(text => {
+          let room = null;
+          const lines = text.trim().split('\n').filter(Boolean);
+          for (let i = lines.length - 1; i >= 0; i--) {
+            try {
+              const parsed = JSON.parse(lines[i]);
+              if (parsed.message) {
+                const inner = JSON.parse(parsed.message);
+                if (inner && inner.room && inner.room.roomId === cleanRoomId) {
+                  room = inner.room;
+                  break;
+                }
+              }
+            } catch (e) {}
           }
-        } catch (e) {
-          console.error('Client online engine error:', e);
-          if (typeof onFailure === 'function') onFailure(e);
-        }
-      }, 30);
+
+          if (!room) {
+            const localRooms = self.getClientRooms();
+            room = localRooms.find(r => r.roomId === cleanRoomId);
+          }
+
+          if (!room) {
+            room = {
+              roomId: cleanRoomId,
+              name: '対戦ルーム (' + cleanRoomId + ')',
+              status: 'connecting',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              timestamp: now,
+              hostConnectedAt: now,
+              hostReady: true,
+              guestConnectedAt: now,
+              guestReady: true,
+              rules: { prizeCount: 6 },
+              host: { role: 'host', email: 'host@gmail.com', name: 'ホスト', deck: [] },
+              guest: guestObj,
+              actions: [],
+              lastSeq: 0
+            };
+          } else {
+            room.guest = guestObj;
+            room.guestConnectedAt = now;
+            room.guestReady = true;
+            room.status = 'connecting';
+            room.updatedAt = new Date().toISOString();
+          }
+
+          const localRooms = self.getClientRooms().filter(r => r.roomId !== cleanRoomId);
+          localRooms.unshift(room);
+          self.saveClientRooms(localRooms);
+
+          const statePayload = JSON.stringify({ type: 'room_state', room: room });
+          fetch('https://ntfy.sh/orbital_tcg_state_' + cleanRoomId, { method: 'POST', body: statePayload }).catch(() => {});
+
+          if (typeof onSuccess === 'function') {
+            onSuccess({
+              ok: true,
+              roomId: cleanRoomId,
+              role: 'guest',
+              status: room.status,
+              room: {
+                roomId: cleanRoomId,
+                name: room.name,
+                status: room.status,
+                host: { name: room.host ? room.host.name : 'ホスト', email: room.host ? room.host.email : '' },
+                guest: { name: guestName, email: guestEmail },
+                rules: room.rules
+              }
+            });
+          }
+        })
+        .catch(err => {
+          console.warn('Cloud join fetch error:', err);
+          const localRes = self.clientJoinOnlineRoom(cleanRoomId, deck, userEmail);
+          if (typeof onSuccess === 'function') onSuccess(localRes);
+        });
+    },
+
+    cloudPollOnlineRoom(roomId, playerRole, lastSeq, onSuccess, onFailure) {
+      const cleanRoomId = String(roomId).trim().toUpperCase();
+      const self = this;
+
+      fetch('https://ntfy.sh/orbital_tcg_state_' + cleanRoomId + '/json?poll=1&since=24h')
+        .then(res => res.text())
+        .then(text => {
+          let cloudRoom = null;
+          const lines = text.trim().split('\n').filter(Boolean);
+          for (let i = lines.length - 1; i >= 0; i--) {
+            try {
+              const parsed = JSON.parse(lines[i]);
+              if (parsed.message) {
+                const inner = JSON.parse(parsed.message);
+                if (inner && inner.room && inner.room.roomId === cleanRoomId) {
+                  cloudRoom = inner.room;
+                  break;
+                }
+              }
+            } catch (e) {}
+          }
+
+          const localRooms = self.getClientRooms();
+          let room = localRooms.find(r => r.roomId === cleanRoomId);
+
+          if (cloudRoom) {
+            if (!room) {
+              room = cloudRoom;
+              localRooms.unshift(room);
+            } else {
+              if (cloudRoom.guest && !room.guest) room.guest = cloudRoom.guest;
+              if (cloudRoom.status && cloudRoom.status !== room.status) room.status = cloudRoom.status;
+              if (Array.isArray(cloudRoom.actions)) {
+                if (!room.actions) room.actions = [];
+                cloudRoom.actions.forEach(act => {
+                  if (!room.actions.some(a => a.seq === act.seq)) {
+                    room.actions.push(act);
+                  }
+                });
+                room.actions.sort((a, b) => a.seq - b.seq);
+                room.lastSeq = Math.max(room.lastSeq || 0, cloudRoom.lastSeq || 0);
+              }
+            }
+          }
+
+          if (!room) {
+            room = {
+              roomId: cleanRoomId,
+              name: '対戦ルーム (' + cleanRoomId + ')',
+              status: 'waiting',
+              host: { role: 'host', email: 'host@gmail.com', name: 'ホスト', deck: [] },
+              guest: null,
+              actions: [],
+              lastSeq: 0
+            };
+            localRooms.unshift(room);
+          }
+
+          const now = Date.now();
+          if (playerRole === 'host') {
+            room.hostConnectedAt = now;
+            room.hostReady = true;
+          } else if (playerRole === 'guest') {
+            room.guestConnectedAt = now;
+            room.guestReady = true;
+          }
+
+          const isHostLive = !!(room.hostReady || room.hostConnectedAt);
+          const isGuestLive = !!(room.guestReady || room.guest || room.guestConnectedAt);
+
+          let stateUpdated = false;
+          if ((room.status === 'connecting' || room.status === 'waiting') && isHostLive && isGuestLive && room.guest) {
+            room.status = 'active';
+            const firstPlayer = Math.random() < 0.5 ? 'host' : 'guest';
+            const seed = Math.floor(Math.random() * 1000000000);
+            room.turnPlayer = firstPlayer;
+            room.turnNumber = 1;
+            room.lastSeq = (room.lastSeq || 0) + 1;
+            if (!room.actions) room.actions = [];
+            const startAct = {
+              seq: room.lastSeq,
+              by: 'system',
+              type: 'game_start',
+              payload: {
+                firstPlayer: firstPlayer,
+                seed: seed,
+                hostDeck: room.host ? room.host.deck : [],
+                guestDeck: room.guest ? room.guest.deck : [],
+                rules: room.rules,
+                hostName: room.host ? room.host.name : 'ホスト',
+                guestName: room.guest ? room.guest.name : 'ゲスト'
+              },
+              time: now
+            };
+            if (!room.actions.some(a => a.type === 'game_start')) {
+              room.actions.push(startAct);
+            }
+            stateUpdated = true;
+          }
+
+          self.saveClientRooms(localRooms);
+
+          if (stateUpdated) {
+            const statePayload = JSON.stringify({ type: 'room_state', room: room });
+            fetch('https://ntfy.sh/orbital_tcg_state_' + cleanRoomId, { method: 'POST', body: statePayload }).catch(() => {});
+          }
+
+          const fromSeq = Number(lastSeq) || 0;
+          const actions = (room.actions || []).filter(a => a.seq > fromSeq);
+
+          if (typeof onSuccess === 'function') {
+            onSuccess({
+              ok: true,
+              status: room.status,
+              roomId: room.roomId,
+              name: room.name,
+              hostConnected: isHostLive,
+              guestConnected: isGuestLive,
+              host: room.host ? { name: room.host.name, email: room.host.email } : null,
+              guest: room.guest ? { name: room.guest.name, email: room.guest.email } : null,
+              actions: actions,
+              lastSeq: room.lastSeq || 0,
+              updatedAt: room.updatedAt
+            });
+          }
+        })
+        .catch(err => {
+          console.warn('Cloud poll fetch error:', err);
+          const localRes = self.clientPollOnlineRoom(cleanRoomId, playerRole, lastSeq);
+          if (typeof onSuccess === 'function') onSuccess(localRes);
+        });
+    },
+
+    cloudSubmitOnlineAction(roomId, playerRole, action, onSuccess, onFailure) {
+      const cleanRoomId = String(roomId).trim().toUpperCase();
+      const self = this;
+
+      fetch('https://ntfy.sh/orbital_tcg_state_' + cleanRoomId + '/json?poll=1&since=24h')
+        .then(res => res.text())
+        .then(text => {
+          let room = null;
+          const lines = text.trim().split('\n').filter(Boolean);
+          for (let i = lines.length - 1; i >= 0; i--) {
+            try {
+              const parsed = JSON.parse(lines[i]);
+              if (parsed.message) {
+                const inner = JSON.parse(parsed.message);
+                if (inner && inner.room && inner.room.roomId === cleanRoomId) {
+                  room = inner.room;
+                  break;
+                }
+              }
+            } catch (e) {}
+          }
+
+          const localRooms = self.getClientRooms();
+          if (!room) {
+            room = localRooms.find(r => r.roomId === cleanRoomId);
+          }
+
+          if (!room) {
+            room = { roomId: cleanRoomId, actions: [], lastSeq: 0 };
+            localRooms.unshift(room);
+          }
+
+          room.lastSeq = (room.lastSeq || 0) + 1;
+          const actionEntry = {
+            seq: room.lastSeq,
+            by: playerRole,
+            type: action.type,
+            payload: action.payload || null,
+            time: Date.now()
+          };
+
+          if (!room.actions) room.actions = [];
+          room.actions.push(actionEntry);
+          if (room.actions.length > 100) room.actions = room.actions.slice(-100);
+          if (action.type === 'surrender' || action.type === 'game_over') room.status = 'finished';
+
+          const otherRooms = localRooms.filter(r => r.roomId !== cleanRoomId);
+          otherRooms.unshift(room);
+          self.saveClientRooms(otherRooms);
+
+          const statePayload = JSON.stringify({ type: 'room_state', room: room });
+          fetch('https://ntfy.sh/orbital_tcg_state_' + cleanRoomId, { method: 'POST', body: statePayload }).catch(() => {});
+
+          if (typeof onSuccess === 'function') {
+            onSuccess({ ok: true, lastSeq: room.lastSeq });
+          }
+        })
+        .catch(err => {
+          console.warn('Cloud submit error:', err);
+          const localRooms = self.getClientRooms();
+          let room = localRooms.find(r => r.roomId === cleanRoomId);
+          if (!room) {
+            room = { roomId: cleanRoomId, actions: [], lastSeq: 0 };
+            localRooms.unshift(room);
+          }
+          room.lastSeq = (room.lastSeq || 0) + 1;
+          const actionEntry = { seq: room.lastSeq, by: playerRole, type: action.type, payload: action.payload || null, time: Date.now() };
+          if (!room.actions) room.actions = [];
+          room.actions.push(actionEntry);
+          self.saveClientRooms(localRooms);
+          if (typeof onSuccess === 'function') onSuccess({ ok: true, lastSeq: room.lastSeq });
+        });
+    },
+
+    cloudGetOnlineRoomList(onSuccess, onFailure) {
+      const self = this;
+      fetch('https://ntfy.sh/orbital_tcg_lobby_state/json?poll=1&since=24h')
+        .then(res => res.text())
+        .then(text => {
+          const lines = text.trim().split('\n').filter(Boolean);
+          const cloudRooms = [];
+          const now = Date.now();
+          lines.forEach(line => {
+            try {
+              const parsed = JSON.parse(line);
+              if (parsed.message) {
+                const inner = JSON.parse(parsed.message);
+                if (inner && inner.type === 'room_state' && inner.room) {
+                  cloudRooms.push(inner.room);
+                }
+              }
+            } catch (e) {}
+          });
+
+          const localRooms = self.getClientRooms();
+          const merged = [...cloudRooms, ...localRooms];
+          const uniqueRooms = [];
+          const seenIds = new Set();
+          merged.forEach(r => {
+            if (r && r.roomId && !seenIds.has(r.roomId) && r.status === 'waiting' && (now - (r.timestamp || 0)) < 7200000) {
+              seenIds.add(r.roomId);
+              uniqueRooms.push(r);
+            }
+          });
+
+          if (typeof onSuccess === 'function') onSuccess(uniqueRooms);
+        })
+        .catch(err => {
+          console.warn('Cloud lobby fetch error:', err);
+          if (typeof onSuccess === 'function') onSuccess(self.clientGetOnlineRoomList());
+        });
+    },
+
+    cloudLeaveOnlineRoom(roomId, playerRole, onSuccess, onFailure) {
+      const cleanRoomId = String(roomId).trim().toUpperCase();
+      const leavePayload = JSON.stringify({ type: 'leave', role: playerRole, roomId: cleanRoomId });
+      fetch('https://ntfy.sh/orbital_tcg_state_' + cleanRoomId, { method: 'POST', body: leavePayload }).catch(() => {});
+      this.clientLeaveOnlineRoom(cleanRoomId, playerRole);
+      if (typeof onSuccess === 'function') onSuccess({ ok: true });
     },
 
     getClientRooms() {
