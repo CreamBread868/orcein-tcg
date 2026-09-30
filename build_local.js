@@ -13,24 +13,52 @@ const includes = {
   'App.js': 'App.js.html'
 };
 
+// 1. Replace GAS include statements if present
 indexHtml = indexHtml.replace(/<\?!=\s*include\(['"]([^'"]+)['"]\);\s*\?>/g, (match, p1) => {
   const file = includes[p1];
   if (file && fs.existsSync(path.join(__dirname, file))) {
-    console.log('Inlining', file);
+    console.log('Inlining include:', file);
     return fs.readFileSync(path.join(__dirname, file), 'utf8');
   }
-  console.warn('Could not find file for include', p1);
   return match;
 });
 
-// ローカル確認用
+// 2. Replace already-inlined component script blocks in Index.html
+for (const [key, file] of Object.entries(includes)) {
+  if (fs.existsSync(path.join(__dirname, file))) {
+    const content = fs.readFileSync(path.join(__dirname, file), 'utf8');
+    if (file === 'BattleSystem.js.html') {
+      const regex = /<script>\s*[\s\S]*?console\.log\('\[ORBITAL\] BattleSystem\.js\.html started execution'\);[\s\S]*?console\.log\('\[ORBITAL\] BattleSystem\.js\.html finished execution[\s\S]*?<\/script>/;
+      if (regex.test(indexHtml)) {
+        console.log('Replacing inlined BattleSystem.js.html block');
+        indexHtml = indexHtml.replace(regex, () => content);
+      }
+    } else if (file === 'EffectEditor.js.html') {
+      const regex = /<script>\s*[\s\S]*?console\.log\('\[ORBITAL\] EffectEditor\.js\.html started execution'\);[\s\S]*?console\.log\('\[ORBITAL\] EffectEditor\.js\.html finished execution[\s\S]*?<\/script>/;
+      if (regex.test(indexHtml)) {
+        console.log('Replacing inlined EffectEditor.js.html block');
+        indexHtml = indexHtml.replace(regex, () => content);
+      }
+    } else if (file === 'CardSystem.js.html') {
+      const regex = /<script>\s*[\s\S]*?console\.log\('\[ORBITAL\] CardSystem\.js\.html started execution'\);[\s\S]*?console\.log\('\[ORBITAL\] CardSystem\.js\.html finished execution[\s\S]*?<\/script>/;
+      if (regex.test(indexHtml)) {
+        console.log('Replacing inlined CardSystem.js.html block');
+        indexHtml = indexHtml.replace(regex, () => content);
+      }
+    }
+  }
+}
+
+// Write back updated template to Index.html so template stays fresh
+fs.writeFileSync(path.join(__dirname, 'Index.html'), indexHtml, 'utf8');
+
+// Write local testing file
 fs.writeFileSync(path.join(__dirname, 'index_local.html'), indexHtml, 'utf8');
 
-// GitHub Pages 用メインエントリファイル (index.html)
+// Write main GitHub Pages entry file (index.html)
 fs.writeFileSync(path.join(__dirname, 'index.html'), indexHtml, 'utf8');
 
-// GAS 用ブートストラップローダー (gas/index_local.html)
-// GAS側はコード全体を持たず、GitHubから最新のプログラム・UI・カードデータを動的に直接読み込みます！
+// GAS loader
 const gasLoaderHtml = `<!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -91,5 +119,4 @@ if (fs.existsSync(gasDir)) {
   fs.writeFileSync(path.join(gasDir, 'index_local.html'), gasLoaderHtml, 'utf8');
 }
 
-console.log('Successfully generated index_local.html, index.html, and GitHub Bootstrap Loader in gas/index_local.html!');
-
+console.log('Successfully generated Index.html, index_local.html, index.html, and gas/index_local.html!');
