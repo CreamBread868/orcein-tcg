@@ -390,29 +390,382 @@
     },
 
     callGas(fnName, args, onSuccess, onFailure) {
-      if (!window.google || !google.script || !google.script.run) {
-        if (typeof onFailure === 'function') onFailure(new Error('google.script.run が利用できません。'));
+      const cleanArgs = (args || []).map(arg => this.stripFunctions(arg));
+
+      if (window.google && google.script && google.script.run && typeof google.script.run[fnName] === 'function') {
+        try {
+          console.log('📡 [GAS Call]', fnName, cleanArgs);
+          const self = this;
+          const runner = google.script.run
+            .withSuccessHandler(onSuccess || function () {})
+            .withFailureHandler(function (err) {
+              console.warn('⚠️ [GAS Failure for ' + fnName + '], switching to Client Online Engine:', err);
+              self.executeClientOnlineEngine(fnName, cleanArgs, onSuccess, onFailure);
+            });
+          runner[fnName].apply(runner, cleanArgs);
+          return;
+        } catch (e) {
+          console.warn('❌ [GAS Exception for ' + fnName + '], fallback to Client Online Engine:', e);
+        }
+      }
+
+      this.executeClientOnlineEngine(fnName, cleanArgs, onSuccess, onFailure);
+    },
+
+    executeClientOnlineEngine(fnName, args, onSuccess, onFailure) {
+      console.log('⚡ [Client Online Engine]', fnName, args);
+      const self = this;
+      setTimeout(function () {
+        try {
+          if (fnName === 'createOnlineRoom') {
+            const res = self.clientCreateOnlineRoom(args[0], args[1], args[2], args[3]);
+            if (typeof onSuccess === 'function') onSuccess(res);
+          } else if (fnName === 'joinOnlineRoom') {
+            const res = self.clientJoinOnlineRoom(args[0], args[1], args[2]);
+            if (typeof onSuccess === 'function') onSuccess(res);
+          } else if (fnName === 'pollOnlineRoom') {
+            const res = self.clientPollOnlineRoom(args[0], args[1], args[2]);
+            if (typeof onSuccess === 'function') onSuccess(res);
+          } else if (fnName === 'submitOnlineAction') {
+            const res = self.clientSubmitOnlineAction(args[0], args[1], args[2]);
+            if (typeof onSuccess === 'function') onSuccess(res);
+          } else if (fnName === 'getOnlineRoomList') {
+            const res = self.clientGetOnlineRoomList();
+            if (typeof onSuccess === 'function') onSuccess(res);
+          } else if (fnName === 'leaveOnlineRoom') {
+            const res = self.clientLeaveOnlineRoom(args[0], args[1]);
+            if (typeof onSuccess === 'function') onSuccess(res);
+          } else {
+            if (typeof onFailure === 'function') onFailure(new Error('Unknown function: ' + fnName));
+          }
+        } catch (e) {
+          console.error('Client online engine error:', e);
+          if (typeof onFailure === 'function') onFailure(e);
+        }
+      }, 30);
+    },
+
+    getClientRooms() {
+      try {
+        const raw = localStorage.getItem('orbital_online_rooms');
+        if (raw) {
+          const list = JSON.parse(raw);
+          if (Array.isArray(list)) return list;
+        }
+      } catch (e) {}
+      return [];
+    },
+
+    saveClientRooms(rooms) {
+      try {
+        localStorage.setItem('orbital_online_rooms', JSON.stringify(rooms));
+        if (window.BroadcastChannel) {
+          if (!this._onlineChannel) {
+            this._onlineChannel = new BroadcastChannel('orbital_online_bus');
+          }
+          this._onlineChannel.postMessage({ type: 'sync_rooms', rooms: rooms });
+        }
+      } catch (e) {}
+    },
+
+    clientCreateOnlineRoom(deck, roomName, userEmail, rules) {
+      const hostEmail = userEmail || (window.DeckSystem && DeckSystem.state && DeckSystem.state.currentUser ? DeckSystem.state.currentUser.email : '') || 'player@gmail.com';
+      const hostName = hostEmail.split('@')[0] || 'プレイヤー';
+      const roomId = 'ROOM-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+      const name = String(roomName || (hostName + 'の部屋')).trim();
+      const now = Date.now();
+
+      const room = {
+        roomId: roomId,
+        name: name,
+        status: 'waiting',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        timestamp: now,
+        hostConnectedAt: now,
+        hostReady: true,
+        guestConnectedAt: null,
+        guestReady: false,
+        rules: rules || { prizeCount: 6 },
+        host: {
+          role: 'host',
+          email: hostEmail,
+          name: hostName,
+          deck: deck
+        },
+        guest: null,
+        turnPlayer: 'host',
+        turnNumber: 1,
+        actions: [],
+        lastSeq: 0
+      };
+
+      const rooms = this.getClientRooms().filter(r => r.roomId !== roomId);
+      rooms.unshift(room);
+      this.saveClientRooms(rooms);
+
+      this.initPeerJsHost(roomId, room);
+
+      return {
+        ok: true,
+        roomId: roomId,
+        role: 'host',
+        room: {
+          roomId: roomId,
+          name: name,
+          status: 'waiting',
+          host: { name: hostName, email: hostEmail },
+          rules: room.rules
+        }
+      };
+    },
+
+    clientJoinOnlineRoom(roomId, deck, userEmail) {
+      const cleanRoomId = String(roomId).trim().toUpperCase();
+      const rooms = this.getClientRooms();
+      const room = rooms.find(r => r.roomId === cleanRoomId);
+
+      if (!room) {
+        return { ok: false, message: 'ルームが見つかりません。期限切れか解散された可能性があります。' };
+      }
+      if (room.status !== 'waiting' && room.status !== 'connecting') {
+        return { ok: false, message: 'このルームはすでに対戦中か終了しています。' };
+      }
+
+      const guestEmail = userEmail || (window.DeckSystem && DeckSystem.state && DeckSystem.state.currentUser ? DeckSystem.state.currentUser.email : '') || 'guest@gmail.com';
+      const guestName = guestEmail.split('@')[0] || 'ゲスト';
+      const now = Date.now();
+
+      room.guest = {
+        role: 'guest',
+        email: guestEmail,
+        name: guestName,
+        deck: deck
+      };
+      room.guestConnectedAt = now;
+      room.guestReady = true;
+      if (!room.hostConnectedAt) {
+        room.hostConnectedAt = now;
+        room.hostReady = true;
+      }
+      room.status = 'connecting';
+      room.updatedAt = new Date().toISOString();
+
+      this.saveClientRooms(rooms);
+      this.initPeerJsGuest(cleanRoomId, room);
+
+      return {
+        ok: true,
+        roomId: cleanRoomId,
+        role: 'guest',
+        status: room.status,
+        room: {
+          roomId: cleanRoomId,
+          name: room.name,
+          status: room.status,
+          host: { name: room.host ? room.host.name : 'ホスト', email: room.host ? room.host.email : '' },
+          guest: { name: guestName, email: guestEmail },
+          rules: room.rules
+        }
+      };
+    },
+
+    clientPollOnlineRoom(roomId, playerRole, lastSeq) {
+      const cleanRoomId = String(roomId).trim().toUpperCase();
+      const rooms = this.getClientRooms();
+      const room = rooms.find(r => r.roomId === cleanRoomId);
+
+      if (!room) {
+        return { ok: false, status: 'closed', message: 'ルームが存在しないか終了しました。' };
+      }
+
+      const now = Date.now();
+      if (playerRole === 'host') {
+        room.hostConnectedAt = now;
+        room.hostReady = true;
+      } else if (playerRole === 'guest') {
+        room.guestConnectedAt = now;
+        room.guestReady = true;
+      }
+
+      const isHostLive = !!(room.hostReady && room.hostConnectedAt && (now - room.hostConnectedAt < 30000));
+      const isGuestLive = !!(room.guestReady && room.guestConnectedAt && (now - room.guestConnectedAt < 30000));
+
+      if ((room.status === 'connecting' || room.status === 'waiting') && isHostLive && isGuestLive && room.guest) {
+        room.status = 'active';
+        const firstPlayer = Math.random() < 0.5 ? 'host' : 'guest';
+        const seed = Math.floor(Math.random() * 1000000000);
+        room.turnPlayer = firstPlayer;
+        room.turnNumber = 1;
+        room.lastSeq = (room.lastSeq || 0) + 1;
+        if (!room.actions) room.actions = [];
+        room.actions.push({
+          seq: room.lastSeq,
+          by: 'system',
+          type: 'game_start',
+          payload: {
+            firstPlayer: firstPlayer,
+            seed: seed,
+            hostDeck: room.host ? room.host.deck : [],
+            guestDeck: room.guest ? room.guest.deck : [],
+            rules: room.rules,
+            hostName: room.host ? room.host.name : 'ホスト',
+            guestName: room.guest ? room.guest.name : 'ゲスト'
+          },
+          time: now
+        });
+        this.saveClientRooms(rooms);
+      }
+
+      const fromSeq = Number(lastSeq) || 0;
+      const actions = (room.actions || []).filter(a => a.seq > fromSeq);
+
+      return {
+        ok: true,
+        status: room.status,
+        roomId: room.roomId,
+        name: room.name,
+        hostConnected: isHostLive,
+        guestConnected: isGuestLive,
+        host: room.host ? { name: room.host.name, email: room.host.email } : null,
+        guest: room.guest ? { name: room.guest.name, email: room.guest.email } : null,
+        actions: actions,
+        lastSeq: room.lastSeq || 0,
+        updatedAt: room.updatedAt
+      };
+    },
+
+    clientSubmitOnlineAction(roomId, playerRole, action) {
+      const cleanRoomId = String(roomId).trim().toUpperCase();
+      const rooms = this.getClientRooms();
+      const room = rooms.find(r => r.roomId === cleanRoomId);
+      if (!room) return { ok: false, message: 'ルームが見つかりません。' };
+
+      room.lastSeq = (room.lastSeq || 0) + 1;
+      const actionEntry = {
+        seq: room.lastSeq,
+        by: playerRole,
+        type: action.type,
+        payload: action.payload || null,
+        time: Date.now()
+      };
+
+      if (!room.actions) room.actions = [];
+      room.actions.push(actionEntry);
+      if (room.actions.length > 50) {
+        room.actions = room.actions.slice(-50);
+      }
+
+      if (action.type === 'surrender' || action.type === 'game_over') {
+        room.status = 'finished';
+      }
+
+      room.updatedAt = new Date().toISOString();
+      this.saveClientRooms(rooms);
+
+      if (this._p2pConn && this._p2pConn.open) {
+        try {
+          this._p2pConn.send({ type: 'online_action', actionEntry: actionEntry });
+        } catch (e) {}
+      }
+
+      return { ok: true, lastSeq: room.lastSeq };
+    },
+
+    clientGetOnlineRoomList() {
+      const rooms = this.getClientRooms();
+      const now = Date.now();
+      return rooms.filter(r => (now - (r.timestamp || 0)) < 7200000 && r.status === 'waiting');
+    },
+
+    clientLeaveOnlineRoom(roomId, playerRole) {
+      const cleanRoomId = String(roomId).trim().toUpperCase();
+      const rooms = this.getClientRooms();
+      const room = rooms.find(r => r.roomId === cleanRoomId);
+      if (room) {
+        room.status = 'finished';
+        this.saveClientRooms(rooms);
+      }
+      return { ok: true };
+    },
+
+    initPeerJsHost(roomId, roomObj) {
+      const self = this;
+      this.ensurePeerJsLoaded(function () {
+        if (!window.Peer) return;
+        try {
+          const peerId = 'orbital-room-' + roomId.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+          if (self._peer) { try { self._peer.destroy(); } catch (e) {} }
+          self._peer = new window.Peer(peerId);
+
+          self._peer.on('connection', function (conn) {
+            self._p2pConn = conn;
+            conn.on('data', function (data) {
+              if (data && data.type === 'online_action' && data.actionEntry) {
+                self.injectRemoteAction(roomId, data.actionEntry);
+              }
+            });
+          });
+        } catch (e) {
+          console.warn('PeerJS host init warning:', e);
+        }
+      });
+    },
+
+    initPeerJsGuest(roomId, roomObj) {
+      const self = this;
+      this.ensurePeerJsLoaded(function () {
+        if (!window.Peer) return;
+        try {
+          const hostPeerId = 'orbital-room-' + roomId.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+          if (self._peer) { try { self._peer.destroy(); } catch (e) {} }
+          self._peer = new window.Peer();
+
+          self._peer.on('open', function () {
+            const conn = self._peer.connect(hostPeerId);
+            self._p2pConn = conn;
+            conn.on('data', function (data) {
+              if (data && data.type === 'online_action' && data.actionEntry) {
+                self.injectRemoteAction(roomId, data.actionEntry);
+              }
+            });
+          });
+        } catch (e) {
+          console.warn('PeerJS guest init warning:', e);
+        }
+      });
+    },
+
+    injectRemoteAction(roomId, actionEntry) {
+      const cleanRoomId = String(roomId).trim().toUpperCase();
+      const rooms = this.getClientRooms();
+      const room = rooms.find(r => r.roomId === cleanRoomId);
+      if (!room) return;
+
+      if (!room.actions) room.actions = [];
+      if (!room.actions.some(a => a.seq === actionEntry.seq)) {
+        room.actions.push(actionEntry);
+        room.lastSeq = Math.max(room.lastSeq || 0, actionEntry.seq);
+        this.saveClientRooms(rooms);
+      }
+    },
+
+    ensurePeerJsLoaded(callback) {
+      if (window.Peer) {
+        if (callback) callback();
         return;
       }
-      const cleanArgs = (args || []).map(arg => this.stripFunctions(arg));
-      try {
-        console.log('📡 [GAS Call]', fnName, cleanArgs);
-        const runner = google.script.run
-          .withSuccessHandler(onSuccess || function () {})
-          .withFailureHandler(function (err) {
-            const errStr = String(err && err.message ? err.message : err);
-            if (errStr.includes('HTTP 0') || errStr.includes('NetworkError')) {
-              console.warn('⚠️ [GAS Network Transient Error for ' + fnName + '] (HTTP 0 / 接続タイムアウト)。自動再試行されます。', errStr);
-            } else {
-              console.error('❌ [GAS Failure for ' + fnName + ']', err);
-            }
-            if (typeof onFailure === 'function') onFailure(err);
-          });
-        runner[fnName].apply(runner, cleanArgs);
-      } catch (e) {
-        console.error('❌ [callGas Exception for ' + fnName + ']:', e);
-        if (typeof onFailure === 'function') onFailure(e);
-      }
+      const script = document.createElement('script');
+      script.src = 'https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';
+      script.onload = () => {
+        console.log('🟢 PeerJS loaded for P2P Online Battles');
+        if (callback) callback();
+      };
+      script.onerror = () => {
+        console.warn('PeerJS script failed to load.');
+        if (callback) callback();
+      };
+      document.head.appendChild(script);
     },
 
     createRoom() {
