@@ -648,30 +648,30 @@
           const isGuestLive = !!(room.guestReady || room.guest || room.guestConnectedAt);
 
           let stateUpdated = false;
-          if ((room.status === 'connecting' || room.status === 'waiting') && isHostLive && isGuestLive && room.guest) {
+          if (playerRole === 'host' && (room.status === 'connecting' || room.status === 'waiting') && isHostLive && isGuestLive && room.guest) {
             room.status = 'active';
-            const firstPlayer = Math.random() < 0.5 ? 'host' : 'guest';
-            const seed = Math.floor(Math.random() * 1000000000);
-            room.turnPlayer = firstPlayer;
-            room.turnNumber = 1;
-            room.lastSeq = (room.lastSeq || 0) + 1;
             if (!room.actions) room.actions = [];
-            const startAct = {
-              seq: room.lastSeq,
-              by: 'system',
-              type: 'game_start',
-              payload: {
-                firstPlayer: firstPlayer,
-                seed: seed,
-                hostDeck: room.host ? room.host.deck : [],
-                guestDeck: room.guest ? room.guest.deck : [],
-                rules: room.rules,
-                hostName: room.host ? room.host.name : 'ホスト',
-                guestName: room.guest ? room.guest.name : 'ゲスト'
-              },
-              time: now
-            };
             if (!room.actions.some(a => a.type === 'game_start')) {
+              const firstPlayer = Math.random() < 0.5 ? 'host' : 'guest';
+              const seed = Math.floor(Math.random() * 1000000000);
+              room.turnPlayer = firstPlayer;
+              room.turnNumber = 1;
+              room.lastSeq = (room.lastSeq || 0) + 1;
+              const startAct = {
+                seq: room.lastSeq,
+                by: 'system',
+                type: 'game_start',
+                payload: {
+                  firstPlayer: firstPlayer,
+                  seed: seed,
+                  hostDeck: room.host ? room.host.deck : [],
+                  guestDeck: room.guest ? room.guest.deck : [],
+                  rules: room.rules,
+                  hostName: room.host ? room.host.name : 'ホスト',
+                  guestName: room.guest ? room.guest.name : 'ゲスト'
+                },
+                time: now
+              };
               room.actions.push(startAct);
             }
             stateUpdated = true;
@@ -1242,8 +1242,9 @@
     startWaitingRoomPolling() {
       this.stopPolling();
       const self = this;
+      this.state.online.matchStarted = false;
       this.state.online.pollTimer = setInterval(function () {
-        if (!self.state.online.roomId) return;
+        if (!self.state.online.roomId || self.state.online.matchStarted) return;
         self.callGas('pollOnlineRoom', [self.state.online.roomId, self.state.online.role, self.state.online.lastSeq], function (res) {
           if (res && res.ok) {
             if (res.status === 'connecting' || res.status === 'active') {
@@ -1252,7 +1253,8 @@
 
             if (res.actions && res.actions.length > 0) {
               const startAct = res.actions.find(function (a) { return a.type === 'game_start'; });
-              if (startAct) {
+              if (startAct && !self.state.online.matchStarted) {
+                self.state.online.matchStarted = true;
                 self.stopPolling();
                 self.closeConnectingModal();
                 const payload = startAct.payload;
