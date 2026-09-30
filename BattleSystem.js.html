@@ -352,8 +352,11 @@
     },
 
     stripFunctions(obj, seen) {
+      if (obj === null || obj === undefined) return obj;
+      if (typeof obj === 'function') return undefined;
+      if (typeof obj !== 'object') return obj;
+
       if (!seen) seen = new WeakSet();
-      if (obj === null || obj === undefined || typeof obj !== 'object') return obj;
       if (seen.has(obj)) return null;
       seen.add(obj);
 
@@ -383,7 +386,10 @@
       }
 
       try {
-        return JSON.parse(JSON.stringify(clean));
+        return JSON.parse(JSON.stringify(clean, function (k, v) {
+          if (k === 'getCards' || typeof v === 'function') return undefined;
+          return v;
+        }));
       } catch (e) {
         return clean;
       }
@@ -397,7 +403,9 @@
           console.log('📡 [GAS Call]', fnName, cleanArgs);
           const self = this;
           const runner = google.script.run
-            .withSuccessHandler(onSuccess || function () {})
+            .withSuccessHandler(function (res) {
+              if (typeof onSuccess === 'function') onSuccess(res);
+            })
             .withFailureHandler(function (err) {
               console.warn('⚠️ [GAS Failure for ' + fnName + '], switching to Client Online Engine:', err);
               self.executeClientOnlineEngine(fnName, cleanArgs, onSuccess, onFailure);
