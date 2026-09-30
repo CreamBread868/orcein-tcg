@@ -1219,6 +1219,7 @@
       const self = this;
       this.callGas('createOnlineRoom', [cleanDeck, roomName, userEmail, { prizeCount: prizeCount }], function (res) {
         if (res && res.ok) {
+          App.toast('🟢 通信成功: ルーム「' + res.roomId + '」の作成が完了しました！');
           self.openWaitingRoom(res.roomId, rawDeck, prizeCount, 'host');
         } else {
           App.toast((res && res.message) || '部屋の作成に失敗しました。', true);
@@ -1379,6 +1380,7 @@
       const self = this;
       this.callGas('joinOnlineRoom', [roomId, cleanDeck, userEmail], function (res) {
         if (res && res.ok) {
+          App.toast('🟢 通信成功: ルーム「' + res.roomId + '」への接続が完了しました！');
           self.state.mode = 'online';
           self.state.online.roomId = res.roomId;
           self.state.online.role = 'guest';
@@ -1742,6 +1744,7 @@
         if (res && res.ok && res.lastSeq) {
           console.log('✅ [Online Packet Ack]', type, '| Returned lastSeq:', res.lastSeq);
           self.state.online.lastSeq = res.lastSeq;
+          App.toast('📡 通信成功: 操作「' + type + '」を送信しました。');
           self.pollRoomImmediate();
         } else {
           console.error('❌ [Online Packet Rejected]', type, '| Error:', res ? res.message : 'No response from server');
@@ -1754,6 +1757,7 @@
     applyRemoteAction(action) {
       if (!action || !action.type) return;
       console.log('📥 [Online Incoming Packet Applied]', 'Seq:', action.seq, '| By:', action.by, '| Type:', action.type, action.payload);
+      App.toast('🟢 通信成功: 相手の操作「' + action.type + '」を受信・反映しました！');
       try {
         const opp = this.state.opponent;
         const p = this.state.player;
