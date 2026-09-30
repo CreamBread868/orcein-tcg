@@ -5661,6 +5661,16 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   </script>
 </head>
 <body>
+  <!-- 起動時 GitHub データローダー (Startup Loading Overlay) -->
+  <div id="startupLoadingOverlay" class="startup-loading-overlay">
+    <div class="startup-brand-mark">O</div>
+    <div class="startup-title">ORBITAL TCG</div>
+    <div class="startup-progress-bar-wrap">
+      <div id="startupProgressBar" class="startup-progress-bar"></div>
+    </div>
+    <div id="startupStatusText" class="startup-status-text">GitHubリポジトリから最新プログラムを読み込んでいます...</div>
+  </div>
+
   <div id="app">
     <header class="topbar">
       <div class="brand">

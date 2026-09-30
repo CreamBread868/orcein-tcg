@@ -1,0 +1,9 @@
+# Google Apps Script 開発用フォルダおよび clasp 設定を除外
+gas/
+.clasp.json
+.clasp.zip
+
+# 一時スクリプト・依存関係を除外
+scratch/
+node_modules/
+.DS_Store

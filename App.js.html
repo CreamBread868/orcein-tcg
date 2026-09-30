@@ -52,6 +52,7 @@
         try {fn();}
         catch (e) {console.error('[App.init] ' + name + ' failed:', e);}
       };
+      safe('initStartupLoader', () => this.initStartupLoader());
       safe('bindNavigation', () => this.bindNavigation());
       safe('initFontSize', () => this.initFontSize());
       safe('bindHome', () => this.bindHome());
@@ -476,6 +477,40 @@
       }
 
       this.toast(`🎉 バージョン ${version} へ更新を適用しました！`);
+    },
+
+    initStartupLoader() {
+      const overlay = this.el('startupLoadingOverlay');
+      const bar = this.el('startupProgressBar');
+      const text = this.el('startupStatusText');
+      if (!overlay || !bar) return;
+
+      let progress = 0;
+      const updateProgress = (target, statusText) => {
+        progress = Math.max(progress, target);
+        bar.style.width = progress + '%';
+        if (statusText && text) text.textContent = statusText;
+      };
+
+      updateProgress(20, 'システムコンポーネント初期化中…');
+
+      setTimeout(async () => {
+        updateProgress(50, 'GitHubリポジトリからデータ・モジュールを検出中…');
+        const savedRepo = localStorage.getItem('ORBITAL_GITHUB_REPO');
+
+        if (savedRepo) {
+          updateProgress(75, `GitHub (${savedRepo}) から最新データを取得中…`);
+          await this.loadFromGitHub(savedRepo, false);
+        } else {
+          updateProgress(80, 'カードライブラリをロード中…');
+          this.loadCards();
+        }
+
+        updateProgress(100, '起動完了！');
+        setTimeout(() => {
+          overlay.classList.add('hidden');
+        }, 450);
+      }, 350);
     },
 
     loadCards() {
