@@ -450,6 +450,8 @@
       const name = String(roomName || (hostName + 'の部屋')).trim();
       const now = Date.now();
 
+      const cleanDeck = (deck || []).map(c => this.sanitizeCardForNetwork(c));
+
       const room = {
         roomId: roomId,
         name: name,
@@ -462,7 +464,7 @@
         guestConnectedAt: null,
         guestReady: false,
         rules: rules || { prizeCount: 6 },
-        host: { role: 'host', email: hostEmail, name: hostName, deck: deck },
+        host: { role: 'host', email: hostEmail, name: hostName, deck: cleanDeck },
         guest: null,
         turnPlayer: 'host',
         turnNumber: 1,
@@ -495,7 +497,8 @@
       const now = Date.now();
       const self = this;
 
-      const guestObj = { role: 'guest', email: guestEmail, name: guestName, deck: deck };
+      const cleanDeck = (deck || []).map(c => this.sanitizeCardForNetwork(c));
+      const guestObj = { role: 'guest', email: guestEmail, name: guestName, deck: cleanDeck };
 
       fetch('https://ntfy.sh/orbital_tcg_state_' + cleanRoomId + '/json?poll=1&since=24h')
         .then(res => res.text())
@@ -617,6 +620,7 @@
                   }
                 });
                 room.actions.sort((a, b) => a.seq - b.seq);
+                if (room.actions.length > 20) room.actions = room.actions.slice(-20);
                 room.lastSeq = Math.max(room.lastSeq || 0, cloudRoom.lastSeq || 0);
               }
             }
@@ -664,8 +668,8 @@
                 payload: {
                   firstPlayer: firstPlayer,
                   seed: seed,
-                  hostDeck: room.host ? room.host.deck : [],
-                  guestDeck: room.guest ? room.guest.deck : [],
+                  hostDeck: (room.host && room.host.deck || []).map(c => self.sanitizeCardForNetwork(c)),
+                  guestDeck: (room.guest && room.guest.deck || []).map(c => self.sanitizeCardForNetwork(c)),
                   rules: room.rules,
                   hostName: room.host ? room.host.name : 'ホスト',
                   guestName: room.guest ? room.guest.name : 'ゲスト'
@@ -680,6 +684,7 @@
           self.saveClientRooms(localRooms);
 
           if (stateUpdated) {
+            if (room.actions && room.actions.length > 20) room.actions = room.actions.slice(-20);
             const statePayload = JSON.stringify({ type: 'room_state', room: room });
             fetch('https://ntfy.sh/orbital_tcg_state_' + cleanRoomId, { method: 'POST', body: statePayload }).catch(() => {});
           }
@@ -753,7 +758,7 @@
 
           if (!room.actions) room.actions = [];
           room.actions.push(actionEntry);
-          if (room.actions.length > 100) room.actions = room.actions.slice(-100);
+          if (room.actions.length > 20) room.actions = room.actions.slice(-20);
           if (action.type === 'surrender' || action.type === 'game_over') room.status = 'finished';
 
           const otherRooms = localRooms.filter(r => r.roomId !== cleanRoomId);
@@ -1606,11 +1611,10 @@
 
     sanitizeCardForNetwork(c) {
       if (!c) return null;
-      const img = (c.image && typeof c.image === 'string' && c.image.length < 300 && !c.image.startsWith('data:')) ? c.image : '';
       const cleanAttached = Array.isArray(c.attachedEnergies)
-        ? c.attachedEnergies.map(item => (typeof item === 'object' ? this.stripFunctions(item) : item))
+        ? c.attachedEnergies.map(item => (typeof item === 'object' ? { name: item.name, type: item.type } : item))
         : [];
-      return this.stripFunctions({
+      return {
         id: c.id || '',
         name: c.name || '',
         category: c.category || '',
@@ -1620,19 +1624,8 @@
         energy: Number(c.energy) || 0,
         attachedEnergies: cleanAttached,
         status: c.status || null,
-        image: img,
-        attack1Name: c.attack1Name || '',
-        attack1Damage: c.attack1Damage || '',
-        attack1Energy: c.attack1Energy || '',
-        attack1Code: c.attack1Code || '',
-        attack2Name: c.attack2Name || '',
-        attack2Damage: c.attack2Damage || '',
-        attack2Energy: c.attack2Energy || '',
-        attack2Code: c.attack2Code || '',
-        abilityName: c.abilityName || '',
-        abilityCode: c.abilityCode || '',
         isEx: !!c.isEx
-      });
+      };
     },
 
     sanitizePayloadForNetwork(obj) {
