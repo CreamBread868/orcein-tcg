@@ -1,0 +1,346 @@
+<script>
+
+(() => {
+  'use strict';
+
+  const CardSystem = new Proxy({}, {
+    get(target, prop) {
+      if (window.CardSystem && typeof window.CardSystem[prop] === 'function') {
+        return function (...args) {return window.CardSystem[prop].apply(window.CardSystem, args);};
+      }
+      if (window.CardSystem && prop in window.CardSystem) {
+        return window.CardSystem[prop];
+      }
+      return function () {
+        console.warn('[Proxy] CardSystem.' + String(prop) + ' called before CardSystem ready');
+      };
+    }
+  });
+  const DeckSystem = new Proxy({}, {
+    get(target, prop) {
+      return window.DeckSystem ? window.DeckSystem[prop] : undefined;
+    }
+  });
+  const BattleSystem = new Proxy({}, {
+    get(target, prop) {
+      return window.BattleSystem ? window.BattleSystem[prop] : undefined;
+    }
+  });
+
+  function safeGetSession(key) {
+    try {return window.sessionStorage ? window.sessionStorage.getItem(key) || '' : '';} catch (e) {return '';}
+  }
+  function safeSetSession(key, val) {
+    try {if (window.sessionStorage) window.sessionStorage.setItem(key, val);} catch (e) {}
+  }
+  function safeRemoveSession(key) {
+    try {if (window.sessionStorage) window.sessionStorage.removeItem(key);} catch (e) {}
+  }
+
+  const App = {
+    state: {
+      page: 'home',
+      cards: [],
+      editingCardId: null,
+      adminToken: safeGetSession('orbital_admin_token')
+    },
+
+    init() {
+      const safe = (name, fn) => {
+        try {fn();}
+        catch (e) {console.error('[App.init] ' + name + ' failed:', e);}
+      };
+      safe('bindNavigation', () => this.bindNavigation());
+      safe('initFontSize', () => this.initFontSize());
+      safe('bindHome', () => this.bindHome());
+      safe('bindEditor', () => this.bindEditor());
+      safe('bindFilters', () => this.bindFilters());
+      safe('bindModal', () => this.bindModal());
+      safe('bindAdmin', () => this.bindAdmin());
+      safe('loadCards', () => this.loadCards());
+      safe('CardSystem.init', () => {
+        if (window.CardSystem && window.CardSystem.init) CardSystem.init();
+      });
+      safe('DeckSystem.init', () => {
+        if (window.DeckSystem && window.DeckSystem.init) {
+          DeckSystem.init();
+          DeckSystem.loadDecks();
+        }
+      });
+      safe('BattleSystem.init', () => {
+        if (window.BattleSystem && window.BattleSystem.init) BattleSystem.init();
+      });
+      const initialPage = (() => {
+        try {
+          return new URLSearchParams(window.location.search).get('page') ||
+          window.location.hash.replace('#', '') ||
+          'home';
+        } catch (e) {return 'home';}
+      })();
+      safe('showPage', () => this.showPage(initialPage));
+    },
+
+    initFontSize() {
+      let mode = 'normal';
+      try {
+        mode = localStorage.getItem('orbital_font_scale') || 'normal';
+      } catch (e) {}
+      this.setFontSizeMode(mode, false);
+      const btn = this.el('fontSizeToggleBtn');
+      if (btn) {
+        btn.addEventListener('click', () => {
+          let current = 'normal';
+          try {
+            current = localStorage.getItem('orbital_font_scale') || 'normal';
+          } catch (e) {}
+          const next = current === 'normal' ? 'large' : (current === 'large' ? 'xlarge' : 'normal');
+          this.setFontSizeMode(next, true);
+        });
+      }
+    },
+
+    setFontSizeMode(mode, showToast) {
+      document.body.classList.remove('font-size-large', 'font-size-xlarge');
+      let label = 'Aa 文字サイズ: 標準';
+      if (mode === 'large') {
+        document.body.classList.add('font-size-large');
+        label = 'Aa 文字サイズ: 大';
+      } else if (mode === 'xlarge') {
+        document.body.classList.add('font-size-xlarge');
+        label = 'Aa 文字サイズ: 特大';
+      }
+      try {
+        localStorage.setItem('orbital_font_scale', mode);
+      } catch (e) {}
+      const btn = this.el('fontSizeToggleBtn');
+      if (btn) btn.textContent = label;
+      if (showToast) {
+        this.toast('文字サイズを「' + (mode === 'large' ? '大' : (mode === 'xlarge' ? '特大' : '標準')) + '」に変更しました。');
+      }
+    },
+
+    el(id) {
+      return document.getElementById(id);
+    },
+
+    showPage(page) {
+      document.querySelectorAll('.page').forEach((el) => el.classList.remove('active'));
+      const target = this.el("page-" + page);
+      if (target) target.classList.add('active');
+
+      document.querySelectorAll('.nav-button').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.page === page);
+      });
+
+      this.state.page = page;
+      const sidebar = this.el('sidebar');
+      if (sidebar) sidebar.classList.remove('open');
+
+      if (page === 'deck' && window.DeckSystem) {
+        DeckSystem.init();
+        DeckSystem.loadDecks();
+      }
+      if (page === 'battle' && window.BattleSystem) {
+        BattleSystem.init();
+      }
+      if (page === 'create' && window.CardSystem) {
+        CardSystem.syncCategoryForm();
+        CardSystem.updatePreview();
+      }
+    },
+
+    toast(message, isError = false) {
+      const toast = this.el('toast');
+      if (!toast) return;
+      toast.textContent = message;
+      toast.style.borderColor = isError ? 'var(--danger)' : '';
+      toast.classList.add('show');
+      clearTimeout(this.toastTimer);
+      this.toastTimer = setTimeout(() => toast.classList.remove('show'), 2600);
+    },
+
+    bindNavigation() {
+      document.querySelectorAll('.nav-button').forEach((btn) => {
+        btn.addEventListener('click', () => this.showPage(btn.dataset.page));
+      });
+
+      const menuBtn = this.el('mobileMenuButton');
+      if (menuBtn) {
+        menuBtn.addEventListener('click', () => {
+          const sb = this.el('sidebar');
+          if (sb) sb.classList.toggle('open');
+        });
+      }
+    },
+
+    bindHome() {
+      const onEl = (id, fn) => {const el = this.el(id);if (el) el.addEventListener('click', fn);};
+      onEl('heroCreateButton', () => {if (!this.requireAdmin()) return;CardSystem.resetEditor();this.showPage('create');});
+      onEl('heroCardsButton', () => this.showPage('cards'));
+      onEl('homeRefreshButton', () => this.loadCards());
+      onEl('newCardButton', () => {if (!this.requireAdmin()) return;CardSystem.resetEditor();this.showPage('create');});
+    },
+
+    bindEditor() {
+      const on = (id, event, handler) => {
+        const node = this.el(id);
+        if (node) node.addEventListener(event, handler);
+      };
+
+      on('saveCardButton', 'click', () => CardSystem.save());
+      on('resetEditorButton', 'click', () => CardSystem.resetEditor());
+      on('uploadImageButton', 'click', () => CardSystem.uploadImage());
+      on('abilityEffectButton', 'click', () => CardSystem.openEffectEditor('ability'));
+      on('attack1EffectButton', 'click', () => CardSystem.openEffectEditor('attack1'));
+      on('attack2EffectButton', 'click', () => CardSystem.openEffectEditor('attack2'));
+      on('trainerEffectButton', 'click', () => CardSystem.openEffectEditor('trainer'));
+      on('category', 'change', () => {
+        CardSystem.syncCategoryForm();
+        CardSystem.updatePreview();
+      });
+      on('closeEffectEditorButton', 'click', () => CardSystem.closeEffectEditor());
+      on('cancelEffectEditorButton', 'click', () => CardSystem.closeEffectEditor());
+      on('saveEffectEditorButton', 'click', () => CardSystem.applyEffectEditor());
+
+      const effectModal = this.el('effectEditorModal');
+      if (effectModal) {
+        const backdrop = effectModal.querySelector('.modal-backdrop');
+        if (backdrop) backdrop.addEventListener('click', () => CardSystem.closeEffectEditor());
+      }
+
+      on('cardForm', 'input', () => CardSystem.updatePreview());
+      on('cardForm', 'change', () => CardSystem.updatePreview());
+
+      // 効果エディター内のボタンはイベント委譲で確実に処理する
+      document.addEventListener('click', (e) => {
+        const tab = e.target.closest('[data-effect-tab]');
+        if (tab) {
+          e.preventDefault();
+          CardSystem.switchEffectTab(tab.dataset.effectTab);
+          return;
+        }
+        const insert = e.target.closest('[data-effect-insert]');
+        if (insert) {
+          e.preventDefault();
+          CardSystem.insertEffectCode(insert.dataset.effectInsert || '');
+          return;
+        }
+      });
+
+      // effectCodeEditor のキー操作・入力イベントは CardSystem 側で一元管理されています
+    },
+
+    bindFilters() {
+      ['searchInput', 'categoryFilter', 'typeFilter', 'rarityFilter'].forEach((id) => {
+        const el = this.el(id);
+        if (!el) return;
+        el.addEventListener('input', () => CardSystem.renderList());
+        el.addEventListener('change', () => CardSystem.renderList());
+      });
+    },
+
+    bindModal() {
+      const closeBtn = this.el('closeModalButton');
+      if (closeBtn) closeBtn.addEventListener('click', () => this.closeModal());
+      const modal = this.el('detailModal');
+      if (modal) {
+        const backdrop = modal.querySelector('.modal-backdrop');
+        if (backdrop) backdrop.addEventListener('click', () => this.closeModal());
+      }
+    },
+
+    openModal(html) {
+      this.el('detailContent').innerHTML = html;
+      this.el('detailModal').classList.remove('hidden');
+    },
+
+    closeModal() {
+      this.el('detailModal').classList.add('hidden');
+    },
+
+    bindAdmin() {
+      this.updateAdminStatus();
+      const onEl = (id, fn) => {const el = this.el(id);if (el) el.addEventListener('click', fn);};
+      onEl('adminLoginButton', () => {if (this.isAdmin()) this.logoutAdmin();else this.openAdminLogin();});
+      onEl('closeAdminLoginButton', () => this.closeAdminLogin());
+      onEl('adminLoginSubmit', () => this.loginAdmin());
+      const modal = this.el('adminLoginModal');
+      if (modal) {
+        const backdrop = modal.querySelector('.modal-backdrop');
+        if (backdrop) backdrop.addEventListener('click', () => this.closeAdminLogin());
+      }
+      const pwd = this.el('adminPassword');
+      if (pwd) pwd.addEventListener('keydown', (e) => {if (e.key === 'Enter') this.loginAdmin();});
+    },
+
+    isAdmin() {return !!this.state.adminToken;},
+
+    requireAdmin() {
+      if (this.isAdmin()) return true;
+      this.openAdminLogin();
+      this.toast('カード作成には管理者ログインが必要です。', true);
+      return false;
+    },
+
+    openAdminLogin() {this.el('adminLoginModal').classList.remove('hidden');this.el('adminPassword').focus();},
+    closeAdminLogin() {this.el('adminLoginModal').classList.add('hidden');},
+
+    loginAdmin() {
+      const password = this.el('adminPassword').value;
+      if (!password) {this.toast('パスワードを入力してください。', true);return;}
+      this.el('adminLoginSubmit').disabled = true;
+      google.script.run.withSuccessHandler((result) => {
+        this.el('adminLoginSubmit').disabled = false;
+        this.state.adminToken = result.token;
+        safeSetSession('orbital_admin_token', result.token);
+        this.el('adminPassword').value = '';
+        this.closeAdminLogin();
+        this.updateAdminStatus();
+        this.toast('管理者としてログインしました。');
+      }).withFailureHandler((err) => {
+        this.el('adminLoginSubmit').disabled = false;
+        this.toast('ログイン失敗: ' + (err.message || err), true);
+      }).loginAdmin(password);
+    },
+
+    logoutAdmin() {
+      const token = this.state.adminToken;
+      this.state.adminToken = '';
+      safeRemoveSession('orbital_admin_token');
+      this.updateAdminStatus();
+      google.script.run.withFailureHandler(() => {}).logoutAdmin(token);
+      this.toast('ログアウトしました。');
+    },
+
+    updateAdminStatus() {
+      const status = this.el('adminStatus');
+      const button = this.el('adminLoginButton');
+      if (this.isAdmin()) {
+        status.textContent = '管理者モード';
+        button.textContent = 'ログアウト';
+      } else {
+        status.textContent = '閲覧モード';
+        button.textContent = '管理者ログイン';
+      }
+    },
+
+    loadCards() {
+      this.el('homeCardCount').textContent = '読み込み中…';
+      google.script.run.
+      withSuccessHandler((cards) => {
+        this.state.cards = Array.isArray(cards) ? cards : [];
+        this.el('homeCardCount').textContent = this.state.cards.length + '枚のカード';
+        CardSystem.renderList();
+        CardSystem.renderRecent();
+      }).
+      withFailureHandler((err) => {
+        this.toast('読み込み失敗: ' + (err.message || err), true);
+      }).
+      getCards();
+    }
+  };
+
+  window.App = App;
+  // 初期化は Index.html 末尾の inline script から行います
+})();
+</script>

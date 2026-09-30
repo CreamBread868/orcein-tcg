@@ -1,0 +1,13 @@
+# Node.jsビルドスクリプト — GASには不要
+build_local.js
+
+# 開発用メモ
+README.txt
+*.md
+
+# 個別インクルードファイル群 — build済みのindex_local.htmlを使うため不要
+# ※ index_local.html はビルドして含める
+# その他
+node_modules/**
+package*.json
+test_remote/**

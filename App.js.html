@@ -1,0 +1,905 @@
+<script>
+
+(() => {
+  'use strict';
+
+  const CardSystem = new Proxy({}, {
+    get(target, prop) {
+      if (window.CardSystem && typeof window.CardSystem[prop] === 'function') {
+        return function (...args) {return window.CardSystem[prop].apply(window.CardSystem, args);};
+      }
+      if (window.CardSystem && prop in window.CardSystem) {
+        return window.CardSystem[prop];
+      }
+      return function () {
+        console.warn('[Proxy] CardSystem.' + String(prop) + ' called before CardSystem ready');
+      };
+    }
+  });
+  const DeckSystem = new Proxy({}, {
+    get(target, prop) {
+      return window.DeckSystem ? window.DeckSystem[prop] : undefined;
+    }
+  });
+  const BattleSystem = new Proxy({}, {
+    get(target, prop) {
+      return window.BattleSystem ? window.BattleSystem[prop] : undefined;
+    }
+  });
+
+  function safeGetSession(key) {
+    try {return window.sessionStorage ? window.sessionStorage.getItem(key) || '' : '';} catch (e) {return '';}
+  }
+  function safeSetSession(key, val) {
+    try {if (window.sessionStorage) window.sessionStorage.setItem(key, val);} catch (e) {}
+  }
+  function safeRemoveSession(key) {
+    try {if (window.sessionStorage) window.sessionStorage.removeItem(key);} catch (e) {}
+  }
+
+  const App = {
+    state: {
+      page: 'home',
+      cards: [],
+      editingCardId: null,
+      adminToken: safeGetSession('orbital_admin_token'),
+      currentVersion: (function() { try { return localStorage.getItem('orbital_app_version') || 'v1.0.0'; } catch(e) { return 'v1.0.0'; } })(),
+      latestUpdate: null
+    },
+
+    init() {
+      const safe = (name, fn) => {
+        try {fn();}
+        catch (e) {console.error('[App.init] ' + name + ' failed:', e);}
+      };
+      safe('bindNavigation', () => this.bindNavigation());
+      safe('initFontSize', () => this.initFontSize());
+      safe('bindHome', () => this.bindHome());
+      safe('bindEditor', () => this.bindEditor());
+      safe('bindFilters', () => this.bindFilters());
+      safe('bindModal', () => this.bindModal());
+      safe('bindAdmin', () => this.bindAdmin());
+      safe('bindAccountProfileModal', () => this.bindAccountProfileModal());
+      safe('loadCards', () => this.loadCards());
+      safe('checkForUpdates', () => this.checkForUpdates());
+      safe('CardSystem.init', () => {
+        if (window.CardSystem && window.CardSystem.init) CardSystem.init();
+      });
+      safe('DeckSystem.init', () => {
+        if (window.DeckSystem && window.DeckSystem.init) {
+          DeckSystem.init();
+          DeckSystem.loadDecks();
+        }
+      });
+      safe('BattleSystem.init', () => {
+        if (window.BattleSystem && window.BattleSystem.init) BattleSystem.init();
+      });
+      const initialPage = (() => {
+        try {
+          return new URLSearchParams(window.location.search).get('page') ||
+          window.location.hash.replace('#', '') ||
+          'home';
+        } catch (e) {return 'home';}
+      })();
+      safe('showPage', () => this.showPage(initialPage));
+    },
+
+    initFontSize() {
+      let mode = 'normal';
+      try {
+        mode = localStorage.getItem('orbital_font_scale') || 'normal';
+      } catch (e) {}
+      this.setFontSizeMode(mode, false);
+      const btn = this.el('fontSizeToggleBtn');
+      if (btn) {
+        btn.addEventListener('click', () => {
+          let current = 'normal';
+          try {
+            current = localStorage.getItem('orbital_font_scale') || 'normal';
+          } catch (e) {}
+          const next = current === 'normal' ? 'large' : (current === 'large' ? 'xlarge' : 'normal');
+          this.setFontSizeMode(next, true);
+        });
+      }
+    },
+
+    setFontSizeMode(mode, showToast) {
+      document.body.classList.remove('font-size-large', 'font-size-xlarge');
+      let label = 'Aa 文字サイズ: 標準';
+      if (mode === 'large') {
+        document.body.classList.add('font-size-large');
+        label = 'Aa 文字サイズ: 大';
+      } else if (mode === 'xlarge') {
+        document.body.classList.add('font-size-xlarge');
+        label = 'Aa 文字サイズ: 特大';
+      }
+      try {
+        localStorage.setItem('orbital_font_scale', mode);
+      } catch (e) {}
+      const btn = this.el('fontSizeToggleBtn');
+      if (btn) btn.textContent = label;
+      if (showToast) {
+        this.toast('文字サイズを「' + (mode === 'large' ? '大' : (mode === 'xlarge' ? '特大' : '標準')) + '」に変更しました。');
+      }
+    },
+
+    el(id) {
+      return document.getElementById(id);
+    },
+
+    showPage(page) {
+      if (page === 'create' && !this.isAdmin()) {
+        this.requireAdmin();
+        return;
+      }
+      document.querySelectorAll('.page').forEach((el) => el.classList.remove('active'));
+      const target = this.el("page-" + page);
+      if (target) target.classList.add('active');
+
+      document.querySelectorAll('.nav-button').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.page === page);
+      });
+
+      this.state.page = page;
+      const sidebar = this.el('sidebar');
+      if (sidebar) sidebar.classList.remove('open');
+
+      if (page === 'deck' && window.DeckSystem) {
+        DeckSystem.init();
+        DeckSystem.loadDecks();
+      }
+      if (page === 'battle' && window.BattleSystem) {
+        BattleSystem.init();
+      }
+      if (page === 'create' && window.CardSystem) {
+        CardSystem.syncCategoryForm();
+        CardSystem.updatePreview();
+      }
+    },
+
+    toast(message, isError = false) {
+      const toast = this.el('toast');
+      if (!toast) return;
+      toast.textContent = message;
+      toast.style.borderColor = isError ? 'var(--danger)' : '';
+      toast.classList.add('show');
+      clearTimeout(this.toastTimer);
+      this.toastTimer = setTimeout(() => toast.classList.remove('show'), 2600);
+    },
+
+    bindNavigation() {
+      document.querySelectorAll('.nav-button').forEach((btn) => {
+        btn.addEventListener('click', () => this.showPage(btn.dataset.page));
+      });
+
+      const menuBtn = this.el('mobileMenuButton');
+      if (menuBtn) {
+        menuBtn.addEventListener('click', () => {
+          const sb = this.el('sidebar');
+          if (sb) sb.classList.toggle('open');
+        });
+      }
+    },
+
+    bindHome() {
+      const onEl = (id, fn) => {const el = this.el(id);if (el) el.addEventListener('click', fn);};
+      onEl('heroCreateButton', () => {if (!this.requireAdmin()) return;CardSystem.resetEditor();this.showPage('create');});
+      onEl('heroCardsButton', () => this.showPage('cards'));
+      onEl('homeRefreshButton', () => this.loadCards());
+      onEl('homeGitHubSyncButton', () => this.promptGitHubSync());
+      onEl('newCardButton', () => {if (!this.requireAdmin()) return;CardSystem.resetEditor();this.showPage('create');});
+    },
+
+    promptGitHubSync() {
+      const current = localStorage.getItem('ORBITAL_GITHUB_REPO') || '';
+      const input = prompt('🐙 GitHubリポジトリからカード/デッキデータ (cards.json / decks.json) を読み込んで実行します。\n\nリポジトリ名（例: owner/repository）または Raw URL を入力してください:', current || 'owner/repository');
+      if (input) {
+        this.loadFromGitHub(input, true);
+      }
+    },
+
+    bindEditor() {
+      const on = (id, event, handler) => {
+        const node = this.el(id);
+        if (node) node.addEventListener(event, handler);
+      };
+
+      on('saveCardButton', 'click', () => CardSystem.save());
+      on('resetEditorButton', 'click', () => CardSystem.resetEditor());
+      on('uploadImageButton', 'click', () => CardSystem.uploadImage());
+      on('abilityEffectButton', 'click', () => CardSystem.openEffectEditor('ability'));
+      on('attack1EffectButton', 'click', () => CardSystem.openEffectEditor('attack1'));
+      on('attack2EffectButton', 'click', () => CardSystem.openEffectEditor('attack2'));
+      on('trainerEffectButton', 'click', () => CardSystem.openEffectEditor('trainer'));
+      on('category', 'change', () => {
+        CardSystem.syncCategoryForm();
+        CardSystem.updatePreview();
+      });
+      on('closeEffectEditorButton', 'click', () => CardSystem.closeEffectEditor());
+      on('cancelEffectEditorButton', 'click', () => CardSystem.closeEffectEditor());
+      on('saveEffectEditorButton', 'click', () => CardSystem.applyEffectEditor());
+
+      const effectModal = this.el('effectEditorModal');
+      if (effectModal) {
+        const backdrop = effectModal.querySelector('.modal-backdrop');
+        if (backdrop) backdrop.addEventListener('click', () => CardSystem.closeEffectEditor());
+      }
+
+      on('cardForm', 'input', () => CardSystem.updatePreview());
+      on('cardForm', 'change', () => CardSystem.updatePreview());
+
+      // 効果エディター内のボタンはイベント委譲で確実に処理する
+      document.addEventListener('click', (e) => {
+        const tab = e.target.closest('[data-effect-tab]');
+        if (tab) {
+          e.preventDefault();
+          CardSystem.switchEffectTab(tab.dataset.effectTab);
+          return;
+        }
+        const insert = e.target.closest('[data-effect-insert]');
+        if (insert) {
+          e.preventDefault();
+          CardSystem.insertEffectCode(insert.dataset.effectInsert || '');
+          return;
+        }
+      });
+
+      // effectCodeEditor のキー操作・入力イベントは CardSystem 側で一元管理されています
+    },
+
+    bindFilters() {
+      ['searchInput', 'categoryFilter', 'typeFilter', 'rarityFilter'].forEach((id) => {
+        const el = this.el(id);
+        if (!el) return;
+        el.addEventListener('input', () => CardSystem.renderList());
+        el.addEventListener('change', () => CardSystem.renderList());
+      });
+    },
+
+    bindModal() {
+      const closeBtn = this.el('closeModalButton');
+      if (closeBtn) closeBtn.addEventListener('click', () => this.closeModal());
+      const modal = this.el('detailModal');
+      if (modal) {
+        const backdrop = modal.querySelector('.modal-backdrop');
+        if (backdrop) backdrop.addEventListener('click', () => this.closeModal());
+      }
+    },
+
+    openModal(html) {
+      this.el('detailContent').innerHTML = html;
+      this.el('detailModal').classList.remove('hidden');
+    },
+
+    closeModal() {
+      this.el('detailModal').classList.add('hidden');
+    },
+
+    bindAdmin() {
+      this.updateAdminStatus();
+      const onEl = (id, fn) => {const el = this.el(id);if (el) el.addEventListener('click', fn);};
+      onEl('adminLoginButton', () => {if (this.isAdmin()) this.logoutAdmin();else this.openAdminLogin();});
+      onEl('closeAdminLoginButton', () => this.closeAdminLogin());
+      onEl('adminLoginSubmit', () => this.loginAdmin());
+      const modal = this.el('adminLoginModal');
+      if (modal) {
+        const backdrop = modal.querySelector('.modal-backdrop');
+        if (backdrop) backdrop.addEventListener('click', () => this.closeAdminLogin());
+      }
+      const pwd = this.el('adminPassword');
+      if (pwd) pwd.addEventListener('keydown', (e) => {if (e.key === 'Enter') this.loginAdmin();});
+    },
+
+    isAdmin() {return !!this.state.adminToken;},
+
+    requireAdmin() {
+      if (this.isAdmin()) return true;
+      this.openAdminLogin();
+      this.toast('カード作成には管理者ログインが必要です。', true);
+      return false;
+    },
+
+    openAdminLogin() {this.el('adminLoginModal').classList.remove('hidden');this.el('adminPassword').focus();},
+    closeAdminLogin() {this.el('adminLoginModal').classList.add('hidden');},
+
+    loginAdmin() {
+      const password = this.el('adminPassword').value;
+      if (!password) {this.toast('パスワードを入力してください。', true);return;}
+      this.el('adminLoginSubmit').disabled = true;
+      google.script.run.withSuccessHandler((result) => {
+        this.el('adminLoginSubmit').disabled = false;
+        this.state.adminToken = result.token;
+        safeSetSession('orbital_admin_token', result.token);
+        this.el('adminPassword').value = '';
+        this.closeAdminLogin();
+        this.updateAdminStatus();
+        this.toast('管理者としてログインしました。');
+      }).withFailureHandler((err) => {
+        this.el('adminLoginSubmit').disabled = false;
+        this.toast('ログイン失敗: ' + (err.message || err), true);
+      }).loginAdmin(password);
+    },
+
+    logoutAdmin() {
+      const token = this.state.adminToken;
+      this.state.adminToken = '';
+      safeRemoveSession('orbital_admin_token');
+      this.updateAdminStatus();
+      google.script.run.withFailureHandler(() => {}).logoutAdmin(token);
+      this.toast('ログアウトしました。');
+    },
+
+    updateAdminStatus() {
+      const status = this.el('adminStatus');
+      const button = this.el('adminLoginButton');
+      const pubBtn = this.el('publishUpdateBtn');
+      const adminUis = document.querySelectorAll('.admin-only-ui');
+
+      if (this.isAdmin()) {
+        if (status) status.textContent = '管理者モード';
+        if (button) button.textContent = 'ログアウト';
+        if (pubBtn) pubBtn.classList.remove('hidden');
+        adminUis.forEach((el) => el.classList.remove('hidden'));
+      } else {
+        if (status) status.textContent = '閲覧モード';
+        if (button) button.textContent = '管理者ログイン';
+        if (pubBtn) pubBtn.classList.add('hidden');
+        adminUis.forEach((el) => el.classList.add('hidden'));
+
+        if (this.state.page === 'create') {
+          this.showPage('home');
+        }
+      }
+    },
+
+    /* ---------- アプデ配信・通知機能 ---------- */
+
+    checkForUpdates() {
+      if (!window.google || !google.script || !google.script.run) return;
+      google.script.run.withSuccessHandler((res) => {
+        if (!res || !res.ok || !res.update) return;
+        const update = res.update;
+        this.state.latestUpdate = update;
+        const currentVer = this.state.currentVersion || 'v1.0.0';
+        if (update.version && update.version !== currentVer) {
+          const banner = this.el('appUpdateTopBanner');
+          const bannerText = this.el('appUpdateTopBannerText');
+          if (bannerText) {
+            bannerText.textContent = `🚀 新しいアップデート (${update.version}: ${update.title}) が配信されました！`;
+          }
+          if (banner) banner.classList.remove('hidden');
+        }
+      }).withFailureHandler(() => {}).getLatestAppUpdate();
+    },
+
+    openUpdatePublishModal() {
+      if (!this.requireAdmin()) return;
+      const modal = this.el('appUpdatePublishModal');
+      if (!modal) return;
+      const verInput = this.el('updateVersionInput');
+      if (verInput && !verInput.value) {
+        verInput.value = 'v1.1.0';
+      }
+      modal.classList.remove('hidden');
+    },
+
+    closeUpdatePublishModal() {
+      const modal = this.el('appUpdatePublishModal');
+      if (modal) modal.classList.add('hidden');
+    },
+
+    submitAppUpdate() {
+      if (!this.requireAdmin()) return;
+      const verInput = this.el('updateVersionInput');
+      const titleInput = this.el('updateTitleInput');
+      const notesInput = this.el('updateNotesInput');
+      const syncCheck = this.el('updateSyncCardsCheckbox');
+
+      const version = verInput ? verInput.value.trim() : '';
+      const title = titleInput ? titleInput.value.trim() : '';
+      const notes = notesInput ? notesInput.value.trim() : '';
+      const syncCards = syncCheck ? syncCheck.checked : true;
+
+      if (!version || !title) {
+        this.toast('バージョン番号とタイトルを入力してください。', true);
+        return;
+      }
+
+      const btn = this.el('submitAppUpdateBtn');
+      if (btn) btn.disabled = true;
+
+      google.script.run.withSuccessHandler((res) => {
+        if (btn) btn.disabled = false;
+        if (!res || !res.ok) {
+          this.toast('配信に失敗しました: ' + (res?.message || '不明なエラー'), true);
+          return;
+        }
+        this.closeUpdatePublishModal();
+        this.toast(`🎉 アプデ (${version}) の配信が完了しました！`);
+        this.state.currentVersion = version;
+        try { localStorage.setItem('orbital_app_version', version); } catch(e) {}
+        if (titleInput) titleInput.value = '';
+        if (notesInput) notesInput.value = '';
+        this.checkForUpdates();
+      }).withFailureHandler((err) => {
+        if (btn) btn.disabled = false;
+        this.toast('配信失敗: ' + (err.message || err), true);
+      }).publishAppUpdate({ version, title, notes, syncCards }, this.state.adminToken);
+    },
+
+    openUpdateNoticeModal() {
+      const update = this.state.latestUpdate;
+      if (!update) return;
+      const modal = this.el('appUpdateNoticeModal');
+      if (!modal) return;
+
+      const titleEl = this.el('updateNoticeTitleDisplay');
+      const verBadge = this.el('updateNoticeVersionBadge');
+      const dateBadge = this.el('updateNoticeDateBadge');
+      const notesEl = this.el('updateNoticeNotesDisplay');
+
+      if (titleEl) titleEl.textContent = '🚀 ' + (update.title || '新しいアップデートが配信されました！');
+      if (verBadge) verBadge.textContent = update.version || 'v1.0.0';
+      if (dateBadge) dateBadge.textContent = update.publishedAt || '';
+      if (notesEl) notesEl.textContent = update.notes || '詳細なアップデート内容はありません。';
+
+      modal.classList.remove('hidden');
+    },
+
+    closeUpdateNoticeModal() {
+      const modal = this.el('appUpdateNoticeModal');
+      if (modal) modal.classList.add('hidden');
+    },
+
+    applyAppUpdate() {
+      const update = this.state.latestUpdate;
+      if (!update) {
+        this.closeUpdateNoticeModal();
+        return;
+      }
+      const version = update.version || 'v1.0.0';
+      try { localStorage.setItem('orbital_app_version', version); } catch(e) {}
+      this.state.currentVersion = version;
+
+      const banner = this.el('appUpdateTopBanner');
+      if (banner) banner.classList.add('hidden');
+
+      this.closeUpdateNoticeModal();
+
+      if (window.CardSystem && window.CardSystem.loadCards) {
+        window.CardSystem.loadCards(true);
+      } else {
+        this.loadCards();
+      }
+      if (window.DeckSystem && window.DeckSystem.loadDecks) {
+        window.DeckSystem.loadDecks();
+      }
+
+      this.toast(`🎉 バージョン ${version} へ更新を適用しました！`);
+    },
+
+    loadCards() {
+      const savedGitHubRepo = localStorage.getItem('ORBITAL_GITHUB_REPO');
+      if (savedGitHubRepo) {
+        this.loadFromGitHub(savedGitHubRepo);
+        return;
+      }
+
+      this.el('homeCardCount').textContent = '読み込み中…';
+      if (window.google && google.script && google.script.run) {
+        google.script.run.
+        withSuccessHandler((cards) => {
+          this.state.cards = Array.isArray(cards) ? cards : [];
+          this.el('homeCardCount').textContent = this.state.cards.length + '枚のカード';
+          if (window.CardSystem) {
+            CardSystem.renderList();
+            CardSystem.renderRecent();
+          }
+        }).
+        withFailureHandler((err) => {
+          console.warn('GAS loadCards fallback:', err);
+          this.loadDefaultLocalCards();
+        }).
+        getCards();
+      } else {
+        this.loadDefaultLocalCards();
+      }
+    },
+
+    loadDefaultLocalCards() {
+      this.state.cards = this.state.cards || [];
+      this.el('homeCardCount').textContent = this.state.cards.length + '枚のカード';
+      if (window.CardSystem) {
+        CardSystem.renderList();
+        CardSystem.renderRecent();
+      }
+    },
+
+    parseGitHubRawBaseUrl(inputStr) {
+      if (!inputStr) return null;
+      let clean = String(inputStr).trim();
+      if (!clean) return null;
+
+      // https://raw.githubusercontent.com/owner/repo/branch/
+      if (clean.includes('raw.githubusercontent.com')) {
+        return clean.endsWith('/') ? clean : clean + '/';
+      }
+
+      // https://github.com/owner/repo or owner/repo
+      clean = clean.replace(/^https?:\/\/github\.com\//i, '');
+      clean = clean.replace(/\/$/, '');
+      const parts = clean.split('/');
+      if (parts.length >= 2) {
+        const owner = parts[0];
+        const repo = parts[1];
+        const branch = parts[3] || 'main';
+        return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/`;
+      }
+      return null;
+    },
+
+    async loadFromGitHub(repoInput, showToast = true) {
+      const baseUrl = this.parseGitHubRawBaseUrl(repoInput);
+      if (!baseUrl) {
+        this.toast('有効なGitHubリポジトリURL（例: owner/repository）を入力してください。', true);
+        return false;
+      }
+
+      if (showToast) this.toast('🐙 GitHubリポジトリからデータを同期中…');
+      this.el('homeCardCount').textContent = 'GitHub同期中…';
+
+      try {
+        const cardsUrl = baseUrl + 'cards.json';
+        const cardsRes = await fetch(cardsUrl);
+        if (!cardsRes.ok) {
+          throw new Error(`cards.json の取得に失敗しました (HTTP ${cardsRes.status})`);
+        }
+        let cardsData = await cardsRes.json();
+        if (!Array.isArray(cardsData) && cardsData && Array.isArray(cardsData.cards)) {
+          cardsData = cardsData.cards;
+        }
+
+        if (Array.isArray(cardsData)) {
+          cardsData = cardsData.map(c => {
+            if (!c) return c;
+            let img = String(c.image || '').trim();
+            if (img && !img.startsWith('http') && !img.startsWith('data:')) {
+              img = baseUrl + img.replace(/^\//, '');
+            }
+            return { ...c, image: img };
+          });
+
+          this.state.cards = cardsData;
+          localStorage.setItem('ORBITAL_GITHUB_REPO', repoInput);
+          this.el('homeCardCount').textContent = cardsData.length + '枚 (GitHub同期)';
+
+          if (window.CardSystem) {
+            CardSystem.renderList();
+            CardSystem.renderRecent();
+          }
+        }
+
+        // デッキデータ (decks.json) の同期
+        try {
+          const decksUrl = baseUrl + 'decks.json';
+          const decksRes = await fetch(decksUrl);
+          if (decksRes.ok) {
+            let decksData = await decksRes.json();
+            if (!Array.isArray(decksData) && decksData && Array.isArray(decksData.decks)) {
+              decksData = decksData.decks;
+            }
+            if (Array.isArray(decksData) && window.DeckSystem) {
+              window.DeckSystem.state.decks = decksData;
+              window.DeckSystem.renderDeckList();
+            }
+          }
+        } catch (e) {
+          console.warn('decks.json fetch info:', e);
+        }
+
+        if (showToast) this.toast('✅ GitHubからのデータ同期に成功しました！');
+        return true;
+      } catch (err) {
+        console.error('loadFromGitHub error:', err);
+        if (showToast) this.toast('❌ GitHub同期エラー: ' + err.message, true);
+        this.loadDefaultLocalCards();
+        return false;
+      }
+    },
+
+    bindAccountProfileModal() {
+      const topbarBadge = this.el('topbarUserAccount');
+      const modal = this.el('accountProfileModal');
+      const closeBtn = this.el('closeAccountModalBtn');
+      const saveBtn = this.el('saveAccountProfileBtn');
+      const createOrSwitchBtn = this.el('createOrSwitchAccountBtn');
+      const form = this.el('accountProfileForm');
+      const newEmailInput = this.el('newAccountEmailInput');
+
+      if (topbarBadge) {
+        topbarBadge.addEventListener('click', () => this.openAccountProfileModal());
+      }
+      if (closeBtn) {
+        closeBtn.addEventListener('click', () => this.closeAccountProfileModal());
+      }
+      if (modal) {
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal || e.target.classList.contains('modal-backdrop')) {
+            this.closeAccountProfileModal();
+          }
+        });
+      }
+      if (saveBtn) {
+        saveBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          this.saveAccountProfile();
+        });
+      }
+      if (form) {
+        form.addEventListener('submit', (e) => {
+          e.preventDefault();
+          this.saveAccountProfile();
+        });
+      }
+      if (createOrSwitchBtn) {
+        createOrSwitchBtn.addEventListener('click', () => this.createOrSwitchAccount());
+      }
+      if (newEmailInput) {
+        newEmailInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            this.createOrSwitchAccount();
+          }
+        });
+      }
+
+      const grid = this.el('avatarSelectorGrid');
+      if (grid) {
+        grid.addEventListener('click', (e) => {
+          const btn = e.target.closest('.avatar-opt');
+          if (btn) {
+            grid.querySelectorAll('.avatar-opt').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+          }
+        });
+      }
+    },
+
+    openAccountProfileModal() {
+      const modal = this.el('accountProfileModal');
+      if (!modal) return;
+      modal.classList.remove('hidden');
+      modal.style.display = 'grid';
+
+      const saveBtn = this.el('saveAccountProfileBtn');
+      if (saveBtn) saveBtn.disabled = false;
+
+      const curUser = (window.DeckSystem && window.DeckSystem.state && window.DeckSystem.state.currentUser) || { email: 'player@gmail.com' };
+      const emailInput = this.el('accEmailInput');
+      const nameInput = this.el('accDisplayNameInput');
+      if (emailInput) emailInput.value = curUser.email || 'player@gmail.com';
+      if (nameInput) nameInput.value = curUser.displayName || (curUser.email ? curUser.email.split('@')[0] : 'プレイヤー');
+
+      const curAvatar = curUser.avatar || '👤';
+      const grid = this.el('avatarSelectorGrid');
+      if (grid) {
+        grid.querySelectorAll('.avatar-opt').forEach(btn => {
+          const av = btn.dataset.avatar || btn.getAttribute('data-avatar') || btn.textContent.trim();
+          btn.classList.toggle('active', av === curAvatar);
+        });
+      }
+
+      this.renderAccountSwitchList();
+    },
+
+    closeAccountProfileModal() {
+      const modal = this.el('accountProfileModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+      }
+    },
+
+    saveAccountProfile() {
+      const email = (this.el('accEmailInput')?.value || '').trim().toLowerCase();
+      const displayName = (this.el('accDisplayNameInput')?.value || '').trim();
+      const activeAvatarBtn = this.el('avatarSelectorGrid')?.querySelector('.avatar-opt.active');
+      const avatar = activeAvatarBtn ? (activeAvatarBtn.dataset.avatar || activeAvatarBtn.getAttribute('data-avatar') || activeAvatarBtn.textContent.trim() || '👤') : '👤';
+
+      if (!email || !email.includes('@')) {
+        this.toast('有効なGmailアドレスを入力してください。', true);
+        return;
+      }
+      if (!displayName) {
+        this.toast('アカウント表示名を入力してください。', true);
+        return;
+      }
+
+      const saveBtn = this.el('saveAccountProfileBtn');
+      if (saveBtn) saveBtn.disabled = true;
+
+      const profileObj = { email: email, displayName: displayName, avatar: avatar };
+
+      try {
+        localStorage.setItem('orbital_mock_user_email', email);
+      } catch (e) {}
+
+      const self = this;
+      const applyProfile = (prof) => {
+        if (saveBtn) saveBtn.disabled = false;
+        if (window.DeckSystem && window.DeckSystem.state) {
+          window.DeckSystem.state.currentUser = prof;
+          if (typeof window.DeckSystem.updateUserBadge === 'function') {
+            window.DeckSystem.updateUserBadge();
+          }
+          if (typeof window.DeckSystem.loadDecks === 'function') {
+            window.DeckSystem.loadDecks();
+          }
+        }
+        self.toast('プロフィールを保存しました！ (' + (prof.displayName || displayName) + ')');
+        self.closeAccountProfileModal();
+      };
+
+      if (window.google && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler((res) => {
+            if (res && res.ok && res.profile) {
+              applyProfile(res.profile);
+            } else {
+              if (saveBtn) saveBtn.disabled = false;
+              self.toast((res && res.message) || 'プロフィールの保存に失敗しました。', true);
+            }
+          })
+          .withFailureHandler((err) => {
+            if (saveBtn) saveBtn.disabled = false;
+            console.error('saveUserProfile error:', err);
+            self.toast('エラー: ' + (err.message || err), true);
+          })
+          .saveUserProfile(profileObj);
+      } else {
+        try {
+          var rawUsers = localStorage.getItem('orbital_mock_users');
+          var users = rawUsers ? JSON.parse(rawUsers) : [];
+          var idx = users.findIndex(u => String(u.email).toLowerCase() === email);
+          if (idx >= 0) {
+            users[idx].displayName = displayName;
+            users[idx].avatar = avatar;
+            users[idx].updatedAt = new Date().toISOString();
+          } else {
+            users.push({ email: email, displayName: displayName, avatar: avatar, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+          }
+          localStorage.setItem('orbital_mock_users', JSON.stringify(users));
+          applyProfile({ email: email, displayName: displayName, avatar: avatar, isLoggedIn: true });
+        } catch (e) {
+          if (saveBtn) saveBtn.disabled = false;
+          self.toast('ローカル保存失敗: ' + e.message, true);
+        }
+      }
+    },
+
+    renderAccountSwitchList() {
+      const container = this.el('accountSwitchList');
+      if (!container) return;
+      container.innerHTML = '<div class="muted">アカウント一覧を読み込み中…</div>';
+
+      const curEmail = (window.DeckSystem && window.DeckSystem.state && window.DeckSystem.state.currentUser ? window.DeckSystem.state.currentUser.email : '').toLowerCase();
+
+      const self = this;
+      const onRender = (users) => {
+        if (!Array.isArray(users) || users.length === 0) {
+          container.innerHTML = '<div class="muted">登録済みアカウントはありません。</div>';
+          return;
+        }
+        let html = '';
+        users.forEach((u) => {
+          const isCur = String(u.email).toLowerCase() === curEmail;
+          html += `
+            <div class="account-switch-item ${isCur ? 'current' : ''}" onclick="App.switchToAccount('${self.escapeHtml(u.email)}')">
+              <div class="account-item-left">
+                <span class="account-item-avatar">${self.escapeHtml(u.avatar || '👤')}</span>
+                <div>
+                  <div class="account-item-name">${self.escapeHtml(u.displayName || u.email.split('@')[0])}</div>
+                  <div class="account-item-email">${self.escapeHtml(u.email)}</div>
+                </div>
+              </div>
+              ${isCur ? '<span style="font-size:11px; font-weight:800; color:var(--accent2);">使用中</span>' : '<span style="font-size:11px; color:var(--muted);">切替 ➔</span>'}
+            </div>
+          `;
+        });
+        container.innerHTML = html;
+      };
+
+      if (window.google && google.script && google.script.run) {
+        google.script.run.withSuccessHandler(onRender).withFailureHandler(() => {
+          container.innerHTML = '<div class="muted">アカウント一覧の取得に失敗しました。</div>';
+        }).getAllUsers();
+      } else {
+        try {
+          var raw = localStorage.getItem('orbital_mock_users');
+          var users = raw ? JSON.parse(raw) : [
+            { email: 'player@gmail.com', displayName: 'プレイヤー', avatar: '⚡' }
+          ];
+          onRender(users);
+        } catch (e) {
+          container.innerHTML = '<div class="muted">読み込みエラー</div>';
+        }
+      }
+    },
+
+    createOrSwitchAccount() {
+      const input = this.el('newAccountEmailInput');
+      const email = (input?.value || '').trim();
+      if (!email || !email.includes('@')) {
+        this.toast('有効なGmailアドレスを入力してください。', true);
+        return;
+      }
+      this.switchToAccount(email);
+      if (input) input.value = '';
+    },
+
+    switchToAccount(targetEmail) {
+      const email = String(targetEmail || '').trim().toLowerCase();
+      if (!email) return;
+
+      try {
+        localStorage.setItem('orbital_mock_user_email', email);
+      } catch (e) {}
+
+      const self = this;
+      if (window.google && google.script && google.script.run) {
+        google.script.run.withSuccessHandler((prof) => {
+          if (window.DeckSystem && window.DeckSystem.state) {
+            window.DeckSystem.state.currentUser = prof;
+            if (typeof window.DeckSystem.updateUserBadge === 'function') {
+              window.DeckSystem.updateUserBadge();
+            }
+            if (typeof window.DeckSystem.loadDecks === 'function') {
+              window.DeckSystem.loadDecks();
+            }
+          }
+          self.toast('アカウントを「' + (prof.displayName || email) + '」に切り替えました！');
+          self.closeAccountProfileModal();
+        }).getUserProfile(email);
+      } else {
+        try {
+          var raw = localStorage.getItem('orbital_mock_users');
+          var users = raw ? JSON.parse(raw) : [];
+          var u = users.find(x => String(x.email).toLowerCase() === email);
+          if (!u) {
+            u = { email: email, displayName: email.split('@')[0], avatar: '👤', createdAt: new Date().toISOString() };
+            users.push(u);
+            localStorage.setItem('orbital_mock_users', JSON.stringify(users));
+          }
+          const prof = { email: u.email, displayName: u.displayName, avatar: u.avatar || '👤', isLoggedIn: true };
+          if (window.DeckSystem && window.DeckSystem.state) {
+            window.DeckSystem.state.currentUser = prof;
+            if (typeof window.DeckSystem.updateUserBadge === 'function') {
+              window.DeckSystem.updateUserBadge();
+            }
+            if (typeof window.DeckSystem.loadDecks === 'function') {
+              window.DeckSystem.loadDecks();
+            }
+          }
+          self.toast('アカウントを「' + (prof.displayName || email) + '」に切り替えました！');
+          self.closeAccountProfileModal();
+        } catch (e) {
+          self.toast('アカウント切替失敗: ' + e.message, true);
+        }
+      }
+    },
+
+    escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+  };
+
+  window.App = App;
+  // 初期化は Index.html 末尾の inline script から行います
+})();
+</script>

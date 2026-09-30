@@ -1,0 +1,4648 @@
+<script>
+
+(() => {
+  'use strict';
+  console.log('[ORBITAL] BattleSystem.js.html started execution');
+
+  const App = new Proxy({}, {
+    get(target, prop) {
+      return window.App ? window.App[prop] : undefined;
+    }
+  });
+  const CardSystem = new Proxy({}, {
+    get(target, prop) {
+      return window.CardSystem ? window.CardSystem[prop] : undefined;
+    }
+  });
+
+  const BattleSystem = {
+    state: {
+      initialized: false,
+      mode: 'ai', // 'ai' | 'online'
+      online: {
+        roomId: '',
+        role: 'host', // 'host' | 'guest'
+        pollTimer: null,
+        lastSeq: 0,
+        myDeck: null,
+        prizeCount: 6,
+        roomName: '',
+        partnerName: ''
+      },
+      phase: 'select', // 'select' | 'battle' | 'ended'
+      turnNumber: 1,
+      turnPlayer: 'player', // 'player' | 'opponent'
+      firstPlayer: 'player',
+      prizeCountRule: 6,
+      selectedHandIndex: null,
+      player: {
+        id: 'player',
+        name: 'プレイヤー',
+        deck: [],
+        hand: [],
+        active: null,
+        bench: [],
+        prizes: [],
+        discard: [],
+        energyAttached: false,
+        supporterUsed: false,
+        retreated: false
+      },
+      opponent: {
+        id: 'opponent',
+        name: 'AIライバル',
+        deck: [],
+        hand: [],
+        active: null,
+        bench: [],
+        prizes: [],
+        discard: [],
+        energyAttached: false,
+        supporterUsed: false,
+        retreated: false
+      },
+      logs: []
+    },
+
+    // プリセット・フォールバック用AIデッキ
+    aiDecks: {
+      electric: {
+        name: '⚡ 電撃ピカチュウデッキ',
+        description: 'ピカチュウとミライドンexの強力電撃で一気に押し切るスピード速攻デッキ',
+        cards: [
+        { name: 'ピカチュウ', category: 'たね', type: '雷', hp: 70, image: 'https://images.pokemontcg.io/sv3pt5/25_hires.png', attack1Name: 'でんじは', attack1Damage: 20, attack1Energy: '雷', attack1Text: 'コインを1回投げオモテならマヒ。', attack1Code: 'damage(opponent.active, 20);', attack2Name: '10まんボルト', attack2Damage: 60, attack2Energy: '雷,雷,無', attack2Text: '', attack2Code: 'damage(opponent.active, 60);', weakness: '闘', resistance: '鋼', retreat: 1, count: 4 },
+        { name: 'ミライドンex', category: 'たねex', type: '雷', hp: 220, image: 'https://images.pokemontcg.io/sv1/81_hires.png', attack1Name: 'フォトンレーザー', attack1Damage: 120, attack1Energy: '雷,雷', attack1Text: '表が出るまでコインを投げ、回数分×30追加。', attack1Code: 'const c = flipCoin("表が出るまで"); damage(opponent.active, 120 + (c * 30));', attack2Name: 'プラズマバースト', attack2Damage: 220, attack2Energy: '雷,雷,雷,無', attack2Text: '相手を倒したなら追加サイド獲得。', attack2Code: 'damage(opponent.active, 220);\nif (didKnockout()) {\n  takePrize(self, 1);\n}', weakness: '闘', resistance: '', retreat: 1, count: 2, isEx: true },
+        { name: 'ライチュウ', category: '1進化', preEvolution: 'ピカチュウ', type: '雷', hp: 120, image: 'https://images.pokemontcg.io/sv3pt5/26_hires.png', attack1Name: 'ギガボルト', attack1Damage: 120, attack1Energy: '雷,雷,雷', attack1Text: '', attack1Code: 'damage(opponent.active, 120);', weakness: '闘', resistance: '鋼', retreat: 2, count: 3 },
+        { name: '博士の研究', category: 'サポート', type: '', hp: '', image: 'https://images.pokemontcg.io/sv1/189_hires.png', attack1Code: 'discardCards(self.hand, self.hand.length); draw(self, 7);', attack1Text: '自分の手札をすべてトラッシュし、山札を7枚引く。', description: '自分の手札をすべてトラッシュし、山札を7枚引く。', count: 4 },
+        { name: 'ボスの指令', category: 'サポート', type: '', hp: '', image: 'https://images.pokemontcg.io/sv2/172_hires.png', attack1Code: 'const target = choiceCard(opponent.bench);\nswitchActive(opponent, target);', attack1Text: '相手のベンチポケモンを1匹選び、バトル場へ入れ替える。', description: '相手のベンチポケモンを1匹選び、バトル場へ入れ替える。', count: 2 },
+        { name: 'きずぐすり', category: 'グッズ', type: '', hp: '', image: 'https://images.pokemontcg.io/sv1/182_hires.png', attack1Code: 'heal(self.active, 30);', attack1Text: '自分のバトルポケモンのHPを30回復する。', description: '自分のバトルポケモンのHPを30回復する。', count: 3 },
+        { name: 'ポケモンいれかえ', category: 'グッズ', type: '', hp: '', image: 'https://images.pokemontcg.io/sv1/191_hires.png', attack1Code: 'switchActive(self);', attack1Text: '自分のバトルポケモンをベンチと入れ替える。', description: '自分のバトルポケモンをベンチと入れ替える。', count: 2 },
+        { name: '基本雷エネルギー', category: 'エネルギー', type: '雷', hp: '', image: 'https://images.pokemontcg.io/sve/4_hires.png', description: '雷エネルギーを付ける。', count: 12 }]
+
+      },
+      fire: {
+        name: '🔥 灼熱リザードデッキ',
+        description: '高火力リザードンexで相手を焼き尽くすヘビーアタッカーデッキ',
+        cards: [
+        { name: 'ヒトカゲ', category: 'たね', type: '炎', hp: 70, image: 'https://images.pokemontcg.io/sv3pt5/4_hires.png', attack1Name: 'ひのこ', attack1Damage: 30, attack1Energy: '炎', attack1Text: '', attack1Code: 'damage(opponent.active, 30);', weakness: '水', resistance: '', retreat: 1, count: 4 },
+        { name: 'リザードンex', category: '2進化ex', preEvolution: 'ヒトカゲ', type: '炎', hp: 330, image: 'https://images.pokemontcg.io/sv3pt5/6_hires.png', attack1Name: 'れんごくしはい', attack1Damage: 180, attack1Energy: '炎,炎,無色', attack1Text: 'コインを2回投げ表の数×30。', attack1Code: 'const h = flipCoin(2); damage(opponent.active, 180 + (h * 30));', attack2Name: 'バーニングダーク', attack2Damage: 240, attack2Energy: '炎,炎,炎,無色', attack2Text: '相手を倒したなら山札を2枚引く。', attack2Code: 'damage(opponent.active, 240);\nif (didKnockout()) {\n  draw(self, 2);\n}', weakness: '水', resistance: '', retreat: 2, count: 2, isEx: true },
+        { name: 'リザードン', category: '2進化', preEvolution: 'ヒトカゲ', type: '炎', hp: 160, image: 'https://images.pokemontcg.io/pgo/10_hires.png', attack1Name: 'かえんほうしゃ', attack1Damage: 90, attack1Energy: '炎,炎,無色', attack1Text: '', attack1Code: 'damage(opponent.active, 90);', attack2Name: 'バーンストライク', attack2Damage: 150, attack2Energy: '炎,炎,炎,無色', attack2Text: '', attack2Code: 'damage(opponent.active, 150);', weakness: '水', resistance: '', retreat: 3, count: 2 },
+        { name: '博士の研究', category: 'サポート', type: '', hp: '', image: 'https://images.pokemontcg.io/sv1/189_hires.png', attack1Code: 'discardCards(self.hand, self.hand.length); draw(self, 7);', attack1Text: '自分の手札をすべてトラッシュし、山札を7枚引く。', description: '自分の手札をすべてトラッシュし、山札を7枚引く。', count: 4 },
+        { name: 'きずぐすり', category: 'グッズ', type: '', hp: '', image: 'https://images.pokemontcg.io/sv1/182_hires.png', attack1Code: 'heal(self.active, 30);', attack1Text: '自分のバトルポケモンのHPを30回復する。', count: 3 },
+        { name: '基本炎エネルギー', category: 'エネルギー', type: '炎', hp: '', image: 'https://images.pokemontcg.io/sve/2_hires.png', description: '炎エネルギーを付ける。', count: 16 }]
+
+      },
+      water: {
+        name: '💧 激流水流デッキ',
+        description: '耐久力とカメックスexのコイン連打で戦うコントロールデッキ',
+        cards: [
+        { name: 'ゼニガメ', category: 'たね', type: '水', hp: 60, image: 'https://images.pokemontcg.io/sv3pt5/7_hires.png', attack1Name: 'みずでっぽう', attack1Damage: 20, attack1Energy: '水', attack1Code: 'damage(opponent.active, 20);', weakness: '雷', resistance: '', retreat: 1, count: 4 },
+        { name: 'カメックスex', category: '2進化ex', preEvolution: 'ゼニガメ', type: '水', hp: 330, image: 'https://images.pokemontcg.io/sv3pt5/9_hires.png', attack1Name: 'ツインカノン', attack1Damage: 140, attack1Energy: '水,水', attack1Text: '表が出るまでコインを投げる。', attack1Code: 'const flips = flipCoin("表が出るまで"); damage(opponent.active, 140 + (flips * 40));', attack2Name: 'ハイドロバスター', attack2Damage: 200, attack2Energy: '水,水,無', attack2Text: '相手を倒したならサイドを1枚とる。', attack2Code: 'damage(opponent.active, 200);\nif (isKnockedOut(opponent.active)) {\n  takePrize(self, 1);\n}', weakness: '雷', resistance: '', retreat: 2, count: 2, isEx: true },
+        { name: 'カメックス', category: '2進化', preEvolution: 'ゼニガメ', type: '水', hp: 150, image: 'https://images.pokemontcg.io/pgo/17_hires.png', attack1Name: 'ハイドロポンプ', attack1Damage: 100, attack1Energy: '水,水,無', attack1Code: 'damage(opponent.active, 100);', weakness: '雷', resistance: '', retreat: 2, count: 2 },
+        { name: '博士の研究', category: 'サポート', type: '', hp: '', image: 'https://images.pokemontcg.io/sv1/189_hires.png', attack1Code: 'discardCards(self.hand, self.hand.length); draw(self, 7);', count: 4 },
+        { name: 'ポケモンいれかえ', category: 'グッズ', type: '', hp: '', image: 'https://images.pokemontcg.io/sv1/191_hires.png', attack1Code: 'switchActive(self);', count: 3 },
+        { name: '基本水エネルギー', category: 'エネルギー', type: '水', hp: '', image: 'https://images.pokemontcg.io/sve/3_hires.png', description: '水エネルギーを付ける。', count: 16 }]
+
+      }
+    },
+
+    init() {
+      this.populateDeckSelect();
+      this.populateOnlineDeckSelect();
+      if (this.state.initialized) return;
+      this.state.initialized = true;
+      this.bindEvents();
+    },
+
+    bindEvents() {
+      const on = (id, evt, fn) => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener(evt, fn);
+      };
+
+      on('battle-start-btn', 'click', () => this.handleStartClick());
+      on('battle-player-deck-select', 'change', () => this.updatePlayerDeckPreview());
+      on('battle-online-deck-select', 'change', () => this.updateOnlineDeckPreview());
+      on('battle-ai-deck-select', 'change', () => this.updateAiDeckPreview());
+      on('battleEndTurnBtn', 'click', () => {
+        if (this.state.turnPlayer === 'player') this.endTurn();
+      });
+      on('battleSurrenderBtn', 'click', () => this.surrender());
+      on('playerRetreatBtn', 'click', () => this.retreatActive());
+      on('battleRestartBtn', 'click', () => {
+        if (this.state.mode === 'online') {
+          this.exitToSelectView();
+        } else {
+          this.handleStartClick();
+        }
+      });
+      on('battleExitBtn', 'click', () => this.exitToSelectView());
+
+      // 選択モーダル閉じる
+      on('closeBattleChoiceModal', 'click', () => this.closeChoiceModal());
+      on('cancelBattleChoiceBtn', 'click', () => this.closeChoiceModal());
+
+      // カードアクションモーダル閉じる & 拡大
+      on('closeCardActionModalBtn', 'click', () => this.closeCardActionModal());
+      on('cardActionCloseBtn', 'click', () => this.closeCardActionModal());
+      on('battleCardActionBackdrop', 'click', () => this.closeCardActionModal());
+
+      // ローカル/マルチタブ即時同期用 BroadcastChannel リスナー
+      if (typeof BroadcastChannel !== 'undefined' && !window._orbital_bc_online_listener) {
+        window._orbital_bc_online_listener = new BroadcastChannel('orbital_online_room_bus');
+        const self = this;
+        window._orbital_bc_online_listener.onmessage = function() {
+          if (self.state.mode === 'online' && self.state.online.roomId) {
+            if (self.state.phase === 'battle') {
+              self.pollRoomImmediate();
+            } else {
+              self.refreshRoomList();
+            }
+          }
+        };
+      }
+      on('cardActionZoomBtn', 'click', () => {
+        if (this._currentActionCard && window.CardSystem && window.CardSystem.showDetail) {
+          CardSystem.showDetail(this._currentActionCard);
+        }
+      });
+
+      // フィールド全体（スタジアム・中央列・ディバイダー）へのカードドロップ受付
+      const bindFieldDrop = (el) => {
+        if (!el) return;
+        el.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+          el.classList.add('drag-hover');
+        });
+        el.addEventListener('dragleave', (e) => {
+          if (!el.contains(e.relatedTarget)) {
+            el.classList.remove('drag-hover');
+          }
+        });
+        el.addEventListener('drop', (e) => {
+          if (e.target && (e.target.closest('#playerActiveSpot') || e.target.closest('.bench-slot-occupied') || e.target.closest('.bench-slot-empty'))) {
+            return;
+          }
+          e.preventDefault();
+          el.classList.remove('drag-hover');
+          const rawIdx = (this.draggedHandIndex != null) ? this.draggedHandIndex : (e.dataTransfer ? parseInt(e.dataTransfer.getData('text/plain'), 10) : null);
+          const idx = (typeof rawIdx === 'number' && !isNaN(rawIdx)) ? rawIdx : null;
+          if (idx != null) {
+            this.draggedHandIndex = null;
+            this.handleDropOnField(idx);
+          }
+        });
+      };
+
+      bindFieldDrop(document.querySelector('.arena-center-divider'));
+      bindFieldDrop(document.querySelector('.battle-stadium'));
+      bindFieldDrop(document.querySelector('.stadium-col-center'));
+      bindFieldDrop(document.getElementById('battle-arena-view'));
+
+      // 手札トレイの折りたたみ・展開
+      on('toggleHandDockBtn', 'click', () => {
+        const dock = document.getElementById('battleHandDock');
+        const btn = document.getElementById('toggleHandDockBtn');
+        if (dock) {
+          dock.classList.toggle('is-collapsed');
+          if (btn) {
+            btn.textContent = dock.classList.contains('is-collapsed') ? '手札トレイ展開 ▲' : '手札トレイ収納 ▼';
+          }
+        }
+      });
+
+      // トラッシュ確認モーダル (いつでも自分・相手どちらも開ける)
+      on('playerDiscardSlot', 'click', () => this.openDiscardModal('player'));
+      on('oppDiscardSlot', 'click', () => this.openDiscardModal('opponent'));
+      on('discardTabPlayer', 'click', () => this.switchDiscardTab('player'));
+      on('discardTabOpponent', 'click', () => this.switchDiscardTab('opponent'));
+      on('closeBattleDiscardModal', 'click', () => this.closeDiscardModal());
+      on('closeBattleDiscardBtn', 'click', () => this.closeDiscardModal());
+      on('battleDiscardBackdrop', 'click', () => this.closeDiscardModal());
+
+      const filterBtns = document.querySelectorAll('.discard-filter-btn');
+      filterBtns.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          this.setDiscardFilter(btn.dataset.discardFilter || 'all');
+        });
+      });
+
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          const discardModal = document.getElementById('battleDiscardModal');
+          if (discardModal && !discardModal.classList.contains('hidden')) {
+            this.closeDiscardModal();
+          }
+        }
+      });
+    },
+
+    populateDeckSelect() {
+      const sel = document.getElementById('battle-player-deck-select');
+      if (!sel) return;
+
+      const decks = window.DeckSystem && DeckSystem.state && DeckSystem.state.decks || [];
+      sel.innerHTML = '';
+
+      if (decks.length > 0) {
+        decks.forEach((d) => {
+          const opt = document.createElement('option');
+          opt.value = d.id;
+          opt.textContent = d.name + " (" + (d.totalCount || 60) + "枚)";
+          sel.appendChild(opt);
+        });
+      }
+
+      // 常にプリセットのスターターデッキも選択可能にする
+      const starterOpt = document.createElement('option');
+      starterOpt.value = 'preset_starter';
+      starterOpt.textContent = '⚡ スターター雷デッキ (プリセット)';
+      sel.appendChild(starterOpt);
+
+      this.updatePlayerDeckPreview();
+      this.updateAiDeckPreview();
+    },
+
+    updatePlayerDeckPreview() {
+      const sel = document.getElementById('battle-player-deck-select');
+      const prev = document.getElementById('battle-player-deck-preview');
+      if (!sel || !prev) return;
+
+      const deckId = sel.value;
+      if (deckId === 'preset_starter') {
+        prev.innerHTML = "<strong>⚡ スターター雷デッキ</strong>: ピカチュウとライチュウで構成された初心者向け完成デッキです。";
+        return;
+      }
+
+      const decks = window.DeckSystem && DeckSystem.state && DeckSystem.state.decks || [];
+      const deck = decks.find((d) => String(d.id) === String(deckId));
+      if (deck) {
+        prev.innerHTML = "<strong>" + this.escape(deck.name) + "</strong> (" + (deck.totalCount || 60) + "枚)<br><small>" + this.escape(deck.description || '自作デッキ') + "</small>";
+      } else {
+        prev.textContent = 'デッキを選択してください。';
+      }
+    },
+
+    updateAiDeckPreview() {
+      const sel = document.getElementById('battle-ai-deck-select');
+      const prev = document.getElementById('battle-ai-deck-preview');
+      if (!sel || !prev) return;
+
+      const ai = this.aiDecks[sel.value] || this.aiDecks.electric;
+      prev.innerHTML = "<strong>" + ai.name + "</strong><br><small>" + ai.description + "</small>";
+    },
+
+    setBattleMode(mode) {
+      this.state.mode = mode || 'ai';
+      const aiTab = document.getElementById('battleModeAiTab');
+      const onlineTab = document.getElementById('battleModeOnlineTab');
+      const aiCard = document.getElementById('battle-ai-setup-card');
+      const onlineCard = document.getElementById('battle-online-lobby-card');
+      if (aiTab) aiTab.classList.toggle('active', this.state.mode === 'ai');
+      if (onlineTab) onlineTab.classList.toggle('active', this.state.mode === 'online');
+      if (aiCard) aiCard.style.display = this.state.mode === 'ai' ? 'block' : 'none';
+      if (onlineCard) onlineCard.style.display = this.state.mode === 'online' ? 'block' : 'none';
+
+      if (this.state.mode === 'online') {
+        this.populateOnlineDeckSelect();
+        this.refreshRoomList();
+      } else {
+        this.populateDeckSelect();
+      }
+    },
+
+    populateOnlineDeckSelect() {
+      const sel = document.getElementById('battle-online-deck-select');
+      if (!sel) return;
+      const decks = window.DeckSystem && DeckSystem.state && DeckSystem.state.decks || [];
+      sel.innerHTML = '';
+      if (decks.length > 0) {
+        decks.forEach((d) => {
+          const opt = document.createElement('option');
+          opt.value = d.id;
+          opt.textContent = d.name + ' (' + (d.totalCount || 60) + '枚)';
+          sel.appendChild(opt);
+        });
+      }
+      const starterOpt = document.createElement('option');
+      starterOpt.value = 'preset_starter';
+      starterOpt.textContent = '⚡ スターター雷デッキ (プリセット)';
+      sel.appendChild(starterOpt);
+
+      this.updateOnlineDeckPreview();
+    },
+
+    updateOnlineDeckPreview() {
+      const sel = document.getElementById('battle-online-deck-select');
+      const prev = document.getElementById('battle-online-deck-preview');
+      if (!sel || !prev) return;
+      const deckId = sel.value;
+      if (deckId === 'preset_starter') {
+        prev.innerHTML = '<strong>⚡ スターター雷デッキ</strong>: ピカチュウとライチュウで構成された初心者向け完成デッキです。';
+        return;
+      }
+      const decks = window.DeckSystem && DeckSystem.state && DeckSystem.state.decks || [];
+      const deck = decks.find((d) => String(d.id) === String(deckId));
+      if (deck) {
+        prev.innerHTML = '<strong>' + this.escape(deck.name) + '</strong> (' + (deck.totalCount || 60) + '枚)<br><small>' + this.escape(deck.description || '自作デッキ') + '</small>';
+      } else {
+        prev.textContent = 'デッキを選択してください。';
+      }
+    },
+
+    stripFunctions(obj, seen) {
+      if (!seen) seen = new WeakSet();
+      if (obj === null || obj === undefined || typeof obj !== 'object') return obj;
+      if (seen.has(obj)) return null;
+      seen.add(obj);
+
+      if (Array.isArray(obj)) {
+        return obj.map(item => this.stripFunctions(item, seen)).filter(item => item !== undefined);
+      }
+
+      const clean = {};
+      for (const key in obj) {
+        if (key === 'getCards' || key === 'prototype' || key === '__proto__') continue;
+        let val;
+        try {
+          val = obj[key];
+        } catch (e) {
+          continue;
+        }
+        if (typeof val === 'function') continue;
+        if (typeof val === 'string' && val.length > 500 && val.startsWith('data:')) {
+          clean[key] = '';
+          continue;
+        }
+        if (val && typeof val === 'object') {
+          clean[key] = this.stripFunctions(val, seen);
+        } else {
+          clean[key] = val;
+        }
+      }
+
+      try {
+        return JSON.parse(JSON.stringify(clean));
+      } catch (e) {
+        return clean;
+      }
+    },
+
+    callGas(fnName, args, onSuccess, onFailure) {
+      if (!window.google || !google.script || !google.script.run) {
+        if (typeof onFailure === 'function') onFailure(new Error('google.script.run が利用できません。'));
+        return;
+      }
+      const cleanArgs = (args || []).map(arg => this.stripFunctions(arg));
+      try {
+        console.log('📡 [GAS Call]', fnName, cleanArgs);
+        const runner = google.script.run
+          .withSuccessHandler(onSuccess || function () {})
+          .withFailureHandler(function (err) {
+            const errStr = String(err && err.message ? err.message : err);
+            if (errStr.includes('HTTP 0') || errStr.includes('NetworkError')) {
+              console.warn('⚠️ [GAS Network Transient Error for ' + fnName + '] (HTTP 0 / 接続タイムアウト)。自動再試行されます。', errStr);
+            } else {
+              console.error('❌ [GAS Failure for ' + fnName + ']', err);
+            }
+            if (typeof onFailure === 'function') onFailure(err);
+          });
+        runner[fnName].apply(runner, cleanArgs);
+      } catch (e) {
+        console.error('❌ [callGas Exception for ' + fnName + ']:', e);
+        if (typeof onFailure === 'function') onFailure(e);
+      }
+    },
+
+    createRoom() {
+      const deckVal = document.getElementById('battle-online-deck-select')?.value || 'preset_starter';
+      const roomName = document.getElementById('online-room-name-input')?.value.trim() || '';
+      const prizeCount = Number(document.getElementById('online-prize-count-select')?.value) || 6;
+      const userEmail = window.DeckSystem && DeckSystem.state && DeckSystem.state.currentUser ? DeckSystem.state.currentUser.email : '';
+
+      const rawDeck = this.resolveDeckCards(deckVal);
+      if (!rawDeck || rawDeck.length === 0) {
+        App.toast('対戦デッキを選択してください。', true);
+        return;
+      }
+      const cleanDeck = rawDeck.map(c => this.sanitizeCardForNetwork(c));
+
+      const self = this;
+      this.callGas('createOnlineRoom', [cleanDeck, roomName, userEmail, { prizeCount: prizeCount }], function (res) {
+        if (res && res.ok) {
+          self.openWaitingRoom(res.roomId, rawDeck, prizeCount, 'host');
+        } else {
+          App.toast((res && res.message) || '部屋の作成に失敗しました。', true);
+        }
+      }, function (err) {
+        App.toast('エラー: ' + err.message, true);
+      });
+    },
+
+    openWaitingRoom(roomId, myDeck, prizeCount, role) {
+      this.state.mode = 'online';
+      this.state.online.roomId = roomId;
+      this.state.online.role = role || 'host';
+      this.state.online.myDeck = myDeck;
+      this.state.online.prizeCount = prizeCount;
+      this.state.online.lastSeq = 0;
+
+      document.getElementById('battle-select-view').style.display = 'none';
+      document.getElementById('battle-online-waiting-view').style.display = 'block';
+      const codeEl = document.getElementById('waitingRoomIdDisplay');
+      if (codeEl) codeEl.textContent = roomId;
+
+      this.startWaitingRoomPolling();
+    },
+
+    startWaitingRoomPolling() {
+      this.stopPolling();
+      const self = this;
+      this.state.online.pollTimer = setInterval(function () {
+        if (!self.state.online.roomId) return;
+        self.callGas('pollOnlineRoom', [self.state.online.roomId, self.state.online.role, self.state.online.lastSeq], function (res) {
+          if (res && res.ok) {
+            if (res.status === 'connecting' || res.status === 'active') {
+              self.showConnectingModal(res);
+            }
+
+            if (res.actions && res.actions.length > 0) {
+              const startAct = res.actions.find(function (a) { return a.type === 'game_start'; });
+              if (startAct) {
+                self.stopPolling();
+                self.closeConnectingModal();
+                const payload = startAct.payload;
+                const isHost = self.state.online.role === 'host';
+                const myDeck = self.state.online.myDeck;
+                const oppDeck = isHost ? payload.guestDeck : payload.hostDeck;
+                const myName = isHost ? payload.hostName : payload.guestName;
+                const oppName = isHost ? payload.guestName : payload.hostName;
+
+                App.toast('🟢 双方向接続を完了！試合を開始します！');
+                self.startOnlineMatch(
+                  myDeck,
+                  oppDeck,
+                  payload.firstPlayer,
+                  (payload.rules && payload.rules.prizeCount) || 6,
+                  myName || 'あなた',
+                  oppName || '対戦相手',
+                  payload.seed,
+                  startAct.seq
+                );
+              }
+            }
+          }
+        }, function (err) {
+          console.warn('Waiting room poll error:', err);
+        });
+      }, 1200);
+    },
+
+    showConnectingModal(res) {
+      const modal = document.getElementById('onlineConnectingModal');
+      if (!modal) return;
+      modal.classList.remove('hidden');
+
+      const hostNameEl = document.getElementById('connectingHostName');
+      const guestNameEl = document.getElementById('connectingGuestName');
+      const hostBadgeEl = document.getElementById('connectingHostBadge');
+      const guestBadgeEl = document.getElementById('connectingGuestBadge');
+      const statusMsgEl = document.getElementById('connectingStatusMsg');
+
+      if (res && res.host) {
+        if (hostNameEl) hostNameEl.textContent = res.host.name || 'ホスト';
+      }
+      if (res && res.guest) {
+        if (guestNameEl) guestNameEl.textContent = res.guest.name || 'ゲスト';
+      }
+
+      const hostOk = !!(res && (res.hostConnected || res.status === 'active' || res.host));
+      const guestOk = !!(res && (res.guestConnected || res.status === 'active' || res.guest));
+
+      if (hostBadgeEl) {
+        hostBadgeEl.textContent = hostOk ? '接続完了 🟢' : '確認中 🟡';
+        hostBadgeEl.style.color = hostOk ? 'var(--accent2)' : 'var(--muted)';
+      }
+      if (guestBadgeEl) {
+        guestBadgeEl.textContent = guestOk ? '接続完了 🟢' : '確認中 🟡';
+        guestBadgeEl.style.color = guestOk ? 'var(--accent2)' : 'var(--muted)';
+      }
+
+      if (statusMsgEl) {
+        if (hostOk && guestOk) {
+          statusMsgEl.textContent = '🟢 双方の接続が確認されました！試合を開始します...';
+          statusMsgEl.style.color = 'var(--accent2)';
+        } else {
+          statusMsgEl.textContent = '⚡ 双方の通信状態を確認しています...';
+          statusMsgEl.style.color = 'var(--accent)';
+        }
+      }
+    },
+
+    closeConnectingModal() {
+      const modal = document.getElementById('onlineConnectingModal');
+      if (modal) modal.classList.add('hidden');
+    },
+
+    cancelOnlineConnection() {
+      this.closeConnectingModal();
+      this.cancelWaitingRoom();
+    },
+
+    copyWaitingRoomId() {
+      const code = this.state.online.roomId;
+      if (!code) return;
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(code).then(() => {
+          App.toast('ルームID「' + code + '」をクリップボードにコピーしました！');
+        });
+      } else {
+        App.toast('ルームID: ' + code);
+      }
+    },
+
+    cancelWaitingRoom() {
+      this.stopPolling();
+      const roomId = this.state.online.roomId;
+      if (roomId) {
+        this.callGas('leaveOnlineRoom', [roomId, this.state.online.role || 'host']);
+      }
+      this.state.online.roomId = '';
+      this.closeConnectingModal();
+      document.getElementById('battle-online-waiting-view').style.display = 'none';
+      document.getElementById('battle-select-view').style.display = 'block';
+      this.refreshRoomList();
+    },
+
+    joinRoom(roomId) {
+      if (!roomId) return;
+      const deckVal = document.getElementById('battle-online-deck-select')?.value || 'preset_starter';
+      const userEmail = window.DeckSystem && DeckSystem.state && DeckSystem.state.currentUser ? DeckSystem.state.currentUser.email : '';
+      const rawDeck = this.resolveDeckCards(deckVal);
+      if (!rawDeck || rawDeck.length === 0) {
+        App.toast('対戦デッキを選択してください。', true);
+        return;
+      }
+      const cleanDeck = rawDeck.map(c => this.sanitizeCardForNetwork(c));
+
+      const self = this;
+      this.callGas('joinOnlineRoom', [roomId, cleanDeck, userEmail], function (res) {
+        if (res && res.ok) {
+          self.state.mode = 'online';
+          self.state.online.roomId = res.roomId;
+          self.state.online.role = 'guest';
+          self.state.online.lastSeq = 0;
+          self.state.online.myDeck = rawDeck;
+
+          document.getElementById('battle-select-view').style.display = 'none';
+          self.showConnectingModal(res);
+          self.startWaitingRoomPolling();
+        } else {
+          App.toast((res && res.message) || 'ルームへの参加に失敗しました。', true);
+        }
+      }, function (err) {
+        App.toast('エラー: ' + err.message, true);
+      });
+    },
+
+    joinRoomDirect() {
+      const input = document.getElementById('online-room-id-input');
+      const roomId = (input && input.value || '').trim().toUpperCase();
+      if (!roomId) {
+        App.toast('ルームIDを入力してください。', true);
+        return;
+      }
+      this.joinRoom(roomId);
+    },
+
+    refreshRoomList() {
+      const container = document.getElementById('online-room-list');
+      if (!container) return;
+      container.innerHTML = '<div class="empty-room-msg">待機中の部屋を更新中…</div>';
+
+      const self = this;
+      this.callGas('getOnlineRoomList', [], function (list) {
+        self.renderRoomList(Array.isArray(list) ? list : []);
+      }, function (err) {
+        container.innerHTML = '<div class="empty-room-msg">部屋一覧の取得に失敗しました。<br><small style="opacity:0.8">' + self.escape(err.message || '') + '</small></div>';
+      });
+    },
+
+    renderRoomList(rooms) {
+      const container = document.getElementById('online-room-list');
+      if (!container) return;
+
+      const waitingRooms = rooms.filter((r) => r.status === 'waiting');
+      if (waitingRooms.length === 0) {
+        container.innerHTML = '<div class="empty-room-msg">現在待機中の部屋はありません。「部屋を作成する」から募集しましょう！</div>';
+        return;
+      }
+
+      let html = '';
+      waitingRooms.forEach((r) => {
+        html += '\n          <div class="room-item-card">\n            <div class="room-item-left">\n              <div class="room-item-name">' +
+        this.escape(r.name || '対戦ルーム') + '</div>\n              <div class="room-item-meta">\n                <span class="room-id-tag">' +
+        r.roomId + '</span>\n                <span><i class="fas fa-user"></i> ' +
+        this.escape(r.hostName || 'ホスト') + '</span>\n              </div>\n            </div>\n            <button type="button" class="primary-button small-button" onclick="BattleSystem.joinRoom(\'' +
+        r.roomId + '\')"><i class="fas fa-play"></i> 参加</button>\n          </div>\n        ';
+      });
+
+      container.innerHTML = html;
+    },
+
+    stopPolling() {
+      if (this.state.online.pollTimer) {
+        clearInterval(this.state.online.pollTimer);
+        this.state.online.pollTimer = null;
+      }
+    },
+
+    createSeededRandom(seed) {
+      let s = (Number(seed) || 123456789) >>> 0;
+      return function () {
+        s = (s + 0x6d2b79f5) | 0;
+        let t = Math.imul(s ^ (s >>> 15), 1 | s);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    },
+
+    shuffleSeeded(arr, rng) {
+      const list = (arr || []).slice();
+      for (let i = list.length - 1; i > 0; i--) {
+        const j = Math.floor(rng() * (i + 1));
+        [list[i], list[j]] = [list[j], list[i]];
+      }
+      return list;
+    },
+
+    startOnlineMatch(myDeckRaw, oppDeckRaw, firstPlayerRole, prizeCount, myName, oppName, seed, startSeq) {
+      const matchSeed = Number(seed) || Math.floor(Math.random() * 1000000000);
+      const isHost = (this.state.online.role === 'host');
+
+      const hostDeckRaw = isHost ? myDeckRaw : oppDeckRaw;
+      const guestDeckRaw = isHost ? oppDeckRaw : myDeckRaw;
+
+      const rngHost = this.createSeededRandom(matchSeed);
+      const rngGuest = this.createSeededRandom(matchSeed + 777777);
+
+      const hostDeck = this.shuffleSeeded(hostDeckRaw, rngHost).map(c => this.createRuntimeCard(c));
+      const guestDeck = this.shuffleSeeded(guestDeckRaw, rngGuest).map(c => this.createRuntimeCard(c));
+
+      const myDeck = isHost ? hostDeck : guestDeck;
+      const oppDeck = isHost ? guestDeck : hostDeck;
+
+      this.state.mode = 'online';
+      this.state.phase = 'battle';
+      this.state.turnNumber = 1;
+      this.state.prizeCountRule = prizeCount || 6;
+      this.state.online.lastSeq = Number(startSeq) || 1;
+      this.state.logs = [];
+
+      this.state.firstPlayer = (firstPlayerRole === this.state.online.role) ? 'player' : 'opponent';
+      this.state.turnPlayer = this.state.firstPlayer;
+
+      this.state.player = {
+        id: 'player',
+        name: myName || 'あなた',
+        deck: myDeck,
+        hand: [],
+        active: null,
+        bench: [],
+        prizes: [],
+        discard: [],
+        energyAttached: false,
+        supporterUsed: false,
+        retreated: false,
+        turnCount: 0
+      };
+
+      this.state.opponent = {
+        id: 'opponent',
+        name: oppName || '対戦相手',
+        deck: oppDeck,
+        hand: [],
+        active: null,
+        bench: [],
+        prizes: [],
+        discard: [],
+        energyAttached: false,
+        supporterUsed: false,
+        retreated: false,
+        turnCount: 0
+      };
+
+      // 手札ドロー
+      this.drawInitialHand(this.state.player);
+      this.drawInitialHand(this.state.opponent);
+
+      // 初期配置
+      this.setupInitialBoard(this.state.player);
+      this.setupInitialBoard(this.state.opponent);
+
+      // サイドカード配置
+      for (let i = 0; i < this.state.prizeCountRule; i++) {
+        if (this.state.player.deck.length) this.state.player.prizes.push(this.state.player.deck.shift());
+        if (this.state.opponent.deck.length) this.state.opponent.prizes.push(this.state.opponent.deck.shift());
+      }
+
+      // UI切り替え
+      document.getElementById('battle-select-view').style.display = 'none';
+      document.getElementById('battle-online-waiting-view').style.display = 'none';
+      document.getElementById('battle-arena-view').style.display = 'block';
+
+      this.closeResultModal();
+      this.log('🌐 オンライン対戦開始！ ルーム: ' + this.state.online.roomId);
+      this.log('先攻は【' + (this.state.firstPlayer === 'player' ? this.state.player.name : this.state.opponent.name) + '】です。');
+
+      this.render();
+      this.playMatchIntro(this.state.player.name, this.state.opponent.name);
+      this.startOnlineBattlePolling();
+      this.startTurn(this.state.turnPlayer);
+    },
+
+    pollRoomImmediate() {
+      if (this.state.mode !== 'online' || !this.state.online.roomId) return;
+      if (this.state.online.pollInFlight) return;
+      this.state.online.pollInFlight = true;
+      const self = this;
+      const currentSeq = this.state.online.lastSeq || 0;
+      // console.log('🔄 [Online Poll Req]', 'Room:', this.state.online.roomId, 'Role:', this.state.online.role, 'CurrentLastSeq:', currentSeq);
+      this.callGas('pollOnlineRoom', [this.state.online.roomId, this.state.online.role, currentSeq], function (res) {
+        self.state.online.pollInFlight = false;
+        if (!res) {
+          console.warn('⚠️ [Online Poll Empty Response]');
+          return;
+        }
+        if (!res.ok) {
+          console.warn('⚠️ [Online Poll Warning Response]', res.message || 'Unknown error');
+        }
+        if (res.status === 'closed' || res.status === 'finished') {
+          if (self.state.phase === 'battle') {
+            self.stopPolling();
+            App.toast('⚠️ 対戦相手が退出したか接続が切れました。', true);
+            self.log('⚠️ 対戦相手が退出したためオンライン対戦を終了しました。');
+          }
+          return;
+        }
+        if (res.ok && Array.isArray(res.actions)) {
+          if (res.actions.length > 0) {
+            console.log('📥 [Online Poll Ack]', 'New Actions Count:', res.actions.length, 'ServerLastSeq:', res.lastSeq);
+          }
+          res.actions.forEach(function (act) {
+            if (act.seq > self.state.online.lastSeq) {
+              self.state.online.lastSeq = act.seq;
+              if (act.by !== self.state.online.role) {
+                self.applyRemoteAction(act);
+              } else {
+                console.log('ℹ️ [Online Skip Packet] Own action echoed back seq:', act.seq, 'type:', act.type);
+              }
+            } else {
+              console.log('ℹ️ [Online Skip Packet] Already applied seq:', act.seq, 'currentLastSeq:', self.state.online.lastSeq);
+            }
+          });
+        }
+      }, function(err) {
+        self.state.online.pollInFlight = false;
+        console.warn('❌ [Online Poll Error] Retrying...', err);
+      });
+    },
+
+    startOnlineBattlePolling() {
+      this.stopPolling();
+      const self = this;
+      this.pollRoomImmediate();
+      this.state.online.pollTimer = setInterval(function () {
+        if (self.state.phase !== 'battle' || !self.state.online.roomId) return;
+        self.pollRoomImmediate();
+      }, 1500);
+    },
+
+    sanitizeCardForNetwork(c) {
+      if (!c) return null;
+      const img = (c.image && typeof c.image === 'string' && c.image.length < 300 && !c.image.startsWith('data:')) ? c.image : '';
+      const cleanAttached = Array.isArray(c.attachedEnergies)
+        ? c.attachedEnergies.map(item => (typeof item === 'object' ? this.stripFunctions(item) : item))
+        : [];
+      return this.stripFunctions({
+        id: c.id || '',
+        name: c.name || '',
+        category: c.category || '',
+        type: c.type || '',
+        hp: Number(c.hp) || 0,
+        maxHp: Number(c.maxHp) || Number(c.hp) || 70,
+        energy: Number(c.energy) || 0,
+        attachedEnergies: cleanAttached,
+        status: c.status || null,
+        image: img,
+        attack1Name: c.attack1Name || '',
+        attack1Damage: c.attack1Damage || '',
+        attack1Energy: c.attack1Energy || '',
+        attack1Code: c.attack1Code || '',
+        attack2Name: c.attack2Name || '',
+        attack2Damage: c.attack2Damage || '',
+        attack2Energy: c.attack2Energy || '',
+        attack2Code: c.attack2Code || '',
+        abilityName: c.abilityName || '',
+        abilityCode: c.abilityCode || '',
+        isEx: !!c.isEx
+      });
+    },
+
+    sanitizePayloadForNetwork(obj) {
+      if (!obj || typeof obj !== 'object') return obj;
+      if (Array.isArray(obj)) return obj.map(item => this.sanitizePayloadForNetwork(item));
+      const clean = {};
+      for (const key in obj) {
+        if (!Object.prototype.hasOwnProperty.call(obj, key)) continue;
+        if (key === 'boardState') {
+          clean[key] = obj[key];
+          continue;
+        }
+        const val = obj[key];
+        if (typeof val === 'function') continue;
+        if (val && typeof val === 'object' && (val.name || val.hp != null || val.category)) {
+          clean[key] = this.sanitizeCardForNetwork(val);
+        } else if (val && typeof val === 'object') {
+          clean[key] = this.sanitizePayloadForNetwork(val);
+        } else if (typeof val === 'string' && val.length > 500 && val.startsWith('data:')) {
+          clean[key] = '';
+        } else {
+          clean[key] = val;
+        }
+      }
+      return clean;
+    },
+
+    getBoardSnapshot() {
+      const sanitizeCard = (c) => this.sanitizeCardForNetwork(c);
+
+      return {
+        active: sanitizeCard(this.state.player.active),
+        bench: (this.state.player.bench || []).map(sanitizeCard),
+        prizesCount: this.state.player.prizes ? this.state.player.prizes.length : 0,
+        handCount: this.state.player.hand ? this.state.player.hand.length : 0,
+        discardCount: this.state.player.discard ? this.state.player.discard.length : 0
+      };
+    },
+
+    syncOpponentSnapshot(snapshot) {
+      if (!snapshot) return;
+      const opp = this.state.opponent;
+      if (!opp) return;
+
+      if (snapshot.active) {
+        if (!opp.active || opp.active.name !== snapshot.active.name) {
+          opp.active = this.createRuntimeCard(snapshot.active);
+        } else {
+          opp.active.hp = snapshot.active.hp;
+          opp.active.maxHp = snapshot.active.maxHp;
+          opp.active.energy = snapshot.active.energy;
+          opp.active.attachedEnergies = snapshot.active.attachedEnergies || [];
+          opp.active.status = snapshot.active.status;
+          if (snapshot.active.image) opp.active.image = snapshot.active.image;
+        }
+      } else {
+        opp.active = null;
+      }
+
+      if (Array.isArray(snapshot.bench)) {
+        opp.bench = snapshot.bench.map((b, i) => {
+          if (!b) return null;
+          const existing = opp.bench[i];
+          if (!existing || existing.name !== b.name) {
+            return this.createRuntimeCard(b);
+          }
+          existing.hp = b.hp;
+          existing.maxHp = b.maxHp;
+          existing.energy = b.energy;
+          existing.attachedEnergies = b.attachedEnergies || [];
+          existing.status = b.status;
+          if (b.image) existing.image = b.image;
+          return existing;
+        }).filter(Boolean);
+      }
+
+      if (typeof snapshot.prizesCount === 'number') {
+        while (opp.prizes.length < snapshot.prizesCount) opp.prizes.push({ name: 'サイドカード' });
+        while (opp.prizes.length > snapshot.prizesCount) opp.prizes.pop();
+      }
+
+      if (typeof snapshot.handCount === 'number') {
+        while (opp.hand.length < snapshot.handCount) opp.hand.push({ name: '手札カード' });
+        while (opp.hand.length > snapshot.handCount) opp.hand.pop();
+      }
+    },
+
+    broadcastOnlineAction(type, payload) {
+      if (this.state.mode !== 'online' || !this.state.online.roomId) return;
+      const sanitizedPayload = this.sanitizePayloadForNetwork(payload || {});
+      const fullPayload = this.stripFunctions({
+        ...sanitizedPayload,
+        boardState: this.getBoardSnapshot()
+      });
+      
+      let payloadStr = '';
+      try {
+        payloadStr = JSON.stringify(fullPayload);
+      } catch (e) {
+        console.error('❌ [Online Packet Error] Failed to stringify payload:', e);
+      }
+
+      console.log('📤 [Online Outgoing Packet]', type, '| Size:', payloadStr.length, 'bytes | Room:', this.state.online.roomId, '| Role:', this.state.online.role, fullPayload);
+      if (payloadStr.length > 50000) {
+        console.warn('⚠️ [Online Packet Warning] Outgoing packet size is unusually large (' + payloadStr.length + ' bytes). Check payload for oversized data.');
+      }
+
+      const self = this;
+      this.callGas('submitOnlineAction', [
+        this.state.online.roomId,
+        this.state.online.role,
+        { type: type, payload: fullPayload }
+      ], function(res) {
+        if (res && res.ok && res.lastSeq) {
+          console.log('✅ [Online Packet Ack]', type, '| Returned lastSeq:', res.lastSeq);
+          self.state.online.lastSeq = res.lastSeq;
+          self.pollRoomImmediate();
+        } else {
+          console.error('❌ [Online Packet Rejected]', type, '| Error:', res ? res.message : 'No response from server');
+        }
+      }, function(err) {
+        console.error('❌ [Online Packet Network Error]', type, '| Error:', err);
+      });
+    },
+
+    applyRemoteAction(action) {
+      if (!action || !action.type) return;
+      console.log('📥 [Online Incoming Packet Applied]', 'Seq:', action.seq, '| By:', action.by, '| Type:', action.type, action.payload);
+      try {
+        const opp = this.state.opponent;
+        const p = this.state.player;
+        const payload = action.payload || {};
+
+        if (payload.boardState && typeof this.syncOpponentSnapshot === 'function') {
+          console.log('🔄 [Online Syncing Opponent Snapshot] Seq:', action.seq);
+          this.syncOpponentSnapshot(payload.boardState);
+        }
+
+      switch (action.type) {
+        case 'draw_card': {
+          const count = Number(payload.count) || 1;
+          this.log('🎴 相手がカードを' + count + '枚引きました。');
+          this.animateDrawCard(false);
+          this.render();
+          break;
+        }
+        case 'play_basic': {
+          let rawCard = payload.card || { name: 'たねポケモン', hp: 70 };
+          let card = null;
+          if (rawCard.id && window.CardSystem && typeof window.CardSystem.findCardById === 'function') {
+            const master = window.CardSystem.findCardById(rawCard.id);
+            if (master) card = this.createRuntimeCard(master);
+          }
+          if (!card) card = this.createRuntimeCard(rawCard);
+
+          if (!payload.boardState) {
+            if (payload.slotType === 'active') {
+              opp.active = card;
+            } else {
+              opp.bench.push(card);
+            }
+          }
+          this.log('✦ 相手が【' + card.name + '】を' + (payload.slotType === 'active' ? 'バトル場' : 'ベンチ') + 'に出しました。');
+          this.render();
+          const targetSlotEl = payload.slotType === 'active' ? document.getElementById('oppActiveSpot') : document.getElementById('oppBenchSpot' + Math.max(0, opp.bench.length - 1));
+          if (targetSlotEl) this.animateCardPlacement(targetSlotEl);
+          break;
+        }
+        case 'promote_active': {
+          const bIdx = Number(payload.benchIdx);
+          if (!payload.boardState && !isNaN(bIdx) && opp.bench && opp.bench[bIdx]) {
+            opp.active = opp.bench.splice(bIdx, 1)[0];
+          }
+          this.log('🔄 相手が【' + (opp.active ? opp.active.name : 'ポケモン') + '】をバトル場に出しました。');
+          this.render();
+          const targetSlotEl = document.getElementById('oppActiveSpot');
+          if (targetSlotEl) this.animateCardPlacement(targetSlotEl);
+          break;
+        }
+        case 'evolve': {
+          const rawEvo = payload.evoCard;
+          let evoCard = null;
+          if (rawEvo && rawEvo.id && window.CardSystem && typeof window.CardSystem.findCardById === 'function') {
+            const master = window.CardSystem.findCardById(rawEvo.id);
+            if (master) evoCard = this.createRuntimeCard(master);
+          }
+          if (!evoCard && rawEvo) evoCard = this.createRuntimeCard(rawEvo);
+
+          let target = null;
+          if (payload.targetSlotType === 'active' || payload.benchIdx === -1) {
+            target = opp.active;
+          } else if (payload.benchIdx >= 0 && opp.bench[payload.benchIdx]) {
+            target = opp.bench[payload.benchIdx];
+          } else {
+            target = opp.active;
+          }
+          if (!payload.boardState && target && evoCard) {
+            target.attachedCards = target.attachedCards || [];
+            target.attachedCards.unshift({ ...target });
+            target.name = evoCard.name;
+            target.maxHp = Number(evoCard.hp) || (target.maxHp + 40);
+            target.hp = Math.min(target.maxHp, target.hp + 40);
+            target.image = evoCard.image || target.image || (window.CardSystem && window.CardSystem.findCardImage ? window.CardSystem.findCardImage(evoCard.name) : '');
+            target.attack1Name = evoCard.attack1Name;
+            target.attack1Damage = evoCard.attack1Damage;
+            target.attack1Energy = evoCard.attack1Energy;
+            target.attack1Code = evoCard.attack1Code;
+            target.attack2Name = evoCard.attack2Name;
+            target.attack2Damage = evoCard.attack2Damage;
+            target.attack2Energy = evoCard.attack2Energy;
+            target.attack2Code = evoCard.attack2Code;
+            target.abilityName = evoCard.abilityName;
+            target.abilityCode = evoCard.abilityCode;
+          }
+          this.log('🌟 相手の【' + (target ? target.name : 'ポケモン') + '】が進化した！');
+          this.render();
+          const targetSlotEl = (payload.targetSlotType === 'active' || payload.benchIdx === -1) ? document.getElementById('oppActiveSpot') : document.getElementById('oppBenchSpot' + payload.benchIdx);
+          if (targetSlotEl) this.animateEvolveFlash(targetSlotEl);
+          break;
+        }
+        case 'attach_energy': {
+          let rawEnergy = payload.energyCard || { name: 'エネルギー', type: '無' };
+          let energyCard = null;
+          if (rawEnergy && rawEnergy.id && window.CardSystem && typeof window.CardSystem.findCardById === 'function') {
+            const master = window.CardSystem.findCardById(rawEnergy.id);
+            if (master) energyCard = this.createRuntimeCard(master);
+          }
+          if (!energyCard) energyCard = this.createRuntimeCard(rawEnergy);
+
+          let target = null;
+          if (payload.targetSlotType === 'active' || payload.benchIdx === -1) {
+            target = opp.active;
+          } else if (payload.benchIdx >= 0 && opp.bench[payload.benchIdx]) {
+            target = opp.bench[payload.benchIdx];
+          } else {
+            target = opp.active;
+          }
+          if (!payload.boardState && target) {
+            target.energy = (target.energy || 0) + 1;
+            target.attachedEnergies = target.attachedEnergies || [];
+            target.attachedEnergies.push(energyCard.type || '無');
+            target.attachedCards = target.attachedCards || [];
+            target.attachedCards.push(energyCard);
+          }
+          this.log('⚡ 相手が【' + (target ? target.name : 'ポケモン') + '】にエネルギーを付けました。');
+          this.render();
+          const targetSlotEl = (payload.targetSlotType === 'active' || payload.benchIdx === -1) ? document.getElementById('oppActiveSpot') : document.getElementById('oppBenchSpot' + payload.benchIdx);
+          const oppHandEl = document.getElementById('oppHandArea') || document.getElementById('oppDeckSpot');
+          if (oppHandEl && targetSlotEl) {
+            this.animateEnergyFly(oppHandEl, targetSlotEl, energyCard.type);
+          }
+          break;
+        }
+        case 'play_trainer': {
+          const card = payload.card || { name: 'トレーナーカード' };
+          const kind = payload.kind || 'グッズ';
+          this.log('📜 相手が【' + kind + '】「' + card.name + '」を使用しました！');
+          this.animateTrainerCardPlay(card, kind);
+          this.render();
+          break;
+        }
+        case 'use_ability': {
+          const card = payload.card || { name: '特性ポケモン' };
+          this.log('✨ 相手が【' + card.name + '】の特性「' + (card.abilityName || '特性') + '」を発動しました！');
+          this.render();
+          break;
+        }
+        case 'cancel_trainer': {
+          const card = payload.card || { name: 'トレーナーカード' };
+          const kind = payload.kind || 'グッズ';
+          this.log('↩️ 相手の【' + kind + '】「' + card.name + '」は発動条件を満たさなかったため手札に戻りました。');
+          this.render();
+          break;
+        }
+        case 'retreat': {
+          if (!payload.boardState && opp.bench.length > 0) {
+            const bIdx = Math.max(0, Math.min(opp.bench.length - 1, Number(payload.benchIdx) || 0));
+            const cost = Number(payload.retreatCost) || 0;
+            if (opp.active) {
+              opp.active.energy = Math.max(0, (opp.active.energy || 0) - cost);
+              const nextActive = opp.bench.splice(bIdx, 1)[0];
+              opp.bench.push(opp.active);
+              opp.active = nextActive;
+            }
+          }
+          this.log('🏃 相手がにげるを選択！【' + (opp.active ? opp.active.name : 'ポケモン') + '】がバトル場に出ました。');
+          this.render();
+          break;
+        }
+        case 'attack': {
+          const attacker = opp.active;
+          const defender = p.active;
+          const atkName = payload.atkName || (attacker ? attacker.attack1Name : 'ワザ');
+          const numericDmg = payload.actualDamage != null ? Number(payload.actualDamage) : (parseInt(String(payload.damage || '').replace(/[^\d]/g, ''), 10) || 0);
+
+          this.log('⚔️ 相手の【' + (attacker ? attacker.name : 'バトルポケモン') + '】の「' + atkName + '」！');
+
+          const oppEl = document.getElementById('oppActiveSpot');
+          const playerEl = document.getElementById('playerActiveSpot');
+          this.animateAttack(oppEl, playerEl, false, numericDmg, false);
+
+          if (defender) {
+            if (payload.defenderHp != null) {
+              defender.hp = payload.defenderHp;
+            } else if (numericDmg > 0) {
+              defender.hp = Math.max(0, (defender.hp || 0) - numericDmg);
+            }
+            if (payload.status != null) defender.status = payload.status;
+          }
+          if (attacker && payload.attackerHp != null) {
+            attacker.hp = payload.attackerHp;
+          }
+
+          setTimeout(() => {
+            if (defender && defender.hp <= 0) {
+              this.handleKnockout(opp, p);
+            } else {
+              this.render();
+            }
+          }, 500);
+          break;
+        }
+        case 'end_turn': {
+          this.log('相手がターンを終了しました。あなたの番です！');
+          const secondPlayer = this.state.firstPlayer === 'player' ? 'opponent' : 'player';
+          if (this.state.turnPlayer === secondPlayer) {
+            this.state.turnNumber++;
+          }
+          this.startTurn('player');
+          break;
+        }
+        case 'surrender':
+        case 'player_left': {
+          this.finishBattle('player', '対戦相手が降伏または退出しました。あなたの勝利です！');
+          break;
+        }
+      }
+      } catch (e) {
+        console.error('❌ [Online Incoming Packet Exception] Failed to apply action:', action, '| Error:', e);
+      }
+    },
+
+    handleStartClick() {
+      if (this.state.mode === 'online') {
+        this.createRoom();
+        return;
+      }
+      const playerDeckVal = document.getElementById('battle-player-deck-select')?.value || 'preset_starter';
+      const aiDeckKey = document.getElementById('battle-ai-deck-select')?.value || 'electric';
+      const prizeCount = Number(document.getElementById('battle-prize-count-select')?.value) || 6;
+
+      this.startBattle(playerDeckVal, aiDeckKey, prizeCount);
+    },
+
+    resolveDeckCards(deckVal) {
+      if (deckVal === 'preset_starter') {
+        return this.expandAiDeck(this.aiDecks.electric);
+      }
+      const decks = window.DeckSystem && DeckSystem.state && DeckSystem.state.decks || [];
+      const deck = decks.find((d) => String(d.id) === String(deckVal));
+      if (!deck || !deck.cards || !deck.cards.length) {
+        return this.expandAiDeck(this.aiDecks.electric);
+      }
+
+      const allCards = [
+        ...(window.App && App.state && App.state.cards || []),
+        ...(window.CardSystem && CardSystem.state && CardSystem.state.cards || []),
+        ...(window.DeckSystem && DeckSystem.state && DeckSystem.state.cardPool || [])
+      ];
+      const expanded = [];
+      deck.cards.forEach((entry) => {
+        const c = allCards.find((card) => String(card.id) === String(entry.id) || (entry.name && card.name === entry.name)) ||
+                  (entry.name && entry.category ? entry : null);
+        if (c) {
+          const count = Number(entry.count) || 1;
+          for (let i = 0; i < count; i++) {
+            expanded.push(JSON.parse(JSON.stringify(c)));
+          }
+        }
+      });
+
+      return expanded.length > 0 ? expanded : this.expandAiDeck(this.aiDecks.electric);
+    },
+
+    expandAiDeck(preset) {
+      const list = [];
+      preset.cards.forEach((c) => {
+        const count = c.count || 1;
+        for (let i = 0; i < count; i++) {
+          list.push(JSON.parse(JSON.stringify(c)));
+        }
+      });
+      return list;
+    },
+
+    isBasic(c) {
+      if (!c) return false;
+      const cat = String(c.category || '');
+      if (cat.includes('たね') || cat.toLowerCase().includes('basic')) return true;
+      if (cat.includes('ポケモン') && !cat.includes('進化')) return true;
+      return false;
+    },
+
+    isEvolution(c) {
+      if (!c) return false;
+      const cat = String(c.category || '');
+      return cat.includes('進化') || cat.toLowerCase().includes('evolution') || cat.toLowerCase().includes('stage');
+    },
+
+    // ポケモン進化系統辞書 (プリセットおよび一般ポケモンの進化前マッピング)
+    POKEMON_EVO_MAP: {
+      'ライチュウ': ['ピカチュウ'],
+      'アローラライチュウ': ['ピカチュウ'],
+      'リザード': ['ヒトカゲ'],
+      'リザードン': ['リザード', 'ヒトカゲ'],
+      'カメール': ['ゼニガメ'],
+      'カメックス': ['カメール', 'ゼニガメ'],
+      'フシギソウ': ['フシギダネ'],
+      'フシギバナ': ['フシギソウ', 'フシギダネ'],
+      'ピジョン': ['ポッポ'],
+      'ピジョット': ['ピジョン', 'ポッポ'],
+      'ラッタ': ['コラッタ'],
+      'オニドリル': ['オニスズメ'],
+      'アーボック': ['アーボ'],
+      'サンドパン': ['サンド'],
+      'ニドリーナ': ['ニドラン♀'],
+      'ニドクイン': ['ニドリーナ', 'ニドラン♀'],
+      'ニドリーノ': ['ニドラン♂'],
+      'ニドキング': ['ニドリーノ', 'ニドラン♂'],
+      'ピクシー': ['ピッピ'],
+      'キュウコン': ['ロコン'],
+      'プクリン': ['プリン'],
+      'ゴルバット': ['ズバット'],
+      'クロバット': ['ゴルバット', 'ズバット'],
+      'クサイハナ': ['ナゾノクサ'],
+      'ラフレシア': ['クサイハナ', 'ナゾノクサ'],
+      'キレイハナ': ['クサイハナ', 'ナゾノクサ'],
+      'パラセクト': ['パラス'],
+      'モルフォン': ['コンパン'],
+      'ダグトリオ': ['ディグダ'],
+      'ペルシアン': ['ニャース'],
+      'ゴルダック': ['コダック'],
+      'オコリザル': ['マンキー'],
+      'コノヨザル': ['オコリザル', 'マンキー'],
+      'ウインディ': ['ガーディ'],
+      'ニョロゾ': ['ニョロモ'],
+      'ニョロボン': ['ニョロゾ', 'ニョロモ'],
+      'ニョロトノ': ['ニョロゾ', 'ニョロモ'],
+      'ユンゲラー': ['ケーシィ'],
+      'フーディン': ['ユンゲラー', 'ケーシィ'],
+      'ゴーリキー': ['ワンリキー'],
+      'カイリキー': ['ゴーリキー', 'ワンリキー'],
+      'ウツドン': ['マダツボミ'],
+      'ウツボット': ['ウツドン', 'マダツボミ'],
+      'ドククラゲ': ['メノクラゲ'],
+      'ゴローン': ['イシツブテ'],
+      'ゴローニャ': ['ゴローン', 'イシツブテ'],
+      'ギャロップ': ['ポニータ'],
+      'ヤドラン': ['ヤドン'],
+      'ヤドキング': ['ヤドン'],
+      'レアコイル': ['コイル'],
+      'ジバコイル': ['レアコイル', 'コイル'],
+      'ドードリオ': ['ドードー'],
+      'ジュゴン': ['パウワウ'],
+      'ベトベトン': ['ベトベター'],
+      'パルシェン': ['シェルダー'],
+      'ゴースト': ['ゴース'],
+      'ゲンガー': ['ゴースト', 'ゴース'],
+      'ハガネール': ['イワーク'],
+      'スリーパー': ['スリープ'],
+      'キングラー': ['クラブ'],
+      'マルマイン': ['ビリリダマ'],
+      'ナッシー': ['タマタマ'],
+      'ガラガラ': ['カラカラ'],
+      'マタドガス': ['ドガース'],
+      'サイドン': ['サイホーン'],
+      'ドサイドン': ['サイドン', 'サイホーン'],
+      'ハピナス': ['ラッキー'],
+      'キングドラ': ['シードラ', 'タッツー'],
+      'シードラ': ['タッツー'],
+      'アズマオウ': ['トサキント'],
+      'スターミー': ['ヒトデマン'],
+      'ハッサム': ['ストライク'],
+      'エレキブル': ['エレブー', 'エレキッド'],
+      'ブーバーン': ['ブーバー', 'ブビィ'],
+      'ギャラドス': ['コイキング'],
+      'シャワーズ': ['イーブイ'],
+      'サンダース': ['イーブイ'],
+      'ブースター': ['イーブイ'],
+      'エーフィ': ['イーブイ'],
+      'ブラッキー': ['イーブイ'],
+      'リーフィア': ['イーブイ'],
+      'グレイシア': ['イーブイ'],
+      'ニンフィア': ['イーブイ'],
+      'ポリゴン2': ['ポリゴン'],
+      'ポリゴンZ': ['ポリゴン2', 'ポリゴン'],
+      'オムスター': ['オムナイト'],
+      'カブトプス': ['カブト'],
+      'カイリュー': ['ハクリュー', 'ミニリュウ'],
+      'ハクリュー': ['ミニリュウ'],
+      'オオタチ': ['オタチ'],
+      'デンリュウ': ['モココ', 'メリープ'],
+      'モココ': ['メリープ'],
+      'マリルリ': ['マリル', 'ルリリ'],
+      'ヌオー': ['ウパー'],
+      'サーナイト': ['キルリア', 'ラルトス'],
+      'エルレイド': ['キルリア', 'ラルトス'],
+      'キルリア': ['ラルトス'],
+      'ケッキング': ['ヤルキモノ', 'ナマケロ'],
+      'ヤルキモノ': ['ナマケロ'],
+      'ボスゴドラ': ['コドラ', 'ココドラ'],
+      'コドラ': ['ココドラ'],
+      'フライゴン': ['ビブラーバ', 'ナックラー'],
+      'ビブラーバ': ['ナックラー'],
+      'チルタリス': ['チルット'],
+      'ミロカロス': ['ヒンバス'],
+      'ボーマンダ': ['コモルー', 'タツベイ'],
+      'コモルー': ['タツベイ'],
+      'メタグロス': ['メタング', 'ダンバル'],
+      'メタング': ['ダンバル'],
+      'ドダイトス': ['ハヤシガメ', 'ナエトル'],
+      'ゴウカザル': ['モウカザル', 'ヒコザル'],
+      'エンペルト': ['ポッタイシ', 'ポッチャマ'],
+      'ムクホーク': ['ムクバード', 'ムックル'],
+      'レントラー': ['ルクシオ', 'コリンク'],
+      'ルカリオ': ['リオル'],
+      'ガブリアス': ['ガバイト', 'フカマル'],
+      'ガバイト': ['フカマル'],
+      'ゲッコウガ': ['ゲコガシラ', 'ケロマツ'],
+      'ドラパルト': ['ドロンチ', 'ドラメシヤ'],
+      'マスカーニャ': ['ニャローテ', 'ニャオハ'],
+      'ラウドボーン': ['アチゲータ', 'ホゲータ'],
+      'ウェーニバル': ['ウェルカモ', 'クワッス'],
+      'パーモット': ['パモット', 'パモ'],
+      'パモット': ['パモ'],
+      'デカヌチャン': ['ナカヌチャン', 'カヌチャン']
+    },
+
+    getPreEvolutionName(card) {
+      if (!card) return 'たねポケモン';
+      if (card.preEvolution) {
+        const pVal = String(card.preEvolution).trim();
+        const preCard = (window.App?.state?.cards || []).find((c) => String(c.id) === pVal || String(c.name) === pVal);
+        return preCard ? preCard.name : pVal;
+      }
+      const textBlob = (card.description || '') + " " + (card.attack1Text || '') + " " + (card.attack2Text || '');
+      const match = textBlob.match(/[「【](.*?)[」】]から進化/) || textBlob.match(/([^\s]+)から進化/);
+      if (match && match[1]) return match[1].trim();
+
+      const cleanName = String(card.name || '').replace(/ex|EX|\[EX\]|VMAX|VSTAR|V|\s+/g, '');
+      const bases = this.POKEMON_EVO_MAP[cleanName] || this.POKEMON_EVO_MAP[card.name];
+      if (bases && bases.length) return bases[0];
+      return 'たねポケモン';
+    },
+
+    isFirstPlayerFirstTurn(playerWho) {
+      const who = playerWho || this.state.turnPlayer;
+      const p = who === 'player' ? this.state.player : this.state.opponent;
+      if (p && p.turnCount != null) {
+        return who === this.state.firstPlayer && p.turnCount === 1;
+      }
+      return this.state.turnNumber === 1 && who === this.state.firstPlayer;
+    },
+
+    isFirstTurn(playerWho) {
+      const who = playerWho || this.state.turnPlayer;
+      const p = who === 'player' ? this.state.player : this.state.opponent;
+      if (p && p.turnCount != null) {
+        return p.turnCount === 1;
+      }
+      return this.state.turnNumber === 1;
+    },
+
+    matchesEvolutionLine(evoCard, basePokemon) {
+      if (!evoCard || !basePokemon) return false;
+      const evoName = String(evoCard.name || '').trim();
+      const baseName = String(basePokemon.name || '').trim();
+      const baseId = String(basePokemon.id || '').trim();
+
+      if (evoCard.preEvolution) {
+        const pVal = String(evoCard.preEvolution).trim();
+        const preCard = (window.App?.state?.cards || []).find((c) => String(c.id) === pVal || String(c.name) === pVal);
+        const preName = preCard ? preCard.name : pVal;
+        const bLower = baseName.toLowerCase();
+        const pLower = preName.toLowerCase();
+        if (baseId === pVal || bLower === pLower || bLower.includes(pLower) || pLower.includes(bLower)) {
+          return true;
+        }
+        return false;
+      }
+
+      const textBlob = (evoCard.description || '') + " " + (evoCard.attack1Text || '') + " " + (evoCard.attack2Text || '');
+      const match = textBlob.match(/[「【](.*?)[」】]から進化/) || textBlob.match(/([^\s]+)から進化/);
+      if (match && match[1]) {
+        const req = match[1].trim().toLowerCase();
+        const b = baseName.toLowerCase();
+        if (b === req || b.includes(req) || req.includes(b)) {
+          return true;
+        }
+        return false;
+      }
+
+      const cleanEvo = evoName.replace(/ex|EX|\[EX\]|VMAX|VSTAR|V|\s+/g, '');
+      const cleanBase = baseName.replace(/ex|EX|\[EX\]|VMAX|VSTAR|V|\s+/g, '');
+      if (cleanEvo === cleanBase) {
+        return true;
+      }
+
+      const validBases = this.POKEMON_EVO_MAP[cleanEvo] || this.POKEMON_EVO_MAP[evoName];
+      if (validBases) {
+        const matches = validBases.some((vb) => {
+          const cleanVb = vb.replace(/ex|EX|\s+/g, '');
+          return cleanBase === cleanVb || cleanBase.includes(cleanVb) || cleanVb.includes(cleanBase);
+        });
+        if (matches) {
+          return true;
+        }
+        return false;
+      }
+
+      const evoCat = String(evoCard.category || '');
+      const baseCat = String(basePokemon.category || '');
+      const isEvo1 = evoCat.includes('1進化');
+      const isEvo2 = evoCat.includes('2進化');
+      const isBaseBasic = this.isBasic(basePokemon);
+      const isBaseEvo1 = baseCat.includes('1進化');
+
+      if (isEvo1 && !isBaseBasic) return false;
+      if (isEvo2 && !(isBaseEvo1 || isBaseBasic)) return false;
+      if (evoCard.type && basePokemon.type && evoCard.type !== '無' && basePokemon.type !== '無' && evoCard.type !== basePokemon.type) {
+        return false;
+      }
+
+      return true;
+    },
+
+    canEvolveFrom(evoCard, basePokemon) {
+      if (!evoCard || !basePokemon) return { can: false, reason: '対象ポケモンが存在しません。' };
+      if (!this.isEvolution(evoCard)) return { can: false, reason: evoCard.name + " は進化ポケモンではありません。" };
+      if (this.isBasic(evoCard)) return { can: false, reason: 'たねポケモンを別のポケモンに重ねることはできません。' };
+
+      // 最初の番（先攻・後攻ともに自分の最初の番）は進化不可
+      if (this.isFirstTurn('player')) {
+        return { can: false, reason: '最初の番は進化できません。' };
+      }
+
+      // 場に出したターン（出したばかり）は進化できない（次の自分の番から進化可能）
+      if (basePokemon._turnPlayed != null && basePokemon._turnPlayed === this.state.turnNumber) {
+        return { can: false, reason: "【" + basePokemon.name + "】は今場に出たばかりなので進化できません。（次の自分の番から進化可能）" };
+      }
+
+      if (!this.matchesEvolutionLine(evoCard, basePokemon)) {
+        const preEvoName = this.getPreEvolutionName(evoCard);
+        return { can: false, reason: "【" + evoCard.name + "】は「" + preEvoName + "」からしか進化できません。（" + basePokemon.name + "には重ねられません）" };
+      }
+
+      return { can: true };
+    },
+
+    canRareCandyEvolve(stage2Card, basicPoke) {
+      if (!stage2Card || !basicPoke) return false;
+      if (!this.isBasic(basicPoke)) return false;
+      if (basicPoke._turnPlayed != null && basicPoke._turnPlayed === this.state.turnNumber) {
+        return false;
+      }
+
+      const cleanEvo = String(stage2Card.name || '').replace(/ex|EX|\[EX\]|VMAX|VSTAR|V|\s+/g, '');
+      const cleanBase = String(basicPoke.name || '').replace(/ex|EX|\[EX\]|VMAX|VSTAR|V|\s+/g, '');
+
+      // 1. POKEMON_EVO_MAP (例: リザードン -> ['リザード', 'ヒトカゲ'])
+      const validBases = this.POKEMON_EVO_MAP[cleanEvo] || this.POKEMON_EVO_MAP[stage2Card.name];
+      if (validBases && validBases.some(vb => {
+        const cvb = vb.replace(/ex|EX|\s+/g, '');
+        return cleanBase === cvb || cleanBase.includes(cvb) || cvb.includes(cleanBase);
+      })) {
+        return true;
+      }
+
+      // 2. preEvolution の連鎖検索
+      if (stage2Card.preEvolution) {
+        const pVal = String(stage2Card.preEvolution).trim();
+        if (cleanBase === pVal || basicPoke.id === pVal) return true;
+        const allCards = window.App?.state?.cards || [];
+        const stage1 = allCards.find(c => String(c.id) === pVal || String(c.name) === pVal);
+        if (stage1 && stage1.preEvolution) {
+          const s1Pre = String(stage1.preEvolution).trim();
+          if (cleanBase === s1Pre || basicPoke.id === s1Pre) return true;
+        }
+      }
+
+      // 3. 説明文チェック
+      const textBlob = (stage2Card.description || '') + " " + (stage2Card.attack1Text || '') + " " + (stage2Card.attack2Text || '');
+      if (textBlob.includes(cleanBase)) return true;
+
+      // 4. 同属性フォールバック（オリジナルカード）
+      if (stage2Card.type && basicPoke.type && stage2Card.type === basicPoke.type && stage2Card.type !== '無') {
+        return true;
+      }
+      return false;
+    },
+
+    isEnergy(c) {
+      if (!c) return false;
+      const cat = String(c.category || '');
+      return cat.includes('エネルギー') || cat.toLowerCase().includes('energy');
+    },
+
+    isTrainer(c) {
+      if (!c) return false;
+      const cat = String(c.category || '');
+      return cat.includes('グッズ') || cat.includes('サポート') || cat.includes('スタジアム') || cat.toLowerCase().includes('trainer');
+    },
+
+    isPokemon(c) {
+      if (!c) return false;
+      if (this.isEnergy(c) || this.isTrainer(c)) return false;
+      return Number(c.hp) > 0 || this.isBasic(c) || this.isEvolution(c);
+    },
+
+    createRuntimeCard(card) {
+      if (!card) card = {};
+      const hp = Number(card.hp) || (this.isBasic(card) || this.isEvolution(card) ? 70 : 0);
+      let img = card.image ? String(card.image).trim() : '';
+      if (!img && window.CardSystem && typeof window.CardSystem.findCardImage === 'function') {
+        img = window.CardSystem.findCardImage(card.name, card.id);
+      }
+      return {
+        ...card,
+        image: img || card.image || '',
+        instanceId: 'inst_' + Math.random().toString(36).substring(2, 9),
+        maxHp: hp,
+        hp: hp,
+        energy: Number(card.energy) || 0,
+        attachedEnergies: Array.isArray(card.attachedEnergies) ? [...card.attachedEnergies] : [],
+        attachedCards: Array.isArray(card.attachedCards) ? [...card.attachedCards] : [],
+        getCards(filter) {
+          const cards = this.attachedCards || [];
+          if (!filter) return [...cards];
+          if (typeof window.matchesCardFilter === 'function') {
+            return cards.filter((c) => window.matchesCardFilter(c, filter));
+          }
+          return [...cards];
+        },
+        status: card.status || null,
+        damageReduction: Number(card.damageReduction) || 0
+      };
+    },
+
+    shuffle(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    },
+
+    expandAiDeck(deckObj) {
+      if (!deckObj || !Array.isArray(deckObj.cards)) return [];
+      const result = [];
+      deckObj.cards.forEach((c) => {
+        const cnt = Number(c.count) || 1;
+        for (let i = 0; i < cnt; i++) {
+          result.push({ ...c });
+        }
+      });
+      return result;
+    },
+
+    resolveDeckCards(deckVal) {
+      if (!deckVal || deckVal === 'preset_starter' || deckVal === 'electric') {
+        return this.expandAiDeck(this.aiDecks.electric);
+      }
+      if (this.aiDecks && this.aiDecks[deckVal]) {
+        return this.expandAiDeck(this.aiDecks[deckVal]);
+      }
+
+      const decks = (window.DeckSystem && DeckSystem.state && DeckSystem.state.decks) || [];
+      const deck = decks.find((d) => String(d.id) === String(deckVal));
+
+      if (deck && Array.isArray(deck.cards) && deck.cards.length > 0) {
+        const cardPool = (window.DeckSystem && DeckSystem.state && DeckSystem.state.cardPool) ||
+                         (window.App && App.state && App.state.cards) || [];
+        const flat = [];
+        deck.cards.forEach((item) => {
+          const cardId = typeof item === 'object' ? item.id : item;
+          const count = typeof item === 'object' ? (Number(item.count) || 1) : 1;
+          const def = cardPool.find((c) => String(c.id) === String(cardId));
+          if (def) {
+            for (let i = 0; i < count; i++) {
+              flat.push({ ...def });
+            }
+          }
+        });
+        if (flat.length > 0) return flat;
+      }
+
+      return this.expandAiDeck(this.aiDecks.electric);
+    },
+
+    playMatchIntro(myName, oppName) {
+      const overlay = document.getElementById('battleMatchIntroOverlay');
+      if (!overlay) return;
+
+      const myNameEl = document.getElementById('introMyName');
+      const oppNameEl = document.getElementById('introOppName');
+      const myRoleBadge = document.getElementById('introMyRoleBadge');
+      const oppRoleBadge = document.getElementById('introOppRoleBadge');
+      const coinTossText = document.getElementById('introCoinTossText');
+      const myAvatar = document.getElementById('introMyAvatarImg');
+      const oppAvatar = document.getElementById('introOppAvatarImg');
+
+      if (myNameEl) myNameEl.textContent = myName || 'プレイヤー';
+      if (oppNameEl) oppNameEl.textContent = oppName || 'ライバル';
+
+      const isFirst = (this.state.firstPlayer === 'player');
+      if (myRoleBadge) {
+        myRoleBadge.textContent = isFirst ? '⚔️ 先攻 (1st)' : '🛡️ 後攻 (2nd)';
+        myRoleBadge.className = isFirst ? 'intro-role-badge first-role' : 'intro-role-badge second-role';
+      }
+      if (oppRoleBadge) {
+        oppRoleBadge.textContent = isFirst ? '🛡️ 後攻 (2nd)' : '⚔️ 先攻 (1st)';
+        oppRoleBadge.className = isFirst ? 'intro-role-badge second-role' : 'intro-role-badge first-role';
+      }
+
+      if (coinTossText) {
+        coinTossText.textContent = `COIN TOSS: ${isFirst ? 'あなたが先攻！' : '相手が先攻！'}`;
+      }
+
+      // アバター画像設定
+      const playerProfile = window.UserSystem ? window.UserSystem.getProfile() : null;
+      if (myAvatar) {
+        myAvatar.src = playerProfile?.avatarUrl || 'https://api.dicebear.com/7.x/bottts/svg?seed=' + encodeURIComponent(myName || 'player');
+      }
+      if (oppAvatar) {
+        oppAvatar.src = 'https://api.dicebear.com/7.x/bottts/svg?seed=' + encodeURIComponent(oppName || 'rival');
+      }
+
+      // Overlay アニメーション開始
+      overlay.style.display = 'flex';
+      overlay.classList.remove('introOverlayOut');
+      overlay.classList.add('introOverlayIn');
+
+      setTimeout(() => {
+        overlay.classList.remove('introOverlayIn');
+        overlay.classList.add('introOverlayOut');
+        setTimeout(() => {
+          overlay.style.display = 'none';
+          overlay.classList.remove('introOverlayOut');
+        }, 500);
+      }, 1800);
+    },
+
+    startBattle(playerDeckVal, aiDeckKey, prizeCount) {
+      const rawPlayerDeck = this.resolveDeckCards(playerDeckVal);
+      const rawAiDeck = this.expandAiDeck(this.aiDecks[aiDeckKey] || this.aiDecks.electric);
+
+      const playerDeck = this.shuffle(rawPlayerDeck.map((c) => this.createRuntimeCard(c)));
+      const oppDeck = this.shuffle(rawAiDeck.map((c) => this.createRuntimeCard(c)));
+
+      this.state.mode = 'ai';
+      this.state.phase = 'battle';
+      this.state.turnNumber = 1;
+      this.state.prizeCountRule = prizeCount;
+      this.state.logs = [];
+
+      // コインフリップで先攻決定
+      const coin = Math.random() >= 0.5 ? 1 : 0;
+      this.state.firstPlayer = coin === 1 ? 'player' : 'opponent';
+      this.state.turnPlayer = this.state.firstPlayer;
+
+      this.state.player = {
+        id: 'player',
+        name: 'プレイヤー',
+        deck: playerDeck,
+        hand: [],
+        active: null,
+        bench: [],
+        prizes: [],
+        discard: [],
+        energyAttached: false,
+        supporterUsed: false,
+        retreated: false,
+        turnCount: 0
+      };
+
+      this.state.opponent = {
+        id: 'opponent',
+        name: this.aiDecks[aiDeckKey]?.name || 'AIライバル',
+        deck: oppDeck,
+        hand: [],
+        active: null,
+        bench: [],
+        prizes: [],
+        discard: [],
+        energyAttached: false,
+        supporterUsed: false,
+        retreated: false,
+        turnCount: 0
+      };
+
+      // 手札7枚ドロー (たねポケモンを確実に引くまで)
+      this.drawInitialHand(this.state.player);
+      this.drawInitialHand(this.state.opponent);
+
+      // バトル場とベンチの初期配置
+      this.setupInitialBoard(this.state.player);
+      this.setupInitialBoard(this.state.opponent);
+
+      // サイドカード配置
+      for (let i = 0; i < prizeCount; i++) {
+        if (this.state.player.deck.length) this.state.player.prizes.push(this.state.player.deck.shift());
+        if (this.state.opponent.deck.length) this.state.opponent.prizes.push(this.state.opponent.deck.shift());
+      }
+
+      // UI切り替え
+      document.getElementById('battle-select-view').style.display = 'none';
+      document.getElementById('battle-arena-view').style.display = 'block';
+
+      this.closeResultModal();
+      this.log('⚔ バトル開始！ 先攻は【' + (this.state.firstPlayer === 'player' ? 'プレイヤー' : 'AIライバル') + '】です。');
+
+      this.render();
+      this.playMatchIntro(this.state.player.name, this.state.opponent.name);
+
+      // 先攻のターン開始
+      this.startTurn(this.state.turnPlayer);
+    },
+
+    drawInitialHand(p) {
+      let attempts = 0;
+      while (attempts < 10) {
+        attempts++;
+        p.hand = [];
+        for (let i = 0; i < 7; i++) {
+          if (p.deck.length) p.hand.push(p.deck.shift());
+        }
+        const hasBasic = p.hand.some((c) => this.isBasic(c));
+        if (hasBasic) break;
+        // マリガン: 山札に戻してシャッフル
+        p.deck.push(...p.hand);
+        p.hand = [];
+        this.shuffle(p.deck);
+      }
+      // もし10回の引き直しでもたねが見つからなかった場合の安全フォールバック
+      if (!p.hand.some((c) => this.isBasic(c)) && p.deck.length > 0) {
+        const basicInDeckIdx = p.deck.findIndex((c) => this.isBasic(c));
+        if (basicInDeckIdx >= 0) {
+          p.hand.push(p.deck.splice(basicInDeckIdx, 1)[0]);
+        }
+      }
+    },
+
+    setupInitialBoard(p) {
+      // 最初のたねポケモンをバトル場へ
+      let basicIdx = p.hand.findIndex((c) => this.isBasic(c));
+      if (basicIdx < 0) {
+        // ポケモンらしきカードをフォールバックとして使用
+        basicIdx = p.hand.findIndex((c) => this.isPokemon(c));
+      }
+      if (basicIdx >= 0) {
+        p.active = p.hand.splice(basicIdx, 1)[0];
+      } else if (p.hand.length > 0) {
+        p.active = p.hand.shift();
+      }
+      if (p.active) {
+        if (!p.active.hp) p.active.hp = 70;
+        if (!p.active.maxHp) p.active.maxHp = Number(p.active.hp) || 70;
+        p.active._turnPlayed = 0;
+      }
+
+      // 残りのたねポケモンを最大2匹までベンチへ
+      for (let i = p.hand.length - 1; i >= 0; i--) {
+        if (this.isBasic(p.hand[i]) && p.bench.length < 2) {
+          const card = p.hand.splice(i, 1)[0];
+          card._turnPlayed = 0;
+          if (!card.maxHp) card.maxHp = Number(card.hp) || 70;
+          p.bench.push(card);
+        }
+      }
+    },
+
+    isBlocked(actionType, target = null, player = null) {
+      if (window.ORBITAL_EFFECT_API && window.ORBITAL_EFFECT_API.isBlocked) {
+        return window.ORBITAL_EFFECT_API.isBlocked({ game: this.state, self: player || (this.state.turnPlayer === 'player' ? this.state.player : this.state.opponent), opponent: player === this.state.opponent ? this.state.player : this.state.opponent }, actionType, target, player);
+      }
+      return false;
+    },
+
+    updateLocksOnTurnChange(curTurnWho) {
+      if (!Array.isArray(this.state.activeLocks) || this.state.activeLocks.length === 0) return;
+
+      const actLabels = {
+        ability: '特性',
+        attack: 'ワザ',
+        effect: 'ワザの効果',
+        retreat: 'にげる(交代)',
+        item: 'グッズ',
+        supporter: 'サポート',
+        trainer: 'トレーナーズ',
+        energy: 'エネルギー手貼り',
+        evolution: '進化',
+        all: 'すべてのアクション'
+      };
+
+      const remainingLocks = [];
+      for (let lock of this.state.activeLocks) {
+        if (lock.always) {
+          if (lock.sourceCard) {
+            const players = [this.state.player, this.state.opponent].filter(Boolean);
+            let alive = false;
+            for (let p of players) {
+              if (p.active === lock.sourceCard || (Array.isArray(p.bench) && p.bench.includes(lock.sourceCard))) {
+                if (lock.sourceCard.hp === undefined || lock.sourceCard.hp > 0) {
+                  alive = true;
+                  break;
+                }
+              }
+            }
+            if (!alive) {
+              this.log('✦ 【' + (lock.sourceCard.name || 'カード') + '】が場を離れたため、' + (actLabels[lock.actionType] || lock.actionType) + 'の常時ロック効果が解除されました。');
+              continue;
+            }
+          }
+          remainingLocks.push(lock);
+          continue;
+        }
+
+        let shouldDecrement = false;
+        const prevTurnWho = curTurnWho === 'player' ? 'opponent' : 'player';
+        const isCreatedTurn = (lock.createdTurn != null && lock.createdTurn === this.state.turnNumber);
+
+        if (!isCreatedTurn) {
+          if (lock.countBy === 'opponent' || !lock.countBy) {
+            const isOpponentFinished = (lock.sourcePlayer === 'player' && prevTurnWho === 'opponent') ||
+                                       (lock.sourcePlayer === 'opponent' && prevTurnWho === 'player');
+            if (isOpponentFinished) shouldDecrement = true;
+          } else if (lock.countBy === 'self') {
+            const isSelfFinished = (lock.sourcePlayer === 'player' && prevTurnWho === 'player') ||
+                                   (lock.sourcePlayer === 'opponent' && prevTurnWho === 'opponent');
+            if (isSelfFinished) shouldDecrement = true;
+          } else if (lock.countBy === 'both' || lock.countBy === 'turn') {
+            shouldDecrement = true;
+          }
+        }
+
+        if (shouldDecrement) {
+          lock.turnsRemaining--;
+        }
+
+        if (lock.turnsRemaining > 0) {
+          remainingLocks.push(lock);
+        } else {
+          this.log('🔓 【' + (actLabels[lock.actionType] || lock.actionType) + '】の禁止効果が終了しました。');
+        }
+      }
+      this.state.activeLocks = remainingLocks;
+    },
+
+    startTurn(turnWho) {
+      this.state.turnPlayer = turnWho;
+      const cur = turnWho === 'player' ? this.state.player : this.state.opponent;
+
+      cur.turnCount = (cur.turnCount || 0) + 1;
+      cur.energyAttached = false;
+      cur.supporterUsed = false;
+      cur.retreated = false;
+      [cur.active, ...(cur.bench || [])].filter(Boolean).forEach((c) => {
+        c._abilityUsedThisTurn = false;
+        c._abilityUseCount = 0;
+      });
+
+      this.updateLocksOnTurnChange(turnWho);
+
+      // ターン開始時 (turnStart / start) の自動・強制発動
+      // ※ event.on('turnStart', ...) または event.on('start', ...) を明示的に宣言しているコードのみ実行する
+      // ※ useLimit() 等の起動型特性（上位コードがイベント登録なし）は絶対に自動実行しない
+      const activePokemons = [cur.active, ...(cur.bench || [])].filter(Boolean);
+      const TURN_START_EVENT_REGEX = /event\s*\.\s*on\s*\(\s*['"`](?:turnStart|start)['"`]/;
+      activePokemons.forEach((pk) => {
+        const code = String(pk.abilityCode || '');
+        if (code && window.executeCardEffectCode && TURN_START_EVENT_REGEX.test(code)) {
+          try {
+            window.executeCardEffectCode(
+              pk.abilityCode,
+              { players: [this.state.player, this.state.opponent], logs: this.state.logs },
+              cur,
+              'turnStart',
+              { card: pk, pokemon: pk, turnNumber: this.state.turnNumber }
+            );
+          } catch (e) {
+            console.error('turnStart ability error:', e);
+          }
+        }
+      });
+
+      // ドロー（先攻の最初のターンはドローなし）
+      const isVeryFirstTurn = (this.state.turnNumber === 1 && turnWho === this.state.firstPlayer);
+      if (isVeryFirstTurn) {
+        // 先攻1ターン目はドローなし（ポケモンカードのルール）
+        this.log("【" + cur.name + "】の番（TURN " + this.state.turnNumber + "）: 先攻1ターン目のためドローなし。");
+      } else {
+        if (cur.deck.length === 0) {
+          this.finishBattle(turnWho === 'player' ? 'opponent' : 'player', '山札がなくなりました (ライブラリアウト)');
+          return;
+        }
+        const drawn = cur.deck.shift();
+        if (drawn != null) {
+          cur.hand.push(drawn);
+          this.log("【" + cur.name + "】の番（TURN " + this.state.turnNumber + "）: カードを1枚引きました。");
+          this.animateDrawCard(turnWho === 'player');
+          if (turnWho === 'player' && this.state.mode === 'online') {
+            this.broadcastOnlineAction('draw_card', { count: 1 });
+          }
+        } else {
+          this.log("【" + cur.name + "】の番（TURN " + this.state.turnNumber + "）: ドロー失敗（山札が空）。");
+        }
+      }
+
+      // 特殊状態処理（どく: 10ダメージ）
+      if (cur.active && cur.active.status === 'どく') {
+        cur.active.hp -= 10;
+        this.log("☠ どくのダメージ！ " + cur.active.name + " は10ダメージを受けた。(残りHP: " + cur.active.hp + ")");
+        if (cur.active.hp <= 0) {
+          this.handleKnockout(cur === this.state.player ? this.state.opponent : this.state.player, cur);
+        }
+      }
+
+      this.render();
+
+      if (turnWho === 'opponent') {
+        if (this.state.mode === 'ai') {
+          setTimeout(() => this.runAiTurn(), 800);
+        }
+      }
+    },
+
+    endTurn() {
+      if (this.state.phase === 'ended') return;
+      const turnWhoName = this.state.turnPlayer === 'player' ? (this.state.player.name || 'プレイヤー') : (this.state.opponent.name || '対戦相手');
+      this.log("【" + turnWhoName + "】がターンを終了しました。");
+
+      if (this.state.turnPlayer === 'player' && this.state.mode === 'online') {
+        this.broadcastOnlineAction('end_turn', {});
+      }
+
+      const secondPlayer = this.state.firstPlayer === 'player' ? 'opponent' : 'player';
+      if (this.state.turnPlayer === secondPlayer) {
+        this.state.turnNumber++;
+      }
+      const nextPlayer = this.state.turnPlayer === 'player' ? 'opponent' : 'player';
+      this.startTurn(nextPlayer);
+    },
+
+    surrender() {
+      if (!confirm('本当に降参しますか？')) return;
+      if (this.state.mode === 'online') {
+        this.broadcastOnlineAction('surrender', {});
+      }
+      this.finishBattle('opponent', 'プレイヤーが降参しました。');
+    },
+
+    exitToSelectView() {
+      this.stopPolling();
+      if (this.state.mode === 'online' && this.state.online.roomId) {
+        if (window.google && google.script && google.script.run) {
+          google.script.run.leaveOnlineRoom(this.state.online.roomId, this.state.online.role);
+        }
+      }
+      this.closeResultModal();
+      this.state.phase = 'select';
+      document.getElementById('battle-arena-view').style.display = 'none';
+      document.getElementById('battle-select-view').style.display = 'block';
+      if (this.state.mode === 'online') {
+        this.populateOnlineDeckSelect();
+        this.refreshRoomList();
+      } else {
+        this.populateDeckSelect();
+      }
+    },
+
+    // プレイヤーが手札のカードをクリックした時のアクション
+    handleHandCardClick(index) {
+      if (this.state.turnPlayer !== 'player' || this.state.phase !== 'battle') return;
+      const card = this.state.player.hand[index];
+      if (!card) return;
+
+      const p = this.state.player;
+
+      // 1. たねポケモン
+      if (this.isBasic(card)) {
+        if (this.isBlocked('playBasic', card, p)) {
+          App.toast('効果によりたねポケモンの場出しは禁止されています。', true);
+          return;
+        }
+        if (!p.active) {
+          const placed = p.hand.splice(index, 1)[0];
+          placed._turnPlayed = this.state.turnNumber;
+          if (!placed.maxHp) placed.maxHp = Number(placed.hp) || 70;
+          p.active = placed;
+          this.log("✦ " + card.name + " をバトル場に出しました。");
+          this.broadcastOnlineAction('play_basic', { card: placed, slotType: 'active' });
+          this.render();
+          return;
+        }
+        if (p.bench.length < 5) {
+          const placed = p.hand.splice(index, 1)[0];
+          placed._turnPlayed = this.state.turnNumber;
+          if (!placed.maxHp) placed.maxHp = Number(placed.hp) || 70;
+          p.bench.push(placed);
+          this.log("✦ " + card.name + " をベンチに出しました。");
+          this.broadcastOnlineAction('play_basic', { card: placed, slotType: 'bench' });
+          this.render();
+          return;
+        }
+        App.toast('ベンチがいっぱいです（最大5匹）。', true);
+        return;
+      }
+
+      // 2. 進化ポケモン
+      if (this.isEvolution(card)) {
+        if (this.isBlocked('evolution', card, p)) {
+          App.toast('効果によりポケモンの進化は禁止されています。', true);
+          return;
+        }
+        this.promptEvolution(index, card);
+        return;
+      }
+
+      // 3. エネルギーカード
+      if (this.isEnergy(card)) {
+        if (this.isBlocked('energy', card, p)) {
+          App.toast('効果によりエネルギーの手札付けは禁止されています。', true);
+          return;
+        }
+        if (p.energyAttached) {
+          App.toast('エネルギーの手札付けは1ターンに1回までです。', true);
+          return;
+        }
+        this.promptEnergyAttachment(index, card);
+        return;
+      }
+
+      // 4. グッズ
+      const cat = String(card.category || '');
+      if (cat.includes('グッズ') || cat.toLowerCase().includes('item')) {
+        if (this.isBlocked('item', card, p) || this.isBlocked('trainer', card, p)) {
+          App.toast('効果によりグッズの使用は禁止されています。', true);
+          return;
+        }
+        this.playTrainerCard(index, card, 'グッズ');
+        return;
+      }
+
+      // 5. サポート
+      if (cat.includes('サポート') || cat.includes('トレーナー') || cat.toLowerCase().includes('supporter')) {
+        if (this.isBlocked('supporter', card, p) || this.isBlocked('trainer', card, p)) {
+          App.toast('効果によりサポートの使用は禁止されています。', true);
+          return;
+        }
+        if (this.isFirstPlayerFirstTurn('player')) {
+          App.toast('先攻の最初の番はサポートカードを使用できません。', true);
+          return;
+        }
+        if (p.supporterUsed) {
+          App.toast('サポートカードは1ターンに1枚までしか使えません。', true);
+          return;
+        }
+        this.playTrainerCard(index, card, 'サポート');
+        return;
+      }
+
+      App.toast("「" + card.name + "」を選択しました。");
+    },
+
+    promptEnergyAttachment(handIndex, energyCard) {
+      const p = this.state.player;
+      const targets = [];
+      if (p.active) targets.push({ label: "バトル場: " + p.active.name + " (エネ: " + (p.active.energy || 0) + ")", target: p.active, isBench: false });
+      p.bench.forEach((b, i) => {
+        targets.push({ label: "ベンチ" + (i + 1) + ": " + b.name + " (エネ: " + (b.energy || 0) + ")", target: b, isBench: true, benchIdx: i });
+      });
+
+      if (!targets.length) {
+        App.toast('エネルギーを付けるポケモンがいません。', true);
+        return;
+      }
+
+      // 対象が1匹のみなら即座に直接付加！
+      if (targets.length === 1) {
+        const chosen = targets[0].target;
+        const targetSlotEl = targets[0].isBench ?
+        document.querySelectorAll('#playerBenchRow .bench-slot-occupied')[targets[0].benchIdx] :
+        document.getElementById('playerActiveSpot');
+        this.applyEnergyAttachment(handIndex, chosen, targetSlotEl);
+        return;
+      }
+
+      this.showChoiceModal(targets.map((t) => ({ name: t.label, category: '対象ポケモン', type: t.target.type, hp: t.target.hp })), {
+        title: 'エネルギーを付けるポケモンを選択',
+        desc: energyCard.name + " を誰に付けますか？（手札からドラッグ＆ドロップでも直接付けられます）"
+      }, (selectedIndex) => {
+        const chosenItem = targets[selectedIndex];
+        if (chosenItem) {
+          const targetSlotEl = chosenItem.isBench ?
+          document.querySelectorAll('#playerBenchRow .bench-slot-occupied')[chosenItem.benchIdx] :
+          document.getElementById('playerActiveSpot');
+          this.applyEnergyAttachment(handIndex, chosenItem.target, targetSlotEl);
+        }
+      });
+    },
+
+    applyEnergyAttachment(handIndex, targetPokemon, targetSlotEl) {
+      const p = this.state.player;
+      if (this.state.turnPlayer !== 'player' || this.state.phase !== 'battle') return;
+      if (p.energyAttached) {
+        App.toast('エネルギーの手札付けは1ターンに1回までです。', true);
+        return;
+      }
+      const energyCard = p.hand[handIndex];
+      if (!energyCard || !this.isEnergy(energyCard)) return;
+
+      const sourceHandEl = document.querySelector("[data-hand-idx=\"" + handIndex + "\"]");
+
+      p.hand.splice(handIndex, 1);
+      targetPokemon.energy = (targetPokemon.energy || 0) + 1;
+      targetPokemon.attachedEnergies = targetPokemon.attachedEnergies || [];
+      targetPokemon.attachedEnergies.push(energyCard.type || '無');
+      targetPokemon.attachedCards = targetPokemon.attachedCards || [];
+      targetPokemon.attachedCards.push(energyCard);
+      p.energyAttached = true;
+
+      this.log("⚡ " + targetPokemon.name + " に " + energyCard.name + " を付けました。(合計エネルギー: " + targetPokemon.energy + ")");
+      App.toast(targetPokemon.name + " にエネルギーを付けました！");
+
+      this.broadcastOnlineAction('attach_energy', {
+        energyCard: energyCard,
+        targetSlotType: targetPokemon === p.active ? 'active' : 'bench',
+        benchIdx: targetPokemon === p.active ? -1 : p.bench.indexOf(targetPokemon)
+      });
+
+      const stadiumTicker = document.getElementById('stadiumTicker');
+      if (stadiumTicker) stadiumTicker.textContent = "あなた: " + targetPokemon.name + " にエネルギーをチャージ！";
+
+      // エネルギー飛来アニメーション
+      if (sourceHandEl && targetSlotEl) {
+        this.animateEnergyFly(sourceHandEl, targetSlotEl, energyCard.type);
+      }
+
+      setTimeout(() => {
+        this.render();
+      }, 500);
+    },
+
+    animateEnergyFly(sourceEl, targetEl, energyType) {
+      if (!sourceEl || !targetEl) return;
+      try {
+        const sRect = sourceEl.getBoundingClientRect();
+        const tRect = targetEl.getBoundingClientRect();
+
+        const orb = document.createElement('div');
+        orb.className = 'flying-energy-orb type-' + (energyType || '無');
+        orb.textContent = energyType || '✦';
+        orb.style.left = sRect.left + sRect.width / 2 - 16 + 'px';
+        orb.style.top = sRect.top + sRect.height / 2 - 16 + 'px';
+        document.body.appendChild(orb);
+
+        void orb.offsetHeight; // force layout
+
+        const dx = tRect.left + tRect.width / 2 - (sRect.left + sRect.width / 2);
+        const dy = tRect.top + tRect.height / 2 - (sRect.top + sRect.height / 2);
+        orb.style.transform = 'translate(' + dx + 'px, ' + dy + 'px) scale(1.15)';
+
+        setTimeout(() => {
+          orb.remove();
+          targetEl.classList.add('energy-absorb-pulse');
+          setTimeout(() => {
+            targetEl.classList.remove('energy-absorb-pulse');
+          }, 500);
+        }, 650);
+      } catch (err) {
+        console.error('animateEnergyFly error:', err);
+      }
+    },
+
+    animateAttack(attackerSlotEl, defenderSlotEl, isPlayer, damage, isWeakness) {
+      try {
+        if (attackerSlotEl) {
+          attackerSlotEl.classList.add(isPlayer ? 'lunge-player' : 'lunge-opp');
+          setTimeout(() => {
+            attackerSlotEl.classList.remove(isPlayer ? 'lunge-player' : 'lunge-opp');
+          }, 650);
+        }
+
+        setTimeout(() => {
+          const stadium = document.querySelector('.battle-stadium');
+          if (stadium) {
+            stadium.classList.add('stadium-screen-shake');
+            setTimeout(() => stadium.classList.remove('stadium-screen-shake'), 450);
+          }
+
+          if (defenderSlotEl) {
+            defenderSlotEl.classList.add('defender-hit-flash');
+            setTimeout(() => defenderSlotEl.classList.remove('defender-hit-flash'), 400);
+
+            const slash = document.createElement('div');
+            slash.className = 'attack-slash-overlay';
+            defenderSlotEl.appendChild(slash);
+            setTimeout(() => slash.remove(), 400);
+
+            if (damage > 0) {
+              const dmgEl = document.createElement('div');
+              dmgEl.className = 'floating-damage-number' + (isWeakness ? ' weakness-damage' : '');
+              dmgEl.textContent = (isWeakness ? '弱点！ -' : '-') + damage;
+              defenderSlotEl.appendChild(dmgEl);
+              setTimeout(() => dmgEl.remove(), 1050);
+            }
+          }
+        }, 240);
+      } catch (err) {
+        console.error('animateAttack error:', err);
+      }
+    },
+
+    animateDrawCard(isPlayer) {
+      try {
+        const deckSpot = document.getElementById(isPlayer ? 'playerActiveSpot' : 'oppActiveSpot') || document.querySelector(isPlayer ? '.player-arena' : '.opp-arena');
+        const deckEl = document.getElementById(isPlayer ? 'playerDeckSpot' : 'oppDeckSpot') || deckSpot;
+        const handEl = document.getElementById(isPlayer ? 'playerHandArea' : 'oppHandArea') || document.body;
+        if (!deckEl || !handEl) return;
+
+        const sRect = deckEl.getBoundingClientRect();
+        const tRect = handEl.getBoundingClientRect();
+
+        const flying = document.createElement('div');
+        flying.className = 'flying-draw-card';
+        flying.style.position = 'fixed';
+        flying.style.left = (sRect.left + sRect.width / 2 - 24) + 'px';
+        flying.style.top = (sRect.top + sRect.height / 2 - 32) + 'px';
+        flying.style.width = '48px';
+        flying.style.height = '64px';
+        flying.style.background = 'linear-gradient(135deg, #1e293b, #0f172a)';
+        flying.style.border = '2px solid #38bdf8';
+        flying.style.borderRadius = '6px';
+        flying.style.boxShadow = '0 4px 15px rgba(56, 189, 248, 0.5)';
+        flying.style.zIndex = '99999';
+        flying.style.transition = 'transform 0.48s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.48s ease';
+        flying.style.pointerEvents = 'none';
+
+        const inner = document.createElement('div');
+        inner.style.cssText = 'width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#38bdf8;font-size:18px;font-weight:bold;';
+        inner.textContent = '✦';
+        flying.appendChild(inner);
+
+        document.body.appendChild(flying);
+
+        void flying.offsetHeight; // layout trigger
+
+        const dx = (tRect.left + tRect.width / 2) - (sRect.left + sRect.width / 2);
+        const dy = (tRect.top + tRect.height / 2) - (sRect.top + sRect.height / 2);
+        flying.style.transform = 'translate(' + dx + 'px, ' + dy + 'px) scale(0.65) rotate(180deg)';
+        flying.style.opacity = '0.2';
+
+        setTimeout(() => {
+          flying.remove();
+        }, 500);
+      } catch (err) {
+        console.error('animateDrawCard error:', err);
+      }
+    },
+
+    animateEvolveFlash(targetEl) {
+      if (!targetEl) return;
+      try {
+        targetEl.classList.add('evolve-flash-effect');
+        const burst = document.createElement('div');
+        burst.style.cssText = 'position:absolute;inset:-10px;border-radius:12px;background:radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(56,189,248,0.6) 50%, transparent 80%);z-index:10;pointer-events:none;animation:evolveBurst 0.6s ease-out forwards;';
+        targetEl.style.position = 'relative';
+        targetEl.appendChild(burst);
+        setTimeout(() => {
+          targetEl.classList.remove('evolve-flash-effect');
+          burst.remove();
+        }, 650);
+      } catch (e) {}
+    },
+
+    animateCardPlacement(targetEl) {
+      if (!targetEl) return;
+      targetEl.classList.add('card-placement-slam');
+      setTimeout(() => targetEl.classList.remove('card-placement-slam'), 450);
+    },
+
+    wait(ms) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
+    },
+
+    placeBasicPokemon(handIndex, targetSlotType, targetEl) {
+      const p = this.state.player;
+      if (this.state.turnPlayer !== 'player' || this.state.phase !== 'battle') return;
+      const card = p.hand[handIndex];
+      if (!card || !this.isBasic(card)) return;
+
+      if (targetSlotType === 'active') {
+        if (p.active) {
+          App.toast('バトル場には既にポケモンがいます。', true);
+          return;
+        }
+        const placed = p.hand.splice(handIndex, 1)[0];
+        placed._turnPlayed = this.state.turnNumber;
+        if (!placed.maxHp) placed.maxHp = Number(placed.hp) || 70;
+        p.active = placed;
+        this.log('✦ ' + card.name + ' をバトル場に出しました。');
+        App.toast(card.name + ' をバトル場に出しました！');
+        this.animateCardPlacement(targetEl || document.getElementById('playerActiveSpot'));
+        this.broadcastOnlineAction('play_basic', { card: placed, slotType: 'active' });
+        this.render();
+        return;
+      }
+
+      if (targetSlotType === 'bench') {
+        if (p.bench.length >= 5) {
+          App.toast('ベンチがいっぱいです（最大5匹）。', true);
+          return;
+        }
+        const placed = p.hand.splice(handIndex, 1)[0];
+        placed._turnPlayed = this.state.turnNumber;
+        if (!placed.maxHp) placed.maxHp = Number(placed.hp) || 70;
+        p.bench.push(placed);
+        this.log('✦ ' + card.name + ' をベンチに出しました。');
+        App.toast(card.name + ' をベンチに出しました！');
+        this.animateCardPlacement(targetEl);
+        this.broadcastOnlineAction('play_basic', { card: placed, slotType: 'bench' });
+        this.render();
+        return;
+      }
+    },
+
+    executeEvolution(handIndex, targetPokemon, targetSlotEl, player) {
+      const p = player || this.state.player;
+      if (this.state.phase && this.state.phase !== 'battle') return;
+      const evo = p.hand.splice(handIndex, 1)[0];
+      if (!evo || !targetPokemon) return;
+
+      targetPokemon.attachedCards = targetPokemon.attachedCards || [];
+      targetPokemon.attachedCards.unshift({
+        name: targetPokemon.name,
+        category: targetPokemon.category,
+        type: targetPokemon.type,
+        hp: targetPokemon.maxHp || targetPokemon.hp,
+        maxHp: targetPokemon.maxHp || targetPokemon.hp,
+        preEvolution: targetPokemon.preEvolution,
+        image: targetPokemon.image,
+        isEx: targetPokemon.isEx
+      });
+
+      const damageTaken = (targetPokemon.maxHp || 70) - (targetPokemon.hp || 70);
+      targetPokemon.name = evo.name;
+      targetPokemon.category = evo.category;
+      targetPokemon.type = evo.type || targetPokemon.type;
+      targetPokemon.maxHp = Number(evo.hp) || targetPokemon.maxHp + 50;
+      targetPokemon.hp = Math.max(10, targetPokemon.maxHp - damageTaken);
+      targetPokemon.attack1Name = evo.attack1Name;
+      targetPokemon.attack1Damage = evo.attack1Damage;
+      targetPokemon.attack1Energy = evo.attack1Energy;
+      targetPokemon.attack1Text = evo.attack1Text;
+      targetPokemon.attack1Code = evo.attack1Code;
+      targetPokemon.attack2Name = evo.attack2Name;
+      targetPokemon.attack2Damage = evo.attack2Damage;
+      targetPokemon.attack2Energy = evo.attack2Energy;
+      targetPokemon.attack2Text = evo.attack2Text;
+      targetPokemon.attack2Code = evo.attack2Code;
+      targetPokemon.abilityName = evo.abilityName || targetPokemon.abilityName;
+      targetPokemon.abilityText = evo.abilityText || targetPokemon.abilityText;
+      targetPokemon.abilityCode = evo.abilityCode || targetPokemon.abilityCode;
+      targetPokemon.image = evo.image || targetPokemon.image;
+      targetPokemon.isEx = evo.isEx || targetPokemon.isEx;
+      targetPokemon.preEvolution = evo.preEvolution;
+      targetPokemon.weakness = evo.weakness || targetPokemon.weakness;
+      targetPokemon.resistance = evo.resistance || targetPokemon.resistance;
+      targetPokemon.retreat = evo.retreat != null ? evo.retreat : targetPokemon.retreat;
+      targetPokemon.status = null;
+      targetPokemon._turnPlayed = this.state.turnNumber;
+
+      this.log('✨ 進化！ ' + targetPokemon.name + ' に進化しました！(HP: ' + targetPokemon.hp + '/' + targetPokemon.maxHp + ')');
+      if (window.App && typeof window.App.toast === 'function') App.toast(targetPokemon.name + ' に進化しました！');
+
+      const isTargetActive = targetPokemon === p.active;
+      const targetBenchIdx = isTargetActive ? -1 : (p.bench ? p.bench.indexOf(targetPokemon) : -1);
+      if (typeof this.broadcastOnlineAction === 'function') {
+        this.broadcastOnlineAction('evolve', {
+          evoCard: evo,
+          targetSlotType: isTargetActive ? 'active' : 'bench',
+          benchIdx: targetBenchIdx
+        });
+      }
+
+      if (targetSlotEl) {
+        targetSlotEl.classList.add('evolution-flash');
+        setTimeout(() => targetSlotEl.classList.remove('evolution-flash'), 750);
+      }
+
+      if (typeof this.render === 'function') this.render();
+    },
+
+    handleDropOnPokemon(handIndex, targetPokemon, targetSlotEl, isBench, benchIdx) {
+      if (handIndex == null) return;
+      const p = this.state.player;
+      const card = p.hand[handIndex];
+      if (!card) return;
+
+      if (this.isEnergy(card)) {
+        if (!targetPokemon) {
+          App.toast('エネルギーを付けるポケモンがいません。', true);
+          return;
+        }
+        this.applyEnergyAttachment(handIndex, targetPokemon, targetSlotEl);
+        return;
+      }
+
+      if (this.isEvolution(card)) {
+        if (!targetPokemon) {
+          App.toast('進化させる対象ポケモンがいません。', true);
+          return;
+        }
+        const check = this.canEvolveFrom(card, targetPokemon);
+        if (!check.can) {
+          App.toast(check.reason || "【" + card.name + "】は " + targetPokemon.name + " には進化できません。", true);
+          return;
+        }
+        this.executeEvolution(handIndex, targetPokemon, targetSlotEl);
+        return;
+      }
+
+      if (this.isBasic(card)) {
+        if (!targetPokemon && !isBench) {
+          this.placeBasicPokemon(handIndex, 'active', targetSlotEl);
+          return;
+        }
+        if (targetPokemon === p.active && p.bench.length < 5) {
+          this.placeBasicPokemon(handIndex, 'bench');
+          return;
+        }
+        App.toast('たねポケモンは空いているスロット（ベンチ空など）に出してください。', true);
+        return;
+      }
+
+      // トレーナー/グッズ/サポートカード
+      const cat = String(card.category || '');
+      const isSupp = cat.includes('サポート') || cat.includes('トレーナー') || cat.toLowerCase().includes('supporter');
+      if (isSupp) {
+        if (this.isFirstPlayerFirstTurn('player')) {
+          App.toast('先攻の最初の番はサポートカードを使用できません。', true);
+          return;
+        }
+        if (p.supporterUsed) {
+          App.toast('サポートカードは1ターンに1枚までしか使えません。', true);
+          return;
+        }
+      }
+      this.playTrainerCard(handIndex, card, isSupp ? 'サポート' : 'グッズ', targetPokemon);
+    },
+
+    handleDropOnEmptyBench(handIndex, targetSlotEl, benchIdx) {
+      if (handIndex == null) return;
+      const p = this.state.player;
+      const card = p.hand[handIndex];
+      if (!card) return;
+
+      if (this.isBasic(card)) {
+        this.placeBasicPokemon(handIndex, 'bench', targetSlotEl);
+        return;
+      }
+      App.toast('空のベンチスロットにはたねポケモンのみ出せます。', true);
+    },
+
+    handleDropOnField(handIndex) {
+      if (handIndex == null) return;
+      const p = this.state.player;
+      const card = p.hand[handIndex];
+      if (!card) return;
+
+      if (this.isBasic(card)) {
+        if (!p.active) {
+          this.placeBasicPokemon(handIndex, 'active');
+        } else if (p.bench.length < 5) {
+          this.placeBasicPokemon(handIndex, 'bench');
+        } else {
+          App.toast('ベンチがいっぱいです。', true);
+        }
+        return;
+      }
+
+      if (this.isEvolution(card)) {
+        this.promptEvolution(handIndex, card);
+        return;
+      }
+
+      if (this.isEnergy(card)) {
+        this.promptEnergyAttachment(handIndex, card);
+        return;
+      }
+
+      // トレーナーカード
+      const cat = String(card.category || '');
+      const isSupp = cat.includes('サポート') || cat.includes('トレーナー') || cat.toLowerCase().includes('supporter');
+      if (isSupp) {
+        if (this.isFirstPlayerFirstTurn('player')) {
+          App.toast('先攻の最初の番はサポートカードを使用できません。', true);
+          return;
+        }
+        if (p.supporterUsed) {
+          App.toast('サポートカードは1ターンに1枚までしか使えません。', true);
+          return;
+        }
+      }
+      this.playTrainerCard(handIndex, card, isSupp ? 'サポート' : 'グッズ');
+    },
+
+    promptEvolution(handIndex, evoCard) {
+      const p = this.state.player;
+      const allTargets = [];
+      if (p.active) allTargets.push({ target: p.active, where: 'バトル場' });
+      p.bench.forEach((b) => allTargets.push({ target: b, where: 'ベンチ' }));
+
+      // canEvolveFrom でフィルタリング
+      const eligible = allTargets.filter((e) => this.canEvolveFrom(evoCard, e.target).can);
+
+      if (!eligible.length) {
+        const matchingBase = allTargets.find((e) => this.matchesEvolutionLine(evoCard, e.target));
+        if (matchingBase) {
+          const check = this.canEvolveFrom(evoCard, matchingBase.target);
+          App.toast(check.reason || '進化できません。', true);
+          return;
+        }
+        const preEvoName = this.getPreEvolutionName(evoCard);
+        App.toast("【" + evoCard.name + "】は「" + preEvoName + "」が場にいないと進化できません。", true);
+        return;
+      }
+
+      // もし対象が1匹のみなら即座に進化！
+      if (eligible.length === 1) {
+        this.executeEvolution(handIndex, eligible[0].target);
+        return;
+      }
+
+      this.showChoiceModal(eligible.map((e) => ({ name: e.where + ': ' + e.target.name, type: e.target.type, hp: e.target.hp, category: e.target.category })), {
+        title: '進化させる対象を選択',
+        desc: evoCard.name + ' をどのポケモンに重ねて進化させますか？'
+      }, (idx) => {
+        const chosen = eligible[idx]?.target;
+        if (chosen) {
+          this.executeEvolution(handIndex, chosen);
+        }
+      });
+    },
+
+    // トレーナーカードを「場に出した」ように見せるアニメーション
+    animateTrainerCardPlay(card, kind) {
+      return new Promise((resolve) => {
+        try {
+          // カードのHTMLを生成
+          const cardHtml = window.CardSystem && window.CardSystem.createCardHtml ?
+          window.CardSystem.createCardHtml(card, { size: 'hand' }) :
+          '<div style="background:rgba(255,209,102,0.2);border:2px solid #ffd166;border-radius:12px;width:110px;height:154px;display:flex;align-items:center;justify-content:center;color:#ffd166;font-weight:900;font-size:13px;">' + this.escape(card.name) + '</div>';
+
+          // 種別バッジ色
+          const kindColor = kind === 'サポート' ? '#a29bfe' : kind === 'グッズ' ? '#2ec4b6' : '#ffd166';
+          const kindBg = kind === 'サポート' ? 'rgba(162,155,254,0.2)' : kind === 'グッズ' ? 'rgba(46,196,182,0.2)' : 'rgba(255,209,102,0.2)';
+
+          // オーバーレイ生成
+          const overlay = document.createElement('div');
+          overlay.className = 'trainer-card-play-overlay';
+          overlay.innerHTML =
+          '<div class="trainer-card-play-card">' +
+          '<div class="trainer-card-play-label">' +
+          '<span class="trainer-kind-badge" style="background:' + kindBg + ';color:' + kindColor + ';border-color:' + kindColor + '50;">' + this.escape(kind) + '</span>' +
+          this.escape(card.name) +
+          '</div>' +
+          cardHtml +
+          '</div>';
+          document.body.appendChild(overlay);
+
+          // 効果テキストバナー
+          const banner = document.createElement('div');
+          banner.className = 'trainer-effect-banner';
+          const effectText = card.attack1Text || card.description || kind + 'カードを使用！';
+          const shortText = effectText.length > 40 ? effectText.slice(0, 40) + '…' : effectText;
+          banner.textContent = shortText;
+          document.body.appendChild(banner);
+
+          // アニメーション完了後にクリーンアップ & resolve
+          setTimeout(() => {
+            overlay.remove();
+            banner.remove();
+            resolve();
+          }, 900);
+        } catch (err) {
+          console.error('animateTrainerCardPlay error:', err);
+          resolve(); // エラーでも続行
+        }
+      });
+    },
+
+    createBoardSnapshot() {
+      const snapPlayer = (pl) => {
+        if (!pl) return null;
+        return {
+          hand: [...(pl.hand || [])],
+          discard: [...(pl.discard || [])],
+          deck: [...(pl.deck || [])],
+          bench: [...(pl.bench || [])],
+          prizes: [...(pl.prizes || [])],
+          active: pl.active,
+          supporterUsed: !!pl.supporterUsed,
+          energyAttached: !!pl.energyAttached,
+          retreated: !!pl.retreated
+        };
+      };
+      return {
+        player: snapPlayer(this.state.player),
+        opponent: snapPlayer(this.state.opponent)
+      };
+    },
+
+    restoreBoardSnapshot(snapshot) {
+      if (!snapshot) return;
+      const restoreP = (target, saved) => {
+        if (!target || !saved) return;
+        target.hand = [...saved.hand];
+        target.discard = [...saved.discard];
+        target.deck = [...saved.deck];
+        target.bench = [...saved.bench];
+        target.prizes = [...saved.prizes];
+        target.active = saved.active;
+        target.supporterUsed = saved.supporterUsed;
+        target.energyAttached = saved.energyAttached;
+        target.retreated = saved.retreated;
+      };
+      restoreP(this.state.player, snapshot.player);
+      restoreP(this.state.opponent, snapshot.opponent);
+    },
+
+    playTrainerCard(handIndex, card, kind, targetPokemon) {
+      const p = this.state.player;
+      // 効果中断(cant等)時の復元用スナップショット
+      const snapshot = this.createBoardSnapshot();
+
+      p.hand.splice(handIndex, 1);
+      p.discard.push(card);
+
+      if (kind === 'サポート') {
+        p.supporterUsed = true;
+      }
+
+      this.log('📜 【' + kind + '】「' + card.name + '」を使用しました！');
+
+      this.broadcastOnlineAction('play_trainer', {
+        card: card,
+        kind: kind
+      });
+
+      // 手札表示を即座に更新（カードが消えるように見せる）
+      this.render();
+
+      // アニメーション → 効果実行
+      this.animateTrainerCardPlay(card, kind).then(async () => {
+        let execCtx = null;
+        // ActionEngine で効果実行
+        const code = card.attack1Code || card.abilityCode;
+        if (code && window.executeCardEffectCode) {
+          try {
+            execCtx = await window.executeCardEffectCode(
+              code,
+              { players: [this.state.player, this.state.opponent], logs: this.state.logs },
+              p,
+              'trainer',
+              { card: card, pokemon: targetPokemon || p.active }
+            );
+          } catch (e) {
+            if (e && e.isEffectAbort) {
+              execCtx = { isCancelled: true, cancelReason: e.message ? e.message.replace(/^EFFECT_ABORTED:\s*/, '') : '' };
+            } else {
+              console.error('Trainer card effect error:', e);
+              this.log("⚠️ 効果実行エラー: " + e.message);
+            }
+          }
+        } else {
+          // デフォルト効果フォールバック
+          if (card.name.includes('アメ')) {
+            const ok = await this.executeRareCandy(p);
+            if (ok === false) {
+              execCtx = { isCancelled: true, cancelReason: '発動条件を満たさなかったため' };
+            }
+          } else if (card.name.includes('博士')) {
+            p.discard.push(...p.hand);
+            p.hand = [];
+            for (let i = 0; i < 7; i++) if (p.deck.length) p.hand.push(p.deck.shift());
+            this.log("手札をトラッシュし、山札から7枚引きました。");
+          } else if (card.name.includes('きずぐすり')) {
+            const healTarget = targetPokemon || p.active;
+            if (healTarget) {
+              const oldHp = healTarget.hp;
+              healTarget.hp = Math.min(healTarget.maxHp, healTarget.hp + 30);
+              this.log(healTarget.name + "のHPを30回復しました。(" + oldHp + " → " + healTarget.hp + ")");
+            }
+          } else if (card.name.includes('いれかえ') && p.bench.length) {
+            const n = p.bench.shift();
+            p.bench.push(p.active);
+            p.active = n;
+            this.log("バトルポケモンを交代しました。(新しいバトルポケモン: " + p.active.name + ")");
+          }
+        }
+
+        if (execCtx && execCtx.isCancelled) {
+          // cant()または不発時のロールバック: 盤面と手札を復元
+          this.restoreBoardSnapshot(snapshot);
+
+          // 安全策: 手札に含まれていなければ確実に手札に戻す
+          if (!p.hand.includes(card)) {
+            const discIdx = p.discard.lastIndexOf(card);
+            if (discIdx >= 0) p.discard.splice(discIdx, 1);
+            const insertIdx = (typeof handIndex === 'number' && handIndex >= 0) ? Math.min(handIndex, p.hand.length) : p.hand.length;
+            p.hand.splice(insertIdx, 0, card);
+          }
+          if (kind === 'サポート') {
+            p.supporterUsed = false;
+          }
+
+          this.broadcastOnlineAction('cancel_trainer', {
+            card: card,
+            kind: kind
+          });
+
+          this.log('↩️ 【' + card.name + '】を手札に戻しました。');
+          this.render();
+          return;
+        }
+
+        this.render();
+      });
+    },
+
+
+    retreatActive() {
+      const p = this.state.player;
+      if (this.state.turnPlayer !== 'player') return;
+      if (!p.active) return;
+      if (this.isBlocked('retreat', p.active, p)) {
+        App.toast('効果によりにげることは禁止されています。', true);
+        return;
+      }
+      if (p.retreated) {
+        App.toast('にげるは1ターンに1回のみ行えます。', true);
+        return;
+      }
+      if (!p.bench.length) {
+        App.toast('ベンチに交代できるポケモンがいません。', true);
+        return;
+      }
+      const retreatCost = Number(p.active.retreat) || 0;
+      if ((p.active.energy || 0) < retreatCost) {
+        App.toast("にげるエネルギーが足りません (必要: " + retreatCost + "個 / 現在: " + (p.active.energy || 0) + "個)", true);
+        return;
+      }
+
+      this.showChoiceModal(p.bench.map((b) => ({ name: b.name, type: b.type, hp: b.hp, category: '交代先' })), {
+        title: 'バトル場に出すポケモンを選択',
+        desc: "エネルギーを" + retreatCost + "個トラッシュして交代します。"
+      }, (idx) => {
+        p.active.energy -= retreatCost;
+        if (p.active.attachedEnergies) {
+          for (let i = 0; i < retreatCost; i++) p.active.attachedEnergies.pop();
+        }
+        if (p.active) {
+          p.active.usedLastTurn = false;
+        }
+        const nextActive = p.bench.splice(idx, 1)[0];
+        p.bench.push(p.active);
+        p.active = nextActive;
+        p.retreated = true;
+
+        this.log("🏃 にげる！ " + nextActive.name + " がバトル場に出ました。");
+        this.broadcastOnlineAction('retreat', {
+          benchIdx: idx,
+          retreatCost: retreatCost
+        });
+        this.render();
+      });
+    },
+
+    declareAttack(attackIndex) {
+      if (this.state.turnPlayer !== 'player') return;
+      const attacker = this.state.player.active;
+      const defender = this.state.opponent.active;
+
+      if (!attacker || !defender) return;
+
+      if (this.isBlocked('attack', attacker, this.state.player)) {
+        App.toast('効果によりワザの使用は禁止されています。', true);
+        return;
+      }
+
+      // 先攻第1ターンは攻撃不可ルール
+      if (this.isFirstPlayerFirstTurn('player')) {
+        App.toast('先攻の最初の番はワザを使うことができません。', true);
+        return;
+      }
+
+      const atkName = attackIndex === 1 ? attacker.attack1Name : attacker.attack2Name;
+      const atkDamage = attackIndex === 1 ? attacker.attack1Damage : attacker.attack2Damage;
+      const atkEnergy = attackIndex === 1 ? attacker.attack1Energy : attacker.attack2Energy;
+      const atkCode = attackIndex === 1 ? attacker.attack1Code : attacker.attack2Code;
+
+      // エネルギーコストチェック
+      const energyCheck = this.checkEnergyRequirement(attacker, atkEnergy);
+      if (!energyCheck.canAttack) {
+        if (energyCheck.reason === 'type') {
+          App.toast("必要エネルギーの属性が足りません (" + energyCheck.missingDesc + ")", true);
+        } else {
+          App.toast("エネルギーが足りません (必要: " + energyCheck.reqCount + "個 / 現在: " + energyCheck.currentCount + "個)", true);
+        }
+        return;
+      }
+
+      const stadiumTicker = document.getElementById('stadiumTicker');
+      if (stadiumTicker) stadiumTicker.textContent = "あなた: 「" + atkName + "」を発動！";
+
+      // 突進アニメーション発火
+      const attackerEl = document.getElementById('playerActiveSpot');
+      if (attackerEl) {
+        attackerEl.classList.add('lunge-player');
+        setTimeout(() => attackerEl.classList.remove('lunge-player'), 650);
+      }
+
+      setTimeout(async () => {
+        // awaitで処理が止まる間に状態が変わる可能性があるため、最新の参照を安全に取得
+        const currentAttacker = this.state.player?.active;
+        const currentDefender = this.state.opponent?.active;
+        if (!currentAttacker || !currentDefender) {
+          console.warn('[declareAttack] attacker or defender became null before attack resolved.');
+          this.render();
+          return;
+        }
+
+        const defHpBefore = Number(currentDefender.hp) || 0;
+        this.log("⚔️ " + currentAttacker.name + " の「" + atkName + "」！");
+
+        let execCtx = null;
+        // 処理は全部効果エディター (atkCode)
+        if (atkCode && atkCode.trim() && window.executeCardEffectCode) {
+          try {
+            execCtx = await window.executeCardEffectCode(
+              atkCode,
+              { players: [this.state.player, this.state.opponent], logs: this.state.logs },
+              this.state.player,
+              'attack',
+              { card: currentAttacker, pokemon: currentAttacker, attackIndex: attackIndex }
+            );
+          } catch (e) {
+            if (e && e.isEffectAbort) {
+              execCtx = { isCancelled: true, cancelReason: e.message };
+            } else {
+              console.error('Attack effect error:', e);
+              this.log("⚠️ ワザ効果コード実行エラー: " + e.message);
+            }
+          }
+        } else {
+          // 効果コード未設定カードのフォールバック（表示用ダメージ文字列から数値を抽出）
+          const numericDmg = parseInt(String(atkDamage || '').replace(/[^\d]/g, ''), 10) || 0;
+          if (numericDmg > 0 && window.ORBITAL_EFFECT_API) {
+            window.ORBITAL_EFFECT_API.damage(
+              { self: this.state.player, opponent: this.state.opponent, game: this.state },
+              currentDefender,
+              numericDmg
+            );
+          }
+        }
+
+        // cant() による中断判定（ワザを使っていない扱いとし、番を終了しない）
+        if (execCtx && execCtx.isCancelled) {
+          this.log("⚠️ 条件を満たさなかったため、ワザは使用されませんでした。（自分の番は継続します）");
+          this.render();
+          return;
+        }
+
+        // await後の最新参照を再取得（コイントス等のUI待機でポインタが変わる可能性あり）
+        const postAtk = this.state.player?.active;
+        const postDef = this.state.opponent?.active;
+        const defHpAfter = postDef ? Number(postDef.hp) || 0 : 0;
+        const actualDamage = Math.max(0, defHpBefore - defHpAfter);
+
+        this.broadcastOnlineAction('attack', {
+          atkName: atkName,
+          damage: atkDamage,
+          actualDamage: actualDamage,
+          attackIndex: attackIndex,
+          defenderHp: defHpAfter,
+          attackerHp: postAtk ? postAtk.hp : 0,
+          status: postDef ? postDef.status : null
+        });
+
+        // きぜつ判定
+        if (postDef && postDef.hp <= 0) {
+          this.handleKnockout(this.state.player, this.state.opponent);
+        } else if (postAtk && postAtk.hp <= 0) {
+          this.handleKnockout(this.state.opponent, this.state.player);
+        } else {
+          this.render();
+          // 攻撃宣言後はターン終了
+          setTimeout(() => this.endTurn(), 800);
+        }
+      }, 350);
+    },
+
+    normalizeType(t) {
+      if (!t) return '無';
+      const s = String(t).trim().toLowerCase();
+      if (s === '無色' || s === '無' || s === 'colorless' || s === 'any' || s === 'normal') return '無';
+      if (s === '炎' || s === '火' || s === 'fire') return '炎';
+      if (s === '水' || s === 'water') return '水';
+      if (s === '雷' || s === '電気' || s === 'lightning' || s === 'electric') return '雷';
+      if (s === '草' || s === 'grass') return '草';
+      if (s === '超' || s === 'エスパー' || s === 'psychic') return '超';
+      if (s === '闘' || s === '格闘' || s === 'fighting') return '闘';
+      if (s === '悪' || s === '闇' || s === 'dark' || s === 'darkness') return '悪';
+      if (s === '鋼' || s === 'メタル' || s === 'metal' || s === 'steel') return '鋼';
+      if (s === 'ドラゴン' || s === '竜' || s === 'dragon') return 'ドラゴン';
+      if (s === '光' || s === 'light') return '光';
+      if (s === '風' || s === 'wind') return '風';
+      if (s === '土' || s === 'earth') return '土';
+      return s;
+    },
+
+    parseEnergyList(energyStr) {
+      if (window.CardSystem && typeof window.CardSystem.parseEnergyList === 'function') {
+        return window.CardSystem.parseEnergyList(energyStr);
+      }
+      if (energyStr == null) return [];
+      if (typeof energyStr === 'number') {
+        return Array(Math.max(0, Math.floor(energyStr))).fill('無');
+      }
+      const raw = String(energyStr).trim();
+      if (!raw || /^(0|なし|0個|不要|none|free|-|ー|—)$/i.test(raw)) {
+        return [];
+      }
+      if (/^\d+$/.test(raw)) {
+        return Array(Number(raw)).fill('無');
+      }
+
+      let normalized = raw.replace(/(ドラゴン|無色|colorless|lightning|fighting|darkness|psychic|dragon|grass|metal|water|fire|[草炎火水雷超闘悪鋼無光闇風土])\s*(?:[×*x]|個|\s)\s*(\d+)個?/gi, '$1$2');
+      const chunks = normalized.split(/[\s,、，/／・+＋|｜]+/).filter(Boolean);
+      const result = [];
+      const tokenRegex = /(ドラゴン|無色|colorless|lightning|fighting|darkness|psychic|dragon|grass|metal|water|fire|[草炎火水雷超闘悪鋼無光闇風土])(?:\s*[×*x]?\s*(\d+))?/gi;
+
+      for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i];
+        if (/^\d+個?$/.test(chunk)) {
+          const num = parseInt(chunk, 10) || 0;
+          for (let k = 0; k < num; k++) result.push('無');
+          continue;
+        }
+        let matchFound = false;
+        tokenRegex.lastIndex = 0;
+        let m;
+        while ((m = tokenRegex.exec(chunk)) !== null) {
+          matchFound = true;
+          const type = m[1];
+          const count = m[2] ? parseInt(m[2], 10) : 1;
+          for (let k = 0; k < count; k++) {
+            result.push(type);
+          }
+        }
+        if (!matchFound && chunk.length === 1 && !/\s/.test(chunk)) {
+          result.push(chunk);
+        }
+      }
+      return result;
+    },
+
+    parseEnergyCount(energyStr) {
+      return this.parseEnergyList(energyStr).length;
+    },
+
+    checkEnergyRequirement(attacker, energyReq) {
+      const currentCount = Number(attacker?.energy || 0);
+      const reqList = this.parseEnergyList(energyReq);
+      const reqCount = reqList.length;
+
+      if (reqCount === 0) {
+        return { canAttack: true, reason: '', reqCount: 0, currentCount: currentCount, reqList: [], missingTypes: [], missingDesc: '' };
+      }
+
+      if (currentCount < reqCount) {
+        return {
+          canAttack: false,
+          reason: 'count',
+          reqCount: reqCount,
+          currentCount: currentCount,
+          reqList: reqList,
+          missingTypes: [],
+          missingDesc: `エネ不足 (${currentCount}/${reqCount})`
+        };
+      }
+
+      // 場のポケモンに付いているエネルギー属性一覧の取得
+      let attached = [];
+      if (Array.isArray(attacker?.attachedEnergies) && attacker.attachedEnergies.length > 0) {
+        attached = [...attacker.attachedEnergies];
+      } else if (Array.isArray(attacker?.attachedCards)) {
+        attacker.attachedCards.forEach((c) => {
+          if (c && (String(c.category || '').includes('エネルギー') || !c.hp)) {
+            attached.push(c.type || '無');
+          }
+        });
+      }
+      while (attached.length < currentCount) {
+        attached.push(attacker?.type || '無');
+      }
+
+      const avail = attached.map((e) => this.normalizeType(e));
+
+      const reqSpecific = [];
+      let reqColorlessCount = 0;
+      reqList.forEach((t) => {
+        const norm = this.normalizeType(t);
+        if (norm === '無') {
+          reqColorlessCount++;
+        } else {
+          reqSpecific.push(norm);
+        }
+      });
+
+      const remainingAvail = [...avail];
+      const missingTypes = [];
+      for (const reqType of reqSpecific) {
+        const idx = remainingAvail.indexOf(reqType);
+        if (idx >= 0) {
+          remainingAvail.splice(idx, 1);
+        } else {
+          missingTypes.push(reqType);
+        }
+      }
+
+      if (missingTypes.length > 0) {
+        const symMap = (window.CardSystem && window.CardSystem.typeSymbols) || {};
+        const missingFormatted = missingTypes.map((t) => (symMap[t] || '') + t).join(', ');
+        return {
+          canAttack: false,
+          reason: 'type',
+          reqCount: reqCount,
+          currentCount: currentCount,
+          reqList: reqList,
+          missingTypes: missingTypes,
+          missingDesc: `属性不一致 (${missingFormatted})`
+        };
+      }
+
+      if (remainingAvail.length < reqColorlessCount) {
+        return {
+          canAttack: false,
+          reason: 'count',
+          reqCount: reqCount,
+          currentCount: currentCount,
+          reqList: reqList,
+          missingTypes: [],
+          missingDesc: `エネ不足 (${currentCount}/${reqCount})`
+        };
+      }
+
+      return {
+        canAttack: true,
+        reason: '',
+        reqCount: reqCount,
+        currentCount: currentCount,
+        reqList: reqList,
+        missingTypes: [],
+        missingDesc: ''
+      };
+    },
+
+    handleKnockout(scorer, victim) {
+      const koPokemon = victim.active;
+      // nullガード: 既にきぜつ処理済み or 状態が変わっていた場合はスキップ
+      if (!koPokemon) {
+        console.warn('[handleKnockout] victim.active is null, skipping duplicate knockout.');
+        return;
+      }
+      this.log("💀 " + (koPokemon.name || 'ポケモン') + " はきぜつした！");
+      victim.discard.push(koPokemon);
+      victim.active = null;
+
+      // ex判定 (ポケモンexがきぜつしたとき、相手はサイドを2枚とる)
+      const isEx = !!(koPokemon.isEx || String(koPokemon.category || '').includes('ex') || /[\s_・-]ex|ex/i.test(String(koPokemon.name || '')) || String(koPokemon.rarity || '').toLowerCase() === 'ex');
+
+      const prizeCount = isEx ? Math.min(2, scorer.prizes.length) : Math.min(1, scorer.prizes.length);
+      for (let i = 0; i < prizeCount; i++) {
+        if (scorer.prizes.length > 0) {
+          const prize = scorer.prizes.shift();
+          scorer.hand.push(prize);
+        }
+      }
+
+      if (isEx) {
+        this.log("🌟 【exルール適用！】相手のポケモンex（" + (koPokemon.name || 'ポケモン') + "）がきぜつしたため、" + (scorer.name || '相手') + " はサイドを【2枚】とりました！（残りサイド: " + scorer.prizes.length + "枚）");
+      } else {
+        this.log("🏆 【" + (scorer.name || '相手') + "】がサイドを1枚獲得！（残りサイド: " + scorer.prizes.length + "枚）");
+      }
+
+      // きぜつしたポケモン自身の onKnockout イベントの発火
+      if (koPokemon?.abilityCode && window.executeCardEffectCode) {
+        try {
+          window.executeCardEffectCode(koPokemon.abilityCode, { players: [victim, scorer] }, victim, 'onKnockout', { koPokemon, isEx, pokemon: koPokemon, card: koPokemon });
+        } catch (e) {
+          console.error('onKnockout ability error:', e);
+        }
+      }
+
+      // 相手撃破時イベント onKnockoutOpponent の発火
+      if (scorer.active?.abilityCode && window.executeCardEffectCode) {
+        try {
+          window.executeCardEffectCode(scorer.active.abilityCode, { players: [scorer, victim] }, scorer, 'onKnockoutOpponent', { koPokemon, isEx });
+        } catch (e) {
+          console.error('onKnockoutOpponent ability error:', e);
+        }
+      }
+
+      // 自身の仲間（味方）きぜつ時イベント allyKnockedOut / 味方気絶 の発火
+      const ALLY_KO_REGEX = /event\s*\.\s*on\s*\(\s*['"`](allyKnockedOut|onAllyKnockout|allyKnockout|ally_knocked_out|allyFainted|味方気絶|仲間気絶|自分のポケモン気絶|自分の仲間が気絶したら|仲間が気絶したら|味方が気絶したら)['"`]/;
+      const victimAllies = [...(victim.bench || [])];
+      if (victim.active) victimAllies.push(victim.active);
+      victimAllies.forEach((allyPk) => {
+        if (allyPk?.abilityCode && ALLY_KO_REGEX.test(allyPk.abilityCode) && window.executeCardEffectCode) {
+          try {
+            window.executeCardEffectCode(allyPk.abilityCode, { players: [victim, scorer] }, victim, 'allyKnockedOut', { koPokemon, isEx, pokemon: allyPk, card: allyPk });
+          } catch (e) {
+            console.error('allyKnockedOut ability error:', e);
+          }
+        }
+      });
+
+      // 勝利判定 1: サイドをすべて取り切った
+      if (scorer.prizes.length === 0) {
+        this.finishBattle(scorer.id, 'すべてのサイドカードを取り切りました！');
+        return;
+      }
+
+      // 勝利判定 2: 相手のベンチが全滅
+      if (!victim.bench.length) {
+        this.finishBattle(scorer.id, '相手の場にポケモンがいなくなりました！');
+        return;
+      }
+
+      // 交代ポケモンの選出
+      if (victim.id === 'player') {
+        this.showChoiceModal(victim.bench.map((b) => ({ name: b.name, type: b.type, hp: b.hp, category: 'バトル場へ' })), {
+          title: 'きぜつによるバトルポケモン交代',
+          desc: 'バトル場に出すベンチポケモンを選択してください。'
+        }, (idx) => {
+          victim.active = victim.bench.splice(idx, 1)[0];
+          this.log("🔄 プレイヤーは " + victim.active.name + " をバトル場に出しました。");
+          if (this.state.mode === 'online') {
+            this.broadcastOnlineAction('promote_active', { benchIdx: idx });
+          }
+          this.render();
+          if (this.state.mode !== 'online') {
+            setTimeout(() => this.endTurn(), 600);
+          }
+        });
+      } else if (this.state.mode === 'online') {
+        // オンライン対戦時、相手の交代はリモートアクション 'promote_active' を待つ
+        this.log("⏳ 相手がバトル場に出すポケモンを選択中...");
+        this.render();
+      } else {
+        // AI はHPが一番高いポケモンをバトル場へ昇格
+        victim.bench.sort((a, b) => b.hp - a.hp);
+        victim.active = victim.bench.shift();
+        this.log("🔄 AIライバルは " + victim.active.name + " をバトル場に出しました。");
+        this.render();
+        setTimeout(() => this.endTurn(), 600);
+      }
+    },
+
+    async runAiTurn() {
+      if (this.state.mode !== 'ai' || this.state.phase !== 'battle' || this.state.turnPlayer !== 'opponent') return;
+      const ai = this.state.opponent;
+      const oppTicker = document.getElementById('stadiumTicker');
+
+      // 0. AI思考開始
+      if (oppTicker) oppTicker.textContent = '相手が次の行動を思考中...';
+      await this.wait(600);
+
+      // 1. ベンチ出し
+      const basicIdx = ai.hand.findIndex((c) => this.isBasic(c));
+      if (basicIdx >= 0 && ai.bench.length < 3) {
+        const basic = ai.hand.splice(basicIdx, 1)[0];
+        basic._turnPlayed = this.state.turnNumber;
+        ai.bench.push(basic);
+        this.log("🤖 AIライバルは " + basic.name + " をベンチに出しました。");
+        if (oppTicker) oppTicker.textContent = "相手: " + basic.name + " をベンチに召喚！";
+        this.render();
+        const newBenchEl = document.querySelectorAll('#oppBenchRow .bench-slot-occupied')[ai.bench.length - 1];
+        if (newBenchEl) this.animateCardPlacement(newBenchEl);
+        await this.wait(750);
+      }
+
+      // 1.5. AI進化 (有効な進化先がある場合のみ)
+      const evoIdx = ai.hand.findIndex((c) => this.isEvolution(c));
+      if (evoIdx >= 0) {
+        const evoCard = ai.hand[evoIdx];
+        const targets = [
+        ...(ai.active ? [ai.active] : []),
+        ...ai.bench];
+
+        const validTarget = targets.find((t) => {
+          const check = this.canEvolveFrom(evoCard, t);
+          // AIは先攻1ターン目制限を適用 (失敗しないようフォールバックなし)
+          return check.can;
+        });
+        if (validTarget) {
+          const evo = ai.hand.splice(evoIdx, 1)[0];
+          validTarget.attachedCards = validTarget.attachedCards || [];
+          validTarget.attachedCards.unshift({
+            name: validTarget.name,
+            category: validTarget.category,
+            type: validTarget.type,
+            hp: validTarget.maxHp || validTarget.hp,
+            maxHp: validTarget.maxHp || validTarget.hp,
+            preEvolution: validTarget.preEvolution,
+            image: validTarget.image,
+            isEx: validTarget.isEx
+          });
+          const damageTaken = (validTarget.maxHp || 70) - (validTarget.hp || 70);
+          validTarget.name = evo.name;
+          validTarget.category = evo.category;
+          validTarget.type = evo.type || validTarget.type;
+          validTarget.maxHp = Number(evo.hp) || validTarget.maxHp + 50;
+          validTarget.hp = Math.max(10, validTarget.maxHp - damageTaken);
+          validTarget.attack1Name = evo.attack1Name;
+          validTarget.attack1Damage = evo.attack1Damage;
+          validTarget.attack1Energy = evo.attack1Energy;
+          validTarget.attack1Text = evo.attack1Text;
+          validTarget.attack1Code = evo.attack1Code;
+          validTarget.attack2Name = evo.attack2Name;
+          validTarget.attack2Damage = evo.attack2Damage;
+          validTarget.attack2Energy = evo.attack2Energy;
+          validTarget.attack2Text = evo.attack2Text;
+          validTarget.attack2Code = evo.attack2Code;
+          validTarget.abilityName = evo.abilityName || validTarget.abilityName;
+          validTarget.abilityText = evo.abilityText || validTarget.abilityText;
+          validTarget.abilityCode = evo.abilityCode || validTarget.abilityCode;
+          validTarget.isEx = evo.isEx || validTarget.isEx;
+          validTarget.preEvolution = evo.preEvolution;
+          validTarget.weakness = evo.weakness || validTarget.weakness;
+          validTarget.resistance = evo.resistance || validTarget.resistance;
+          validTarget.retreat = evo.retreat != null ? evo.retreat : validTarget.retreat;
+          validTarget.status = null;
+          validTarget._turnPlayed = this.state.turnNumber;
+          this.log("🤖 AIライバルの " + validTarget.name + " に進化しました！");
+          if (oppTicker) oppTicker.textContent = "相手: " + validTarget.name + " に進化！";
+          this.render();
+          await this.wait(800);
+        }
+      }
+
+      // 2. エネルギー付加
+      const energyIdx = ai.hand.findIndex((c) => c.category === 'エネルギー' || c.category === '基本エネルギー');
+      if (energyIdx >= 0 && !ai.energyAttached && ai.active) {
+        const nrg = ai.hand.splice(energyIdx, 1)[0];
+        ai.active.energy = (ai.active.energy || 0) + 1;
+        ai.active.attachedEnergies = ai.active.attachedEnergies || [];
+        ai.active.attachedEnergies.push(nrg.type || '無');
+        ai.active.attachedCards = ai.active.attachedCards || [];
+        ai.active.attachedCards.push(nrg);
+        ai.energyAttached = true;
+        this.log("🤖 AIライバルは " + ai.active.name + " にエネルギーを付けました。(エネ: " + ai.active.energy + ")");
+        if (oppTicker) oppTicker.textContent = "相手: " + ai.active.name + " にエネルギーをチャージ！";
+
+        const oppActiveEl = document.getElementById('oppActiveSpot');
+        const oppDeckEl = document.getElementById('oppDeckCount');
+        if (oppActiveEl) {
+          this.animateEnergyFly(oppDeckEl || oppActiveEl, oppActiveEl, nrg.type);
+        }
+        await this.wait(650);
+        this.render();
+        await this.wait(500);
+      }
+
+      // 3. サポート/グッズ使用
+      const isAiFirstPlayerTurn = this.isFirstPlayerFirstTurn('opponent');
+      const trainerIdx = ai.hand.findIndex((c) => {
+        const cat = String(c.category || '');
+        const isSupp = cat.includes('サポート') || cat.toLowerCase().includes('supporter');
+        if (isSupp && (isAiFirstPlayerTurn || ai.supporterUsed)) return false;
+        return (c.category === 'グッズ' || isSupp) && c.name.includes('きずぐすり');
+      });
+      if (trainerIdx >= 0 && ai.active && ai.active.hp <= ai.active.maxHp - 30) {
+        const tr = ai.hand.splice(trainerIdx, 1)[0];
+        ai.discard.push(tr);
+        const trCat = String(tr.category || '');
+        if (trCat.includes('サポート') || trCat.toLowerCase().includes('supporter')) {
+          ai.supporterUsed = true;
+        }
+        ai.active.hp = Math.min(ai.active.maxHp, ai.active.hp + 30);
+        this.log("🤖 AIライバルは「" + tr.name + "」を使用！ HPを回復しました。(HP: " + ai.active.hp + ")");
+        if (oppTicker) oppTicker.textContent = "相手: 「" + tr.name + "」でHPを30回復！";
+        this.render();
+        await this.wait(700);
+      }
+
+      // 4. ワザ宣言・攻撃
+      if (!ai.active || !this.state.player.active) {
+        this.endTurn();
+        return;
+      }
+
+      // 先攻1ターン目攻撃不可
+      if (this.isFirstPlayerFirstTurn('opponent')) {
+        this.log("🤖 AIライバル: 先攻の最初の番のためワザを使えません。ターン終了します。");
+        if (oppTicker) oppTicker.textContent = '相手: 先攻のためワザを使わずターン終了';
+        await this.wait(700);
+        this.endTurn();
+        return;
+      }
+
+      // ワザ選択
+      const atk2Check = this.checkEnergyRequirement(ai.active, ai.active.attack2Energy);
+      const atk1Check = this.checkEnergyRequirement(ai.active, ai.active.attack1Energy);
+
+      let attackChoice = 0;
+      if (ai.active.attack2Name && atk2Check.canAttack) {
+        attackChoice = 2;
+      } else if (ai.active.attack1Name && atk1Check.canAttack) {
+        attackChoice = 1;
+      }
+
+      if (attackChoice > 0) {
+        const atkName = attackChoice === 1 ? ai.active.attack1Name : ai.active.attack2Name;
+        const atkDamage = attackChoice === 1 ? ai.active.attack1Damage : ai.active.attack2Damage;
+        const atkCode = attackChoice === 1 ? ai.active.attack1Code : ai.active.attack2Code;
+        const defender = this.state.player.active;
+
+        if (oppTicker) oppTicker.textContent = "相手: 「" + atkName + "」を宣言！！";
+        await this.wait(400);
+
+        // 突進演出
+        const attackerEl = document.getElementById('oppActiveSpot');
+        if (attackerEl) {
+          attackerEl.classList.add('lunge-opp');
+          setTimeout(() => attackerEl.classList.remove('lunge-opp'), 650);
+        }
+        await this.wait(400);
+
+        this.log("⚔️ AIライバル " + (ai.active?.name || 'ポケモン') + " の「" + atkName + "」！");
+
+        let execCtx = null;
+        // 処理は全部効果エディター (atkCode)
+        if (atkCode && atkCode.trim() && window.executeCardEffectCode) {
+          try {
+            execCtx = await window.executeCardEffectCode(
+              atkCode,
+              { players: [this.state.opponent, this.state.player], logs: this.state.logs },
+              this.state.opponent,
+              'attack',
+              { card: ai.active, pokemon: ai.active }
+            );
+          } catch (e) {
+            if (e && e.isEffectAbort) {
+              execCtx = { isCancelled: true, cancelReason: e.message };
+            } else {
+              console.error('AI Attack effect error:', e);
+              this.log("⚠️ AIワザ効果コードエラー: " + e.message);
+            }
+          }
+        } else {
+          const numericDmg = parseInt(String(atkDamage || '').replace(/[^\d]/g, ''), 10) || 0;
+          if (numericDmg > 0 && window.ORBITAL_EFFECT_API) {
+            const currentDefender = this.state.player?.active;
+            if (currentDefender) {
+              window.ORBITAL_EFFECT_API.damage(
+                { self: this.state.opponent, opponent: this.state.player, game: this.state },
+                currentDefender,
+                numericDmg
+              );
+            }
+          }
+        }
+
+        if (execCtx && execCtx.isCancelled) {
+          this.log("🤖 AIライバル: ワザの条件を満たさなかったため攻撃しませんでした。");
+          await this.wait(700);
+          this.endTurn();
+          return;
+        }
+
+        this.render();
+
+        // await後の最新参照を再取得（コイントス等のUI待機でポインタが変わる可能性あり）
+        const postDef = this.state.player?.active;
+        const postAi = this.state.opponent?.active;
+
+        if (postDef && postDef.hp <= 0) {
+          await this.wait(400);
+          this.handleKnockout(this.state.opponent, this.state.player);
+        } else if (postAi && postAi.hp <= 0) {
+          await this.wait(400);
+          this.handleKnockout(this.state.player, this.state.opponent);
+        } else {
+          await this.wait(800);
+          this.endTurn();
+        }
+      } else {
+        this.log("🤖 AIライバル: エネルギーが不足しているため攻撃せずターン終了します。");
+        if (oppTicker) oppTicker.textContent = '相手: 攻撃エネルギー不足のためターン終了';
+        await this.wait(700);
+        this.endTurn();
+      }
+    },
+
+    finishBattle(winnerId, reason) {
+      this.stopPolling();
+      this.state.phase = 'ended';
+      const isWin = winnerId === 'player';
+
+      const banner = document.getElementById('resultBanner');
+      const title = document.getElementById('resultTitle');
+      const msg = document.getElementById('resultMessage');
+      const stats = document.getElementById('resultStats');
+
+      if (banner) {
+        banner.textContent = isWin ? 'VICTORY!' : 'DEFEAT...';
+        banner.className = "result-banner " + (isWin ? 'win' : 'lose');
+      }
+      if (title) title.textContent = isWin ? '🎉 あなたの勝利！' : '💀 敗北…';
+      if (msg) msg.textContent = reason || (isWin ? '対戦相手を圧倒しました！' : '再挑戦してリベンジしましょう！');
+
+      if (stats) {
+        stats.innerHTML = "\n          <div>対戦ターン数: <strong>" +
+        this.state.turnNumber + " ターン</strong></div>\n          <div>あなたの残りサイド: <strong>" +
+        this.state.player.prizes.length + " 枚</strong></div>\n          <div>相手の残りサイド: <strong>" +
+        this.state.opponent.prizes.length + " 枚</strong></div>\n        ";
+
+      }
+
+      const modal = document.getElementById('battleResultModal');
+      if (modal) modal.classList.remove('hidden');
+    },
+
+    closeResultModal() {
+      const modal = document.getElementById('battleResultModal');
+      if (modal) modal.classList.add('hidden');
+    },
+
+    openDiscardModal(target = 'player') {
+      this._activeDiscardTarget = target === 'opponent' ? 'opponent' : 'player';
+      this._activeDiscardFilter = 'all';
+
+      const modal = document.getElementById('battleDiscardModal');
+      if (modal) modal.classList.remove('hidden');
+
+      this.renderDiscardGrid();
+    },
+
+    closeDiscardModal() {
+      const modal = document.getElementById('battleDiscardModal');
+      if (modal) modal.classList.add('hidden');
+    },
+
+    switchDiscardTab(target) {
+      this._activeDiscardTarget = target === 'opponent' ? 'opponent' : 'player';
+      this.renderDiscardGrid();
+    },
+
+    setDiscardFilter(filter) {
+      this._activeDiscardFilter = filter || 'all';
+      this.renderDiscardGrid();
+    },
+
+    renderDiscardGrid() {
+      const modal = document.getElementById('battleDiscardModal');
+      if (!modal) return;
+
+      const pCount = this.state.player?.discard?.length || 0;
+      const oCount = this.state.opponent?.discard?.length || 0;
+
+      const tabPCount = document.getElementById('discardTabPlayerCount');
+      if (tabPCount) tabPCount.textContent = pCount;
+      const tabOCount = document.getElementById('discardTabOppCount');
+      if (tabOCount) tabOCount.textContent = oCount;
+
+      const isPlayer = this._activeDiscardTarget !== 'opponent';
+      const tabP = document.getElementById('discardTabPlayer');
+      const tabO = document.getElementById('discardTabOpponent');
+
+      if (tabP) tabP.classList.toggle('active', isPlayer);
+      if (tabO) tabO.classList.toggle('active', !isPlayer);
+
+      const filter = this._activeDiscardFilter || 'all';
+      document.querySelectorAll('.discard-filter-btn').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.discardFilter === filter);
+      });
+
+      const cards = (isPlayer ? this.state.player?.discard : this.state.opponent?.discard) || [];
+
+      // フィルタリング
+      const filtered = cards.filter((card) => {
+        if (!card) return false;
+        if (filter === 'all') return true;
+        const cat = String(card.category || '');
+        const isTrainer = cat === 'グッズ' || cat === 'サポート' || cat === 'トレーナー';
+        const isEnergy = cat === 'エネルギー' || cat === '基本エネルギー' || cat.includes('エネルギー');
+        const isPokemon = !isTrainer && !isEnergy;
+
+        if (filter === 'pokemon') return isPokemon;
+        if (filter === 'trainer') return isTrainer;
+        if (filter === 'energy') return isEnergy;
+        return true;
+      });
+
+      const countLabel = document.getElementById('discardVisibleCount');
+      if (countLabel) {
+        countLabel.textContent = filtered.length + "枚表示中 (" + cards.length + "枚中)";
+      }
+
+      const grid = document.getElementById('battleDiscardGrid');
+      if (!grid) return;
+
+      if (filtered.length === 0) {
+        const ownerName = isPlayer ? 'あなた' : '相手';
+        const emptyMsg = cards.length === 0 ?
+          ownerName + "のトラッシュにはまだカードがありません。" :
+          "該当するカテゴリ（" + filter + "）のカードはありません。";
+        grid.innerHTML = `
+          <div class="discard-empty-state">
+            <div class="discard-empty-icon">🗑️</div>
+            <div class="discard-empty-title">${ownerName}のトラッシュ</div>
+            <div class="discard-empty-sub">${emptyMsg}</div>
+          </div>
+        `;
+        return;
+      }
+
+      // 新しい順（最後にトラッシュされたものが手前）にするためコピーして反転
+      const reversedList = filtered.slice().reverse();
+
+      grid.innerHTML = reversedList.map((card, idx) => {
+        let cardHtml = '';
+        if (window.CardSystem && typeof window.CardSystem.createCardHtml === 'function') {
+          cardHtml = window.CardSystem.createCardHtml(card, { size: 'sm' });
+        } else {
+          cardHtml = `
+            <div class="card-fallback" style="padding:10px; background:#1e293b; border-radius:8px;">
+              <strong>${this.escape(card.name)}</strong>
+              <div>${this.escape(card.category || '')}</div>
+            </div>
+          `;
+        }
+
+        return `
+          <div class="discard-grid-item" data-discard-idx="${idx}" title="クリックして【${this.escape(card.name)}】の詳細を拡大表示">
+            <span class="discard-grid-zoom-pill">🔍 拡大</span>
+            ${cardHtml}
+          </div>
+        `;
+      }).join('');
+
+      // クリックで CardSystem.showDetail を呼び出してフル拡大表示
+      grid.querySelectorAll('.discard-grid-item').forEach((item, i) => {
+        item.addEventListener('click', () => {
+          const targetCard = reversedList[i];
+          if (targetCard && window.CardSystem && typeof window.CardSystem.showDetail === 'function') {
+            window.CardSystem.showDetail(targetCard);
+          }
+        });
+      });
+    },
+
+    showChoiceModal(cards, options, onSelect, onCancel) {
+      const modal = document.getElementById('battleChoiceModal');
+      const title = document.getElementById('battleChoiceTitle');
+      const desc = document.getElementById('battleChoiceDesc');
+      const grid = document.getElementById('battleChoiceGrid');
+      const cancelBtn = document.getElementById('cancelBattleChoiceBtn');
+      const closeBtn = document.getElementById('closeBattleChoiceModal');
+
+      if (!modal || !grid) {
+        if (typeof onSelect === 'function') onSelect(0);
+        return;
+      }
+
+      if (title) title.textContent = options?.title || 'カード選択';
+      if (desc) desc.textContent = options?.desc || '対象を選択してください。';
+
+      grid.innerHTML = cards.map((c, i) => {
+        const typeHtml = c.type ? '【' + this.escape(c.type) + '】' : '';
+        const hpHtml = c.hp ? '<span>HP ' + c.hp + '</span>' : '';
+        return `
+          <div class="choice-card-item" data-choice-idx="${i}">
+            <div class="choice-card-title">${this.escape(c.name)}</div>
+            <div class="choice-card-meta">
+              <span>${this.escape(c.category || '')}</span>
+              <span>${typeHtml}</span>
+              ${hpHtml}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      modal.classList.remove('hidden');
+
+      const cleanup = () => {
+        modal.classList.add('hidden');
+        if (cancelBtn) cancelBtn.onclick = null;
+        if (closeBtn) closeBtn.onclick = null;
+      };
+
+      if (cancelBtn) {
+        cancelBtn.onclick = () => {
+          cleanup();
+          if (typeof onCancel === 'function') onCancel();
+        };
+      }
+      if (closeBtn) {
+        closeBtn.onclick = () => {
+          cleanup();
+          if (typeof onCancel === 'function') onCancel();
+        };
+      }
+
+      grid.querySelectorAll('[data-choice-idx]').forEach((el) => {
+        el.addEventListener('click', () => {
+          const idx = Number(el.dataset.choiceIdx);
+          cleanup();
+          if (typeof onSelect === 'function') onSelect(idx);
+        });
+      });
+    },
+
+    closeChoiceModal() {
+      const modal = document.getElementById('battleChoiceModal');
+      if (modal) modal.classList.add('hidden');
+    },
+
+    showChoiceModalPromise(cards, options) {
+      return new Promise((resolve) => {
+        if (!cards || !cards.length) return resolve(null);
+        if (options && options.autoPick && cards.length === 1) return resolve(cards[0]);
+        this.showChoiceModal(cards, options || {}, (idx) => {
+          resolve(cards[idx]);
+        }, () => {
+          resolve(null);
+        });
+      });
+    },
+
+    async executeRareCandy(player) {
+      const p = player || this.state.player;
+      const isFirstTurn = (this.state.firstPlayer === 'player' && this.state.turnNumber === 1) ||
+                          (this.state.firstPlayer !== 'player' && this.state.turnNumber === 2);
+      if (isFirstTurn) {
+        if (p === this.state.player && window.App && typeof window.App.toast === 'function') App.toast('最初の自分の番には使えません。', true);
+        this.log('⚠️ 最初の自分の番のため、ふしぎなアメは使えませんでした。');
+        return false;
+      }
+
+      const hand = p.hand || [];
+      const stage2List = hand.filter((c) => {
+        const cat = String(c.category || '');
+        return cat.includes('2進化') || (cat.includes('進化') && !cat.includes('1進化'));
+      });
+
+      if (!stage2List.length) {
+        if (p === this.state.player && window.App && typeof window.App.toast === 'function') App.toast('手札に2進化ポケモンがありません。', true);
+        this.log('⚠️ 手札に2進化ポケモンがいないため、ふしぎなアメは使えませんでした。');
+        return false;
+      }
+
+      const fieldBasics = [];
+      if (p.active && this.isBasic(p.active) && p.active._turnPlayed !== this.state.turnNumber) {
+        fieldBasics.push({ target: p.active, where: 'バトル場' });
+      }
+      (p.bench || []).forEach((b, i) => {
+        if (this.isBasic(b) && b._turnPlayed !== this.state.turnNumber) {
+          fieldBasics.push({ target: b, where: 'ベンチ' + (i + 1), benchIdx: i });
+        }
+      });
+
+      if (!fieldBasics.length) {
+        if (p === this.state.player && window.App && typeof window.App.toast === 'function') App.toast('場に進化できるたねポケモンがいません。（出したばかりのポケモンには使えません）', true);
+        this.log('⚠️ 場に進化できるたねポケモンがいない（または出したばかり）ため使えませんでした。');
+        return false;
+      }
+
+      const validStage2s = stage2List.filter((s2) => fieldBasics.some((b) => this.canRareCandyEvolve(s2, b.target)));
+      if (!validStage2s.length) {
+        if (p === this.state.player && window.App && typeof window.App.toast === 'function') App.toast('手札の2進化ポケモンと進化ラインが一致するたねポケモンが場にいません。', true);
+        this.log('⚠️ 進化ラインが一致するたねポケモンが場にいませんでした。');
+        return false;
+      }
+
+      let chosenS2 = null;
+      if (p === this.state.player) {
+        chosenS2 = await this.showChoiceModalPromise(validStage2s, {
+          title: '進化させる2進化ポケモンを手札から選択',
+          desc: 'どの2進化ポケモンに進化させますか？'
+        });
+        if (!chosenS2) {
+          this.log('ふしぎなアメの進化をキャンセルしました。');
+          return false;
+        }
+      } else {
+        chosenS2 = validStage2s[0];
+      }
+
+      const matchingBasics = fieldBasics.filter((b) => this.canRareCandyEvolve(chosenS2, b.target));
+      if (!matchingBasics.length) {
+        if (p === this.state.player && window.App && typeof window.App.toast === 'function') App.toast('進化ラインが一致するたねポケモンが場にいません。', true);
+        return false;
+      }
+
+      let chosenBasicItem = null;
+      if (p === this.state.player) {
+        const modalBasics = matchingBasics.map((b) => ({
+          name: b.where + ': ' + b.target.name,
+          hp: b.target.hp,
+          type: b.target.type,
+          category: b.target.category,
+          _orig: b
+        }));
+        const selected = await this.showChoiceModalPromise(modalBasics, {
+          title: '進化させるたねポケモンを選択',
+          desc: chosenS2.name + ' に進化させるたねポケモンを選んでください。'
+        });
+        if (!selected) {
+          this.log('ふしぎなアメの進化をキャンセルしました。');
+          return false;
+        }
+        chosenBasicItem = selected._orig || matchingBasics[0];
+      } else {
+        chosenBasicItem = matchingBasics[0];
+      }
+
+      const targetPokemon = chosenBasicItem.target;
+      const handIndex = p.hand.indexOf(chosenS2);
+      if (handIndex < 0) return false;
+
+      this.executeEvolution(handIndex, targetPokemon);
+      this.log('🍬 「ふしぎなアメ」の効果で、1進化をとばして【' + targetPokemon.name + '】へ進化しました！');
+      if (window.App && typeof window.App.toast === 'function') App.toast(targetPokemon.name + ' に進化しました！(ふしぎなアメ)');
+      return true;
+    },
+
+    log(text) {
+      if (!this.state.logs) this.state.logs = [];
+      this.state.logs.unshift(text);
+      if (this.state.logs.length > 50) this.state.logs.pop();
+      const ticker = document.getElementById('stadiumTicker');
+      if (ticker) ticker.textContent = text;
+    },
+
+    render() {
+      // 1. トップバー
+      const turnBadge = document.getElementById('stadiumTurnBadge');
+      if (turnBadge) turnBadge.textContent = "TURN " + this.state.turnNumber;
+
+      const playerBadge = document.getElementById('stadiumPlayerBadge');
+      if (playerBadge) {
+        const isMyTurn = this.state.turnPlayer === 'player';
+        playerBadge.textContent = isMyTurn ? 'あなたの番（行動中）' : '相手の番（思考中…）';
+        playerBadge.className = "stadium-active-player " + (isMyTurn ? 'my-turn' : 'opp-turn');
+      }
+
+      // 2. 相手ステータス
+      const oppDeck = document.getElementById('oppDeckCount');
+      if (oppDeck) oppDeck.textContent = this.state.opponent.deck.length;
+      const oppHand = document.getElementById('oppHandCount');
+      if (oppHand) oppHand.textContent = this.state.opponent.hand.length;
+      const oppDiscard = document.getElementById('oppDiscardCount');
+      if (oppDiscard) oppDiscard.textContent = this.state.opponent.discard.length;
+      const oppArt = document.getElementById('oppDiscardArt');
+      if (oppArt) {
+        const topOpp = this.state.opponent.discard.length ? this.state.opponent.discard[this.state.opponent.discard.length - 1] : null;
+        if (topOpp && topOpp.image) {
+          oppArt.style.backgroundImage = 'url("' + topOpp.image + '")';
+        } else {
+          oppArt.style.backgroundImage = 'none';
+        }
+      }
+      const oppSideBadge = document.getElementById('oppSideBadge');
+      if (oppSideBadge) oppSideBadge.textContent = "残り " + this.state.opponent.prizes.length + "枚";
+      this.renderPrizes('oppPrizes', this.state.opponent.prizes.length);
+
+      // 3. 相手ベンチ & バトル場
+      this.renderBench('oppBenchRow', this.state.opponent.bench, false);
+      this.renderActiveSlot('oppActiveSpot', this.state.opponent.active, false);
+
+      // 4. 自分ステータス
+      const pDeck = document.getElementById('playerDeckCount');
+      if (pDeck) pDeck.textContent = this.state.player.deck.length;
+      const pHand = document.getElementById('playerHandCount');
+      if (pHand) pHand.textContent = this.state.player.hand.length;
+      const pHandText = document.getElementById('playerHandCountText');
+      if (pHandText) pHandText.textContent = this.state.player.hand.length;
+      const pDiscard = document.getElementById('playerDiscardCount');
+      if (pDiscard) pDiscard.textContent = this.state.player.discard.length;
+      const pArt = document.getElementById('playerDiscardArt');
+      if (pArt) {
+        const topP = this.state.player.discard.length ? this.state.player.discard[this.state.player.discard.length - 1] : null;
+        if (topP && topP.image) {
+          pArt.style.backgroundImage = 'url("' + topP.image + '")';
+        } else {
+          pArt.style.backgroundImage = 'none';
+        }
+      }
+
+      // トラッシュ確認モーダルが開いていればリアルタイム再描画
+      const discardModal = document.getElementById('battleDiscardModal');
+      if (discardModal && !discardModal.classList.contains('hidden')) {
+        this.renderDiscardGrid();
+      }
+      const pSideBadge = document.getElementById('playerSideBadge');
+      if (pSideBadge) pSideBadge.textContent = "残り " + this.state.player.prizes.length + "枚";
+      this.renderPrizes('playerPrizes', this.state.player.prizes.length);
+
+      // 5. 自分ベンチ & バトル場
+      this.renderBench('playerBenchRow', this.state.player.bench, true);
+      this.renderActiveSlot('playerActiveSpot', this.state.player.active, true);
+
+      // 6. コマンドパネル（ワザボタン）
+      this.renderCommandPanel();
+
+      // 7. プレイヤー手札
+      this.renderHand();
+    },
+
+    renderPrizes(elId, count) {
+      const root = document.getElementById(elId);
+      if (!root) return;
+      let html = '';
+      for (let i = 0; i < count; i++) {
+        html += "<div class=\"prize-card-item\" title=\"サイドカード " + (i + 1) + " (残り " + count + "枚)\"><span class=\"prize-card-star\">✦</span></div>";
+      }
+      root.innerHTML = html || '<div class="no-prizes-msg">サイドなし</div>';
+    },
+
+    renderActiveSlot(elId, card, isPlayer) {
+      const root = document.getElementById(elId);
+      if (!root) return;
+
+      if (!card) {
+        root.innerHTML = "\n          <div class=\"battle-card-wrapper\">\n            <div class=\"empty-slot-text\" style=\"width: 170px; aspect-ratio: 5 / 7.4; border: 1.5px dashed rgba(255,255,255,0.15); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 12px;\">\n              なし\n            </div>\n          </div>\n        ";
+        if (isPlayer) {
+          root.dataset.dropTarget = 'active';
+          root.ondragover = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+            if (this.draggedHandIndex != null) {
+              root.classList.add('drag-hover');
+            }
+          };
+          root.ondragleave = (e) => {
+            if (!root.contains(e.relatedTarget)) {
+              root.classList.remove('drag-hover');
+            }
+          };
+          root.ondrop = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            root.classList.remove('drag-hover');
+            const rawIdx = (this.draggedHandIndex != null) ? this.draggedHandIndex : (e.dataTransfer ? parseInt(e.dataTransfer.getData('text/plain'), 10) : null);
+            const idx = (typeof rawIdx === 'number' && !isNaN(rawIdx)) ? rawIdx : null;
+            if (idx != null) {
+              this.draggedHandIndex = null;
+              this.handleDropOnPokemon(idx, null, root, false);
+            }
+          };
+        }
+        return;
+      }
+
+      const hpPct = Math.max(0, Math.min(100, Math.round(card.hp / card.maxHp * 100)));
+      const hpColor = hpPct > 50 ? '#2ec4b6' : hpPct > 20 ? '#ff9f1c' : '#e71d36';
+
+      const energiesHtml = card.attachedEnergies && card.attachedEnergies.length ?
+      card.attachedEnergies.map((e) => '<span class="energy-pip type-' + this.escape(e) + '">' + this.escape(e) + '</span>').join('') :
+      '';
+      const statusTagHtml = card.status ? '<span class="active-status-badge">【' + this.escape(card.status) + '】</span>' : '';
+
+      const displayCard = Object.assign({}, card, { hp: card.hp });
+      const cardHtml = window.CardSystem && window.CardSystem.createCardHtml ?
+      window.CardSystem.createCardHtml(displayCard, { size: 'battle' }) :
+      '<div class="card-fallback">' + this.escape(card.name) + '</div>';
+
+      root.innerHTML = "\n        <div class=\"battle-card-wrapper\">\n          <div class=\"battle-active-card\">\n            " +
+
+
+      cardHtml + "\n          </div>\n          <div class=\"battle-card-hp-strip\">\n            <div class=\"battle-card-hp-text\">\n              <span class=\"battle-hp-label\">HP <strong>" +
+
+
+
+      card.hp + "</strong> / " + card.maxHp + "</span>\n              " +
+      statusTagHtml + "\n            </div>\n            <div class=\"active-hp-bar\">\n              <div class=\"active-hp-fill\" style=\"width: " +
+
+
+      hpPct + "%; background: " + hpColor + ";\"></div>\n            </div>\n            <div class=\"active-energies-bar\">\n              <span class=\"energies-label\" style=\"font-size:10px; color:var(--muted); font-weight:700;\">エネ:</span>\n              " + (
+
+
+
+      energiesHtml || '<span class="muted" style="font-size:10px">なし</span>') + "\n              <span class=\"energy-total-text\">計 " + (
+      card.energy || 0) + " 個</span>\n            </div>\n          </div>\n        </div>\n      ";
+
+
+
+
+
+      // クリックでカードアクション（ワザ・特性・にげる）を開く
+      const activeCardEl = root.querySelector('.battle-active-card');
+      if (activeCardEl) {
+        activeCardEl.style.cursor = 'pointer';
+        if (isPlayer) {
+          const isMyTurn = this.state.turnPlayer === 'player' && this.state.phase === 'battle';
+          if (isMyTurn) {
+            root.classList.add('player-active-spot-act-ready');
+          } else {
+            root.classList.remove('player-active-spot-act-ready');
+          }
+          activeCardEl.title = card.name + " (HP " + card.hp + "/" + card.maxHp + ") - クリックして行動（ワザ・特性・にげる）";
+          activeCardEl.onclick = () => {
+            if (this.draggedHandIndex == null) {
+              this.openCardActionModal(card, false);
+            }
+          };
+        } else {
+          activeCardEl.title = card.name + " (HP " + card.hp + "/" + card.maxHp + ") - クリックで詳細カード拡大";
+          activeCardEl.onclick = () => {
+            if (this.draggedHandIndex == null && window.CardSystem && window.CardSystem.showDetail) {
+              CardSystem.showDetail(card);
+            }
+          };
+        }
+      }
+
+      // プレイヤーバトル場のドロップ受付 (エネ、進化、たね、トレーナー全て対応)
+      if (isPlayer) {
+        root.dataset.dropTarget = 'active';
+        root.ondragover = (e) => {
+          // 常に preventDefault することで ondrop を有効化
+          e.preventDefault();
+          e.stopPropagation();
+          if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+          if (this.draggedHandIndex != null) {
+            root.classList.add('drag-hover');
+          }
+        };
+        root.ondragleave = (e) => {
+          // 子要素への移動では外れないように relatedTarget チェック
+          if (!root.contains(e.relatedTarget)) {
+            root.classList.remove('drag-hover');
+          }
+        };
+        root.ondrop = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          root.classList.remove('drag-hover');
+          const rawIdx = (this.draggedHandIndex != null) ? this.draggedHandIndex : (e.dataTransfer ? parseInt(e.dataTransfer.getData('text/plain'), 10) : null);
+          const idx = (typeof rawIdx === 'number' && !isNaN(rawIdx)) ? rawIdx : null;
+          if (idx != null) {
+            this.draggedHandIndex = null;
+            this.handleDropOnPokemon(idx, this.state.player.active, root, false);
+          }
+        };
+      }
+    },
+
+    renderBench(elId, benchList, isPlayer) {
+      const root = document.getElementById(elId);
+      if (!root) return;
+
+      let slotsHtml = '';
+      for (let i = 0; i < 5; i++) {
+        const c = benchList[i];
+        if (c) {
+          const hpPct = Math.max(0, Math.min(100, Math.round(c.hp / c.maxHp * 100)));
+          const hpColor = hpPct > 50 ? '#2ec4b6' : hpPct > 20 ? '#ff9f1c' : '#e71d36';
+          const displayC = Object.assign({}, c, { hp: c.hp });
+          const miniCardHtml = window.CardSystem && window.CardSystem.createCardHtml ?
+          window.CardSystem.createCardHtml(displayC, { size: 'bench' }) :
+          '<div class="mini-card-fallback">' + this.escape(c.name) + '</div>';
+
+          let movesSummary = '';
+          if (c.abilityName) movesSummary += "\n【特性】" + c.abilityName + ": " + (c.abilityText || '');
+          if (c.attack1Name) movesSummary += "\n【ワザ1】" + c.attack1Name + " " + (c.attack1Damage != null ? c.attack1Damage : '') + ": " + (c.attack1Text || '');
+          if (c.attack2Name) movesSummary += "\n【ワザ2】" + c.attack2Name + " " + (c.attack2Damage != null ? c.attack2Damage : '') + ": " + (c.attack2Text || '');
+          const benchTooltip = c.name + " (HP " + c.hp + "/" + c.maxHp + ", エネ " + (c.energy || 0) + ")" + movesSummary + "\n※クリックでカード詳細を拡大表示";
+
+          slotsHtml += "\n            <div class=\"bench-slot-occupied\" data-bench-idx=\"" +
+          i + "\" title=\"" + this.escape(benchTooltip) + "\">\n              <div class=\"bench-card-frame\">\n                " +
+
+          miniCardHtml + "\n              </div>\n              <div class=\"bench-hp-mini-strip\">\n                <div class=\"bench-hp-bar\"><div class=\"bench-hp-fill\" style=\"width: " +
+
+
+          hpPct + "%; background: " + hpColor + ";\"></div></div>\n                <div class=\"bench-meta\">HP " +
+          c.hp + " • ⚡" + (c.energy || 0) + "</div>\n              </div>\n            </div>\n          ";
+
+
+
+        } else {
+          slotsHtml += "<div class=\"bench-slot-empty\" data-empty-bench-idx=\"" + i + "\"><span>ベンチ空 (DnD)</span></div>";
+        }
+      }
+      root.innerHTML = slotsHtml;
+
+      // ベンチのカードをクリックでアクション / 詳細確認
+      root.querySelectorAll('.bench-slot-occupied').forEach((slotEl) => {
+        const benchIdx = Number(slotEl.dataset.benchIdx);
+        const c = benchList[benchIdx];
+        if (c) {
+          slotEl.style.cursor = 'pointer';
+          slotEl.onclick = () => {
+            if (this.draggedHandIndex == null) {
+              if (isPlayer) {
+                this.openCardActionModal(c, true, benchIdx);
+              } else if (window.CardSystem && window.CardSystem.showDetail) {
+                CardSystem.showDetail(c);
+              }
+            }
+          };
+        }
+      });
+
+      // プレイヤーベンチ各スロットのドロップ受付
+      if (isPlayer) {
+        root.querySelectorAll('.bench-slot-occupied').forEach((slotEl) => {
+          const benchIdx = Number(slotEl.dataset.benchIdx);
+          slotEl.ondragover = (e) => {
+            // 常に preventDefault することで ondrop を有効化
+            e.preventDefault();
+            e.stopPropagation();
+            if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+            if (this.draggedHandIndex != null) {
+              slotEl.classList.add('drag-hover');
+            }
+          };
+          slotEl.ondragleave = (e) => {
+            if (!slotEl.contains(e.relatedTarget)) {
+              slotEl.classList.remove('drag-hover');
+            }
+          };
+          slotEl.ondrop = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            slotEl.classList.remove('drag-hover');
+            const rawIdx = (this.draggedHandIndex != null) ? this.draggedHandIndex : (e.dataTransfer ? parseInt(e.dataTransfer.getData('text/plain'), 10) : null);
+            const idx = (typeof rawIdx === 'number' && !isNaN(rawIdx)) ? rawIdx : null;
+            if (idx != null && this.state.player.bench[benchIdx]) {
+              this.draggedHandIndex = null;
+              this.handleDropOnPokemon(idx, this.state.player.bench[benchIdx], slotEl, true, benchIdx);
+            }
+          };
+        });
+
+        root.querySelectorAll('.bench-slot-empty').forEach((slotEl) => {
+          const benchIdx = Number(slotEl.dataset.emptyBenchIdx);
+          slotEl.ondragover = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+            if (this.draggedHandIndex != null) {
+              const draggedCard = this.state.player.hand[this.draggedHandIndex];
+              if (draggedCard && this.isBasic(draggedCard)) {
+                slotEl.classList.add('drag-hover');
+              }
+            }
+          };
+          slotEl.ondragleave = (e) => {
+            if (!slotEl.contains(e.relatedTarget)) {
+              slotEl.classList.remove('drag-hover');
+            }
+          };
+          slotEl.ondrop = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            slotEl.classList.remove('drag-hover');
+            const rawIdx = (this.draggedHandIndex != null) ? this.draggedHandIndex : (e.dataTransfer ? parseInt(e.dataTransfer.getData('text/plain'), 10) : null);
+            const idx = (typeof rawIdx === 'number' && !isNaN(rawIdx)) ? rawIdx : null;
+            if (idx != null) {
+              this.draggedHandIndex = null;
+              this.handleDropOnEmptyBench(idx, slotEl, benchIdx);
+            }
+          };
+        });
+      }
+    },
+
+    renderCommandPanel() {
+      // コマンドパネルはカードクリック直接アクション方式に移行したため、存在する場合のみ後方互換で更新
+      const root = document.getElementById('playerAttackButtons');
+      if (!root) return;
+      root.innerHTML = '<span class="muted" style="font-size:11px;">カードをタップして行動</span>';
+    },
+
+    openCardActionModal(card, isBench = false, benchIdx = null) {
+      if (!card) return;
+      this._currentActionCard = card;
+      this._currentActionIsBench = isBench;
+      this._currentActionBenchIdx = benchIdx;
+
+      const modal = document.getElementById('battleCardActionModal');
+      if (!modal) return;
+
+      const symbol = window.CardSystem && window.CardSystem.typeSymbols && window.CardSystem.typeSymbols[card.type] || '✦';
+      const symEl = document.getElementById('cardActionTypeSymbol');
+      if (symEl) {
+        symEl.textContent = symbol;
+        symEl.className = "card-action-type-symbol type-" + this.escape(card.type || '無');
+      }
+      const nameEl = document.getElementById('cardActionName');
+      if (nameEl) nameEl.textContent = card.name;
+      const catEl = document.getElementById('cardActionCategory');
+      if (catEl) catEl.textContent = card.category || (isBench ? 'ベンチ' : 'バトル場');
+
+      const p = this.state.player;
+      const isMyTurn = this.state.turnPlayer === 'player' && this.state.phase === 'battle';
+      const isFirstTurnFirstPlayer = this.isFirstPlayerFirstTurn('player');
+      const energyCount = card.energy || 0;
+
+      const metaEl = document.getElementById('cardActionMeta');
+      if (metaEl) {
+        metaEl.textContent = "HP " + card.hp + "/" + card.maxHp + " • エネルギー: " + energyCount + "個 【" + (isBench ? 'ベンチ' : 'バトル場') + "】";
+      }
+
+      const listEl = document.getElementById('cardActionList');
+      if (!listEl) return;
+
+      let itemsHtml = '';
+
+      // 1. 特性 (バトル場またはベンチ)
+      if (card.abilityName) {
+        const isAbilityBlocked = this.isBlocked('ability', card, p);
+        const maxUses = this.getAbilityMaxUses(card);
+        const remaining = this.getAbilityRemainingUses(card);
+        const canUseAbility = isMyTurn && remaining > 0 && !isAbilityBlocked;
+
+        let btnLabel = '✨ 特性を発動する';
+        if (!isMyTurn) {
+          btnLabel = '相手の番です';
+        } else if (isAbilityBlocked) {
+          btnLabel = '🚫 特性禁止中';
+        } else if (remaining === 0) {
+          btnLabel = maxUses === 1 ? '使用済み (1ターン1回)' : '使用済み (1ターン' + maxUses + '回)';
+        } else if (maxUses === Infinity) {
+          btnLabel = '✨ 特性を発動する (何度でも使用可)';
+        } else if (maxUses > 1) {
+          btnLabel = '✨ 特性を発動する (残り' + remaining + '回)';
+        }
+
+        itemsHtml += "\n          <div class=\"card-act-item is-ability\">\n            <div class=\"act-item-content\">\n              <div class=\"act-item-header\">\n                <span class=\"act-badge ability\">特性</span>\n                <span class=\"act-item-name\">" +
+        this.escape(card.abilityName) + "</span>\n              </div>\n              <div class=\"act-item-text\">" +
+        this.escape(card.abilityText || '特殊効果を発揮します。') + "</div>\n            </div>\n            <button type=\"button\" class=\"primary-button card-act-btn ability-btn\" data-action=\"ability\" " + (
+        canUseAbility ? '' : 'disabled') + ">\n              " +
+        btnLabel + "\n            </button>\n          </div>\n        ";
+      }
+
+      // 2. ワザ1
+      if (card.attack1Name) {
+        const energyCheck = this.checkEnergyRequirement(card, card.attack1Energy);
+        const hasEnergy = energyCheck.canAttack;
+        const isAtkBlocked = this.isBlocked('attack', card, p);
+        const canAttack = !isBench && isMyTurn && !isFirstTurnFirstPlayer && hasEnergy && !isAtkBlocked;
+
+        let btnLabel = '⚔ ワザを使う';
+        if (isBench) btnLabel = 'バトル場で使用可';else
+        if (!isMyTurn) btnLabel = '相手の番です';else
+        if (isFirstTurnFirstPlayer) btnLabel = '先攻1ターン目不可';else
+        if (isAtkBlocked) btnLabel = '🚫 ワザ使用禁止中';else
+        if (!hasEnergy) btnLabel = energyCheck.reason === 'type' ? energyCheck.missingDesc : "エネ不足 (" + energyCount + "/" + energyCheck.reqCount + ")";
+
+        itemsHtml += "\n          <div class=\"card-act-item is-attack\">\n            <div class=\"act-item-content\">\n              <div class=\"act-item-header\">\n                <span class=\"act-badge atk\">ワザ1</span>\n                <span class=\"act-item-name\">" +
+        this.escape(card.attack1Name) + "</span>\n                <span class=\"act-item-dmg\">" +
+        this.escape(card.attack1Damage != null && card.attack1Damage !== '' ? card.attack1Damage + ' ダメージ' : '') + "</span>\n              </div>\n              <div class=\"act-item-text\">" +
+        this.escape(card.attack1Text || '') + "</div>\n              <div class=\"act-item-cost\">必要: " +
+        this.renderCostText(card.attack1Energy) + " (現在: " + energyCount + "個)</div>\n            </div>\n            <button type=\"button\" class=\"primary-button card-act-btn\" data-action=\"attack1\" " + (
+        canAttack ? '' : 'disabled') + ">\n              " +
+        btnLabel + "\n            </button>\n          </div>\n        ";
+      }
+
+      // 3. ワザ2
+      if (card.attack2Name) {
+        const energyCheck = this.checkEnergyRequirement(card, card.attack2Energy);
+        const hasEnergy = energyCheck.canAttack;
+        const isAtkBlocked = this.isBlocked('attack', card, p);
+        const canAttack = !isBench && isMyTurn && !isFirstTurnFirstPlayer && hasEnergy && !isAtkBlocked;
+
+        let btnLabel = '⚔ ワザを使う';
+        if (isBench) btnLabel = 'バトル場で使用可';else
+        if (!isMyTurn) btnLabel = '相手の番です';else
+        if (isFirstTurnFirstPlayer) btnLabel = '先攻1ターン目不可';else
+        if (isAtkBlocked) btnLabel = '🚫 ワザ使用禁止中';else
+        if (!hasEnergy) btnLabel = energyCheck.reason === 'type' ? energyCheck.missingDesc : "エネ不足 (" + energyCount + "/" + energyCheck.reqCount + ")";
+
+        itemsHtml += "\n          <div class=\"card-act-item is-attack\">\n            <div class=\"act-item-content\">\n              <div class=\"act-item-header\">\n                <span class=\"act-badge atk\">ワザ2</span>\n                <span class=\"act-item-name\">" +
+        this.escape(card.attack2Name) + "</span>\n                <span class=\"act-item-dmg\">" +
+        this.escape(card.attack2Damage != null && card.attack2Damage !== '' ? card.attack2Damage + ' ダメージ' : '') + "</span>\n              </div>\n              <div class=\"act-item-text\">" +
+        this.escape(card.attack2Text || '') + "</div>\n              <div class=\"act-item-cost\">必要: " +
+        this.renderCostText(card.attack2Energy) + " (現在: " + energyCount + "個)</div>\n            </div>\n            <button type=\"button\" class=\"primary-button card-act-btn\" data-action=\"attack2\" " + (
+        canAttack ? '' : 'disabled') + ">\n              " +
+        btnLabel + "\n            </button>\n          </div>\n        ";
+      }
+
+      // 4. にげる (バトル場のみ)
+      if (!isBench) {
+        const retreatCost = Number(card.retreat) || 0;
+        const hasBench = p.bench && p.bench.length > 0;
+        const hasEnergy = energyCount >= retreatCost;
+        const isRetreatBlocked = this.isBlocked('retreat', card, p);
+        const canRetreat = isMyTurn && !p.retreated && hasBench && hasEnergy && !isRetreatBlocked;
+
+        let btnLabel = '🏃 にげる (交代)';
+        if (!isMyTurn) btnLabel = '相手の番です';else
+        if (isRetreatBlocked) btnLabel = '🚫 にげる禁止中';else
+        if (p.retreated) btnLabel = '今番既ににげました';else
+        if (!hasBench) btnLabel = '交代ベンチなし';else
+        if (!hasEnergy) btnLabel = "エネ不足 (" + energyCount + "/" + retreatCost + ")";
+
+        itemsHtml += "\n          <div class=\"card-act-item is-retreat\">\n            <div class=\"act-item-content\">\n              <div class=\"act-item-header\">\n                <span class=\"act-badge retreat\">交代</span>\n                <span class=\"act-item-name\">にげる</span>\n                <span class=\"act-item-dmg\">要 " +
+        retreatCost + " エネ</span>\n              </div>\n              <div class=\"act-item-text\">ベンチのポケモンと交代します（エネルギーを" +
+        retreatCost + "個消費）。</div>\n            </div>\n            <button type=\"button\" class=\"secondary-button card-act-btn\" data-action=\"retreat\" " + (
+        canRetreat ? '' : 'disabled') + ">\n              " +
+        btnLabel + "\n            </button>\n          </div>\n        ";
+      }
+
+      // 5. 手札からエネルギーを付ける
+      const handEnergyIndices = [];
+      p.hand.forEach((c, idx) => {
+        if (this.isEnergy(c)) handEnergyIndices.push(idx);
+      });
+      const isEnergyBlocked = handEnergyIndices.length > 0 && this.isBlocked('energy', p.hand[handEnergyIndices[0]], p);
+      const canAttachEnergyFromHand = isMyTurn && !p.energyAttached && handEnergyIndices.length > 0 && !isEnergyBlocked;
+
+      let energyBtnLabel = '⚡ 手札からエネルギーを付ける';
+      if (!isMyTurn) energyBtnLabel = '相手の番です';
+      else if (p.energyAttached) energyBtnLabel = '今番既に手札から付けました';
+      else if (handEnergyIndices.length === 0) energyBtnLabel = '手札にエネルギーなし';
+      else if (isEnergyBlocked) energyBtnLabel = '🚫 エネルギー手札付け禁止中';
+
+      itemsHtml += `
+        <div class="card-act-item is-energy">
+          <div class="act-item-content">
+            <div class="act-item-header">
+              <span class="act-badge energy" style="background:#00b4db;">手札付け</span>
+              <span class="act-item-name">エネルギー装着</span>
+            </div>
+            <div class="act-item-text">手札のエネルギーカードをこのポケモンに付けます（1ターン1回まで）。</div>
+          </div>
+          <button type="button" class="primary-button card-act-btn energy-btn" data-action="attach_hand_energy" ${canAttachEnergyFromHand ? '' : 'disabled'}>
+            ${energyBtnLabel}
+          </button>
+        </div>
+      `;
+
+      // 6. 手札から進化させる
+      const validEvos = [];
+      p.hand.forEach((c, idx) => {
+        if (this.isEvolution(c) && this.canEvolveFrom(c, card).can && !this.isBlocked('evolution', c, p)) {
+          validEvos.push({ handIdx: idx, card: c });
+        }
+      });
+
+      validEvos.forEach(item => {
+        itemsHtml += `
+          <div class="card-act-item is-evo">
+            <div class="act-item-content">
+              <div class="act-item-header">
+                <span class="act-badge evo" style="background:#ff9900;">進化</span>
+                <span class="act-item-name">「${this.escape(item.card.name)}」へ進化</span>
+              </div>
+              <div class="act-item-text">手札の「${this.escape(item.card.name)}」を重ねて進化させます。</div>
+            </div>
+            <button type="button" class="primary-button card-act-btn evo-btn" data-action="evolve_hand" data-hand-idx="${item.handIdx}" ${isMyTurn ? '' : 'disabled'}>
+              🌟 【${this.escape(item.card.name)}】に進化
+            </button>
+          </div>
+        `;
+      });
+
+      if (!itemsHtml) {
+        itemsHtml = '<div class="muted" style="text-align:center; padding: 20px;">現在実行可能なアクションはありません。</div>';
+      }
+
+      listEl.innerHTML = itemsHtml;
+
+      // アクションボタンクリック設定
+      listEl.querySelectorAll('[data-action]').forEach((btn) => {
+        btn.onclick = () => {
+          const act = btn.dataset.action;
+          this.closeCardActionModal();
+          if (act === 'attack1') {
+            this.declareAttack(1);
+          } else if (act === 'attack2') {
+            this.declareAttack(2);
+          } else if (act === 'ability') {
+            this.activateAbility(card, isBench, benchIdx);
+          } else if (act === 'retreat') {
+            this.retreatActive();
+          } else if (act === 'attach_hand_energy') {
+            const targetSlotEl = isBench ?
+              document.querySelectorAll('#playerBenchRow .bench-slot-occupied')[benchIdx] :
+              document.getElementById('playerActiveSpot');
+            if (handEnergyIndices.length === 1) {
+              this.applyEnergyAttachment(handEnergyIndices[0], card, targetSlotEl);
+            } else {
+              this.showChoiceModal(handEnergyIndices.map(i => ({ name: p.hand[i].name, type: p.hand[i].type, category: '手札エネルギー' })), {
+                title: 'つけるエネルギーを選択',
+                desc: card.name + ' にどのエネルギーを付けますか？'
+              }, (chosenIdx) => {
+                const hIdx = handEnergyIndices[chosenIdx];
+                this.applyEnergyAttachment(hIdx, card, targetSlotEl);
+              });
+            }
+          } else if (act === 'evolve_hand') {
+            const hIdx = Number(btn.dataset.handIdx);
+            const targetSlotEl = isBench ?
+              document.querySelectorAll('#playerBenchRow .bench-slot-occupied')[benchIdx] :
+              document.getElementById('playerActiveSpot');
+            this.executeEvolution(hIdx, card, targetSlotEl);
+          }
+        };
+      });
+
+      modal.style.display = 'flex';
+    },
+
+    closeCardActionModal() {
+      const modal = document.getElementById('battleCardActionModal');
+      if (modal) modal.style.display = 'none';
+      this._currentActionCard = null;
+    },
+
+    renderCostText(energyStr) {
+      const list = this.parseEnergyList(energyStr);
+      if (!list || list.length === 0) return 'なし (0個)';
+      return list.map((e) => {
+        const sym = window.CardSystem && window.CardSystem.typeSymbols && window.CardSystem.typeSymbols[e] || e;
+        return "" + sym + e;
+      }).join(' ');
+    },
+
+    getAbilityMaxUses(card) {
+      if (!card) return 1;
+      if (card._abilityMaxUses !== undefined && card._abilityMaxUses !== null) {
+        return Number(card._abilityMaxUses);
+      }
+      const code = String(card.abilityCode || '');
+      if (/useLimit\s*\(\s*(?:Infinity|999|'infinite'|"infinite")\s*\)/i.test(code)) {
+        return Infinity;
+      }
+      const match = code.match(/(?:useLimit|limitPerTurn|timesPerTurn|limit)\s*\(\s*(\d+)\s*\)/i);
+      if (match) {
+        return Number(match[1]);
+      }
+      return 1;
+    },
+
+    getAbilityRemainingUses(card) {
+      if (!card) return 0;
+      const maxUses = this.getAbilityMaxUses(card);
+      if (maxUses === Infinity) return Infinity;
+      const used = Number(card._abilityUseCount || 0);
+      return Math.max(0, maxUses - used);
+    },
+
+    async activateAbility(card, isBench = false, benchIdx = null) {
+      if (this.state.turnPlayer !== 'player') {
+        App.toast('あなたの番にのみ特性を使えます。', true);
+        return;
+      }
+      if (this.isBlocked('ability', card, this.state.player)) {
+        App.toast('効果により特性の使用は禁止されています。', true);
+        return;
+      }
+      const maxUses = this.getAbilityMaxUses(card);
+      const remaining = this.getAbilityRemainingUses(card);
+      if (remaining <= 0) {
+        App.toast(maxUses === 1 ? "特性【" + card.abilityName + "】は自分の番に1回しか使えません。" : "特性【" + card.abilityName + "】は自分の番に" + maxUses + "回までしか使えません。", true);
+        return;
+      }
+
+      card._abilityUseCount = (card._abilityUseCount || 0) + 1;
+      card._abilityUsedThisTurn = card._abilityUseCount >= maxUses;
+      this.log("✨ 【特性発動！】" + card.name + " の特性「" + card.abilityName + "」を発動しました！" + (maxUses > 1 && maxUses !== Infinity ? " (この番 " + card._abilityUseCount + "/" + maxUses + " 回目)" : ""));
+
+      // 特性発動前のスナップショット（cant()時の盤面復元用）
+      const snapshot = this.createBoardSnapshot();
+
+      let execCtx = null;
+      if (card.abilityCode && window.executeCardEffectCode) {
+        try {
+          execCtx = await window.executeCardEffectCode(card.abilityCode, { players: [this.state.player, this.state.opponent], logs: this.state.logs }, this.state.player, 'onActivateAbility', { card });
+        } catch (e) {
+          if (e && e.isEffectAbort) {
+            execCtx = { isCancelled: true, cancelReason: e.message ? e.message.replace(/^EFFECT_ABORTED:\s*/, '') : '' };
+          } else {
+            console.error('Ability code execution error:', e);
+          }
+        }
+      } else {
+        const text = card.abilityText || '';
+        if (text.includes('引く') || text.includes('ドロー')) {
+          if (this.state.player.deck.length > 0) {
+            const drawn = this.state.player.deck.shift();
+            this.state.player.hand.push(drawn);
+            this.log("✨ 特性効果で山札から1枚引きました。（" + drawn.name + "）");
+          }
+        } else if (text.includes('回復')) {
+          card.hp = Math.min(card.maxHp, card.hp + 20);
+          this.log("✨ 特性効果でHPを20回復しました。（現在HP: " + card.hp + "/" + card.maxHp + "）");
+        }
+      }
+
+      if (execCtx && execCtx.isCancelled) {
+        // 効果がキャンセル（cant()）された場合は盤面を復元し、使用回数を戻す
+        this.restoreBoardSnapshot(snapshot);
+        card._abilityUseCount = Math.max(0, (card._abilityUseCount || 1) - 1);
+        card._abilityUsedThisTurn = card._abilityUseCount >= maxUses;
+        this.render();
+        return;
+      }
+
+      App.toast("特性「" + card.abilityName + "」を発動しました！");
+      if (this.state.mode === 'online') {
+        this.broadcastOnlineAction('use_ability', { card: card });
+      }
+
+      // もしバトル場が空になった場合（特性で自身をトラッシュした場合など）、ベンチから交代
+      if (this.state.player.active === null) {
+        if (this.state.player.bench.length > 0) {
+          this.log("🔄 バトルポケモンがいなくなったため、ベンチから新しいバトルポケモンを出します。");
+          this.showChoiceModal(this.state.player.bench.map((b) => ({ name: b.name, type: b.type, hp: b.hp, category: 'バトル場へ' })), {
+            title: 'バトルポケモンの交代',
+            desc: '新しいバトルポケモンを選択してください。'
+          }, (idx) => {
+            this.state.player.active = this.state.player.bench.splice(idx, 1)[0];
+            this.log("🔄 プレイヤーは " + this.state.player.active.name + " をバトル場に出しました。");
+            this.render();
+          });
+        } else {
+          this.finishBattle(this.state.opponent.id, '自分の場にポケモンがいなくなりました！');
+        }
+      }
+
+      this.render();
+    },
+
+    renderHand() {
+      const root = document.getElementById('playerHandRow');
+      if (!root) return;
+
+      const hand = this.state.player.hand;
+      if (!hand.length) {
+        root.innerHTML = '<div class="muted hand-empty-msg">手札がありません</div>';
+        return;
+      }
+
+      root.innerHTML = hand.map((c, i) => {
+        let actionLabel = '使用';
+        const isEn = this.isEnergy(c);
+        const isBas = this.isBasic(c);
+        const isEvo = this.isEvolution(c);
+        const cat = String(c.category || '');
+        const isSupp = cat.includes('サポート') || cat.toLowerCase().includes('supporter');
+        const isFirstTurnFirstPlayer = this.isFirstPlayerFirstTurn('player');
+        if (isBas) actionLabel = '場に出す (DnD)';
+        else if (isEn) actionLabel = '⚡ エネ付け (DnD)';
+        else if (isEvo) {
+          actionLabel = this.isFirstTurn('player') ? '初番進化不可' : '進化 (DnD)';
+        }
+        else if (isSupp && isFirstTurnFirstPlayer) actionLabel = '先攻不可';
+        else if (isSupp && this.state.player.supporterUsed) actionLabel = '今番使用済';
+        else actionLabel = '発動 (DnD)';
+
+        const isMyTurn = this.state.turnPlayer === 'player' && this.state.phase === 'battle';
+        const draggableAttr = isMyTurn ? ' draggable="true"' : '';
+        const cardKindClass = isEn ? ' is-energy-card' : isBas ? ' is-basic-card' : isEvo ? ' is-evo-card' : ' is-trainer-card';
+
+        const cardHtml = window.CardSystem && window.CardSystem.createCardHtml ?
+        window.CardSystem.createCardHtml(c, { size: 'hand' }) :
+        '<div class="card-fallback">' + this.escape(c.name) + '</div>';
+
+        return "\n          <div class=\"hand-card-wrapper" +
+        cardKindClass + "\" data-hand-idx=\"" + i + "\"" + draggableAttr + " title=\"" + this.escape(c.name) + " (" + this.escape(c.category) + ")\">\n            <div class=\"hand-actual-card\">\n              " +
+
+        cardHtml + "\n            </div>\n            <button type=\"button\" class=\"hand-play-pill-btn\">" +
+
+        actionLabel + "</button>\n          </div>\n        ";
+
+
+      }).join('');
+
+      root.querySelectorAll('[data-hand-idx]').forEach((el) => {
+        const idx = Number(el.dataset.handIdx);
+        const card = hand[idx];
+
+        // 全カード対応ドラッグイベント
+        el.addEventListener('dragstart', (e) => {
+          if (this.state.turnPlayer !== 'player' || this.state.phase !== 'battle') {
+            e.preventDefault();
+            return;
+          }
+          this.draggedHandIndex = idx;
+          this.draggedCard = card;
+          if (e.dataTransfer) {
+            e.dataTransfer.setData('text/plain', String(idx));
+            e.dataTransfer.effectAllowed = 'copyMove';
+          }
+          el.classList.add('is-dragging-card');
+
+          // フィールド全体のハイライト (全カード共通でフィールドへのドロップを受け付ける)
+          const stadium = document.querySelector('.battle-stadium');
+          if (stadium) stadium.classList.add('drop-target-active');
+
+          const isEn = this.isEnergy(card);
+          const isBas = this.isBasic(card);
+          const isEvo = this.isEvolution(card);
+
+          if (isBas) {
+            // たねポケモン: バトル場が空ならバトル場、および空きベンチをハイライト
+            if (!this.state.player.active) {
+              const activeSlot = document.getElementById('playerActiveSpot');
+              if (activeSlot) activeSlot.classList.add('drop-target-active');
+            }
+            document.querySelectorAll('#playerBenchRow .bench-slot-empty').forEach((b) => {
+              b.classList.add('drop-target-active');
+            });
+          } else if (isEvo) {
+            // 進化: canEvolveFrom で有効なスロットのみハイライト
+            const activeSlot = document.getElementById('playerActiveSpot');
+            if (this.state.player.active && this.canEvolveFrom(card, this.state.player.active).can) {
+              if (activeSlot) activeSlot.classList.add('drop-target-active');
+            }
+            document.querySelectorAll('#playerBenchRow .bench-slot-occupied').forEach((b) => {
+              const bIdx = Number(b.dataset.benchIdx);
+              const benchPoke = this.state.player.bench[bIdx];
+              if (benchPoke && this.canEvolveFrom(card, benchPoke).can) {
+                b.classList.add('drop-target-active');
+              }
+            });
+          } else if (isEn) {
+            // エネルギー: バトル場とベンチのポケモンをハイライト
+            if (this.state.player.active) {
+              const activeSlot = document.getElementById('playerActiveSpot');
+              if (activeSlot) activeSlot.classList.add('drop-target-active');
+            }
+            document.querySelectorAll('#playerBenchRow .bench-slot-occupied').forEach((b) => {
+              b.classList.add('drop-target-active');
+            });
+          } else {
+            // トレーナー/グッズ/サポート: フィールド中央、バトル場、ベンチをハイライト
+            const divider = document.querySelector('.arena-center-divider');
+            if (divider) divider.classList.add('drop-target-field', 'drop-target-active');
+            const activeSlot = document.getElementById('playerActiveSpot');
+            if (activeSlot && this.state.player.active) activeSlot.classList.add('drop-target-active');
+            document.querySelectorAll('#playerBenchRow .bench-slot-occupied').forEach((b) => {
+              b.classList.add('drop-target-active');
+            });
+          }
+        });
+
+        el.addEventListener('dragend', () => {
+          el.classList.remove('is-dragging-card');
+          document.querySelectorAll('.drop-target-active, .drop-target-field, .drag-hover, .field-drag-hover').forEach((target) => {
+            target.classList.remove('drop-target-active', 'drop-target-field', 'drag-hover', 'field-drag-hover');
+          });
+          setTimeout(() => {
+            this.draggedHandIndex = null;
+            this.draggedCard = null;
+          }, 100);
+        });
+
+        // クリックイベント (フォールバック)
+        el.addEventListener('click', () => {
+          this.handleHandCardClick(idx);
+        });
+      });
+    },
+
+    escape(v) {
+      return String(v == null ? '' : v).
+      replace(/&/g, '&amp;').
+      replace(/</g, '&lt;').
+      replace(/>/g, '&gt;').
+      replace(/"/g, '&quot;').
+      replace(/'/g, '&#039;');
+    }
+  };
+
+  window.BattleSystem = BattleSystem;
+  console.log('[ORBITAL] BattleSystem.js.html finished execution. window.BattleSystem = object');
+})();
+</script>

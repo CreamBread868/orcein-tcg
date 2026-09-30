@@ -1,0 +1,2912 @@
+<script>
+console.log('[ORBITAL] EffectEditor.js.html started execution');
+if (window.__showDebugMsg) window.__showDebugMsg('EffectEditor読込開始');
+var EffectEditor;
+(() => {
+  'use strict';
+
+  const EffectEditor = {
+    effectEditor: {
+      target: null,
+      codes: {},
+      activeTab: 'ability',
+      completionIndex: 0,
+      currentCandidates: [],
+      popupPos: null,
+      isDockedRight: true,
+      dragInitialized: false,
+      userNavigated: false,
+      autoCompletionEnabled: true,
+      lastCompositionEndTime: 0
+    },
+
+    effectApiCompletions: [
+    // === 【基本オブジェクト (相手・自分)】 ===
+    {
+      keyword: 'opponent',
+      label: 'opponent (相手プレイヤー)',
+      category: 'target',
+      badge: '相手',
+      desc: '相手プレイヤーオブジェクト（.active, .bench, .hand, .deck, .discard, .prizes）',
+      snippet: 'opponent',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'self',
+      label: 'self (自分プレイヤー)',
+      category: 'target',
+      badge: '自分',
+      desc: '自分プレイヤーオブジェクト（.active, .bench, .hand, .deck, .discard, .prizes）',
+      snippet: 'self',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+
+    // === 【グッズ・サポート効果 (トレーナー)】 ===
+    {
+      keyword: 'discardDraw',
+      label: 'discardCards(self.hand, ...) + draw(self, 7)',
+      category: 'func',
+      badge: '博士の研究',
+      desc: '【手札総入替】手札をすべてトラッシュし、山札を7枚引く',
+      snippet: 'discardCards(self.hand, self.hand.length);\ndraw(self, 7);',
+      targets: ['trainer', 'attack1', 'ability']
+    },
+    {
+      keyword: 'bossOrders',
+      label: 'const target = choiceCard(opponent.bench);\nswitchActive(opponent, target);',
+      category: 'func',
+      badge: 'ボスの指令',
+      desc: '【相手ベンチ呼出】相手のベンチポケモンを1匹選び、バトルポケモンと入れ替える',
+      snippet: 'const target = choiceCard(opponent.bench);\nswitchActive(opponent, target);',
+      targets: ['trainer', 'attack1', 'ability']
+    },
+    {
+      keyword: 'pokemonSwitch',
+      label: 'switchActive(self)',
+      category: 'func',
+      badge: 'ポケモン入替',
+      desc: '【ポケモンいれかえ】自分のバトルポケモンをベンチポケモンと入れ替える',
+      snippet: 'switchActive(self);',
+      targets: ['trainer', 'attack1', 'ability']
+    },
+    {
+      keyword: 'nestBall',
+      label: 'const card = choiceCard(self.deck, { category: "たね" });\ntoHand(self, card);',
+      category: 'func',
+      badge: 'ネストボール',
+      desc: '【たねサーチ】自分の山札から「たね」を1枚選び手札に加える',
+      snippet: 'const card = choiceCard(self.deck, { category: "たね" });\ntoHand(self, card);\nshuffleDeck(self);',
+      targets: ['trainer', 'attack1', 'ability']
+    },
+    {
+      keyword: 'energyRetrieval',
+      label: 'const card = choiceCard(self.discard, { category: "エネルギー" });\ntoHand(self, card);',
+      category: 'func',
+      badge: 'エネ回収',
+      desc: '【エネルギー回収】自分のトラッシュからエネルギーを選び手札に加える',
+      snippet: 'const card = choiceCard(self.discard, { category: "エネルギー" });\ntoHand(self, card);',
+      targets: ['trainer', 'attack1', 'ability']
+    },
+    {
+      keyword: 'healTrainer',
+      label: 'heal(self.active, 30)',
+      category: 'func',
+      badge: 'きずぐすり',
+      desc: '【HP回復】自分のバトルポケモンのHPを30回復する',
+      snippet: 'heal(self.active, 30);',
+      targets: ['trainer', 'attack1', 'ability']
+    },
+    {
+      keyword: 'rareCandy',
+      label: 'rareCandy()',
+      category: 'func',
+      badge: 'ふしぎなアメ',
+      desc: '【ふしぎなアメ】手札の2進化ポケモンを場のたねポケモンにのせ、1進化をとばして進化させる（最初の番や出したばかりには使えない）',
+      snippet: 'rareCandy();',
+      targets: ['trainer', 'attack1', 'ability']
+    },
+    {
+      keyword: 'isFirstTurn',
+      label: 'self.isFirstTurn',
+      category: 'prop',
+      badge: '最初の番',
+      desc: '自分の最初の番かどうか（Boolean）',
+      snippet: 'self.isFirstTurn',
+      targets: ['trainer', 'attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'isJustPlayed',
+      label: 'target.isJustPlayed',
+      category: 'prop',
+      badge: '出したばかり',
+      desc: 'そのポケモンがこの番に出したばかりかどうか（Boolean）',
+      snippet: 'target.isJustPlayed',
+      targets: ['trainer', 'attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'getPreEvolution',
+      label: 'getPreEvolution(card)',
+      category: 'func',
+      badge: '進化前取得',
+      desc: 'そのポケモンの進化前の名前を取得する',
+      snippet: 'getPreEvolution(card)',
+      targets: ['trainer', 'attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'getNextEvolutions',
+      label: 'getNextEvolutions(card)',
+      category: 'func',
+      badge: '進化先取得',
+      desc: 'このポケモンから進化できるカードの一覧配列を取得する',
+      snippet: 'getNextEvolutions(card)',
+      targets: ['trainer', 'attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'isEvolutionOf',
+      label: 'isEvolutionOf(evoCard, basePokemon)',
+      category: 'func',
+      badge: '進化判定',
+      desc: 'evoCard が basePokemon の進化先かどうか判定する（Boolean）',
+      snippet: 'isEvolutionOf(evoCard, basePokemon)',
+      targets: ['trainer', 'attack1', 'attack2', 'ability']
+    },
+
+    // === 【特性イベント・起動回数】 ===
+    {
+      keyword: 'useLimit',
+      label: 'useLimit(1)',
+      category: 'func',
+      badge: '特性回数',
+      desc: '【起動型特性】自分の番に指定回数使える（ボタンを押して任意発動。例: useLimit(1) / useLimit(2) / useLimit(Infinity)）',
+      snippet: 'useLimit(1);',
+      targets: ['ability']
+    },
+    {
+      keyword: 'limitPerTurn',
+      label: 'limitPerTurn(1)',
+      category: 'func',
+      badge: '特性回数',
+      desc: '【起動型特性】自分の番に1回使える（useLimitと同じ）',
+      snippet: 'limitPerTurn(1);',
+      targets: ['ability']
+    },
+    {
+      keyword: 'start',
+      label: 'event.on("start", () => { ... })',
+      category: 'event',
+      badge: '特性イベント',
+      desc: '自分のターン開始時に強制（自動）で発動（turnStartと同じ）',
+      snippet: 'event.on("start", () => {\n  draw(self, 1);\n});',
+      targets: ['ability']
+    },
+    {
+      keyword: 'turnStart',
+      label: 'event.on("turnStart", () => { ... })',
+      category: 'event',
+      badge: '特性イベント',
+      desc: '自分のターン開始時（毎ターン強制）に発動',
+      snippet: 'event.on("turnStart", () => {\n  draw(self, 1);\n});',
+      targets: ['ability']
+    },
+    {
+      keyword: 'enterBattle',
+      label: 'event.on("enterBattle", () => { ... })',
+      category: 'event',
+      badge: '特性イベント',
+      desc: 'バトル場に出た時に発動',
+      snippet: 'event.on("enterBattle", () => {\n  heal(self.active, 30);\n});',
+      targets: ['ability']
+    },
+    {
+      keyword: 'enterBench',
+      label: 'event.on("enterBench", () => { ... })',
+      category: 'event',
+      badge: '特性イベント',
+      desc: '手札からベンチに出した時に発動',
+      snippet: 'event.on("enterBench", () => {\n  attachEnergy(self.active, 1);\n});',
+      targets: ['ability']
+    },
+    {
+      keyword: 'onKnockout',
+      label: 'event.on("onKnockout", () => { ... })',
+      category: 'event',
+      badge: '特性イベント',
+      desc: 'このカードがきぜつした時に発動',
+      snippet: 'event.on("onKnockout", () => {\n  draw(self, 2);\n});',
+      targets: ['ability']
+    },
+    {
+      keyword: 'allyKnockedOut',
+      label: 'event.on("allyKnockedOut", (koPokemon) => { ... })',
+      category: 'event',
+      badge: '特性イベント',
+      desc: '自分の仲間（味方）のポケモンがきぜつした時に発動',
+      snippet: 'event.on("allyKnockedOut", (koPokemon) => {\n  draw(self, 1);\n});',
+      targets: ['ability']
+    },
+    {
+      keyword: '味方気絶',
+      label: 'event.on("味方気絶", (koPokemon) => { ... })',
+      category: 'event',
+      badge: '特性イベント',
+      desc: '自分の仲間（味方）のポケモンがきぜつした時に発動',
+      snippet: 'event.on("味方気絶", (koPokemon) => {\n  draw(self, 1);\n});',
+      targets: ['ability']
+    },
+    {
+      keyword: 'onDamage',
+      label: 'event.on("onDamage", (amount) => { ... })',
+      category: 'event',
+      badge: '特性イベント',
+      desc: 'ダメージを受けた時に発動',
+      snippet: 'event.on("onDamage", (amount) => {\n  \n});',
+      targets: ['ability']
+    },
+    {
+      keyword: 'beforeDamage',
+      label: 'event.on("beforeDamage", (e) => { ... })',
+      category: 'event',
+      badge: '特性イベント',
+      desc: '【被ダメージ直前】相手からワザのダメージを受ける直前に発動（無効化・軽減・判定）',
+      snippet: 'event.on("beforeDamage", (e) => {\n  // 相手のワザのダメージを受けない（キャンセル）\n  e.cancel = true;\n});',
+      targets: ['ability']
+    },
+    {
+      keyword: 'cancelDamage',
+      label: 'cancelDamage(e) または e.cancel = true',
+      category: 'func',
+      badge: '無効化',
+      desc: '受けるワザのダメージを完全にキャンセル（無効化）する',
+      snippet: 'e.cancel = true;',
+      targets: ['ability']
+    },
+    {
+      keyword: 'preventDamage',
+      label: 'e.preventDamage()',
+      category: 'func',
+      badge: '無効化',
+      desc: '受けるワザのダメージを無効化するメソッド',
+      snippet: 'e.preventDamage();',
+      targets: ['ability']
+    },
+    {
+      keyword: 'turnEnd',
+      label: 'event.on("turnEnd", () => { ... })',
+      category: 'event',
+      badge: '特性イベント',
+      desc: '自分のターン終了時に発動',
+      snippet: 'event.on("turnEnd", () => {\n  \n});',
+      targets: ['ability']
+    },
+    {
+      keyword: 'event',
+      label: 'event.on(eventName, handler)',
+      category: 'event',
+      badge: 'イベント',
+      desc: 'イベントリスナーを登録（特性専用）',
+      snippet: 'event.on("turnStart", () => {\n  \n});',
+      targets: ['ability']
+    },
+
+    // === 【条件分岐 if構文 & コイントス】 ===
+    {
+      keyword: 'if',
+      label: 'if (coinFlip() === 1) { ... }',
+      category: 'condition',
+      badge: '条件文',
+      desc: '【コイン判定】コインを1回投げ、表なら効果発動',
+      snippet: 'if (coinFlip() === 1) {\n  damage(opponent.active, 20);\n}',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'coinFlip',
+      label: 'coinFlip(count | "表が出るまで")',
+      category: 'func',
+      badge: 'コイントス',
+      desc: 'コインを指定回数または「表が出るまで」投げて結果数を返す',
+      snippet: 'coinFlip(1)',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'flipCoin',
+      label: 'flipCoin(count | "表が出るまで")',
+      category: 'func',
+      badge: 'コイントス',
+      desc: '【コイントス】指定回数または表が出るまで投げ、結果数・回数を返す',
+      snippet: "flipCoin('表が出るまで')",
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'flipCoinUntil',
+      label: 'flipCoin("表が出るまで") * 30',
+      category: 'func',
+      badge: '表が出るまで',
+      desc: '【連続トス】表が出るまでコインを投げ、出た回数×30ダメージ',
+      snippet: "const flips = flipCoin('表が出るまで');\ndamage(opponent.active, flips * 30);",
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'isKnockedOut',
+      label: 'if (isKnockedOut(opponent.active)) { ... }',
+      category: 'condition',
+      badge: '相手を倒した',
+      desc: '【相手を倒したなら】相手が戦闘不能・きぜつしたか判定し効果発動',
+      snippet: "damage(opponent.active, 60);\nif (isKnockedOut(opponent.active)) {\n  takePrize(self, 1);\n}",
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'didKnockout',
+      label: 'if (didKnockout()) { ... }',
+      category: 'condition',
+      badge: '相手を倒した',
+      desc: '【このワザで相手を倒したなら】追加サイドやドロー',
+      snippet: "damage(opponent.active, 50);\nif (didKnockout()) {\n  draw(self, 2);\n}",
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'onKnockoutOpponent',
+      label: 'event.on("onKnockoutOpponent", () => { ... })',
+      category: 'event',
+      badge: '特性: 撃破時',
+      desc: '【相手を倒した時】相手ポケモンをきぜつさせた時に発動する特性',
+      snippet: "event.on('onKnockoutOpponent', () => {\n  draw(self, 1);\n});",
+      targets: ['ability']
+    },
+    {
+      keyword: 'takePrize',
+      label: 'takePrize(self, amount)',
+      category: 'func',
+      badge: 'サイド取得',
+      desc: '【サイド獲得】指定枚数のサイドカードを手札に加える',
+      snippet: 'takePrize(self, 1);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'ifHp',
+      label: 'if (opponent.active.hp <= 50) { ... }',
+      category: 'condition',
+      badge: '条件文',
+      desc: '相手バトルカードの残りHPが50以下なら発動',
+      snippet: 'if (opponent.active.hp <= 50) {\n  damage(opponent.active, 30);\n}',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'ifSelfHp',
+      label: 'if (self.active.hp <= 30) { ... }',
+      category: 'condition',
+      badge: '条件文',
+      desc: '自分の残りHPが30以下（ピンチ時）なら発動',
+      snippet: 'if (self.active.hp <= 30) {\n  heal(self.active, 40);\n}',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'ifEnergy',
+      label: 'if ((self.active.energy || 0) >= 3) { ... }',
+      category: 'condition',
+      badge: '条件文',
+      desc: '自分のエネルギーが3個以上なら大ダメージ',
+      snippet: 'if ((self.active.energy || 0) >= 3) {\n  damage(opponent.active, 40);\n}',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'ifCategory',
+      label: "if (opponent.active.category === '進化') { ... }",
+      category: 'condition',
+      badge: '条件文',
+      desc: '相手が進化カードなら追加効果',
+      snippet: "if (opponent.active.category === '進化') {\n  damage(opponent.active, 30);\n}",
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'ifStatus',
+      label: 'if (opponent.active.status) { ... }',
+      category: 'condition',
+      badge: '条件文',
+      desc: '相手が特殊状態（どく・やけど等）なら発動',
+      snippet: 'if (opponent.active.status) {\n  damage(opponent.active, 30);\n}',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'ifIsActive',
+      label: 'if (isActive) { ... }',
+      category: 'condition',
+      badge: '条件文',
+      desc: '自身がバトル場にいる場合に発動',
+      snippet: 'if (isActive) {\n  damage(opponent.active, 40);\n}',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'ifIsBench',
+      label: 'if (isBench) { ... }',
+      category: 'condition',
+      badge: '条件文',
+      desc: '自身がベンチにいる場合に発動',
+      snippet: 'if (isBench) {\n  heal(self.active, 20);\n}',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+
+    // === 【戦闘・効果API関数】 ===
+    {
+      keyword: 'damage',
+      label: 'damage(target, amount)',
+      category: 'func',
+      badge: 'ダメージ',
+      desc: '指定した対象にダメージを与える',
+      snippet: 'damage(opponent.active, 30)',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'benchDamage',
+      label: 'benchDamage(player, amount)',
+      category: 'func',
+      badge: 'ベンチ攻撃',
+      desc: '指定したプレイヤーの全ベンチカードにダメージを与える',
+      snippet: 'benchDamage(opponent, 10)',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'applyStatus',
+      label: 'applyStatus(target, "どく")',
+      category: 'func',
+      badge: '状態異常',
+      desc: '対象を特殊状態にする（"どく","やけど","マヒ","ねむり","こんらん"）',
+      snippet: 'applyStatus(opponent.active, "どく")',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'clearStatus',
+      label: 'clearStatus(target)',
+      category: 'func',
+      badge: '状態回復',
+      desc: '対象の特殊状態をすべて回復する',
+      snippet: 'clearStatus(self.active)',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'heal',
+      label: 'heal(target, amount)',
+      category: 'func',
+      badge: '回復',
+      desc: '対象のHPを最大HPまで回復する',
+      snippet: 'heal(self.active, 30)',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'draw',
+      label: 'draw(player, amount)',
+      category: 'func',
+      badge: 'ドロー',
+      desc: '山札からカードを引いて手札に加える',
+      snippet: 'draw(self, 1)',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'toDeck',
+      label: 'toDeck(player, cardOrCards)',
+      category: 'func',
+      badge: '山札もどし',
+      desc: 'カード（手札やトラッシュ等）を山札にもどしてシャッフルする',
+      snippet: 'toDeck(self, card);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'toHand',
+      label: 'toHand(player, cardOrCards)',
+      category: 'func',
+      badge: '手札移動',
+      desc: '指定したカード（山札やトラッシュ等）を手札に加える',
+      snippet: 'toHand(self, card);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'toDiscard',
+      label: 'toDiscard(player, cardOrCards)',
+      category: 'func',
+      badge: 'トラッシュ',
+      desc: '指定したカードをトラッシュへ送る',
+      snippet: 'toDiscard(self, card);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'toBench',
+      label: 'toBench(player, cardOrCards)',
+      category: 'func',
+      badge: 'ベンチ移動',
+      desc: '指定したたねポケモン（山札・手札・トラッシュ等）をベンチに出す（最大5匹まで）',
+      snippet: 'toBench(self, card);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'getEnergy',
+      label: 'getEnergy(target)',
+      category: 'func',
+      badge: 'エネ要素取得',
+      desc: '対象についているエネルギー要素配列（["炎", "水"] 等）を取得（配列としてfilterやlength、または数値計算が可能）',
+      snippet: 'getEnergy(self.active)',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'hasEnergy',
+      label: 'hasEnergy(target, count)',
+      category: 'func',
+      badge: 'エネ判定',
+      desc: '対象のカードに指定個数以上のエネルギーがついているか判定',
+      snippet: 'hasEnergy(self.active, 2)',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'kill',
+      label: 'kill(target, amount)',
+      category: 'func',
+      badge: '撃破/破棄',
+      desc: 'ポケモンはHPを減らし、他（エネ等）はトラッシュへ送る',
+      snippet: 'kill(target);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'attach',
+      label: 'attach(card, target)',
+      category: 'func',
+      badge: 'アタッチ/進化',
+      desc: '手札のカードを対象につける（進化カードなら進化）',
+      snippet: 'attach(card, self.active);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'move',
+      label: 'move(cards, destination)',
+      category: 'func',
+      badge: 'カード移動',
+      desc: 'カード（エネルギー等）を別のポケモンや領域へ付け替える',
+      snippet: 'move(cards, self.active);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'getCards',
+      label: 'getCards(target, filter)',
+      category: 'func',
+      badge: 'カード取得',
+      desc: 'ポケモンについているカード（エネルギー等）を取得する',
+      snippet: 'const cards = getCards(self.active);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'reduceDamage',
+      label: 'reduceDamage(target, amount)',
+      category: 'func',
+      badge: '被ダメ軽減',
+      desc: '対象が次に受けるワザのダメージを軽減する',
+      snippet: 'reduceDamage(self.active, 20)',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'cantAttackNextTurn',
+      label: 'cantAttackNextTurn()',
+      category: 'func',
+      badge: 'ワザ不可',
+      desc: '次の自分の番、このポケモンはワザを使えない',
+      snippet: 'cantAttackNextTurn();',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'switchActive',
+      label: 'switchActive(player)',
+      category: 'func',
+      badge: '入れ替え',
+      desc: 'バトルカードをベンチのカードと入れ替える',
+      snippet: 'switchActive(self)',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'discardCards',
+      label: 'discardCards(player, amount)',
+      category: 'func',
+      badge: '手札破棄',
+      desc: '手札から指定枚数のカードをトラッシュに送る',
+      snippet: 'discardCards(self, 1)',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'searchCards',
+      label: 'searchCards(player, filter)',
+      category: 'func',
+      badge: '山札サーチ',
+      desc: '山札から条件に合うカードを探す',
+      snippet: 'searchCards(self, {category:"たね"})',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'shuffleDeck',
+      label: 'shuffleDeck(player)',
+      category: 'func',
+      badge: 'シャッフル',
+      desc: '山札をシャッフルする',
+      snippet: 'shuffleDeck(self)',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+
+    // === 【万能カード選択 (choiceCard)】 ===
+    {
+      keyword: 'choiceCard',
+      label: 'choiceCard(self, "hand", { category: "Energy" })',
+      category: 'choice',
+      badge: 'カード選択',
+      desc: '指定した場所から条件に合うカードを選んで取得（手札・山札・トラッシュ・ベンチ等）',
+      snippet: 'const card = choiceCard(self, "hand", { category: "Energy" });',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'choiceCards',
+      label: 'choiceCards(self, "discard", { category: "Energy" }, 2)',
+      category: 'choice',
+      badge: '複数選択',
+      desc: '条件に合うカードを複数枚選んで取得',
+      snippet: 'const cards = choiceCards(self, "discard", { category: "Energy" }, 2);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'choiceDamage',
+      label: 'const target = choiceCard(opponent, "bench");\ndamage(target, 30);',
+      category: 'choice',
+      badge: 'ベンチ狙撃',
+      desc: '相手ベンチから1体選んで、そのポケモンにダメージを与える',
+      snippet: 'const target = choiceCard(opponent, "bench");\ndamage(target, 30);',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'choiceSearch',
+      label: 'const card = choiceCard(self, "deck", { category: "たね" });\ntoHand(self, card);',
+      category: 'choice',
+      badge: '山札サーチ',
+      desc: '自分の山札から「たね」カードを選び、手札に加える',
+      snippet: 'const card = choiceCard(self, "deck", { category: "たね" });\ntoHand(self, card);\nshuffleDeck(self);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'choiceDiscard',
+      label: 'const card = choiceCard(opponent, "hand");\ntoDiscard(opponent, card);',
+      category: 'choice',
+      badge: '手札破壊',
+      desc: '相手の手札を1枚選び、トラッシュに送る',
+      snippet: 'const card = choiceCard(opponent, "hand");\ntoDiscard(opponent, card);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'choiceRecover',
+      label: 'const card = choiceCard(self, "discard", { category: "Energy" });\ntoHand(self, card);',
+      category: 'choice',
+      badge: 'トラッシュ回収',
+      desc: 'トラッシュからエネルギーを選び、手札に加える',
+      snippet: 'const card = choiceCard(self, "discard", { category: "Energy" });\ntoHand(self, card);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'choiceBench',
+      label: 'const target = choiceCard(opponent, "bench");\nswitchActive(opponent, target);',
+      category: 'choice',
+      badge: 'ベンチ入替',
+      desc: '相手のベンチポケモンを1匹選び、バトル場へ入れ替える',
+      snippet: 'const target = choiceCard(opponent, "bench");\nswitchActive(opponent, target);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'choiceAttached',
+      label: 'const nrg = choiceCard(opponent.active, "attached");\nkill(nrg);',
+      category: 'choice',
+      badge: 'エネ剥奪',
+      desc: '相手のバトルポケモンについているカードをトラッシュする',
+      snippet: 'const nrg = choiceCard(opponent.active, "attached");\nkill(nrg);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'choiceField',
+      label: 'const targets = choiceCard(opponent, "field", {}, 1);',
+      category: 'choice',
+      badge: '場のカード選択',
+      desc: '相手（または自分）の場（バトル場＋ベンチ）から条件と枚数を指定してカードを選ぶ',
+      snippet: 'const targets = choiceCard(opponent, "field", {}, 1);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'choiceHeal',
+      label: 'const target = choiceCard(self.bench);\nheal(target, 30);',
+      category: 'choice',
+      badge: 'ベンチ回復',
+      desc: '自分のベンチポケモンを1匹選び、HPを回復する',
+      snippet: 'const target = choiceCard(self.bench);\nheal(target, 30);',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'nextTurnDamage',
+      label: 'nextTurnDamage(80);',
+      category: 'action',
+      badge: '次回威力+80',
+      desc: '次の自分の番、ワザのダメージを+80する（交代しても継続。第2引数で特定ポケモンや属性の限定も可能）',
+      snippet: 'nextTurnDamage(80);',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'cant',
+      label: 'if (条件不一致) cant("発動条件を満たしていません");',
+      category: 'action',
+      badge: '不発・手札戻し',
+      desc: '条件に合わない場合に効果を中断（トレーナーズは手札に戻り、ワザ・特性は不発で番を継続）する',
+      snippet: 'if (!opponent.bench.length) {\n  cant("相手のベンチにポケモンがいません");\n}',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'block',
+      label: 'block(\'ability\', opponent, 1);',
+      category: 'action',
+      badge: '行動禁止',
+      desc: '相手の特性、ワザ、グッズ、にげる等を指定ターン禁止（alwaysで常時禁止も可）',
+      snippet: 'block(\'ability\', opponent, 1);',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'blockAbility',
+      label: 'blockAbility(opponent, 1);',
+      category: 'action',
+      badge: '特性禁止',
+      desc: '相手の特性を指定ターン（または\'always\'で常時）禁止する',
+      snippet: 'blockAbility(opponent, 1);',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'blockItem',
+      label: 'blockItem(opponent, 1);',
+      category: 'action',
+      badge: 'グッズロック',
+      desc: '次の相手の番、相手のグッズ使用を禁止する',
+      snippet: 'blockItem(opponent, 1);',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'blockRetreat',
+      label: 'blockRetreat(opponent.active, 1);',
+      category: 'action',
+      badge: 'にげる禁止',
+      desc: '相手のバトルポケモンの「にげる」を禁止する',
+      snippet: 'blockRetreat(opponent.active, 1);',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+
+    // === 【対象セレクタ】 ===
+    {
+      keyword: 'self',
+      label: 'self',
+      category: 'target',
+      badge: '対象',
+      desc: '自分自身（プレイヤー）',
+      snippet: 'self',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'opponent',
+      label: 'opponent',
+      category: 'target',
+      badge: '対象',
+      desc: '相手プレイヤー',
+      snippet: 'opponent',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'self.active',
+      label: 'self.active',
+      category: 'target',
+      badge: '対象',
+      desc: '自分のバトル場のカード',
+      snippet: 'self.active',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'thisPokemon',
+      label: 'thisPokemon',
+      category: 'target',
+      badge: '自身',
+      desc: 'この効果を持つポケモン自身（ベンチ・バトル場問わず）',
+      snippet: 'thisPokemon',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'card',
+      label: 'card',
+      category: 'target',
+      badge: '自身',
+      desc: 'この効果を持つカード自身（thisPokemon の別名）',
+      snippet: 'card',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'pokemon',
+      label: 'pokemon',
+      category: 'target',
+      badge: '自身',
+      desc: 'この効果を持つポケモン自身（thisPokemon の別名）',
+      snippet: 'pokemon',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'isActive',
+      label: 'isActive',
+      category: 'state',
+      badge: '状態',
+      desc: '自身がバトル場にいるかどうか（boolean: true / false）',
+      snippet: 'isActive',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'isBench',
+      label: 'isBench',
+      category: 'state',
+      badge: '状態',
+      desc: '自身がベンチにいるかどうか（boolean: true / false）',
+      snippet: 'isBench',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'opponent.active',
+      label: 'opponent.active',
+      category: 'target',
+      badge: '対象',
+      desc: '相手のバトル場のカード',
+      snippet: 'opponent.active',
+      targets: ['attack1', 'attack2', 'ability']
+    }],
+
+    functionReferenceData: [
+      {
+        name: 'choiceCard',
+        signature: 'choiceCard(source, zone?, filter?, count?, message?)',
+        category: 'choice',
+        catLabel: '選択・取得',
+        badge: '万能選択',
+        returns: 'Array []',
+        desc: '盤面・手札・山札・トラッシュ、または特定のポケモンについているカード（エネルギー等）を選択して配列として取得します。末尾に選択時のモーダル指示メッセージを指定できます。',
+        params: [
+          { name: 'source', type: 'player | pokemon | string', desc: 'self, opponent, self.active, opponent.active, opponent.bench, target' },
+          { name: 'zone', type: 'string', desc: '"field" (盤面全体), "hand" (手札), "deck" (山札), "discard" (トラッシュ), "attached" (付随カード)' },
+          { name: 'filter', type: 'object | function', desc: '{ category: "Basic" }, { category: "Energy" }, (c) => c.hp <= 50' },
+          { name: 'count', type: 'number', desc: '選ぶ枚数（省略時は 1）' },
+          { name: 'message', type: 'string', desc: '選択モーダルに表示する案内メッセージ（例: "エネルギーカードを選択してください"）' }
+        ],
+        example: 'const card = choiceCard(self, "deck", { category: "Energy" }, 1, "山札からエネルギーを選んでください");\ntoHand(self, card);\nshuffleDeck(self);',
+        snippet: 'const targets = choiceCard(opponent, "field");'
+      },
+      {
+        name: 'kill',
+        signature: 'kill(target, amount?)',
+        category: 'action',
+        catLabel: '撃破・トラッシュ',
+        badge: '撃破/破棄',
+        returns: 'void',
+        desc: 'HPのあるポケモンはHPを減らし（amount省略または0以下できぜつ）、HPのないカード（エネルギー等）はホストから剥がして直接トラッシュへ送ります。',
+        params: [
+          { name: 'target', type: 'pokemon | card | Array', desc: '対象ポケモン、またはポケモンについているカード（choiceCardで取得した値など）' },
+          { name: 'amount', type: 'number', desc: '減らすHPダメージ量（数値、省略時は即座にHPを0にしてきぜつ）' }
+        ],
+        example: '// エネルギーを1個剥がしてトラッシュ\nconst nrg = choiceCard(opponent.active, "attached");\nkill(nrg);\n\n// ポケモンに50ダメージ\nkill(opponent.active, 50);',
+        snippet: 'kill(target);'
+      },
+      {
+        name: 'attach',
+        signature: 'attach(card, target)',
+        category: 'action',
+        catLabel: 'アタッチ・進化',
+        badge: '付与/進化',
+        returns: 'void',
+        desc: '手札からカードを取り出し、対象ポケモンにつけます。進化ポケモンの場合は非正規の進化ラインでも対象ポケモンを進化させ、元のカードを attachedCards に保存します。',
+        params: [
+          { name: 'card', type: 'card | Array', desc: '手札にあるエネルギーや進化ポケモンのカードオブジェクト' },
+          { name: 'target', type: 'pokemon', desc: '付与または進化の対象となるポケモン（デフォルト: self.active）' }
+        ],
+        example: '// 手札からエネルギーをつけて加速\nconst card = choiceCard(self, "hand", { category: "Energy" });\nattach(card, self.active);\n\n// 手札から進化カードで進化\nconst evo = choiceCard(self, "hand", { category: "Evolution" });\nattach(evo, self.active);',
+        snippet: 'attach(card, self.active);'
+      },
+      {
+        name: 'move',
+        signature: 'move(cards, destination)',
+        category: 'action',
+        catLabel: '移動・付替',
+        badge: 'カード移動',
+        returns: 'void',
+        desc: 'ポケモンについているカード（エネルギー等）を別のポケモンへ付け替える、またはトラッシュ等の領域へ移動させます。エネルギー数も自動連動します。',
+        params: [
+          { name: 'cards', type: 'card | Array', desc: '移動させるカードオブジェクト（choiceCard(pokemon, "attached") 等で取得）' },
+          { name: 'destination', type: 'pokemon | Array', desc: '移動先のポケモン、または領域配列（self.active, target, self.discard など）' }
+        ],
+        example: 'const nrg = choiceCard(self.active, "attached");\nmove(nrg, target);',
+        snippet: 'move(cards, self.active);'
+      },
+      {
+        name: 'getCards',
+        signature: 'getCards(target, filter?)',
+        category: 'choice',
+        catLabel: '選択・取得',
+        badge: 'カード取得',
+        returns: 'Array []',
+        desc: '指定したポケモンについているカード（エネルギーや進化前カード）の一覧配列を取得します。pokemon.getCards(filter) と同等です。',
+        params: [
+          { name: 'target', type: 'pokemon', desc: '対象ポケモン（self.active, opponent.active, target）' },
+          { name: 'filter', type: 'object | function', desc: '{ category: "Energy" }, { category: "Basic" } など（省略可）' }
+        ],
+        example: 'const energies = getCards(self.active, { category: "Energy" });\nconsole.log(energies.length);',
+        snippet: 'const cards = getCards(self.active);'
+      },
+      {
+        name: 'damage',
+        signature: 'damage(target, amount)',
+        category: 'battle',
+        catLabel: 'ダメージ・回復',
+        badge: 'ダメージ',
+        returns: 'void',
+        desc: '対象のポケモンに直接ダメージを与えます。相手のワザ宣言時だけでなく、効果ダメージや自傷ダメージにも使用できます。',
+        params: [
+          { name: 'target', type: 'pokemon | Array', desc: 'ダメージを与える対象ポケモン（opponent.active, opponent.bench など）' },
+          { name: 'amount', type: 'number', desc: '与えるダメージ数値' }
+        ],
+        example: 'damage(opponent.active, 60);',
+        snippet: 'damage(opponent.active, 30);'
+      },
+      {
+        name: 'heal',
+        signature: 'heal(target, amount)',
+        category: 'battle',
+        catLabel: 'ダメージ・回復',
+        badge: '回復',
+        returns: 'void',
+        desc: '対象ポケモンのHPを回復します（最大HPを超えて回復することはありません）。',
+        params: [
+          { name: 'target', type: 'pokemon | Array', desc: '回復する対象ポケモン（self.active, self.bench など）' },
+          { name: 'amount', type: 'number', desc: '回復するHP数値' }
+        ],
+        example: 'heal(self.active, 30);',
+        snippet: 'heal(self.active, 30);'
+      },
+      {
+        name: 'draw',
+        signature: 'draw(player, amount)',
+        category: 'cards',
+        catLabel: '手札・山札・トラッシュ',
+        badge: 'ドロー',
+        returns: 'void',
+        desc: 'プレイヤーの山札の上から指定枚数のカードを引き、手札に加えます。',
+        params: [
+          { name: 'player', type: 'player', desc: '引くプレイヤー（self または opponent）' },
+          { name: 'amount', type: 'number', desc: '引く枚数（数値）' }
+        ],
+        example: 'draw(self, 2);',
+        snippet: 'draw(self, 2);'
+      },
+      {
+        name: 'switchActive',
+        signature: 'switchActive(player, target?)',
+        category: 'battle',
+        catLabel: 'ダメージ・回復',
+        badge: '入替',
+        returns: 'void',
+        desc: 'バトル場のポケモンをベンチのポケモンと入れ替えます（ボスの指令やポケモンいれかえの効果）。',
+        params: [
+          { name: 'player', type: 'player', desc: '入れ替えるプレイヤー（self または opponent）' },
+          { name: 'target', type: 'pokemon', desc: '新しくバトル場に出すベンチポケモン（省略時はベンチ先頭）' }
+        ],
+        example: 'const target = choiceCard(opponent.bench);\nswitchActive(opponent, target);',
+        snippet: 'switchActive(self);'
+      },
+      {
+        name: 'toHand',
+        signature: 'toHand(player, cardOrCards)',
+        category: 'cards',
+        catLabel: '手札・山札・トラッシュ',
+        badge: '手札移動',
+        returns: 'void',
+        desc: '指定したカード（山札やトラッシュ、ベンチ等）をプレイヤーの手札へ移動させます。',
+        params: [
+          { name: 'player', type: 'player', desc: '加える対象プレイヤー（self または opponent）' },
+          { name: 'cardOrCards', type: 'card | Array', desc: '手札に加えるカードオブジェクト' }
+        ],
+        example: 'const card = choiceCard(self, "deck", { category: "Basic" });\ntoHand(self, card);\nshuffleDeck(self);',
+        snippet: 'toHand(self, card);'
+      },
+      {
+        name: 'toDeck',
+        signature: 'toDeck(player, cardOrCards)',
+        category: 'cards',
+        catLabel: '手札・山札・トラッシュ',
+        badge: '山札もどし',
+        returns: 'void',
+        desc: '指定したカード（手札・トラッシュ・場等）をプレイヤーの山札にもどし、自動的に山札をシャッフルします。',
+        params: [
+          { name: 'player', type: 'player', desc: '山札の所有プレイヤー（self または opponent）' },
+          { name: 'cardOrCards', type: 'card | Array', desc: '山札にもどすカードオブジェクト（単体または配列）' }
+        ],
+        example: '// トラッシュからカードを山札にもどす（すごいつりざお等）\nconst cards = choiceCard(self, "discard", {}, 3);\nfor (const c of cards) {\n  toDeck(self, c);\n}',
+        snippet: 'toDeck(self, card);'
+      },
+      {
+        name: 'toDiscard',
+        signature: 'toDiscard(player, cardOrCards)',
+        category: 'cards',
+        catLabel: '手札・山札・トラッシュ',
+        badge: 'トラッシュ',
+        returns: 'void',
+        desc: '指定したカードをプレイヤーのトラッシュへ送ります。',
+        params: [
+          { name: 'player', type: 'player', desc: 'トラッシュの所有プレイヤー（self または opponent）' },
+          { name: 'cardOrCards', type: 'card | Array', desc: 'トラッシュへ送るカードオブジェクト' }
+        ],
+        example: 'const card = choiceCard(opponent, "hand");\ntoDiscard(opponent, card);',
+        snippet: 'toDiscard(opponent, card);'
+      },
+      {
+        name: 'toBench',
+        signature: 'toBench(player, cardOrCards)',
+        category: 'cards',
+        catLabel: '手札・山札・トラッシュ',
+        badge: 'ベンチ移動',
+        returns: 'void',
+        desc: '指定したたねポケモン（山札・手札・トラッシュ等）をベンチに出します（ネストボールやバトルVIPパス等の効果。最大5匹まで）。',
+        params: [
+          { name: 'player', type: 'player', desc: 'ベンチを所有するプレイヤー（self または opponent）' },
+          { name: 'cardOrCards', type: 'card | Array', desc: 'ベンチに出すカードオブジェクト（単体または配列）' }
+        ],
+        example: 'const card = choiceCard(self, "deck", { category: "Basic" });\ntoBench(self, card);\nshuffleDeck(self);',
+        snippet: 'toBench(self, card);'
+      },
+      {
+        name: 'coinFlip',
+        signature: 'coinFlip(countOrMode?, maxLimit?)',
+        category: 'battle',
+        catLabel: 'ダメージ・回復',
+        badge: 'コイントス',
+        returns: 'number',
+        desc: 'コインを投げて表（オモテ）が出た回数を返します。「表が出るまで」「裏が出るまで」の連続トスにも対応。flipCoin()も同じです。',
+        params: [
+          { name: 'countOrMode', type: 'number | string', desc: '投げる回数（1, 2, 3...）または "表が出るまで", "裏が出るまで"' },
+          { name: 'maxLimit', type: 'number', desc: '連続トス時の安全上限回数（デフォルト: 20）' }
+        ],
+        example: '// 表の数 × 30 ダメージ\nconst heads = coinFlip(3);\ndamage(opponent.active, heads * 30);',
+        snippet: 'const heads = coinFlip(1);'
+      },
+      {
+        name: 'isKnockedOut',
+        signature: 'isKnockedOut(target?)',
+        category: 'battle',
+        catLabel: 'ダメージ・回復',
+        badge: '撃破判定',
+        returns: 'boolean',
+        desc: '対象ポケモンのHPが0以下（きぜつ状態）かどうかを判定します。didKnockout()も同じです。',
+        params: [
+          { name: 'target', type: 'pokemon', desc: '判定対象のポケモン（省略時は opponent.active）' }
+        ],
+        example: 'damage(opponent.active, 60);\nif (isKnockedOut(opponent.active)) {\n  takePrize(self, 1);\n}',
+        snippet: 'if (isKnockedOut(opponent.active)) {\n  \n}'
+      },
+      {
+        name: 'applyStatus',
+        signature: 'applyStatus(target, status)',
+        category: 'battle',
+        catLabel: 'ダメージ・回復',
+        badge: '状態異常',
+        returns: 'void',
+        desc: '対象ポケモンに特殊状態（どく、やけど、マヒ、ねむり、こんらん）を付与します。',
+        params: [
+          { name: 'target', type: 'pokemon', desc: '付与対象のポケモン（opponent.active など）' },
+          { name: 'status', type: 'string', desc: '"どく", "やけど", "マヒ", "ねむり", "こんらん"' }
+        ],
+        example: 'applyStatus(opponent.active, "どく");',
+        snippet: 'applyStatus(opponent.active, "どく");'
+      },
+      {
+        name: 'clearStatus',
+        signature: 'clearStatus(target)',
+        category: 'battle',
+        catLabel: 'ダメージ・回復',
+        badge: '状態回復',
+        returns: 'void',
+        desc: '対象ポケモンの特殊状態をすべて回復・解除します。',
+        params: [
+          { name: 'target', type: 'pokemon', desc: '回復対象のポケモン（self.active など）' }
+        ],
+        example: 'clearStatus(self.active);',
+        snippet: 'clearStatus(self.active);'
+      },
+      {
+        name: 'benchDamage',
+        signature: 'benchDamage(player, amount)',
+        category: 'battle',
+        catLabel: 'ダメージ・回復',
+        badge: 'ベンチ全体',
+        returns: 'void',
+        desc: '指定プレイヤーのベンチにいるポケモン全員に一括でダメージを与えます。',
+        params: [
+          { name: 'player', type: 'player', desc: 'ベンチ対象プレイヤー（opponent または self）' },
+          { name: 'amount', type: 'number', desc: 'ベンチ全員に与えるダメージ数値' }
+        ],
+        example: 'benchDamage(opponent, 20);',
+        snippet: 'benchDamage(opponent, 10);'
+      },
+      {
+        name: 'reduceDamage',
+        signature: 'reduceDamage(target, amount)',
+        category: 'battle',
+        catLabel: 'ダメージ・回復',
+        badge: 'ダメージ軽減',
+        returns: 'void',
+        desc: '対象ポケモンが次に受けるワザのダメージを軽減します。',
+        params: [
+          { name: 'target', type: 'pokemon', desc: '軽減するポケモン（self.active など）' },
+          { name: 'amount', type: 'number', desc: '軽減するダメージ数値' }
+        ],
+        example: 'reduceDamage(self.active, 30);',
+        snippet: 'reduceDamage(self.active, 20);'
+      },
+      {
+        name: 'increaseDamage',
+        signature: 'increaseDamage(amount)',
+        category: 'battle',
+        catLabel: 'ダメージ・回復',
+        badge: 'ダメージ加算',
+        returns: 'number',
+        desc: 'このワザが与えるダメージを追加・加算します。',
+        params: [
+          { name: 'amount', type: 'number', desc: '追加するダメージ数値' }
+        ],
+        example: 'increaseDamage(30);',
+        snippet: 'increaseDamage(20);'
+      },
+      {
+        name: 'nextTurnDamage',
+        signature: 'nextTurnDamage(amount, targetOrFilter?)',
+        category: 'battle',
+        catLabel: 'ダメージ・回復',
+        badge: '次回威力UP',
+        returns: 'number',
+        desc: '次の自分の番、ワザのダメージを増加（チャージ予約）します。交代しても効果は継続します。第2引数で特定ポケモン（self.active）や属性フィルター（{ type: "Fire" }）を指定して一部のポケモンだけに適用させることも可能です。',
+        params: [
+          { name: 'amount', type: 'number', desc: '次ターンに追加するダメージ数値（例: 80）' },
+          { name: 'targetOrFilter', type: 'object | null', desc: '（省略可）特定のポケモン（self.active 等）または属性条件（{ type: "Fire" } / { category: "Basic" } 等）' }
+        ],
+        example: 'nextTurnDamage(80);\n// または特定ポケモン限定:\nnextTurnDamage(80, self.active);\n// または属性限定:\nnextTurnDamage(80, { type: "Fire" });',
+        snippet: 'nextTurnDamage(80);'
+      },
+      {
+        name: 'cant',
+        signature: 'cant(reason?)',
+        category: 'battle',
+        catLabel: 'バトル・進行',
+        badge: '不発・手札戻し',
+        returns: 'never',
+        desc: '発動条件を満たしていない場合に実行を中断します。トレーナーズカードは手札に戻り、ワザや特性は不発（番を終了しない）状態に戻ります。プレイヤーは別の行動を選択できます。',
+        params: [
+          { name: 'reason', type: 'string', desc: '（省略可）不発理由メッセージ（例: "相手のベンチにポケモンがいません"）' }
+        ],
+        example: '// 相手のベンチがいないと使えないワザ・カード\nif (!opponent.bench || opponent.bench.length === 0) {\n  cant("相手のベンチにポケモンがいません");\n}\n\n// 通常の攻撃処理\ndamage(choiceCard(opponent.bench), 50);',
+        snippet: 'cant("条件を満たしていません");'
+      },
+      {
+        name: 'block',
+        signature: 'block(actionType, target?, optionsOrTurns?)',
+        category: 'battle',
+        catLabel: '行動禁止・ロック',
+        badge: '行動禁止',
+        returns: 'object',
+        desc: '特定の相手の特性、ワザ、にげる、グッズ、サポート、エネルギー手貼りなどを指定ターン（または常時: \'always\'）禁止します。\n自分のターン・相手のターンの数え方も指定可能です。',
+        params: [
+          { name: 'actionType', type: 'string', desc: '\'ability\'(特性), \'attack\'(ワザ), \'effect\'(ワザ効果), \'retreat\'(にげる), \'item\'(グッズ), \'supporter\'(サポート), \'trainer\'(グッズ+サポート), \'energy\'(エネ手貼り), \'evolution\'(進化), \'all\'' },
+          { name: 'target', type: 'player | card | object', desc: '禁止対象（opponent, opponent.active, self, { type: "Fire" } 等。省略時はopponent）' },
+          { name: 'optionsOrTurns', type: 'number | string | object', desc: 'ターン数（例: 1）、または \'always\'（常時禁止）、または詳細設定 { turns: 2, countBy: \'opponent\' | \'self\' | \'both\', always: true }' }
+        ],
+        example: '// 相手の特性を相手の1ターン禁止:\nblock(\'ability\', opponent, 1);\n\n// 相手のグッズを禁止（グッズロック）:\nblock(\'item\', opponent, 1);\n\n// 特性で相手の特性を常時禁止（場にいる限り永続）:\nblock(\'ability\', opponent, \'always\');\n\n// 自分のターン数で2ターン禁止:\nblock(\'attack\', opponent.active, { turns: 2, countBy: \'self\' });',
+        snippet: 'block(\'ability\', opponent, 1);'
+      },
+      {
+        name: 'blockAbility',
+        signature: 'blockAbility(target?, optionsOrTurns?)',
+        category: 'battle',
+        catLabel: '行動禁止・ロック',
+        badge: '特性禁止',
+        returns: 'object',
+        desc: '対象の特性発動を禁止します。\'always\' を指定すると常時発動（このポケモンが場にいる間ずっと禁止）になります。',
+        params: [
+          { name: 'target', type: 'player | card | object', desc: '対象（省略時は opponent）' },
+          { name: 'optionsOrTurns', type: 'number | string | object', desc: 'ターン数（1等）、または \'always\'、または { turns: 1, countBy: \'opponent\' }' }
+        ],
+        example: 'blockAbility(opponent, 1);\n// 常時発動:\nblockAbility(opponent, \'always\');',
+        snippet: 'blockAbility(opponent, 1);'
+      },
+      {
+        name: 'cantAttackNextTurn',
+        signature: 'cantAttackNextTurn(target?, turns?)',
+        category: 'battle',
+        catLabel: '行動禁止・ロック',
+        badge: '反動ワザ不可',
+        returns: 'object',
+        desc: '次の自分の番、このポケモンはワザを使えなくなります（リザードンや大技の反動効果）。引数を省略した場合は自身（thisPokemon）が対象になります。',
+        params: [
+          { name: 'target', type: 'card | pokemon', desc: '（省略可）対象ポケモン（デフォルト: thisPokemon）' },
+          { name: 'turns', type: 'number', desc: '（省略可）禁止ターン数（デフォルト: 1）' }
+        ],
+        example: '// 120ダメージを与え、次の自分の番ワザを使えない\ndamage(opponent.active, 120);\ncantAttackNextTurn();',
+        snippet: 'cantAttackNextTurn();'
+      },
+      {
+        name: 'blockAttack',
+        signature: 'blockAttack(target?, optionsOrTurns?)',
+        category: 'battle',
+        catLabel: '行動禁止・ロック',
+        badge: 'ワザ禁止',
+        returns: 'object',
+        desc: '対象のワザの使用・攻撃宣言を禁止します。',
+        params: [
+          { name: 'target', type: 'player | card', desc: '対象（opponent.active 等）' },
+          { name: 'optionsOrTurns', type: 'number | string | object', desc: 'ターン数または設定' }
+        ],
+        example: 'blockAttack(opponent.active, 1);',
+        snippet: 'blockAttack(opponent.active, 1);'
+      },
+      {
+        name: 'blockRetreat',
+        signature: 'blockRetreat(target?, optionsOrTurns?)',
+        category: 'battle',
+        catLabel: '行動禁止・ロック',
+        badge: 'にげる禁止',
+        returns: 'object',
+        desc: '対象のバトルポケモンの「にげる（交代）」を禁止します。',
+        params: [
+          { name: 'target', type: 'player | card', desc: '対象（opponent.active 等）' },
+          { name: 'optionsOrTurns', type: 'number | string | object', desc: 'ターン数または設定' }
+        ],
+        example: 'blockRetreat(opponent.active, 1);',
+        snippet: 'blockRetreat(opponent.active, 1);'
+      },
+      {
+        name: 'blockItem',
+        signature: 'blockItem(target?, optionsOrTurns?)',
+        category: 'battle',
+        catLabel: '行動禁止・ロック',
+        badge: 'グッズロック',
+        returns: 'object',
+        desc: '相手の手札からのグッズ使用を禁止します（グッズロック）。',
+        params: [
+          { name: 'target', type: 'player', desc: '対象（省略時は opponent）' },
+          { name: 'optionsOrTurns', type: 'number | string | object', desc: 'ターン数または設定' }
+        ],
+        example: 'blockItem(opponent, 1);',
+        snippet: 'blockItem(opponent, 1);'
+      },
+      {
+        name: 'blockEnergy',
+        signature: 'blockEnergy(target?, optionsOrTurns?)',
+        category: 'battle',
+        catLabel: '行動禁止・ロック',
+        badge: 'エネ手貼り禁止',
+        returns: 'object',
+        desc: '相手の手札からのエネルギー手貼りを禁止します。',
+        params: [
+          { name: 'target', type: 'player', desc: '対象（省略時は opponent）' },
+          { name: 'optionsOrTurns', type: 'number | string | object', desc: 'ターン数または設定' }
+        ],
+        example: 'blockEnergy(opponent, 1);',
+        snippet: 'blockEnergy(opponent, 1);'
+      },
+      {
+        name: 'blockEffect',
+        signature: 'blockEffect(target?, optionsOrTurns?)',
+        category: 'battle',
+        catLabel: '行動禁止・ロック',
+        badge: '効果無効',
+        returns: 'object',
+        desc: 'ワザの追加効果を受けない・効果を禁止します。',
+        params: [
+          { name: 'target', type: 'player | card', desc: '対象（self.active や opponent 等）' },
+          { name: 'optionsOrTurns', type: 'number | string | object', desc: 'ターン数または設定' }
+        ],
+        example: 'blockEffect(self.active, 1);',
+        snippet: 'blockEffect(self.active, 1);'
+      },
+      {
+        name: 'isBlocked',
+        signature: 'isBlocked(actionType, target?, player?)',
+        category: 'battle',
+        catLabel: '行動禁止・ロック',
+        badge: '禁止判定',
+        returns: 'boolean',
+        desc: '現在指定のアクションが禁止されているかどうかを判定します。',
+        params: [
+          { name: 'actionType', type: 'string', desc: '\'ability\', \'attack\', \'item\', \'retreat\' 等' },
+          { name: 'target', type: 'card | player', desc: '対象カードまたはプレイヤー' }
+        ],
+        example: 'if (isBlocked(\'ability\', opponent.active)) { ... }',
+        snippet: 'isBlocked(\'ability\', opponent.active)'
+      },
+      {
+        name: 'unblock',
+        signature: 'unblock(actionType?, target?)',
+        category: 'battle',
+        catLabel: '行動禁止・ロック',
+        badge: '禁止解除',
+        returns: 'void',
+        desc: '適用されている禁止（ロック）効果を解除します。引数を省略すると全解除されます。',
+        params: [
+          { name: 'actionType', type: 'string | null', desc: '解除する種類（省略で全て）' },
+          { name: 'target', type: 'card | player | null', desc: '解除する対象（省略で全て）' }
+        ],
+        example: 'unblock(\'ability\', opponent);',
+        snippet: 'unblock();'
+      },
+      {
+        name: 'shuffleDeck',
+        signature: 'shuffleDeck(player)',
+        category: 'cards',
+        catLabel: '手札・山札・トラッシュ',
+        badge: 'シャッフル',
+        returns: 'void',
+        desc: '指定したプレイヤーの山札カードをランダムにシャッフルします。',
+        params: [
+          { name: 'player', type: 'player', desc: '対象プレイヤー（self または opponent）' }
+        ],
+        example: 'shuffleDeck(self);',
+        snippet: 'shuffleDeck(self);'
+      },
+      {
+        name: 'lookAtDeckTop',
+        signature: 'lookAtDeckTop(player, count?)',
+        category: 'cards',
+        catLabel: '手札・山札・トラッシュ',
+        badge: '山札確認',
+        returns: 'Array [card]',
+        desc: '山札の上から指定枚数を覗き見て配列として返します。',
+        params: [
+          { name: 'player', type: 'player', desc: '対象プレイヤー（self または opponent）' },
+          { name: 'count', type: 'number', desc: '確認する枚数（デフォルト: 1）' }
+        ],
+        example: 'const topCards = lookAtDeckTop(self, 3);',
+        snippet: 'lookAtDeckTop(self, 3);'
+      },
+      {
+        name: 'takePrize',
+        signature: 'takePrize(player, amount?)',
+        category: 'cards',
+        catLabel: '手札・山札・トラッシュ',
+        badge: 'サイド獲得',
+        returns: 'Array [card]',
+        desc: 'サイドカードを指定枚数獲得して手札に加えます。',
+        params: [
+          { name: 'player', type: 'player', desc: '獲得するプレイヤー（self または opponent）' },
+          { name: 'amount', type: 'number', desc: '獲得するサイドの枚数（デフォルト: 1）' }
+        ],
+        example: 'takePrize(self, 1);',
+        snippet: 'takePrize(self, 1);'
+      },
+      {
+        name: 'getEnergy',
+        signature: 'getEnergy(target)',
+        category: 'choice',
+        catLabel: '選択・取得',
+        badge: 'エネ要素配列',
+        returns: 'Array [string]',
+        desc: '対象ポケモンについているエネルギー要素の配列（例: ["炎", "草"]）を取得します。配列として .filter() や .length が使えるほか、getEnergy(self.active) * 20 のように数値としてもそのまま計算可能です。',
+        params: [
+          { name: 'target', type: 'pokemon | player', desc: '対象ポケモンまたはプレイヤー' }
+        ],
+        example: '// 炎エネルギーの数だけ大ダメージ\nconst fireCount = getEnergy(self.active).filter(e => e === "炎").length;\ndamage(opponent.active, fireCount * 40);',
+        snippet: 'const energies = getEnergy(self.active);'
+      },
+      {
+        name: 'cancelDamage',
+        signature: 'cancelDamage(event)',
+        category: 'battle',
+        catLabel: 'ダメージ・回復',
+        badge: 'ダメージ無効',
+        returns: 'boolean',
+        desc: 'beforeDamage 特性イベント内で受けるワザのダメージを完全にキャンセル（無効化）します。preventDamage()も同じです。',
+        params: [
+          { name: 'event', type: 'object', desc: 'beforeDamage コールバックの引数 e' }
+        ],
+        example: 'event.on("beforeDamage", (e) => {\n  // 相手のワザのダメージを受けない\n  cancelDamage(e);\n});',
+        snippet: 'cancelDamage(e);'
+      },
+      {
+        name: 'useLimit',
+        signature: 'useLimit(count = 1)',
+        category: 'ability',
+        catLabel: '特性・回数制限',
+        badge: '特性回数',
+        returns: 'void',
+        desc: '起動型特性（ボタンを押して任意で発動する特性）の1ターンあたりの使用回数上限を設定します。Infinityを指定するとターン中何度でも使用可能になります。',
+        params: [
+          { name: 'count', type: 'number', desc: '1ターンあたりの使用回数（デフォルト 1、無制限は Infinity）' }
+        ],
+        example: '// 自分の番に1回使える\nuseLimit(1);\ndraw(self, 1);',
+        snippet: 'useLimit(1);'
+      },
+      {
+        name: 'event.on',
+        signature: 'event.on(eventName, callback)',
+        category: 'event',
+        catLabel: '特性イベント',
+        badge: '特性イベント',
+        returns: 'void',
+        desc: '特性のトリガーイベントリスナーを登録します。turnStart / start は自分のターン開始時に強制（自動）で発動します。',
+        params: [
+          { name: 'eventName', type: 'string', desc: '"start" / "turnStart" (ターン開始時自動強制発動), "turnEnd" (ターン終了), "enterBattle" (バトル場登場), "enterBench" (ベンチ登場), "beforeDamage" (被ダメ直前), "onDamage" (被ダメ後), "onKnockout" (きぜつ時), "onKnockoutOpponent" (相手撃破時)' },
+          { name: 'callback', type: 'function', desc: '発動時に実行されるコールバック関数' }
+        ],
+        example: 'event.on("start", () => {\n  draw(self, 1);\n});',
+        snippet: 'event.on("start", () => {\n  draw(self, 1);\n});'
+      },
+      {
+        name: 'discardCards',
+        signature: 'discardCards(player, amount, filter?)',
+        category: 'cards',
+        catLabel: '手札・山札・トラッシュ',
+        badge: '手札破棄',
+        returns: 'Array [card]',
+        desc: '手札から指定枚数（または条件一致カード）をトラッシュに送ります。',
+        params: [
+          { name: 'player', type: 'player', desc: '対象プレイヤー（self または opponent）' },
+          { name: 'amount', type: 'number', desc: 'トラッシュする枚数' },
+          { name: 'filter', type: 'object | function', desc: '絞り込み条件（省略時は手札先頭から）' }
+        ],
+        example: 'discardCards(self.hand, 2);',
+        snippet: 'discardCards(self.hand, 1);'
+      },
+      {
+        name: 'choiceCard',
+        signature: 'choiceCard(player, zone?, filter?, count?, message?)',
+        category: 'choice',
+        catLabel: '選択・取得',
+        badge: 'カード選択',
+        returns: 'Array [card]',
+        desc: '指定した場所（手札・山札・トラッシュ・ベンチ等）から条件に合うカードを選んで配列として取得します。末尾に選択時の指示メッセージを指定可能。',
+        params: [
+          { name: 'player', type: 'player | array | pokemon', desc: '対象プレイヤー（self / opponent）または領域配列' },
+          { name: 'zone', type: 'string', desc: '"hand"(手札), "deck"(山札), "discard"(トラッシュ), "bench"(ベンチ), "field"(盤面)' },
+          { name: 'filter', type: 'object | function', desc: '{ category: "Energy" }, { category: "たね" } などの条件' },
+          { name: 'count', type: 'number', desc: '選択する枚数（デフォルト 1）' },
+          { name: 'message', type: 'string', desc: '選択画面に表示する案内メッセージ' }
+        ],
+        example: 'const card = choiceCard(self, "deck", { category: "たね" }, 1, "山札からたねポケモンを選んでください");\ntoHand(self, card);\nshuffleDeck(self);',
+        snippet: 'const card = choiceCard(self, "hand", { category: "Energy" }, "手札からエネルギーを選んでください");'
+      },
+      {
+        name: 'searchCards',
+        signature: 'searchCards(player, filter)',
+        category: 'cards',
+        catLabel: '手札・山札・トラッシュ',
+        badge: '山札検索',
+        returns: 'Array [card]',
+        desc: '山札から条件に一致するカードの配列を取得します。',
+        params: [
+          { name: 'player', type: 'player', desc: '対象プレイヤー（self または opponent）' },
+          { name: 'filter', type: 'object | function', desc: '{ category: "Basic" } などの条件' }
+        ],
+        example: 'const pokemons = searchCards(self, { category: "Basic" });',
+        snippet: 'searchCards(self, { category: "Basic" });'
+      }
+    ],
+
+    renderFunctionList(query = '', cat = 'all') {
+      const container = document.getElementById('funcListContainer');
+      const countBadge = document.getElementById('funcListCountBadge');
+      if (!container) return;
+            const q = String(query || '').toLowerCase().trim();
+
+      let items = (this.functionReferenceData || []).filter((fn) => {
+        if (cat !== 'all' && fn.category !== cat) return false;
+        if (!q) return true;
+        const matchName = fn.name.toLowerCase().includes(q);
+        const matchSig = fn.signature.toLowerCase().includes(q);
+        const matchDesc = fn.desc.toLowerCase().includes(q);
+        const matchBadge = (fn.badge || '').toLowerCase().includes(q);
+        const matchParams = (fn.params || []).some((p) => p.name.toLowerCase().includes(q) || p.desc.toLowerCase().includes(q));
+        return matchName || matchSig || matchDesc || matchBadge || matchParams;
+      });
+
+      if (countBadge) {
+        countBadge.textContent = items.length + '件';
+      }
+
+      if (items.length === 0) {
+        container.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:12px;">条件に一致する関数が見つかりませんでした</div>';
+        return;
+      }
+
+      container.innerHTML = items.map((fn) => {
+        const badgeClass = 'badge-' + (fn.category === 'choice' ? 'choice' : (fn.category === 'event' ? 'event' : 'func'));
+        const paramsHtml = (fn.params || []).map((p) => {
+          return '<div class="func-param-line">' +
+            '<span class="func-param-name">' + this.escape(p.name) + '</span>' +
+            '<span class="func-param-type">(' + this.escape(p.type) + ')</span>' +
+            '<span class="func-param-desc">' + this.escape(p.desc) + '</span>' +
+          '</div>';
+        }).join('');
+
+        const codeSnippet = fn.snippet || fn.example || (fn.signature + ';');
+
+        return '<div class="func-card" data-func-name="' + this.escape(fn.name) + '">' +
+          '<div class="func-card-header">' +
+            '<div class="func-signature">' + this.escape(fn.signature) + '</div>' +
+            '<div class="func-badges-row">' +
+              '<span class="completion-badge ' + badgeClass + '">' + this.escape(fn.badge || fn.catLabel) + '</span>' +
+              '<span class="func-return-badge">戻り値: ' + this.escape(fn.returns) + '</span>' +
+            '</div>' +
+          '</div>' +
+          '<div class="func-desc">' + this.escape(fn.desc) + '</div>' +
+          (paramsHtml ? '<div class="func-params-box">' + paramsHtml + '</div>' : '') +
+          '<div class="func-code-row">' +
+            '<div class="func-code-preview">' + this.escape(codeSnippet) + '</div>' +
+            '<div class="func-actions">' +
+              '<button type="button" class="func-insert-btn" data-insert-snippet="' + this.escape(codeSnippet) + '" title="エディターの現在位置に挿入">＋ 挿入</button>' +
+              '<button type="button" class="func-copy-btn" data-copy-snippet="' + this.escape(codeSnippet) + '" title="コードをコピー">📋 コピー</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    },
+
+    toggleFunctionList(forceOpen = null) {
+      const panel = document.getElementById('functionListPanel');
+      const toggleBtn = document.getElementById('toggleFunctionListButton');
+      if (!panel) return;
+      const shouldOpen = forceOpen !== null ? forceOpen : panel.classList.contains('hidden');
+      panel.classList.toggle('hidden', !shouldOpen);
+      if (toggleBtn) {
+        toggleBtn.classList.toggle('active', shouldOpen);
+        toggleBtn.textContent = shouldOpen ? '📋 関数リスト: ON' : '📋 関数データリスト';
+      }
+      if (shouldOpen) {
+        const searchInput = document.getElementById('funcListSearchInput');
+        this.renderFunctionList(
+          searchInput ? searchInput.value : '',
+          this.activeFuncCat || 'all'
+        );
+      }
+    },
+
+    openEffectEditor(target) {
+      try {
+        target = target || 'attack1';
+        this.effectEditor.target = target;
+        this.effectEditor.activeTab = target;
+        this.effectEditor.codes = {
+          ability: document.getElementById('abilityCode')?.value || '',
+          attack1: document.getElementById('attack1Code')?.value || '',
+          attack2: document.getElementById('attack2Code')?.value || '',
+          trainer: document.getElementById('attack1Code')?.value || ''
+        };
+        this.effectEditor.texts = {
+          ability: document.getElementById('abilityText')?.value || '',
+          attack1: document.getElementById('attack1Text')?.value || '',
+          attack2: document.getElementById('attack2Text')?.value || '',
+          trainer: document.getElementById('attack1Text')?.value || ''
+        };
+        let title = (target === 'attack1' ? 'ワザ1' : 'ワザ2') + 'の効果エディター';
+        if (target === 'ability') title = '特性の効果エディター';
+        if (target === 'trainer') title = 'グッズ / サポートの効果エディター';
+        const titleEl = document.getElementById('effectEditorTitle');
+        if (titleEl) titleEl.textContent = title;
+        this.renderCodeEditor();
+        this.renderFunctionList();
+        const modal = document.getElementById('effectEditorModal');
+        if (modal) {
+          modal.classList.remove('hidden');
+          modal.style.display = 'grid';
+        }
+      } catch (err) {
+        console.error('[EffectEditor.openEffectEditor] Error:', err);
+      }
+    },
+
+    closeEffectEditor() {
+      const modal = document.getElementById('effectEditorModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+      }
+      const popup = document.getElementById('effectCompletion');
+      if (popup) popup.style.display = 'none';
+    },
+
+    switchEffectTab(newTab) {
+      const editor = document.getElementById('effectCodeEditor');
+      const descInput = document.getElementById('effectEditorDisplayText');
+      if (this.effectEditor.activeTab) {
+        if (editor) this.effectEditor.codes[this.effectEditor.activeTab] = editor.value;
+        if (descInput) this.effectEditor.texts[this.effectEditor.activeTab] = descInput.value;
+      }
+      this.effectEditor.activeTab = newTab;
+      this.renderCodeEditor();
+    },
+
+    getDefaultCode(tab) {
+      if (tab === 'ability') {
+        return "// 特性: 自分の番に1回使える（起動型特性）\nuseLimit(1);\ndraw(self, 1);";
+      }
+      if (tab === 'trainer') {
+        return "// グッズ/サポート: 手札をすべてトラッシュし、山札を7枚引く（博士の研究例）\ndiscardCards(self.hand, self.hand.length);\ndraw(self, 7);";
+      }
+      return "// 基本ダメージ\ndamage(opponent.active, 30);\n\n// コイン判定で追加ダメージ（条件分岐例）\nif (coinFlip() === 1) {\n  damage(opponent.active, 20);\n}";
+    },
+
+    renderCodeEditor() {
+      const editor = document.getElementById('effectCodeEditor');
+      if (!editor) return;
+      const tab = this.effectEditor.activeTab;
+      editor.value = this.effectEditor.codes[tab] || this.getDefaultCode(tab);
+      const descInput = document.getElementById('effectEditorDisplayText');
+      if (descInput) {
+        descInput.value = this.effectEditor.texts ? this.effectEditor.texts[tab] || '' : '';
+      }
+      document.querySelectorAll('.effect-tab').forEach((b) => b.classList.toggle('active', b.dataset.effectTab === tab));
+      this.updateCodePreview();
+      this.renderApiHelpGrid();
+      const popup = document.getElementById('effectCompletion');
+      if (popup) popup.style.display = 'none';
+    },
+
+    renderApiHelpGrid() {
+      const grid = document.getElementById('effectApiGrid');
+      const title = document.getElementById('effectApiHelpTitle');
+      if (!grid) return;
+      const tab = this.effectEditor && this.effectEditor.activeTab ? this.effectEditor.activeTab : 'attack1';
+      if (title) {
+        if (tab === 'ability') {
+          title.textContent = '特性向けクイック挿入（イベントリスナー・毎ターン効果）';
+        } else if (tab === 'trainer') {
+          title.textContent = 'グッズ / サポート向けクイック挿入（ドロー・呼出・回復・サーチ）';
+        } else {
+          title.textContent = (tab === 'attack1' ? 'ワザ1' : 'ワザ2') + '向けクイック挿入（ダメージ・コイン判定・追加効果）';
+        }
+      }
+
+      let buttons = [];
+      if (tab === 'ability') {
+        buttons = [
+        { label: '自分の番に1回', sub: 'useLimit(1)', code: 'useLimit(1);\ndraw(self, 1);' },
+        { label: '自分の番に2回', sub: 'useLimit(2)', code: 'useLimit(2);\nheal(self.active, 20);' },
+        { label: '何度でも使える', sub: 'useLimit(Infinity)', code: 'useLimit(Infinity);\n// 満たす限り何度でも使える\n' },
+        { label: 'ターン開始時(強制)', sub: 'event.on("start")', code: 'event.on("start", () => {\n  draw(self, 1);\n});' },
+        { label: '被ダメ無効(キャンセル)', sub: 'beforeDamage (キャンセル)', code: 'event.on("beforeDamage", (e) => {\n  // 相手のワザのダメージを受けない\n  e.cancel = true;\n});' },
+        { label: 'コイン表でダメ無効', sub: 'beforeDamage + coinFlip', code: 'event.on("beforeDamage", (e) => {\n  if (coinFlip() === 1) {\n    e.cancel = true;\n  }\n});' },
+        { label: '毎ターン開始(自動)', sub: 'turnStart', code: 'event.on("turnStart", () => {\n  draw(self, 1);\n});' },
+        { label: 'エネをつける', sub: 'attach()', code: 'const card = choiceCard(self, "hand", { category: "Energy" });\nattach(card, self.active);' },
+        { label: 'エネ数で判定', sub: 'getEnergy() >= 2', code: 'if (getEnergy(self.active) >= 2) {\n  draw(self, 1);\n}' },
+        { label: '場に出た時', sub: 'enterBattle', code: 'event.on("enterBattle", () => {\n  heal(self.active, 30);\n});' },
+        { label: '山札サーチ', sub: 'choiceCard + toHand', code: 'const card = choiceCard(self, "deck", { category: "Basic" });\ntoHand(self, card);\nshuffleDeck(self);' },
+        { label: 'エネ回収', sub: 'choiceCard + toHand', code: 'const card = choiceCard(self, "discard", { category: "Energy" });\ntoHand(self, card);' },
+        { label: 'きぜつした時', sub: 'onKnockout', code: 'event.on("onKnockout", () => {\n  draw(self, 2);\n});' },
+        { label: '被ダメ20軽減', sub: 'reduceDamage', code: 'reduceDamage(self.active, 20);' },
+        { label: 'HP30回復', sub: 'heal()', code: 'heal(self.active, 30);' },
+        { label: '1枚ドロー', sub: 'draw()', code: 'draw(self, 1);' }];
+
+      } else if (tab === 'trainer') {
+        buttons = [
+        { label: '博士の研究 (7ドロー)', sub: '手札全トラッシュ＋7引く', code: 'discardCards(self.hand, self.hand.length);\ndraw(self, 7);' },
+        { label: 'ボスの指令 (ベンチ呼出)', sub: '相手ベンチをバトル場へ', code: 'const target = choiceCard(opponent.bench);\nswitchActive(opponent, target);' },
+        { label: 'エネ加速 (手札から1枚)', sub: 'attach()', code: 'const card = choiceCard(self, "hand", { category: "Energy" });\nattach(card, self.active);' },
+        { label: 'ポケモンいれかえ', sub: 'バトルポケモン交代', code: 'switchActive(self);' },
+        { label: 'きずぐすり (HP30回復)', sub: 'バトルHP30回復', code: 'heal(self.active, 30);' },
+        { label: 'ネストボール (ベンチ直行)', sub: '山札からたねをベンチへ', code: 'const card = choiceCard(self, "deck", { category: "Basic" });\ntoBench(self, card);\nshuffleDeck(self);' },
+        { label: 'たね手札サーチ', sub: '山札からたねを手札へ', code: 'const card = choiceCard(self, "deck", { category: "Basic" });\ntoHand(self, card);\nshuffleDeck(self);' },
+        { label: 'エネ回収 (トラッシュから)', sub: 'エネ手札回収', code: 'const card = choiceCard(self, "discard", { category: "Energy" });\ntoHand(self, card);' },
+        { label: '進化サーチ', sub: '山札から進化を手札へ', code: 'const card = choiceCard(self, "deck", { category: "Evolution" });\ntoHand(self, card);\nshuffleDeck(self);' },
+        { label: '2枚ドロー', sub: 'draw(self, 2)', code: 'draw(self, 2);' }];
+
+      } else {
+        buttons = [
+        { label: '30ダメージ', sub: 'damage()', code: 'damage(opponent.active, 30);' },
+        { label: 'ベンチ狙撃30', sub: 'choiceCard + damage', code: 'const target = choiceCard(opponent.bench);\ndamage(target, 30);' },
+        { label: 'エネ数×20ダメ', sub: 'getEnergy() * 20', code: 'const n = getEnergy(self.active);\ndamage(opponent.active, n * 20);' },
+        { label: 'エネをつける', sub: 'attach()', code: 'const card = choiceCard(self, "hand", { category: "Energy" });\nattach(card, self.active);' },
+        { label: '相手エネ1個トラッシュ', sub: 'kill()', code: 'const nrg = choiceCard(opponent.active, "attached");\nkill(nrg);' },
+        { label: '表が出るまで×30', sub: 'flipCoin("表が出るまで")', code: 'const c = flipCoin("表が出るまで");\ndamage(opponent.active, c * 30);' },
+        { label: '相手倒したら+サイド', sub: 'isKnockedOut()', code: 'damage(opponent.active, 60);\nif (isKnockedOut(opponent.active)) {\n  takePrize(self, 1);\n}' },
+        { label: '相手倒したら2ドロー', sub: 'didKnockout()', code: 'damage(opponent.active, 50);\nif (didKnockout()) {\n  draw(self, 2);\n}' },
+        { label: 'コイン表で+20', sub: 'if (coinFlip)', code: 'if (coinFlip() === 1) {\n  damage(opponent.active, 20);\n}' },
+        { label: '相手を「どく」', sub: 'applyStatus', code: 'applyStatus(opponent.active, "どく");' },
+        { label: '相手手札破棄', sub: 'choiceCard + toDiscard', code: 'const card = choiceCard(opponent, "hand");\ntoDiscard(opponent, card);' },
+        { label: '山札サーチ', sub: 'choiceCard + toHand', code: 'const card = choiceCard(self, "deck", { category: "Basic" });\ntoHand(self, card);\nshuffleDeck(self);' },
+        { label: '相手ベンチ全員10', sub: 'benchDamage', code: 'benchDamage(opponent, 10);' }];
+
+      }
+
+      grid.innerHTML = buttons.map((b) =>
+      '<button type="button" data-effect-insert="' + this.escape(b.code) + '">' +
+      '<code>' + this.escape(b.label) + '</code>' +
+      '<span>' + this.escape(b.sub) + '</span>' +
+      '</button>'
+      ).join('');
+    },
+
+    updateCodePreview() {
+      const editor = document.getElementById('effectCodeEditor');
+      const preview = document.getElementById('effectJsonPreview');
+      if (editor && preview) preview.textContent = editor.value;
+    },
+
+    insertEffectCode(code) {
+      const editor = document.getElementById('effectCodeEditor');
+      if (!editor) return;
+      editor.focus();
+      let a = editor.selectionStart;
+      let b = editor.selectionEnd;
+      if (typeof a !== 'number') {
+        a = editor.value.length;
+        b = editor.value.length;
+      }
+      editor.setRangeText(code, a, b, 'end');
+      this.updateCodePreview();
+      this.updateCompletion();
+      editor.focus();
+    },
+
+    filterCompletionByQuery(query) {
+      this.updateCompletion(true, String(query || '').trim());
+    },
+
+    getMemberCompletionsForObject(objPath) {
+      const cleanPath = String(objPath || '').trim();
+
+      // 1. プレイヤーオブジェクト (opponent, self)
+      if (cleanPath === 'opponent' || cleanPath === 'self') {
+        const isOpp = cleanPath === 'opponent';
+        const who = isOpp ? '相手' : '自分';
+        return [
+          { keyword: 'active', label: 'active', category: 'prop', badge: 'バトル場', desc: who + 'のバトルポケモン（カードオブジェクト: .hp, .energyなど）', snippet: 'active' },
+          { keyword: 'bench', label: 'bench', category: 'prop', badge: 'ベンチ', desc: who + 'のベンチポケモン配列（.length, choiceCard等で使用）', snippet: 'bench' },
+          { keyword: 'hand', label: 'hand', category: 'prop', badge: '手札', desc: who + 'の手札カード配列（.length, discardCards等で使用）', snippet: 'hand' },
+          { keyword: 'deck', label: 'deck', category: 'prop', badge: '山札', desc: who + 'の山札カード配列（.length, shuffleDeck, draw等）', snippet: 'deck' },
+          { keyword: 'discard', label: 'discard', category: 'prop', badge: 'トラッシュ', desc: who + 'のトラッシュカード配列（.length, choiceCard等で使用）', snippet: 'discard' },
+          { keyword: 'prizes', label: 'prizes', category: 'prop', badge: 'サイド', desc: who + 'の残りサイドカード配列（.length, takePrize等で使用）', snippet: 'prizes' },
+          { keyword: 'name', label: 'name', category: 'prop', badge: '名前', desc: who + 'のプレイヤー名文字列', snippet: 'name' }
+        ];
+      }
+
+      // 2. ポケモン・カードオブジェクト (opponent.active, self.active, target, card, source, pokemon)
+      if (cleanPath === 'opponent.active' || cleanPath === 'self.active' || cleanPath === 'target' || cleanPath === 'card' || cleanPath === 'source' || cleanPath === 'pokemon' || cleanPath.endsWith('.active') || cleanPath.endsWith('target') || cleanPath.endsWith('card')) {
+        return [
+          { keyword: 'hp', label: 'hp', category: 'prop', badge: 'HP', desc: '現在の残りHP数値（例: if (opponent.active.hp <= 30)）', snippet: 'hp' },
+          { keyword: 'maxHp', label: 'maxHp', category: 'prop', badge: '最大HP', desc: 'ポケモンの最大HP数値', snippet: 'maxHp' },
+          { keyword: 'energy', label: 'energy', category: 'prop', badge: 'エネルギー', desc: 'ついているエネルギーの個数数値（getEnergy(target)でも取得可）', snippet: 'energy' },
+          { keyword: 'name', label: 'name', category: 'prop', badge: 'カード名', desc: 'カードの名前文字列', snippet: 'name' },
+          { keyword: 'category', label: 'category', category: 'prop', badge: '分類', desc: 'カードの分類（"たね", "1進化", "2進化", "グッズ", "サポート" など）', snippet: 'category' },
+          { keyword: 'type', label: 'type', category: 'prop', badge: 'タイプ', desc: 'ポケモンの属性タイプ（"草", "炎", "水", "雷", "超", "闘", "悪", "鋼", "ドラゴン", "無色"）', snippet: 'type' },
+          { keyword: 'status', label: 'status', category: 'prop', badge: '状態異常', desc: '現在の状態異常（"どく", "やけど", "マヒ", "ねむり", "こんらん" または null）', snippet: 'status' },
+          { keyword: 'damageReduction', label: 'damageReduction', category: 'prop', badge: '軽減値', desc: '現在受けているダメージ軽減数値', snippet: 'damageReduction' },
+          { keyword: 'attachedCards', label: 'attachedCards', category: 'prop', badge: '付随カード', desc: 'ポケモンについているエネルギーや進化前カード配列', snippet: 'attachedCards' },
+          { keyword: 'getCards', label: 'getCards(filter)', category: 'func', badge: '付随取得', desc: 'ついているカード（エネルギー等）を取得する', snippet: 'getCards()' }
+        ];
+      }
+
+      // 3. カード配列オブジェクト (bench, hand, deck, discard, prizes など)
+      if (cleanPath.endsWith('.bench') || cleanPath.endsWith('.hand') || cleanPath.endsWith('.deck') || cleanPath.endsWith('.discard') || cleanPath.endsWith('.prizes') || cleanPath === 'cards' || cleanPath === 'list') {
+        return [
+          { keyword: 'length', label: 'length', category: 'prop', badge: '枚数/匹数', desc: '配列内のカード枚数またはベンチの匹数数値', snippet: 'length' },
+          { keyword: 'filter', label: 'filter((c) => c.category === "たね")', category: 'func', badge: '抽出', desc: '条件に一致するカードのみを抽出した新しい配列を返す', snippet: 'filter((c) => c.category === "たね")' },
+          { keyword: 'find', label: 'find((c) => c.hp <= 50)', category: 'func', badge: '検索', desc: '条件に一致する最初のカード1枚を返す', snippet: 'find((c) => c.hp <= 50)' },
+          { keyword: 'some', label: 'some((c) => c.type === "炎")', category: 'func', badge: '存在判定', desc: '条件に合うカードが1枚でも存在するか（true/false）を返す', snippet: 'some((c) => c.type === "炎")' },
+          { keyword: 'forEach', label: 'forEach((c) => { ... })', category: 'func', badge: 'ループ', desc: '含まれる各カードに対して順番に処理を実行する', snippet: 'forEach((c) => {\n  \n})' }
+        ];
+      }
+
+      // 4. eventオブジェクト (特性イベントリスナー登録)
+      if (cleanPath === 'event') {
+        return [
+          { keyword: 'on', label: 'on("turnStart", () => { ... })', category: 'event', badge: 'ターン開始時', desc: '【毎ターン1回】自分のターン開始時に発動', snippet: 'on("turnStart", () => {\n  draw(self, 1);\n});' },
+          { keyword: 'on', label: 'on("turnEnd", () => { ... })', category: 'event', badge: 'ターン終了時', desc: '自分のターン終了時に発動', snippet: 'on("turnEnd", () => {\n  \n});' },
+          { keyword: 'on', label: 'on("enterBattle", () => { ... })', category: 'event', badge: 'バトル場登場', desc: 'バトル場に出た時に発動', snippet: 'on("enterBattle", () => {\n  heal(self.active, 30);\n});' },
+          { keyword: 'on', label: 'on("enterBench", () => { ... })', category: 'event', badge: 'ベンチ登場', desc: '手札からベンチに出した時に発動', snippet: 'on("enterBench", () => {\n  addEnergy(self.active, 1);\n});' },
+          { keyword: 'on', label: 'on("beforeDamage", (e) => { ... })', category: 'event', badge: '被ダメ直前', desc: '【被ダメージ直前】相手からダメージを受ける直前に無効化や軽減（e.cancel = true）', snippet: 'on("beforeDamage", (e) => {\n  // 相手のワザのダメージを受けない\n  e.cancel = true;\n});' },
+          { keyword: 'on', label: 'on("onDamage", (amount) => { ... })', category: 'event', badge: '被ダメ後', desc: 'ワザのダメージを受けた時に発動', snippet: 'on("onDamage", (amount) => {\n  \n});' },
+          { keyword: 'on', label: 'on("onKnockout", () => { ... })', category: 'event', badge: 'きぜつ時', desc: 'このポケモンがきぜつした時に発動', snippet: 'on("onKnockout", () => {\n  draw(self, 2);\n});' },
+          { keyword: 'on', label: 'on("onKnockoutOpponent", () => { ... })', category: 'event', badge: '相手撃破時', desc: '相手のポケモンをきぜつさせた時に発動', snippet: 'on("onKnockoutOpponent", () => {\n  draw(self, 1);\n});' }
+        ];
+      }
+
+      // 5. イベント引数オブジェクト (e)
+      if (cleanPath === 'e') {
+        return [
+          { keyword: 'cancel', label: 'cancel = true', category: 'func', badge: '完全無効化', desc: '受けるワザのダメージを完全にキャンセル（無効化）する', snippet: 'cancel = true;' },
+          { keyword: 'preventDamage', label: 'preventDamage()', category: 'func', badge: '無効化', desc: '受けるワザのダメージを無効化するメソッド', snippet: 'preventDamage();' },
+          { keyword: 'damage', label: 'damage', category: 'prop', badge: '受けるダメ値', desc: '受けようとしているダメージ量数値', snippet: 'damage' },
+          { keyword: 'source', label: 'source', category: 'prop', badge: '攻撃側ポケモン', desc: 'ダメージを与えてきた相手ポケモンオブジェクト（.name, .hp など）', snippet: 'source' },
+          { keyword: 'target', label: 'target', category: 'prop', badge: '防御側ポケモン', desc: 'ダメージを受ける自分ポケモンオブジェクト（.name, .hp など）', snippet: 'target' }
+        ];
+      }
+
+      // 6. gameオブジェクト
+      if (cleanPath === 'game') {
+        return [
+          { keyword: 'turn', label: 'turn', category: 'prop', badge: 'ターン数', desc: '現在のターン数（数値）', snippet: 'turn' },
+          { keyword: 'logs', label: 'logs', category: 'prop', badge: 'バトルログ', desc: 'バトルログ文字列配列（game.logs.push("メッセージ")）', snippet: 'logs' },
+          { keyword: 'currentTurn', label: 'currentTurn', category: 'prop', badge: '手番', desc: '現在手番のプレイヤーオブジェクト（self または opponent）', snippet: 'currentTurn' }
+        ];
+      }
+
+      return [];
+    },
+
+    findEnclosingFunction(before) {
+      if (!before) return null;
+      let inString = false;
+      let stringChar = '';
+      let stack = [];
+
+      for (let i = 0; i < before.length; i++) {
+        const ch = before[i];
+
+        if (inString) {
+          if (ch === stringChar && before[i - 1] !== '\\') inString = false;
+          continue;
+        }
+        if (ch === '"' || ch === "'") {
+          inString = true;
+          stringChar = ch;
+          continue;
+        }
+
+        if (ch === '(') {
+          let k = i - 1;
+          while (k >= 0 && /\s/.test(before[k])) k--;
+          const nameEnd = k + 1;
+          while (k >= 0 && /[a-zA-Z0-9_$.]/.test(before[k])) k--;
+          const funcName = before.slice(k + 1, nameEnd).trim();
+          stack.push({
+            funcName: funcName,
+            openIndex: i,
+            commaCount: 0,
+            lastSepIndex: i,
+            braceLevel: 0,
+            bracketLevel: 0
+          });
+        } else if (ch === ')') {
+          if (stack.length > 0) stack.pop();
+        } else if (ch === '{') {
+          if (stack.length > 0) stack[stack.length - 1].braceLevel++;
+        } else if (ch === '}') {
+          if (stack.length > 0 && stack[stack.length - 1].braceLevel > 0) stack[stack.length - 1].braceLevel--;
+        } else if (ch === '[') {
+          if (stack.length > 0) stack[stack.length - 1].bracketLevel++;
+        } else if (ch === ']') {
+          if (stack.length > 0 && stack[stack.length - 1].bracketLevel > 0) stack[stack.length - 1].bracketLevel--;
+        } else if (ch === ',') {
+          if (stack.length > 0) {
+            const top = stack[stack.length - 1];
+            if (top.braceLevel === 0 && top.bracketLevel === 0) {
+              top.commaCount++;
+              top.lastSepIndex = i;
+            }
+          }
+        }
+      }
+
+      if (stack.length === 0) return null;
+      const current = stack[stack.length - 1];
+      if (!current.funcName) return null;
+
+      const rawArgQuery = before.slice(current.lastSepIndex + 1);
+      const argQuery = rawArgQuery.trim();
+
+      return {
+        funcName: current.funcName,
+        argIndex: current.commaCount,
+        argQuery: argQuery,
+        lastSepIndex: current.lastSepIndex
+      };
+    },
+
+    getFunctionArgumentCompletions(funcName, argIndex) {
+      const fn = String(funcName || '').trim();
+      const idx = Number(argIndex || 0);
+
+      // 1. choiceCard / choiceCards
+      if (fn === 'choiceCard' || fn === 'choiceCards') {
+        if (idx === 0) {
+          return [
+            { keyword: 'self', label: 'self (自分)', category: 'arg', badge: '引数1:対象', desc: '自分プレイヤーを対象にする', snippet: 'self' },
+            { keyword: 'opponent', label: 'opponent (相手)', category: 'arg', badge: '引数1:対象', desc: '相手プレイヤーを対象にする', snippet: 'opponent' },
+            { keyword: 'self.hand', label: 'self.hand (自分の手札)', category: 'arg', badge: '引数1:手札', desc: '自分の手札カード一覧', snippet: 'self.hand' },
+            { keyword: 'self.deck', label: 'self.deck (自分の山札)', category: 'arg', badge: '引数1:山札', desc: '自分の山札カード一覧', snippet: 'self.deck' },
+            { keyword: 'self.discard', label: 'self.discard (自分のトラッシュ)', category: 'arg', badge: '引数1:トラッシュ', desc: '自分のトラッシュカード一覧', snippet: 'self.discard' },
+            { keyword: 'self.active', label: 'self.active (自分のバトル場)', category: 'arg', badge: '引数1:バトル場', desc: '自分のバトルポケモン（ついているカード等）', snippet: 'self.active' },
+            { keyword: 'self.bench', label: 'self.bench (自分のベンチ)', category: 'arg', badge: '引数1:ベンチ', desc: '自分のベンチポケモン一覧', snippet: 'self.bench' },
+            { keyword: 'opponent.active', label: 'opponent.active (相手バトル場)', category: 'arg', badge: '引数1:相手バトル場', desc: '相手のバトルポケモン', snippet: 'opponent.active' },
+            { keyword: 'opponent.bench', label: 'opponent.bench (相手ベンチ)', category: 'arg', badge: '引数1:相手ベンチ', desc: '相手のベンチポケモン一覧', snippet: 'opponent.bench' },
+            { keyword: 'opponent.hand', label: 'opponent.hand (相手の手札)', category: 'arg', badge: '引数1:相手手札', desc: '相手の手札カード一覧', snippet: 'opponent.hand' }
+          ];
+        }
+        if (idx === 1) {
+          return [
+            { keyword: '"hand"', label: '"hand" (手札)', category: 'arg', badge: '引数2:ゾーン', desc: '手札から選ぶ', snippet: '"hand"' },
+            { keyword: '"deck"', label: '"deck" (山札)', category: 'arg', badge: '引数2:ゾーン', desc: '山札から選ぶ', snippet: '"deck"' },
+            { keyword: '"discard"', label: '"discard" (トラッシュ)', category: 'arg', badge: '引数2:ゾーン', desc: 'トラッシュから選ぶ', snippet: '"discard"' },
+            { keyword: '"bench"', label: '"bench" (ベンチ)', category: 'arg', badge: '引数2:ゾーン', desc: 'ベンチから選ぶ', snippet: '"bench"' },
+            { keyword: '"field"', label: '"field" (盤面全体)', category: 'arg', badge: '引数2:ゾーン', desc: '場（バトル場＋ベンチ）から選ぶ', snippet: '"field"' },
+            { keyword: '"active"', label: '"active" (バトル場)', category: 'arg', badge: '引数2:ゾーン', desc: 'バトル場から選ぶ', snippet: '"active"' },
+            { keyword: '"attached"', label: '"attached" (ついているカード)', category: 'arg', badge: '引数2:ゾーン', desc: 'ポケモンについているエネルギーやカードから選ぶ', snippet: '"attached"' },
+            { keyword: '{ category: "Energy" }', label: '{ category: "Energy" }', category: 'choice', badge: '引数2:条件', desc: 'エネルギーカードに絞り込み', snippet: '{ category: "Energy" }' },
+            { keyword: '{ category: "たね" }', label: '{ category: "たね" }', category: 'choice', badge: '引数2:条件', desc: 'たねポケモンに絞り込み', snippet: '{ category: "たね" }' },
+            { keyword: '{ category: "進化" }', label: '{ category: "進化" }', category: 'choice', badge: '引数2:条件', desc: '進化カードに絞り込み', snippet: '{ category: "進化" }' },
+            { keyword: '{ category: "グッズ" }', label: '{ category: "グッズ" }', category: 'choice', badge: '引数2:条件', desc: 'グッズに絞り込み', snippet: '{ category: "グッズ" }' },
+            { keyword: '{ category: "サポート" }', label: '{ category: "サポート" }', category: 'choice', badge: '引数2:条件', desc: 'サポートに絞り込み', snippet: '{ category: "サポート" }' },
+            { keyword: '{}', label: '{} (条件なし)', category: 'choice', badge: '引数2:条件', desc: '絞り込みなしですべて対象', snippet: '{}' },
+            { keyword: '1', label: '1 (1枚)', category: 'arg', badge: '引数2:枚数', desc: '1枚選ぶ', snippet: '1' },
+            { keyword: '2', label: '2 (2枚)', category: 'arg', badge: '引数2:枚数', desc: '2枚選ぶ', snippet: '2' },
+            { keyword: '3', label: '3 (3枚)', category: 'arg', badge: '引数2:枚数', desc: '3枚選ぶ', snippet: '3' }
+          ];
+        }
+        if (idx === 2) {
+          return [
+            { keyword: '{ category: "Energy" }', label: '{ category: "Energy" }', category: 'choice', badge: '引数3:条件', desc: 'エネルギーカードに絞り込み', snippet: '{ category: "Energy" }' },
+            { keyword: '{ category: "たね" }', label: '{ category: "たね" }', category: 'choice', badge: '引数3:条件', desc: 'たねポケモンに絞り込み', snippet: '{ category: "たね" }' },
+            { keyword: '{ category: "進化" }', label: '{ category: "進化" }', category: 'choice', badge: '引数3:条件', desc: '進化カードに絞り込み', snippet: '{ category: "進化" }' },
+            { keyword: '{ category: "グッズ" }', label: '{ category: "グッズ" }', category: 'choice', badge: '引数3:条件', desc: 'グッズに絞り込み', snippet: '{ category: "グッズ" }' },
+            { keyword: '{ category: "サポート" }', label: '{ category: "サポート" }', category: 'choice', badge: '引数3:条件', desc: 'サポートに絞り込み', snippet: '{ category: "サポート" }' },
+            { keyword: '{ type: "草" }', label: '{ type: "草" }', category: 'choice', badge: '引数3:条件', desc: '草タイプに絞り込み', snippet: '{ type: "草" }' },
+            { keyword: '{ type: "炎" }', label: '{ type: "炎" }', category: 'choice', badge: '引数3:条件', desc: '炎タイプに絞り込み', snippet: '{ type: "炎" }' },
+            { keyword: '{ type: "水" }', label: '{ type: "水" }', category: 'choice', badge: '引数3:条件', desc: '水タイプに絞り込み', snippet: '{ type: "水" }' },
+            { keyword: '{ type: "雷" }', label: '{ type: "雷" }', category: 'choice', badge: '引数3:条件', desc: '雷タイプに絞り込み', snippet: '{ type: "雷" }' },
+            { keyword: '{}', label: '{} (条件なし)', category: 'choice', badge: '引数3:条件', desc: '条件なしですべて対象', snippet: '{}' },
+            { keyword: '1', label: '1 (1枚)', category: 'arg', badge: '引数3:枚数', desc: '1枚選ぶ', snippet: '1' },
+            { keyword: '2', label: '2 (2枚)', category: 'arg', badge: '引数3:枚数', desc: '2枚選ぶ', snippet: '2' },
+            { keyword: '3', label: '3 (3枚)', category: 'arg', badge: '引数3:枚数', desc: '3枚選ぶ', snippet: '3' }
+          ];
+        }
+        if (idx === 3) {
+          return [
+            { keyword: '1', label: '1 (1枚)', category: 'arg', badge: '引数4:枚数', desc: '1枚選ぶ', snippet: '1' },
+            { keyword: '2', label: '2 (2枚)', category: 'arg', badge: '引数4:枚数', desc: '2枚選ぶ', snippet: '2' },
+            { keyword: '3', label: '3 (3枚)', category: 'arg', badge: '引数4:枚数', desc: '3枚選ぶ', snippet: '3' },
+            { keyword: '4', label: '4 (4枚)', category: 'arg', badge: '引数4:枚数', desc: '4枚選ぶ', snippet: '4' }
+          ];
+        }
+      }
+
+      // 2. damage
+      if (fn === 'damage') {
+        if (idx === 0) {
+          return [
+            { keyword: 'opponent.active', label: 'opponent.active', category: 'arg', badge: '引数1:対象', desc: '相手のバトルポケモンを対象にする', snippet: 'opponent.active' },
+            { keyword: 'opponent.bench', label: 'opponent.bench', category: 'arg', badge: '引数1:対象', desc: '相手のベンチポケモン全員を対象にする', snippet: 'opponent.bench' },
+            { keyword: 'target', label: 'target', category: 'arg', badge: '引数1:対象', desc: 'choiceCard等で選んだ対象ポケモン', snippet: 'target' },
+            { keyword: 'self.active', label: 'self.active', category: 'arg', badge: '引数1:対象', desc: '自分のバトルポケモン（自傷ダメージ等）', snippet: 'self.active' }
+          ];
+        }
+        if (idx === 1) {
+          return [
+            { keyword: '30', label: '30 (30ダメージ)', category: 'arg', badge: '引数2:数値', desc: '基本ダメージ量30', snippet: '30' },
+            { keyword: '50', label: '50 (50ダメージ)', category: 'arg', badge: '引数2:数値', desc: '基本ダメージ量50', snippet: '50' },
+            { keyword: '60', label: '60 (60ダメージ)', category: 'arg', badge: '引数2:数値', desc: '基本ダメージ量60', snippet: '60' },
+            { keyword: '80', label: '80 (80ダメージ)', category: 'arg', badge: '引数2:数値', desc: '基本ダメージ量80', snippet: '80' },
+            { keyword: '100', label: '100 (100ダメージ)', category: 'arg', badge: '引数2:数値', desc: '基本ダメージ量100', snippet: '100' },
+            { keyword: '120', label: '120 (120ダメージ)', category: 'arg', badge: '引数2:数値', desc: '基本ダメージ量120', snippet: '120' },
+            { keyword: '150', label: '150 (150ダメージ)', category: 'arg', badge: '引数2:数値', desc: '基本ダメージ量150', snippet: '150' },
+            { keyword: 'getEnergy', label: 'getEnergy(self.active) * 20', category: 'arg', badge: '引数2:計算', desc: 'ついているエネルギー数×20ダメージ', snippet: 'getEnergy(self.active) * 20' },
+            { keyword: 'coinFlip', label: 'coinFlip(1) * 30', category: 'arg', badge: '引数2:計算', desc: 'コイン表の回数×30ダメージ', snippet: 'coinFlip(1) * 30' }
+          ];
+        }
+      }
+
+      // 3. heal
+      if (fn === 'heal') {
+        if (idx === 0) {
+          return [
+            { keyword: 'self.active', label: 'self.active', category: 'arg', badge: '引数1:対象', desc: '自分のバトルポケモンを回復', snippet: 'self.active' },
+            { keyword: 'self.bench', label: 'self.bench', category: 'arg', badge: '引数1:対象', desc: '自分のベンチポケモン全員を回復', snippet: 'self.bench' },
+            { keyword: 'target', label: 'target', category: 'arg', badge: '引数1:対象', desc: '選んだ対象ポケモンを回復', snippet: 'target' }
+          ];
+        }
+        if (idx === 1) {
+          return [
+            { keyword: '30', label: '30 (HP30回復)', category: 'arg', badge: '引数2:回復量', desc: 'HPを30回復する', snippet: '30' },
+            { keyword: '50', label: '50 (HP50回復)', category: 'arg', badge: '引数2:回復量', desc: 'HPを50回復する', snippet: '50' },
+            { keyword: '60', label: '60 (HP60回復)', category: 'arg', badge: '引数2:回復量', desc: 'HPを60回復する', snippet: '60' },
+            { keyword: '100', label: '100 (HP100回復)', category: 'arg', badge: '引数2:回復量', desc: 'HPを100回復する', snippet: '100' }
+          ];
+        }
+      }
+
+      // 4. draw
+      if (fn === 'draw') {
+        if (idx === 0) {
+          return [
+            { keyword: 'self', label: 'self (自分)', category: 'arg', badge: '引数1:対象', desc: '自分が山札を引く', snippet: 'self' },
+            { keyword: 'opponent', label: 'opponent (相手)', category: 'arg', badge: '引数1:対象', desc: '相手が山札を引く', snippet: 'opponent' }
+          ];
+        }
+        if (idx === 1) {
+          return [
+            { keyword: '1', label: '1 (1枚引く)', category: 'arg', badge: '引数2:枚数', desc: '山札から1枚引く', snippet: '1' },
+            { keyword: '2', label: '2 (2枚引く)', category: 'arg', badge: '引数2:枚数', desc: '山札から2枚引く', snippet: '2' },
+            { keyword: '3', label: '3 (3枚引く)', category: 'arg', badge: '引数2:枚数', desc: '山札から3枚引く', snippet: '3' },
+            { keyword: '7', label: '7 (7枚引く)', category: 'arg', badge: '引数2:枚数', desc: '山札から7枚引く（博士の研究効果等）', snippet: '7' }
+          ];
+        }
+      }
+
+      // 5. switchActive
+      if (fn === 'switchActive') {
+        if (idx === 0) {
+          return [
+            { keyword: 'opponent', label: 'opponent (相手)', category: 'arg', badge: '引数1:プレイヤー', desc: '相手のバトルポケモンを入れ替える（ボスの指令等）', snippet: 'opponent' },
+            { keyword: 'self', label: 'self (自分)', category: 'arg', badge: '引数1:プレイヤー', desc: '自分のバトルポケモンをベンチと入れ替える（ポケモンいれかえ等）', snippet: 'self' }
+          ];
+        }
+        if (idx === 1) {
+          return [
+            { keyword: 'target', label: 'target', category: 'arg', badge: '引数2:新バトル場', desc: 'choiceCard等で選んだ対象ポケモンに入れ替え', snippet: 'target' },
+            { keyword: 'choiceCard(opponent.bench)', label: 'choiceCard(opponent.bench)', category: 'arg', badge: '引数2:新バトル場', desc: '相手ベンチから選んでバトル場へ', snippet: 'choiceCard(opponent.bench)' },
+            { keyword: 'choiceCard(self.bench)', label: 'choiceCard(self.bench)', category: 'arg', badge: '引数2:新バトル場', desc: '自分ベンチから選んでバトル場へ', snippet: 'choiceCard(self.bench)' }
+          ];
+        }
+      }
+
+      // 6. toHand
+      if (fn === 'toHand') {
+        if (idx === 0) {
+          return [
+            { keyword: 'self', label: 'self (自分)', category: 'arg', badge: '引数1:プレイヤー', desc: '自分の手札に加える', snippet: 'self' },
+            { keyword: 'opponent', label: 'opponent (相手)', category: 'arg', badge: '引数1:プレイヤー', desc: '相手の手札に加える', snippet: 'opponent' }
+          ];
+        }
+        if (idx === 1) {
+          return [
+            { keyword: 'card', label: 'card', category: 'arg', badge: '引数2:カード', desc: 'サーチしたカードオブジェクト', snippet: 'card' },
+            { keyword: 'choiceCard', label: 'choiceCard(self.deck, { category: "たね" })', category: 'arg', badge: '引数2:山札から', desc: '山札のたねポケモンを選んで手札へ', snippet: 'choiceCard(self.deck, { category: "たね" })' },
+            { keyword: 'choiceCard', label: 'choiceCard(self.discard, { category: "エネルギー" })', category: 'arg', badge: '引数2:トラッシュから', desc: 'トラッシュのエネルギーを選んで手札へ', snippet: 'choiceCard(self.discard, { category: "エネルギー" })' }
+          ];
+        }
+      }
+
+      // 7. toDiscard
+      if (fn === 'toDiscard') {
+        if (idx === 0) {
+          return [
+            { keyword: 'self', label: 'self (自分)', category: 'arg', badge: '引数1:プレイヤー', desc: '自分のトラッシュに送る', snippet: 'self' },
+            { keyword: 'opponent', label: 'opponent (相手)', category: 'arg', badge: '引数1:プレイヤー', desc: '相手のトラッシュに送る', snippet: 'opponent' }
+          ];
+        }
+        if (idx === 1) {
+          return [
+            { keyword: 'card', label: 'card', category: 'arg', badge: '引数2:カード', desc: 'トラッシュするカードオブジェクト', snippet: 'card' },
+            { keyword: 'pokemon', label: 'pokemon (このポケモン)', category: 'arg', badge: '引数2:自分自身', desc: '自身をトラッシュへ送る', snippet: 'pokemon' }
+          ];
+        }
+      }
+
+      // toBench
+      if (fn === 'toBench') {
+        if (idx === 0) {
+          return [
+            { keyword: 'self', label: 'self (自分)', category: 'arg', badge: '引数1:プレイヤー', desc: '自分のベンチに出す', snippet: 'self' },
+            { keyword: 'opponent', label: 'opponent (相手)', category: 'arg', badge: '引数1:プレイヤー', desc: '相手のベンチに出す', snippet: 'opponent' }
+          ];
+        }
+        if (idx === 1) {
+          return [
+            { keyword: 'card', label: 'card', category: 'arg', badge: '引数2:カード', desc: 'ベンチに出すカードオブジェクト', snippet: 'card' },
+            { keyword: 'choiceCard', label: 'choiceCard(self, "deck", { category: "Basic" })', category: 'arg', badge: '引数2:山札からたね', desc: '山札のたねポケモンを選んでベンチへ', snippet: 'choiceCard(self, "deck", { category: "Basic" })' },
+            { keyword: 'choiceCard', label: 'choiceCard(self, "discard", { category: "Basic" })', category: 'arg', badge: '引数2:トラッシュからたね', desc: 'トラッシュのたねポケモンを選んでベンチへ', snippet: 'choiceCard(self, "discard", { category: "Basic" })' }
+          ];
+        }
+      }
+
+      // 7.5 toDeck
+      if (fn === 'toDeck') {
+        if (idx === 0) {
+          return [
+            { keyword: 'self', label: 'self (自分)', category: 'arg', badge: '引数1:プレイヤー', desc: '自分の山札にもどす', snippet: 'self' },
+            { keyword: 'opponent', label: 'opponent (相手)', category: 'arg', badge: '引数1:プレイヤー', desc: '相手の山札にもどす', snippet: 'opponent' }
+          ];
+        }
+        if (idx === 1) {
+          return [
+            { keyword: 'card', label: 'card', category: 'arg', badge: '引数2:カード', desc: '指定カードを山札へ', snippet: 'card' },
+            { keyword: 'choiceCard(self, "hand", {}, 1)', label: 'choiceCard(self, "hand", {}, 1)', category: 'arg', badge: '引数2:手札から', desc: '手札から選んで山札へ', snippet: 'choiceCard(self, "hand", {}, 1)' },
+            { keyword: 'choiceCard(self, "discard", {}, 3)', label: 'choiceCard(self, "discard", {}, 3)', category: 'arg', badge: '引数2:トラッシュから', desc: 'トラッシュから選んで山札へ', snippet: 'choiceCard(self, "discard", {}, 3)' }
+          ];
+        }
+      }
+
+      // 8. kill
+      if (fn === 'kill') {
+        if (idx === 0) {
+          return [
+            { keyword: 'target', label: 'target', category: 'arg', badge: '引数1:対象', desc: '選んだ対象カードまたはポケモン', snippet: 'target' },
+            { keyword: 'choiceCard(opponent.active, "attached")', label: 'choiceCard(opponent.active, "attached")', category: 'arg', badge: '引数1:相手エネ等', desc: '相手バトルポケモンについているエネ等を破棄', snippet: 'choiceCard(opponent.active, "attached")' },
+            { keyword: 'opponent.active', label: 'opponent.active', category: 'arg', badge: '引数1:相手バトル場', desc: '相手バトルポケモンのHPを減らす', snippet: 'opponent.active' },
+            { keyword: 'choiceCard(self.active, "attached")', label: 'choiceCard(self.active, "attached")', category: 'arg', badge: '引数1:自分エネ等', desc: '自分バトルポケモンについているカードを破棄', snippet: 'choiceCard(self.active, "attached")' }
+          ];
+        }
+        if (idx === 1) {
+          return [
+            { keyword: '30', label: '30 (30減らす)', category: 'arg', badge: '引数2:数値', desc: 'HPを30減らす（0できぜつ）', snippet: '30' },
+            { keyword: '50', label: '50 (50減らす)', category: 'arg', badge: '引数2:数値', desc: 'HPを50減らす（0できぜつ）', snippet: '50' },
+            { keyword: '100', label: '100 (100減らす)', category: 'arg', badge: '引数2:数値', desc: 'HPを100減らす（0できぜつ）', snippet: '100' }
+          ];
+        }
+      }
+
+      // 9. attach
+      if (fn === 'attach') {
+        if (idx === 0) {
+          return [
+            { keyword: 'card', label: 'card', category: 'arg', badge: '引数1:カード', desc: '手札からつけるカード', snippet: 'card' },
+            { keyword: 'choiceCard(self, "hand", { category: "Energy" })', label: 'choiceCard(self, "hand", { category: "Energy" })', category: 'arg', badge: '引数1:エネ選択', desc: '手札からエネルギーカードを選ぶ', snippet: 'choiceCard(self, "hand", { category: "Energy" })' },
+            { keyword: 'choiceCard(self, "hand", { category: "進化" })', label: 'choiceCard(self, "hand", { category: "進化" })', category: 'arg', badge: '引数1:進化選択', desc: '手札から進化カードを選ぶ', snippet: 'choiceCard(self, "hand", { category: "進化" })' }
+          ];
+        }
+        if (idx === 1) {
+          return [
+            { keyword: 'self.active', label: 'self.active', category: 'arg', badge: '引数2:付与先', desc: '自分のバトルポケモンにつける', snippet: 'self.active' },
+            { keyword: 'target', label: 'target', category: 'arg', badge: '引数2:付与先', desc: '選んだ対象ポケモンにつける', snippet: 'target' }
+          ];
+        }
+      }
+
+      // 10. move
+      if (fn === 'move') {
+        if (idx === 0) {
+          return [
+            { keyword: 'cards', label: 'cards', category: 'arg', badge: '引数1:カード', desc: '移動させるカード（エネルギー等）', snippet: 'cards' },
+            { keyword: 'choiceCard(self.active, "attached")', label: 'choiceCard(self.active, "attached")', category: 'arg', badge: '引数1:自分エネ', desc: '自分のバトルポケモンについているカードを選ぶ', snippet: 'choiceCard(self.active, "attached")' },
+            { keyword: 'choiceCard(opponent.active, "attached")', label: 'choiceCard(opponent.active, "attached")', category: 'arg', badge: '引数1:相手エネ', desc: '相手のバトルポケモンについているカードを選ぶ', snippet: 'choiceCard(opponent.active, "attached")' }
+          ];
+        }
+        if (idx === 1) {
+          return [
+            { keyword: 'self.active', label: 'self.active', category: 'arg', badge: '引数2:移動先', desc: '自分のバトルポケモンへ移動', snippet: 'self.active' },
+            { keyword: 'target', label: 'target', category: 'arg', badge: '引数2:移動先', desc: '選んだ対象ポケモンへ移動', snippet: 'target' },
+            { keyword: 'self.discard', label: 'self.discard', category: 'arg', badge: '引数2:移動先', desc: '自分のトラッシュへ移動', snippet: 'self.discard' },
+            { keyword: 'opponent.discard', label: 'opponent.discard', category: 'arg', badge: '引数2:移動先', desc: '相手のトラッシュへ移動', snippet: 'opponent.discard' }
+          ];
+        }
+      }
+
+      // 11. getCards
+      if (fn === 'getCards') {
+        if (idx === 0) {
+          return [
+            { keyword: 'self.active', label: 'self.active', category: 'arg', badge: '引数1:ポケモン', desc: '自分のバトルポケモン', snippet: 'self.active' },
+            { keyword: 'opponent.active', label: 'opponent.active', category: 'arg', badge: '引数1:ポケモン', desc: '相手のバトルポケモン', snippet: 'opponent.active' },
+            { keyword: 'target', label: 'target', category: 'arg', badge: '引数1:ポケモン', desc: '対象ポケモン', snippet: 'target' }
+          ];
+        }
+        if (idx === 1) {
+          return [
+            { keyword: '{ category: "Energy" }', label: '{ category: "Energy" }', category: 'arg', badge: '引数2:絞り込み', desc: 'エネルギーカードのみ取得', snippet: '{ category: "Energy" }' },
+            { keyword: '{ category: "たね" }', label: '{ category: "たね" }', category: 'arg', badge: '引数2:絞り込み', desc: 'たね（進化前）カードのみ取得', snippet: '{ category: "たね" }' }
+          ];
+        }
+      }
+
+      // 10. coinFlip / flipCoin
+      if (fn === 'coinFlip' || fn === 'flipCoin') {
+        if (idx === 0) {
+          return [
+            { keyword: '1', label: '1 (1回)', category: 'arg', badge: '引数1:回数', desc: 'コインを1回投げる', snippet: '1' },
+            { keyword: '2', label: '2 (2回)', category: 'arg', badge: '引数1:回数', desc: 'コインを2回投げる', snippet: '2' },
+            { keyword: '3', label: '3 (3回)', category: 'arg', badge: '引数1:回数', desc: 'コインを3回投げる', snippet: '3' },
+            { keyword: '"表が出るまで"', label: '"表が出るまで"', category: 'arg', badge: '引数1:モード', desc: '表が出るまで連続で投げる', snippet: '"表が出るまで"' }
+          ];
+        }
+      }
+
+      // 11. applyStatus
+      if (fn === 'applyStatus') {
+        if (idx === 0) {
+          return [
+            { keyword: 'opponent.active', label: 'opponent.active', category: 'arg', badge: '引数1:対象', desc: '相手のバトルポケモンを状態異常にする', snippet: 'opponent.active' }
+          ];
+        }
+        if (idx === 1) {
+          return [
+            { keyword: '"どく"', label: '"どく"', category: 'arg', badge: '引数2:状態異常', desc: 'どく状態を付与', snippet: '"どく"' },
+            { keyword: '"やけど"', label: '"やけど"', category: 'arg', badge: '引数2:状態異常', desc: 'やけど状態を付与', snippet: '"やけど"' },
+            { keyword: '"マヒ"', label: '"マヒ"', category: 'arg', badge: '引数2:状態異常', desc: 'マヒ状態を付与', snippet: '"マヒ"' },
+            { keyword: '"ねむり"', label: '"ねむり"', category: 'arg', badge: '引数2:状態異常', desc: 'ねむり状態を付与', snippet: '"ねむり"' },
+            { keyword: '"こんらん"', label: '"こんらん"', category: 'arg', badge: '引数2:状態異常', desc: 'こんらん状態を付与', snippet: '"こんらん"' }
+          ];
+        }
+      }
+
+      // 12. event.on
+      if (fn === 'event.on' || fn === 'on') {
+        if (idx === 0) {
+          return [
+            { keyword: '"start"', label: '"start"', category: 'event', badge: 'ターン開始時(強制)', desc: '自分のターン開始時に強制（自動）発動', snippet: '"start"' },
+            { keyword: '"turnStart"', label: '"turnStart"', category: 'event', badge: 'ターン開始時', desc: '自分のターン開始時（毎ターン強制発動）', snippet: '"turnStart"' },
+            { keyword: '"turnEnd"', label: '"turnEnd"', category: 'event', badge: 'ターン終了時', desc: '自分のターン終了時', snippet: '"turnEnd"' },
+            { keyword: '"enterBattle"', label: '"enterBattle"', category: 'event', badge: 'バトル場登場', desc: 'バトル場に出た時', snippet: '"enterBattle"' },
+            { keyword: '"enterBench"', label: '"enterBench"', category: 'event', badge: 'ベンチ登場', desc: '手札からベンチに出した時', snippet: '"enterBench"' },
+            { keyword: '"beforeDamage"', label: '"beforeDamage"', category: 'event', badge: '被ダメ直前', desc: '被ダメージ直前（無効化・軽減）', snippet: '"beforeDamage"' },
+            { keyword: '"onDamage"', label: '"onDamage"', category: 'event', badge: '被ダメ後', desc: 'ダメージを受けた時', snippet: '"onDamage"' },
+            { keyword: '"onKnockout"', label: '"onKnockout"', category: 'event', badge: 'きぜつ時', desc: 'このポケモンがきぜつした時', snippet: '"onKnockout"' },
+            { keyword: '"onKnockoutOpponent"', label: '"onKnockoutOpponent"', category: 'event', badge: '相手撃破時', desc: '相手ポケモンを倒した時', snippet: '"onKnockoutOpponent"' }
+          ];
+        }
+      }
+
+      // 13. useLimit / limitPerTurn / timesPerTurn
+      if (fn === 'useLimit' || fn === 'limitPerTurn' || fn === 'timesPerTurn') {
+        if (idx === 0) {
+          return [
+            { keyword: '1', label: '1 (1ターンに1回)', category: 'arg', badge: '回数:1', desc: '自分の番に1回使える', snippet: '1' },
+            { keyword: '2', label: '2 (1ターンに2回)', category: 'arg', badge: '回数:2', desc: '自分の番に2回使える', snippet: '2' },
+            { keyword: 'Infinity', label: 'Infinity (何度でも)', category: 'arg', badge: '無制限', desc: '自分の番に何度でも使える', snippet: 'Infinity' }
+          ];
+        }
+      }
+
+      return [];
+    },
+
+    updateCompletion(forceOpen = false, explicitQuery = null) {
+      const editor = document.getElementById('effectCodeEditor');
+      const popup = document.getElementById('effectCompletion');
+      if (!editor || !popup) return;
+
+      
+      // 自動補完が無効の場合は、明示的ボタン押下(forceOpen)または検索バー以外では開かない
+      if (!this.effectEditor.autoCompletionEnabled && !forceOpen) {
+        popup.style.display = 'none';
+        this.effectEditor.currentCandidates = [];
+        this.effectEditor.userNavigated = false;
+        this.effectEditor.completionMode = null;
+        return;
+      }
+
+      let word = '';
+      let isMemberAccess = false;
+      let memberObj = '';
+      let memberProp = '';
+      let isFunctionArg = false;
+      let funcArgInfo = null;
+      let funcArgCandidates = [];
+
+      if (explicitQuery !== null && explicitQuery !== undefined) {
+        word = String(explicitQuery).trim();
+        const dotIdx = word.lastIndexOf('.');
+        if (dotIdx >= 0) {
+          isMemberAccess = true;
+          memberObj = word.slice(0, dotIdx);
+          memberProp = word.slice(dotIdx + 1);
+        }
+      } else {
+        const selStart = editor.selectionStart || 0;
+        const before = editor.value.slice(0, selStart);
+
+        // 現在行がコメント行（//）の場合は自動補完しない
+        const lastNewLine = before.lastIndexOf('\n');
+        const currentLine = lastNewLine >= 0 ? before.slice(lastNewLine + 1) : before;
+        if (!forceOpen && currentLine.trim().startsWith('//')) {
+          popup.style.display = 'none';
+          this.effectEditor.currentCandidates = [];
+          this.effectEditor.userNavigated = false;
+          this.effectEditor.completionMode = null;
+          return;
+        }
+
+        // 1. ドット参照 (例: opponent. , opponent.a , self.active.h など) の検出
+        const reMember = new RegExp('([a-zA-Z0-9_$]+(?:\\.[a-zA-Z0-9_$]+)*)\\.([a-zA-Z0-9_$]*)' + String.fromCharCode(36));
+        const memberMatch = before.match(reMember);
+        if (memberMatch) {
+          isMemberAccess = true;
+          memberObj = memberMatch[1];
+          memberProp = memberMatch[2] || '';
+        } else {
+          // 2. 関数呼び出し内の引数補完チェック (例: damage( , choiceCard(self, "hand", など)
+          const encFunc = this.findEnclosingFunction(before);
+          if (encFunc && encFunc.funcName) {
+            const argItems = this.getFunctionArgumentCompletions(encFunc.funcName, encFunc.argIndex);
+            if (argItems && argItems.length > 0) {
+              isFunctionArg = true;
+              funcArgInfo = encFunc;
+              funcArgCandidates = argItems;
+            }
+          }
+
+          if (!isFunctionArg) {
+            // 通常の英数字・日本語マッチング (GASパーサー保護のため安全な終端マッチを使用)
+            const reEndWord = new RegExp('(?:^|[\\s(,;.]|\\n)([A-Za-z0-9_\\u3040-\\u309F\\u30A0-\\u30FF\\u4E00-\\u9FAF]+)' + String.fromCharCode(36));
+            const match = before.match(reEndWord);
+            word = match ? match[1] : '';
+          }
+        }
+      }
+
+      // ドット参照（メンバー補完）の場合
+      if (isMemberAccess) {
+        const members = this.getMemberCompletionsForObject(memberObj);
+        let candidates = [];
+        if (members && members.length > 0) {
+          if (memberProp) {
+            const propLower = memberProp.toLowerCase();
+            candidates = members.filter((m) => {
+              return m.keyword.toLowerCase().includes(propLower) ||
+                     m.label.toLowerCase().includes(propLower) ||
+                     (m.desc && m.desc.toLowerCase().includes(propLower));
+            });
+            candidates.sort((a, b) => {
+              const aStarts = a.keyword.toLowerCase().startsWith(propLower) ? 1 : 0;
+              const bStarts = b.keyword.toLowerCase().startsWith(propLower) ? 1 : 0;
+              if (aStarts !== bStarts) return bStarts - aStarts;
+              return a.keyword.localeCompare(b.keyword);
+            });
+          } else {
+            // ドット直後（例: opponent. ）は全候補を表示
+            candidates = members.slice();
+          }
+        }
+
+        if (!candidates.length) {
+          popup.style.display = 'none';
+          this.effectEditor.currentCandidates = [];
+          this.effectEditor.userNavigated = false;
+          this.effectEditor.completionMode = null;
+          this.effectEditor.memberPropLength = 0;
+          return;
+        }
+
+        this.effectEditor.completionMode = 'member';
+        this.effectEditor.memberPropLength = memberProp.length;
+        this.effectEditor.currentCandidates = candidates;
+        this.effectEditor.completionIndex = 0;
+        this.effectEditor.userNavigated = false;
+        this.renderCompletionPopup();
+        return;
+      }
+
+      // 関数内の引数補完の場合
+      if (isFunctionArg && funcArgInfo && funcArgCandidates) {
+        let candidates = funcArgCandidates;
+        const q = (funcArgInfo.argQuery || '').toLowerCase();
+        if (q) {
+          candidates = funcArgCandidates.filter((c) => {
+            return c.keyword.toLowerCase().includes(q) ||
+                   c.label.toLowerCase().includes(q) ||
+                   (c.desc && c.desc.toLowerCase().includes(q));
+          });
+          candidates.sort((a, b) => {
+            const aStarts = a.keyword.toLowerCase().startsWith(q) ? 1 : 0;
+            const bStarts = b.keyword.toLowerCase().startsWith(q) ? 1 : 0;
+            if (aStarts !== bStarts) return bStarts - aStarts;
+            return a.keyword.localeCompare(b.keyword);
+          });
+        }
+
+        if (!candidates.length) {
+          popup.style.display = 'none';
+          this.effectEditor.currentCandidates = [];
+          this.effectEditor.userNavigated = false;
+          this.effectEditor.completionMode = null;
+          return;
+        }
+
+        this.effectEditor.completionMode = 'arg';
+        this.effectEditor.argLastSepIndex = funcArgInfo.lastSepIndex;
+        this.effectEditor.currentCandidates = candidates;
+        this.effectEditor.completionIndex = 0;
+        this.effectEditor.userNavigated = false;
+        this.renderCompletionPopup();
+        return;
+      }
+
+      this.effectEditor.completionMode = null;
+      this.effectEditor.memberPropLength = 0;
+
+      // 単語が空、かつ明示的オープンでない場合は補完を開かない（空行や改行を阻害しない！）
+      if (!word && !forceOpen) {
+        popup.style.display = 'none';
+        this.effectEditor.currentCandidates = [];
+        this.effectEditor.userNavigated = false;
+        return;
+      }
+
+      const tab = this.effectEditor && this.effectEditor.activeTab ? this.effectEditor.activeTab : 'attack1';
+
+      let candidates = [];
+      if (word) {
+        const wordLower = word.toLowerCase();
+        candidates = this.effectApiCompletions.filter((x) => {
+          return x.keyword.toLowerCase().includes(wordLower) ||
+          x.label.toLowerCase().includes(wordLower) ||
+          x.badge && x.badge.toLowerCase().includes(wordLower) ||
+          x.desc && x.desc.toLowerCase().includes(wordLower);
+        });
+      } else if (forceOpen) {
+        candidates = this.effectApiCompletions.filter((x) => x.targets.includes(tab));
+        if (!candidates.length) {
+          candidates = this.effectApiCompletions.slice(0, 12);
+        }
+      }
+
+      candidates.sort((a, b) => {
+        const aFit = a.targets.includes(tab) ? 1 : 0;
+        const bFit = b.targets.includes(tab) ? 1 : 0;
+        if (aFit !== bFit) return bFit - aFit;
+        return a.keyword.localeCompare(b.keyword);
+      });
+
+      if (!candidates.length) {
+        popup.style.display = 'none';
+        this.effectEditor.currentCandidates = [];
+        this.effectEditor.userNavigated = false;
+        return;
+      }
+
+      this.effectEditor.currentCandidates = candidates;
+      this.effectEditor.completionIndex = 0;
+      this.effectEditor.userNavigated = false;
+      this.renderCompletionPopup();
+    },
+
+    applyCompletionPosition() {
+      const popup = document.getElementById('effectCompletion');
+      if (!popup) return;
+            const ed = this.effectEditor;
+      if (ed.popupPos) {
+        popup.style.left = ed.popupPos.left + 'px';
+        popup.style.top = ed.popupPos.top + 'px';
+        popup.style.right = 'auto';
+      } else if (ed.isDockedRight) {
+        popup.style.left = 'auto';
+        popup.style.right = '12px';
+        popup.style.top = '10px';
+      } else {
+        popup.style.left = '14px';
+        popup.style.right = 'auto';
+        popup.style.top = '10px';
+      }
+    },
+
+    toggleCompletionDock() {
+            const ed = this.effectEditor;
+      ed.popupPos = null;
+      ed.isDockedRight = !ed.isDockedRight;
+      this.applyCompletionPosition();
+      const popup = document.getElementById('effectCompletion');
+      if (popup && popup.style.display === 'none') {
+        this.updateCompletion(true);
+      } else {
+        this.renderCompletionPopup();
+      }
+    },
+
+    initEffectDrag() {
+            if (this.effectEditor.dragInitialized) return;
+      this.effectEditor.dragInitialized = true;
+
+      const popup = document.getElementById('effectCompletion');
+      if (!popup) return;
+
+      let startX = 0, startY = 0;
+      let initLeft = 0, initTop = 0;
+      let dragging = false;
+
+      function onStart(clientX, clientY, target) {
+        const topbar = target && target.closest && target.closest('.completion-topbar');
+        if (!topbar || (target && target.closest && target.closest('button'))) return false;
+
+        dragging = true;
+        popup.classList.add('is-dragging');
+        startX = clientX;
+        startY = clientY;
+        const rect = popup.getBoundingClientRect();
+        const parentRect = popup.offsetParent ? popup.offsetParent.getBoundingClientRect() : { left: 0, top: 0 };
+        initLeft = rect.left - parentRect.left;
+        initTop = rect.top - parentRect.top;
+        return true;
+      }
+
+      function onMove(clientX, clientY) {
+        if (!dragging) return;
+        const dx = clientX - startX;
+        const dy = clientY - startY;
+        let newLeft = initLeft + dx;
+        let newTop = initTop + dy;
+
+        const parent = popup.offsetParent || document.body;
+        const maxLeft = Math.max(0, parent.clientWidth - 80);
+        const maxTop = Math.max(0, parent.clientHeight + 200);
+        newLeft = Math.max(-100, Math.min(newLeft, maxLeft));
+        newTop = Math.max(0, Math.min(newTop, maxTop));
+
+        popup.style.right = 'auto';
+        popup.style.left = newLeft + 'px';
+        popup.style.top = newTop + 'px';
+        this.effectEditor.popupPos = { left: newLeft, top: newTop };
+      }
+
+      function onEnd() {
+        if (!dragging) return;
+        dragging = false;
+        popup.classList.remove('is-dragging');
+      }
+
+      popup.addEventListener('mousedown', function (e) {
+        if (onStart(e.clientX, e.clientY, e.target)) {
+          e.preventDefault();
+        }
+      });
+
+      window.addEventListener('mousemove', function (e) {
+        if (dragging) {
+          onMove(e.clientX, e.clientY);
+        }
+      });
+
+      window.addEventListener('mouseup', onEnd);
+
+      popup.addEventListener('touchstart', function (e) {
+        if (e.touches && e.touches.length === 1) {
+          onStart(e.touches[0].clientX, e.touches[0].clientY, e.target);
+        }
+      }, { passive: true });
+
+      window.addEventListener('touchmove', function (e) {
+        if (dragging && e.touches && e.touches.length === 1) {
+          onMove(e.touches[0].clientX, e.touches[0].clientY);
+        }
+      }, { passive: true });
+
+      window.addEventListener('touchend', onEnd);
+    },
+
+    renderCompletionPopup() {
+      const popup = document.getElementById('effectCompletion');
+      if (!popup) return;
+      const ed = (this && this.effectEditor) || (window.EffectEditor && window.EffectEditor.effectEditor) || EffectEditor.effectEditor;
+      const candidates = (ed && Array.isArray(ed.currentCandidates)) ? ed.currentCandidates : [];
+      const selectedIndex = Number(ed && ed.completionIndex) || 0;
+      const esc = (this && typeof this.escape === 'function') ? this.escape : (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+      const itemsHtml = candidates.map((x, i) => {
+        const isSelected = i === selectedIndex ? ' selected' : '';
+        const badgeClass = "badge-" + (x.category || 'func');
+        return "\n          <div class=\"completion-item" +
+        isSelected + "\" data-completion-idx=\"" + i + "\">\n            <div class=\"completion-header\">\n              <span class=\"completion-badge " +
+        badgeClass + "\">" + esc(x.badge || 'API') + "</span>\n              <strong>" +
+        esc(x.label) + "</strong>\n            </div>\n            <div class=\"completion-desc\">" +
+        esc(x.desc) + "</div>\n          </div>\n        ";
+      }).join('');
+
+      const isRight = ed && ed.isDockedRight && !ed.popupPos;
+      const dockLabel = isRight ? '↔ 左へ' : '↔ 右へ';
+
+      popup.innerHTML = "\n        <div class=\"completion-topbar\" title=\"ドラッグして好きな位置にずらせます\">\n          <div class=\"completion-drag-title\">\n            <span>⠿ ドラッグで移動</span>\n            <span style=\"opacity:0.75;font-weight:normal;\">(" +
+      candidates.length + "件)</span>\n          </div>\n          <div class=\"completion-topbar-actions\">\n            <button type=\"button\" class=\"completion-action-btn\" id=\"dockCompletionToggleBtn\" title=\"補完ウィンドウを左右にずらす\">" +
+      dockLabel + "</button>\n            <button type=\"button\" class=\"completion-close-btn\" id=\"closeCompletionPopupBtn\" title=\"閉じる\">×</button>\n          </div>\n        </div>\n        " + (
+      itemsHtml || '<div style="padding:8px;font-size:11px;color:var(--muted)">該当する補完候補がありません</div>') + "\n      ";
+
+      if (typeof this.initEffectDrag === 'function') this.initEffectDrag();
+      if (typeof this.applyCompletionPosition === 'function') this.applyCompletionPosition();
+      popup.style.display = 'block';
+
+      const selectedEl = popup.querySelector('.completion-item.selected');
+      if (selectedEl && typeof selectedEl.scrollIntoView === 'function') {
+        selectedEl.scrollIntoView({ block: 'nearest' });
+      }
+
+      popup.querySelectorAll('[data-completion-idx]').forEach((el) => {
+        el.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          const idx = Number(el.dataset.completionIdx);
+          if (candidates[idx]) {
+            if (typeof EffectEditor.applyCompletionItem === 'function') {
+              EffectEditor.applyCompletionItem(candidates[idx]);
+            }
+          }
+        });
+      });
+
+      const dockBtn = popup.querySelector('#dockCompletionToggleBtn');
+      if (dockBtn) {
+        dockBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (typeof EffectEditor.toggleCompletionDock === 'function') {
+            EffectEditor.toggleCompletionDock();
+          }
+        });
+      }
+
+      const closeBtn = popup.querySelector('#closeCompletionPopupBtn');
+      if (closeBtn) {
+        closeBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          popup.style.display = 'none';
+        });
+      }
+    },
+
+    selectCompletionIndex(newIndex) {
+            const len = this.effectEditor.currentCandidates.length;
+      if (!len) return;
+      this.effectEditor.completionIndex = (newIndex + len) % len;
+      this.renderCompletionPopup();
+    },
+
+    applySelectedCompletion() {
+            const item = this.effectEditor.currentCandidates[this.effectEditor.completionIndex];
+      if (item) {
+        this.applyCompletionItem(item);
+        return true;
+      }
+      return false;
+    },
+
+    applyCompletionItem(item) {
+      if (!item) return;
+      const editor = document.getElementById('effectCodeEditor');
+      if (!editor) return;
+      editor.focus();
+            const pos = editor.selectionStart || 0;
+      const before = editor.value.slice(0, pos);
+
+      if (this.effectEditor.completionMode === 'member') {
+        const propLen = Number(this.effectEditor.memberPropLength || 0);
+        const start = Math.max(0, pos - propLen);
+        editor.setRangeText(item.snippet, start, pos, 'end');
+      } else if (this.effectEditor.completionMode === 'arg') {
+        const lastSep = Number(this.effectEditor.argLastSepIndex || 0);
+        const afterSep = before.slice(lastSep + 1);
+        const leadingSpaces = (afterSep.match(/^\s*/) || [''])[0];
+        const start = lastSep + 1 + leadingSpaces.length;
+        editor.setRangeText(item.snippet, start, pos, 'end');
+      } else {
+        const reEndWord = new RegExp('([A-Za-z0-9_\\u3040-\\u309F\\u30A0-\\u30FF\\u4E00-\\u9FAF]+)' + String.fromCharCode(36));
+        const match = before.match(reEndWord);
+        const start = match ? pos - match[1].length : pos;
+        editor.setRangeText(item.snippet, start, pos, 'end');
+      }
+
+      const popup = document.getElementById('effectCompletion');
+      if (popup) popup.style.display = 'none';
+      this.effectEditor.currentCandidates = [];
+      this.effectEditor.completionMode = null;
+      this.effectEditor.memberPropLength = 0;
+      this.effectEditor.argLastSepIndex = 0;
+      this.updateCodePreview();
+      editor.focus();
+    },
+
+    handleEditorKeydown(e) {
+            const now = Date.now();
+      // 日本語IME変換中、または確定直後(200ms以内)は横取りしない
+      if (e.isComposing || e.keyCode === 229 || (now - (this.effectEditor.lastCompositionEndTime || 0) < 200)) {
+        return;
+      }
+
+      const popup = document.getElementById('effectCompletion');
+      const isOpen = popup && popup.style.display !== 'none' && this.effectEditor.currentCandidates && this.effectEditor.currentCandidates.length > 0;
+
+      if (isOpen) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          this.effectEditor.userNavigated = true;
+          this.selectCompletionIndex(this.effectEditor.completionIndex + 1);
+          return;
+        }
+        if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          this.effectEditor.userNavigated = true;
+          this.selectCompletionIndex(this.effectEditor.completionIndex - 1);
+          return;
+        }
+        if (e.key === 'Tab') {
+          // Tabキーで補完確定
+          e.preventDefault();
+          this.applySelectedCompletion();
+          return;
+        }
+        if (e.key === 'Enter') {
+          // ユーザーが上下矢印キーで明示的に候補を選んだ時だけEnterで確定
+          // それ以外は通常の「改行」として通し、補完は閉じる
+          if (this.effectEditor.userNavigated) {
+            e.preventDefault();
+            this.applySelectedCompletion();
+            return;
+          } else {
+            popup.style.display = 'none';
+            this.effectEditor.currentCandidates = [];
+            this.effectEditor.userNavigated = false;
+            return;
+          }
+        }
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          popup.style.display = 'none';
+          this.effectEditor.currentCandidates = [];
+          this.effectEditor.userNavigated = false;
+          return;
+        }
+      }
+    },
+
+    applyEffectEditor() {
+      const editor = document.getElementById('effectCodeEditor');
+      const descInput = document.getElementById('effectEditorDisplayText');
+      const target = this.effectEditor.activeTab;
+      if (!editor || !target) return;
+      const code = editor.value.trim();
+      this.effectEditor.codes[target] = code;
+
+      const userText = descInput ? descInput.value.trim() : '';
+      const autoText = this.makeEffectDisplayText(code);
+
+      if (target === 'trainer') {
+        const codeEl = document.getElementById('attack1Code');
+        if (codeEl) codeEl.value = code;
+        const textEl = document.getElementById('attack1Text');
+        const finalDesc = userText || (textEl ? textEl.value.trim() : '') || autoText;
+        if (textEl && finalDesc) textEl.value = finalDesc;
+        const descEl = document.getElementById('description');
+        if (descEl && (!descEl.value || descEl.value === textEl?.value)) descEl.value = finalDesc;
+
+        if (this.effectEditor.texts) this.effectEditor.texts[target] = finalDesc;
+
+        const summaryEl = document.getElementById('trainerEffectSummary');
+        if (summaryEl) {
+          summaryEl.textContent = finalDesc ? "✦ 設定効果: " + finalDesc : code ? '✦ 設定効果: JavaScript効果設定済み' : '';
+        }
+      } else {
+        const codeId = target === 'ability' ? 'abilityCode' : target + "Code";
+        const textId = target === 'ability' ? 'abilityText' : target + "Text";
+        const summaryId = target + "EffectSummary";
+
+        const codeEl = document.getElementById(codeId);
+        if (codeEl) codeEl.value = code;
+        const textEl = document.getElementById(textId);
+        const finalDesc = userText || (textEl ? textEl.value.trim() : '') || autoText;
+        if (textEl && finalDesc) textEl.value = finalDesc;
+
+        if (this.effectEditor.texts) this.effectEditor.texts[target] = finalDesc;
+
+        const summaryEl = document.getElementById(summaryId);
+        if (summaryEl) {
+          summaryEl.textContent = finalDesc ? "✦ 設定効果: " + finalDesc : code ? '✦ 設定効果: JavaScript効果設定済み' : '';
+        }
+
+        if (target === 'attack1' || target === 'attack2') {
+          const dmgEl = document.getElementById(target + "Damage");
+          if (dmgEl && !dmgEl.value) {
+            const m = code.match(/damage\s*\(\s*[^,]+,\s*(\d+)/);
+            if (m) dmgEl.value = Number(m[1]);
+          }
+        }
+      }
+      if (window.CardSystem && typeof window.CardSystem.updatePreview === 'function') {
+        window.CardSystem.updatePreview();
+      }
+      this.closeEffectEditor();
+      App.toast('効果を反映しました。');
+    },
+
+    makeEffectDisplayText(code) {
+      if (!code) return '';
+      const lines = [];
+
+      // 特性イベント・起動回数プレフィックス
+      const useLimitMatch = code.match(/(?:useLimit|limitPerTurn|timesPerTurn)\s*\(\s*([^)]*)\s*\)/);
+      if (useLimitMatch) {
+        const limArg = useLimitMatch[1].trim();
+        if (limArg === 'Infinity') {
+          lines.push('【自分の番に何度でも使える】');
+        } else if (limArg && !isNaN(Number(limArg))) {
+          lines.push('【自分の番に' + limArg + '回使える】');
+        } else {
+          lines.push('【自分の番に1回使える】');
+        }
+      }
+      if (code.includes('turnStart') || code.includes('"start"') || code.includes("'start'")) lines.push('【毎ターン開始時(強制)】');
+      if (code.includes('enterBattle')) lines.push('【バトル場に出た時】');
+      if (code.includes('enterBench')) lines.push('【ベンチに出した時】');
+      if (code.includes('onKnockoutOpponent')) lines.push('【相手を倒した時】');else
+      if (code.includes('onKnockout')) lines.push('【きぜつした時】');
+      if (code.includes('onDamage')) lines.push('【ダメージを受けた時】');
+      if (code.includes('turnEnd')) lines.push('【ターン終了時】');
+
+      // 条件分岐
+      if (/if\s*\([^)]*(isKnockedOut|didKnockout|isDefeated|defeatedOpponent)/i.test(code)) {
+        lines.push('相手を倒したなら、');
+      } else if (/untilheads|表が出るまで|オモテが出るまで/i.test(code)) {
+        lines.push('表が出るまでコインを投げ、出た回数分');
+      } else if (/if\s*\(\s*(coinFlip|flipCoin)\s*\(/i.test(code)) {
+        lines.push('コインを投げ表なら、');
+      }
+      if (/if\s*\([^)]*hp\s*<=/i.test(code)) {
+        lines.push('HP条件を満たせば、');
+      }
+      if (/if\s*\([^)]*energy\s*>=/i.test(code)) {
+        lines.push('エネルギー条件を満たせば、');
+      }
+
+      // APIコール解析
+      const re = /(damage|benchDamage|heal|draw|attachEnergy|discardEnergy|applyStatus|clearStatus|switchActive|discardCards|searchCards|reduceDamage|takePrize|toHand|toDiscard|toDeck|toBench)\s*\(([^)]*)\)/g;
+      let m;
+      while (m = re.exec(code)) {
+        const fn = m[1];
+        const args = m[2];
+        if (fn === 'damage') lines.push(this.codeTarget(args) + "に" + this.codeNumber(args) + "ダメージ。");else
+        if (fn === 'benchDamage') lines.push(this.codeTarget(args) + "のベンチ全員に" + this.codeNumber(args) + "ダメージ。");else
+        if (fn === 'heal') lines.push(this.codeTarget(args) + "のHPを" + this.codeNumber(args) + "回復する。");else
+        if (fn === 'draw') lines.push(this.codeTarget(args) + "はカードを" + this.codeNumber(args) + "枚引く。");else
+        if (fn === 'takePrize') lines.push("サイドを" + (this.codeNumber(args) || 1) + "枚とる。");else
+        if (fn === 'attachEnergy') lines.push(this.codeTarget(args) + "にエネルギーを" + this.codeNumber(args) + "個付ける。");else
+        if (fn === 'discardEnergy') lines.push(this.codeTarget(args) + "のエネルギーを" + this.codeNumber(args) + "個トラッシュする。");else
+        if (fn === 'applyStatus') lines.push(this.codeTarget(args) + "を「" + this.codeString(args) + "」状態にする。");else
+        if (fn === 'clearStatus') lines.push(this.codeTarget(args) + "の特殊状態を回復する。");else
+        if (fn === 'switchActive') lines.push(this.codeTarget(args) + "をベンチと入れ替える。");else
+        if (fn === 'toHand') lines.push(this.codeTarget(args) + "の手札に加える。");else
+        if (fn === 'toDiscard') lines.push(this.codeTarget(args) + "のトラッシュに送る。");else
+        if (fn === 'toDeck') lines.push(this.codeTarget(args) + "の山札にもどす。");else
+        if (fn === 'toBench') lines.push(this.codeTarget(args) + "のベンチに出す。");else
+        if (fn === 'reduceDamage') lines.push(this.codeTarget(args) + "が受けるダメージを" + this.codeNumber(args) + "軽減する。");
+      }
+
+      // choiceCard / choiceCards の解析
+      const choiceRe = /choiceCards?\s*\(([^)]*)\)/g;
+      let cm;
+      while (cm = choiceRe.exec(code)) {
+        const argsStr = cm[1];
+        const srcPart = argsStr.split(',')[0].trim();
+        let srcName = 'カード';
+        if (srcPart.includes('self.deck')) srcName = '自分の山札';else
+        if (srcPart.includes('self.hand')) srcName = '自分の手札';else
+        if (srcPart.includes('self.discard')) srcName = '自分のトラッシュ';else
+        if (srcPart.includes('self.bench')) srcName = '自分のベンチ';else
+        if (srcPart.includes('opponent.deck')) srcName = '相手の山札';else
+        if (srcPart.includes('opponent.hand')) srcName = '相手の手札';else
+        if (srcPart.includes('opponent.discard')) srcName = '相手のトラッシュ';else
+        if (srcPart.includes('opponent.bench')) srcName = '相手のベンチ';
+
+        let actionDesc = '選ぶ。';
+        if (argsStr.includes('self.hand') && !srcPart.includes('self.hand')) {
+          actionDesc = '選び手札に加える。';
+        } else if (argsStr.includes('discard') && !srcPart.includes('discard')) {
+          actionDesc = '選びトラッシュする。';
+        }
+
+        let filterDesc = '';
+        const catMatch = argsStr.match(/category\s*:\s*['"]([^'"]+)['"]/);
+        if (catMatch) filterDesc += "「" + catMatch[1] + "」";
+        const typeMatch = argsStr.match(/type\s*:\s*['"]([^'"]+)['"]/);
+        if (typeMatch) filterDesc += "【" + typeMatch[1] + "】";
+
+        lines.push(srcName + "から" + filterDesc + "カードを" + actionDesc);
+      }
+
+      return lines.join(' ');
+    },
+
+    codeString(args) {
+      const parts = args.split(',');
+      if (parts.length > 1) {
+        return parts[1].replace(/['"]/g, '').trim();
+      }
+      return 'どく';
+    },
+
+    codeTarget(args) {
+      const a = args.split(',')[0].trim();
+      return { 'self': '自分', 'opponent': '相手', 'self.active': '自分のバトルカード', 'opponent.active': '相手のバトルカード', 'self.bench': '自分のベンチ', 'opponent.bench': '相手のベンチ', 'self.hand': '自分の手札', 'opponent.hand': '相手の手札' }[a] || a;
+    },
+
+    codeNumber(args) {const m = args.match(/,\s*(\d+)/);return m ? m[1] : '指定数';},
+    escape(v) {return String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');},
+
+    open(target) { return this.openEffectEditor(target); },
+    close() { return this.closeEffectEditor(); },
+    apply() { return this.applyEffectEditor(); },
+    switchTab(tab) { return this.switchEffectTab(tab); },
+    insertCode(snippet) { return this.insertEffectCode(snippet); }
+  };
+
+  window.EffectEditor = EffectEditor;
+  console.log('[ORBITAL] EffectEditor.js.html finished execution. window.EffectEditor =', typeof window.EffectEditor);
+  if (window.__showDebugMsg) window.__showDebugMsg('EffectEditor準備完了 (' + typeof window.EffectEditor + ')');
+})();
+</script>

@@ -1,0 +1,1583 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ORBITAL TCG</title>
+  <?!= include('CSS'); ?>
+  <script>
+    (function() {
+      var queue = [];
+      function renderMsg(msg, isErr) {
+        if (!document.body) {
+          queue.push({ msg: msg, isErr: isErr });
+          return;
+        }
+        try {
+          var el = document.getElementById('orbital-debug-hud');
+          if (!el) {
+            el = document.createElement('div');
+            el.id = 'orbital-debug-hud';
+            el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:999999;padding:8px 14px;font-size:12px;font-weight:bold;font-family:monospace;box-shadow:0 4px 12px rgba(0,0,0,0.5);display:flex;justify-content:space-between;align-items:center;';
+            document.body.prepend(el);
+          }
+          el.style.background = isErr ? '#e53e3e' : '#2b6cb0';
+          el.style.color = '#ffffff';
+          el.innerHTML = '<span>[ORBITAL-DEBUG] ' + msg + '</span><button style="margin-left:10px;background:rgba(255,255,255,0.3);border:0;color:#fff;padding:2px 6px;cursor:pointer;border-radius:4px;" onclick="this.parentElement.style.display=\'none\'">✕</button>';
+          el.style.display = 'flex';
+          if (!isErr) {
+            clearTimeout(window.__debugTimer);
+            window.__debugTimer = setTimeout(function() { if (el) el.style.display = 'none'; }, 3000);
+          }
+        } catch(e) {}
+      }
+
+      window.__showDebugMsg = function(msg, isErr) {
+        renderMsg(msg, isErr);
+      };
+
+      document.addEventListener('DOMContentLoaded', function() {
+        while (queue.length > 0) {
+          var item = queue.shift();
+          renderMsg(item.msg, item.isErr);
+        }
+      });
+
+      window.onerror = function(msg, url, line, col, err) {
+        renderMsg('JS Error: ' + msg + ' (' + (url ? url.split('/').pop() : '') + ':' + line + ')', true);
+      };
+      window.addEventListener('unhandledrejection', function(e) {
+        renderMsg('Unhandled Promise: ' + (e.reason ? (e.reason.message || e.reason) : 'unknown'), true);
+      });
+    })();
+  </script>
+
+  <!-- Localhost & Standalone Mock for google.script.run (Only activates when NOT running inside GAS) -->
+  <script>
+    if (typeof window !== 'undefined' && (!window.google || !window.google.script || !window.google.script.run)) {
+      (function() {
+        var DEFAULT_SAMPLE_CARDS = [];
+
+        function getLocalCards() {
+          try {
+            var raw = localStorage.getItem('orbital_cards_mock');
+            if (raw) {
+              var parsed = JSON.parse(raw);
+              if (Array.isArray(parsed)) return parsed;
+            }
+          } catch(e) {}
+          return DEFAULT_SAMPLE_CARDS;
+        }
+
+        function saveLocalCards(cards) {
+          try { localStorage.setItem('orbital_cards_mock', JSON.stringify(cards)); } catch(e) {}
+        }
+
+        function getLocalDecks() {
+          try {
+            var raw = localStorage.getItem('orbital_decks_mock');
+            if (raw) {
+              var parsed = JSON.parse(raw);
+              if (Array.isArray(parsed)) return parsed;
+            }
+          } catch(e) {}
+          return [];
+        }
+
+        function saveLocalDecks(decks) {
+          try { localStorage.setItem('orbital_decks_mock', JSON.stringify(decks)); } catch(e) {}
+        }
+
+        function MockRunner(successHandler, failureHandler) {
+          this._success = successHandler || function() {};
+          this._failure = failureHandler || function(err) { console.error('[Mock google.script.run Error]', err); };
+        }
+
+        MockRunner.prototype.withSuccessHandler = function(fn) {
+          return new MockRunner(fn, this._failure);
+        };
+
+        MockRunner.prototype.withFailureHandler = function(fn) {
+          return new MockRunner(this._success, fn);
+        };
+
+        MockRunner.prototype.getCards = function() {
+          var self = this;
+          setTimeout(function() {
+            self._success(getLocalCards());
+          }, 30);
+        };
+
+        MockRunner.prototype.getCard = function(id) {
+          var self = this;
+          setTimeout(function() {
+            var cards = getLocalCards();
+            var c = cards.find(function(x) { return String(x.id) === String(id); }) || null;
+            self._success(c);
+          }, 30);
+        };
+
+        MockRunner.prototype.saveCard = function(card, token) {
+          var self = this;
+          setTimeout(function() {
+            try {
+              var cards = getLocalCards();
+              if (!card.id) card.id = 'card_' + Date.now();
+              var idx = cards.findIndex(function(x) { return String(x.id) === String(card.id); });
+              if (idx >= 0) {
+                cards[idx] = card;
+              } else {
+                cards.unshift(card);
+              }
+              saveLocalCards(cards);
+              self._success({ ok: true, mode: idx >= 0 ? 'updated' : 'created', card: card });
+            } catch(e) {
+              self._failure(e);
+            }
+          }, 50);
+        };
+
+        MockRunner.prototype.deleteCard = function(id, token) {
+          var self = this;
+          setTimeout(function() {
+            try {
+              var cards = getLocalCards().filter(function(x) { return String(x.id) !== String(id); });
+              saveLocalCards(cards);
+              self._success({ ok: true });
+            } catch(e) {
+              self._failure(e);
+            }
+          }, 50);
+        };
+
+        function getLocalRooms() {
+          try {
+            var raw = localStorage.getItem('orbital_mock_rooms');
+            if (raw) return JSON.parse(raw);
+          } catch(e) {}
+          return [];
+        }
+
+        function saveLocalRooms(rooms) {
+          try { localStorage.setItem('orbital_mock_rooms', JSON.stringify(rooms)); } catch(e) {}
+        }
+
+        MockRunner.prototype.getCurrentUser = function() {
+          var self = this;
+          setTimeout(function() {
+            var email = localStorage.getItem('orbital_mock_user_email') || 'player@gmail.com';
+            self._success({ email: email, isLoggedIn: true });
+          }, 20);
+        };
+
+        MockRunner.prototype.getDecks = function(userEmail) {
+          var self = this;
+          setTimeout(function() {
+            var decks = getLocalDecks();
+            var myEmail = userEmail || localStorage.getItem('orbital_mock_user_email') || 'player@gmail.com';
+            if (!myEmail) {
+              self._success(decks);
+              return;
+            }
+            var filtered = decks.filter(function(d) {
+              return !d.userEmail || d.userEmail === 'sample' || d.userEmail === myEmail;
+            });
+            self._success(filtered);
+          }, 30);
+        };
+
+        MockRunner.prototype.getDeck = function(deckId) {
+          var self = this;
+          setTimeout(function() {
+            var decks = getLocalDecks();
+            var d = decks.find(function(x) { return String(x.id) === String(deckId); }) || null;
+            self._success(d);
+          }, 30);
+        };
+
+        MockRunner.prototype.saveDeck = function(deck, token, userEmail) {
+          var self = this;
+          setTimeout(function() {
+            try {
+              var decks = getLocalDecks();
+              if (!deck.id) deck.id = 'deck_' + Date.now();
+              if (!deck.userEmail) deck.userEmail = userEmail || localStorage.getItem('orbital_mock_user_email') || 'player@gmail.com';
+              deck.updatedAt = new Date().toISOString().replace('T', ' ').slice(0, 19);
+              var idx = decks.findIndex(function(x) { return String(x.id) === String(deck.id); });
+              if (idx >= 0) {
+                decks[idx] = deck;
+              } else {
+                decks.unshift(deck);
+              }
+              saveLocalDecks(decks);
+              self._success({ ok: true, mode: idx >= 0 ? 'updated' : 'created', deck: deck });
+            } catch(e) {
+              self._failure(e);
+            }
+          }, 50);
+        };
+
+        MockRunner.prototype.deleteDeck = function(deckId, token, userEmail) {
+          var self = this;
+          setTimeout(function() {
+            try {
+              var decks = getLocalDecks().filter(function(x) { return String(x.id) !== String(deckId); });
+              saveLocalDecks(decks);
+              self._success({ ok: true });
+            } catch(e) {
+              self._failure(e);
+            }
+          }, 50);
+        };
+
+        MockRunner.prototype.getOnlineRoomList = function() {
+          var self = this;
+          setTimeout(function() {
+            var rooms = getLocalRooms();
+            var now = Date.now();
+            var active = rooms.filter(function(r) {
+              return (now - (r.timestamp || 0)) < 7200000 && r.status !== 'finished';
+            });
+            self._success(active);
+          }, 30);
+        };
+
+        MockRunner.prototype.createOnlineRoom = function(deck, roomName, userEmail, rules) {
+          var self = this;
+          setTimeout(function() {
+            try {
+              var hostEmail = userEmail || localStorage.getItem('orbital_mock_user_email') || 'player@gmail.com';
+              var hostName = hostEmail.split('@')[0];
+              var roomId = 'ROOM-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+              var name = String(roomName || (hostName + 'の部屋')).trim();
+              var room = {
+                roomId: roomId,
+                name: name,
+                status: 'waiting',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                timestamp: Date.now(),
+                rules: rules || { prizeCount: 6 },
+                host: {
+                  role: 'host',
+                  email: hostEmail,
+                  name: hostName,
+                  deck: deck
+                },
+                guest: null,
+                turnPlayer: 'host',
+                turnNumber: 1,
+                actions: [],
+                lastSeq: 0
+              };
+              var rooms = getLocalRooms().filter(function(r) { return r.roomId !== roomId; });
+              rooms.unshift(room);
+              saveLocalRooms(rooms);
+              self._success({
+                ok: true,
+                roomId: roomId,
+                role: 'host',
+                room: {
+                  roomId: roomId,
+                  name: name,
+                  status: 'waiting',
+                  host: { name: hostName, email: hostEmail },
+                  rules: room.rules
+                }
+              });
+            } catch(e) {
+              self._failure(e);
+            }
+          }, 40);
+        };
+
+        MockRunner.prototype.joinOnlineRoom = function(roomId, deck, userEmail) {
+          var self = this;
+          setTimeout(function() {
+            try {
+              var cleanId = String(roomId).trim().toUpperCase();
+              var rooms = getLocalRooms();
+              var room = rooms.find(function(r) { return r.roomId === cleanId; });
+              if (!room) {
+                self._success({ ok: false, message: 'ルームが見つかりません。' });
+                return;
+              }
+              if (room.status !== 'waiting') {
+                self._success({ ok: false, message: 'このルームはすでに対戦中か終了しています。' });
+                return;
+              }
+              var guestEmail = userEmail || 'guest@gmail.com';
+              var guestName = guestEmail.split('@')[0];
+              room.guest = {
+                role: 'guest',
+                email: guestEmail,
+                name: guestName,
+                deck: deck
+              };
+              room.status = 'active';
+              room.updatedAt = new Date().toISOString();
+              var firstPlayer = Math.random() < 0.5 ? 'host' : 'guest';
+              room.turnPlayer = firstPlayer;
+              room.turnNumber = 1;
+              room.lastSeq = 1;
+              room.actions = [{
+                seq: 1,
+                by: 'system',
+                type: 'game_start',
+                payload: {
+                  firstPlayer: firstPlayer,
+                  hostDeck: room.host.deck,
+                  guestDeck: deck,
+                  rules: room.rules,
+                  hostName: room.host.name,
+                  guestName: guestName
+                },
+                time: Date.now()
+              }];
+              saveLocalRooms(rooms);
+              self._success({
+                ok: true,
+                roomId: cleanId,
+                role: 'guest',
+                room: {
+                  roomId: cleanId,
+                  name: room.name,
+                  status: 'active',
+                  host: { name: room.host.name, email: room.host.email },
+                  guest: { name: guestName, email: guestEmail },
+                  rules: room.rules,
+                  firstPlayer: firstPlayer
+                }
+              });
+            } catch(e) {
+              self._failure(e);
+            }
+          }, 40);
+        };
+
+        MockRunner.prototype.pollOnlineRoom = function(roomId, playerRole, lastSeq) {
+          var self = this;
+          setTimeout(function() {
+            var cleanId = String(roomId).trim().toUpperCase();
+            var rooms = getLocalRooms();
+            var room = rooms.find(function(r) { return r.roomId === cleanId; });
+            if (!room) {
+              self._success({ ok: false, status: 'closed', message: 'ルームが存在しないか終了しました。' });
+              return;
+            }
+            var fromSeq = Number(lastSeq) || 0;
+            var actions = (room.actions || []).filter(function(a) { return a.seq > fromSeq; });
+            self._success({
+              ok: true,
+              status: room.status,
+              roomId: room.roomId,
+              name: room.name,
+              host: room.host ? { name: room.host.name, email: room.host.email } : null,
+              guest: room.guest ? { name: room.guest.name, email: room.guest.email } : null,
+              actions: actions,
+              lastSeq: room.lastSeq || 0,
+              updatedAt: room.updatedAt
+            });
+          }, 20);
+        };
+
+        MockRunner.prototype.submitOnlineAction = function(roomId, playerRole, action) {
+          var self = this;
+          setTimeout(function() {
+            try {
+              var cleanId = String(roomId).trim().toUpperCase();
+              var rooms = getLocalRooms();
+              var room = rooms.find(function(r) { return r.roomId === cleanId; });
+              if (!room) {
+                self._success({ ok: false, message: 'ルームが見つかりません。' });
+                return;
+              }
+              room.lastSeq = (room.lastSeq || 0) + 1;
+              if (!room.actions) room.actions = [];
+              room.actions.push({
+                seq: room.lastSeq,
+                by: playerRole,
+                type: action.type,
+                payload: action.payload || null,
+                time: Date.now()
+              });
+              if (action.type === 'surrender' || action.type === 'game_over') {
+                room.status = 'finished';
+              }
+              room.updatedAt = new Date().toISOString();
+              saveLocalRooms(rooms);
+              self._success({ ok: true, lastSeq: room.lastSeq });
+            } catch(e) {
+              self._failure(e);
+            }
+          }, 30);
+        };
+
+        MockRunner.prototype.leaveOnlineRoom = function(roomId, playerRole) {
+          var self = this;
+          setTimeout(function() {
+            var cleanId = String(roomId).trim().toUpperCase();
+            var rooms = getLocalRooms();
+            var room = rooms.find(function(r) { return r.roomId === cleanId; });
+            if (room) {
+              room.status = 'finished';
+              saveLocalRooms(rooms);
+            }
+            self._success({ ok: true });
+          }, 20);
+        };
+
+        MockRunner.prototype.loginAdmin = function(password) {
+          var self = this;
+          setTimeout(function() {
+            self._success({ ok: true, token: 'mock-local-admin-token-' + Date.now(), expiresIn: 21600 });
+          }, 30);
+        };
+
+        MockRunner.prototype.logoutAdmin = function(token) {
+          var self = this;
+          setTimeout(function() {
+            self._success({ ok: true });
+          }, 10);
+        };
+
+        MockRunner.prototype.uploadCardImage = function(fileName, mimeType, base64Data, token) {
+          var self = this;
+          setTimeout(function() {
+            self._success({ ok: true, id: 'mock-img-' + Date.now(), url: base64Data, name: fileName });
+          }, 50);
+        };
+
+        window.google = {
+          script: {
+            run: new MockRunner()
+          }
+        };
+        console.log('[ORBITAL] Localhost Mock for google.script.run active.');
+      })();
+    }
+  </script>
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">O</div>
+        <div>
+          <div class="brand-title">ORBITAL TCG</div>
+          <div class="brand-subtitle">CREATE • BUILD • BATTLE</div>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <button id="fontSizeToggleBtn" class="secondary-button small-button" type="button" title="文字サイズ変更 (標準 / 大 / 特大)">Aa 文字サイズ: 標準</button>
+        <div class="user-account-badge" id="topbarUserAccount">
+          <span class="account-icon">👤</span>
+          <span id="userEmailBadge" class="account-email">取得中...</span>
+        </div>
+        <div class="admin-status"><span id="adminStatus">閲覧モード</span><button id="adminLoginButton" class="secondary-button small-button" type="button">管理者ログイン</button></div>
+      </div>
+      <button id="mobileMenuButton" class="icon-button" type="button">☰</button>
+    </header>
+
+    <div class="layout">
+      <aside id="sidebar" class="sidebar">
+        <button class="nav-button active" data-page="home">⌂ <span>ホーム</span></button>
+        <button class="nav-button" data-page="cards">▣ <span>カード</span></button>
+        <button class="nav-button" data-page="deck">◆ <span>デッキ</span></button>
+        <button class="nav-button" data-page="create">＋ <span>カード作成</span></button>
+        <button class="nav-button" data-page="battle">⚔ <span>バトル</span></button>
+      </aside>
+
+      <main class="main">
+        <section id="page-home" class="page active">
+          <div class="hero">
+            <div>
+              <div class="eyebrow">ORIGINAL TRADING CARD GAME</div>
+              <h1>自分だけのTCGを<br><span>創って、戦おう。</span></h1>
+              <p>歴史・科学・文学など、あらゆる存在を自由なカードとして設計できるオリジナルTCG。</p>
+              <div class="hero-actions">
+                <button class="primary-button" id="heroCreateButton">カードを作る</button>
+                <button class="secondary-button" id="heroCardsButton">カードを見る</button>
+              </div>
+            </div>
+            <div class="hero-card-wrap">
+              <div class="hero-card">
+                <div class="hero-card-glow"></div>
+                <div class="hero-symbol">✦</div>
+                <div class="hero-card-name">CREATE</div>
+                <div class="hero-card-line"></div>
+                <div class="hero-card-small">YOUR WORLD</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-title">
+            <div>
+              <h2>カードデータベース</h2>
+              <p id="homeCardCount">読み込み中…</p>
+            </div>
+            <button class="secondary-button" id="homeRefreshButton">更新</button>
+          </div>
+          <div id="recentCards" class="card-grid compact"></div>
+        </section>
+
+        <section id="page-cards" class="page">
+          <div class="page-heading">
+            <div>
+              <div class="eyebrow">DATABASE</div>
+              <h1>カード</h1>
+            </div>
+            <button class="primary-button" id="newCardButton">＋ 新規カード</button>
+          </div>
+
+          <div class="filter-panel">
+            <input id="searchInput" class="input" placeholder="カード名を検索…">
+            <select id="categoryFilter" class="input">
+              <option value="">全カテゴリ</option>
+              <option value="たね">たね</option>
+              <option value="1進化">1進化</option>
+              <option value="2進化">2進化</option>
+              <option value="進化">進化</option>
+              <option value="ex">ex (すべて)</option>
+              <option value="たねex">たねex</option>
+              <option value="1進化ex">1進化ex</option>
+              <option value="2進化ex">2進化ex</option>
+              <option value="トレーナー">トレーナー</option>
+              <option value="グッズ">グッズ</option>
+              <option value="サポート">サポート</option>
+              <option value="エネルギー">エネルギー</option>
+            </select>
+            <select id="typeFilter" class="input">
+              <option value="">全タイプ</option>
+              <option value="草">草</option><option value="炎">炎</option>
+              <option value="水">水</option><option value="雷">雷</option>
+              <option value="超">超</option><option value="闘">闘</option>
+              <option value="悪">悪</option><option value="鋼">鋼</option>
+              <option value="ドラゴン">ドラゴン</option><option value="無色">無色</option>
+            </select>
+            <select id="rarityFilter" class="input">
+              <option value="">全レアリティ</option>
+              <option value="N">N</option><option value="R">R</option>
+              <option value="SR">SR</option><option value="UR">UR</option>
+            </select>
+          </div>
+
+          <div id="cardList" class="card-grid"></div>
+        </section>
+
+        <section id="page-create" class="page">
+          <div class="page-heading">
+            <div>
+              <div class="eyebrow">CARD STUDIO</div>
+              <h1 id="editorTitle">カード作成</h1>
+            </div>
+            <div class="heading-actions">
+              <button class="secondary-button" id="resetEditorButton">リセット</button>
+              <button class="primary-button" id="saveCardButton">保存する</button>
+            </div>
+          </div>
+
+          <div class="editor-layout">
+            <div class="editor-panel">
+              <form id="cardForm">
+                <input id="cardId" type="hidden">
+
+                <div class="form-section">
+                  <h3>基本情報</h3>
+                  <div class="form-grid">
+                    <label>カード名<input id="name" class="input" required></label>
+                    <label>カテゴリ
+                      <select id="category" class="input">
+                        <option value="たね">たね</option>
+                        <option value="1進化">1進化</option>
+                        <option value="2進化">2進化</option>
+                        <option value="進化">進化</option>
+                        <option value="たねex">たねex (サイド2枚)</option>
+                        <option value="1進化ex">1進化ex (サイド2枚)</option>
+                        <option value="2進化ex">2進化ex (サイド2枚)</option>
+                        <option value="ex">ex (サイド2枚)</option>
+                        <option value="グッズ">グッズ</option>
+                        <option value="サポート">サポート</option>
+                        <option value="トレーナー">トレーナー</option>
+                        <option value="エネルギー">エネルギー</option>
+                      </select>
+                    </label>
+                    <label id="preEvolutionLabel" style="display:none;">進化前ポケモン
+                      <select id="preEvolution" class="input">
+                        <option value="">（進化前なし / 選択してください）</option>
+                      </select>
+                    </label>
+                    <label id="cardTypeLabel">タイプ
+                      <select id="type" class="input">
+                        <option>草</option><option>炎</option><option>水</option><option>雷</option>
+                        <option>超</option><option>闘</option><option>悪</option><option>鋼</option>
+                        <option>ドラゴン</option><option>無色</option>
+                      </select>
+                    </label>
+                    <label>レアリティ
+                      <select id="rarity" class="input">
+                        <option>N</option><option>R</option><option>SR</option><option>UR</option>
+                      </select>
+                    </label>
+                    <label id="pokemonHpLabel">HP<input id="hp" class="input" type="number" min="0"></label>
+                    <label>画像URL<input id="image" class="input" placeholder="https://…"></label>
+                  </div>
+                  <div class="upload-row">
+                    <label class="file-label">画像ファイルを選択
+                      <input id="imageFile" type="file" accept="image/*">
+                    </label>
+                    <button id="uploadImageButton" type="button" class="secondary-button">Driveへ保存</button>
+                    <span id="uploadStatus" class="muted"></span>
+                  </div>
+
+                  <!-- 画像サイズ・位置調整セクション -->
+                  <div class="image-adjust-panel" id="imageAdjustPanel">
+                    <div class="image-adjust-header">
+                      <div class="image-adjust-title">🖼 画像サイズ・位置調整</div>
+                      <button type="button" id="resetImageAdjustBtn" class="secondary-button mini-button">初期値に戻す</button>
+                    </div>
+                    <div class="image-adjust-grid">
+                      <div class="adjust-control-group">
+                        <div class="adjust-label-row">
+                          <label for="imageScale">画像サイズ (ズーム)</label>
+                          <span id="imageScaleVal" class="adjust-val-badge">100%</span>
+                        </div>
+                        <div class="adjust-slider-row">
+                          <button type="button" class="adjust-step-btn" id="btnScaleDown" title="10%縮小">−</button>
+                          <input id="imageScale" type="range" min="40" max="250" step="5" value="100" class="adjust-slider">
+                          <button type="button" class="adjust-step-btn" id="btnScaleUp" title="10%拡大">＋</button>
+                        </div>
+                      </div>
+
+                      <div class="adjust-control-group">
+                        <div class="adjust-label-row">
+                          <label for="imageFit">フィット方式</label>
+                        </div>
+                        <select id="imageFit" class="input adjust-select">
+                          <option value="cover">カバー (枠いっぱいにトリミング)</option>
+                          <option value="contain">全体表示 (アスペクト比維持)</option>
+                          <option value="fill">引き伸ばし (枠全体に充填)</option>
+                        </select>
+                      </div>
+
+                      <div class="adjust-control-group">
+                        <div class="adjust-label-row">
+                          <label for="imageY">縦位置 (Y軸)</label>
+                          <span id="imageYVal" class="adjust-val-badge">50%</span>
+                        </div>
+                        <input id="imageY" type="range" min="0" max="100" step="5" value="50" class="adjust-slider">
+                        <div class="adjust-preset-row">
+                          <button type="button" class="adjust-chip" data-target="imageY" data-val="15">上寄り</button>
+                          <button type="button" class="adjust-chip active" data-target="imageY" data-val="50">中央</button>
+                          <button type="button" class="adjust-chip" data-target="imageY" data-val="85">下寄り</button>
+                        </div>
+                      </div>
+
+                      <div class="adjust-control-group">
+                        <div class="adjust-label-row">
+                          <label for="imageX">横位置 (X軸)</label>
+                          <span id="imageXVal" class="adjust-val-badge">50%</span>
+                        </div>
+                        <input id="imageX" type="range" min="0" max="100" step="5" value="50" class="adjust-slider">
+                        <div class="adjust-preset-row">
+                          <button type="button" class="adjust-chip" data-target="imageX" data-val="15">左寄り</button>
+                          <button type="button" class="adjust-chip active" data-target="imageX" data-val="50">中央</button>
+                          <button type="button" class="adjust-chip" data-target="imageX" data-val="85">右寄り</button>
+                        </div>
+                      </div>
+
+                      <div class="adjust-control-group">
+                        <div class="adjust-label-row">
+                          <label for="imageHeight">アート領域の高さ</label>
+                        </div>
+                        <select id="imageHeight" class="input adjust-select">
+                          <option value="">標準 (44%)</option>
+                          <option value="36">コンパクト (36%)</option>
+                          <option value="50">ワイド (50%)</option>
+                          <option value="58">大きめ (58%)</option>
+                        </select>
+                      </div>
+
+                      <div class="adjust-control-group">
+                        <div class="adjust-label-row">
+                          <label for="artLayout">アート表示スタイル</label>
+                        </div>
+                        <select id="artLayout" class="input adjust-select">
+                          <option value="standard">標準枠 (上部イラスト)</option>
+                          <option value="full">全面イラスト (フルアート/背景全体)</option>
+                          <option value="wide">ワイドアート (大きめイラスト)</option>
+                        </select>
+                      </div>
+
+                      <div class="adjust-control-group">
+                        <div class="adjust-label-row">
+                          <label for="textSize">文字サイズ (フォント)</label>
+                        </div>
+                        <select id="textSize" class="input adjust-select">
+                          <option value="standard">標準サイズ (100%)</option>
+                          <option value="lg">大きめ (120%)</option>
+                          <option value="xl">特大 (140%)</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- グッズ・サポート専用効果セクション -->
+                <div id="trainerEffectSection" class="form-section" style="display:none;">
+                  <div class="eyebrow">TRAINER / ITEM EFFECT</div>
+                  <h3>カード効果 (グッズ / サポート)</h3>
+                  <p class="muted" style="margin-bottom: 10px; font-size: 13px;">
+                    手札から使用した時の効果説明文や、バトルで動くJavaScriptコードを設定します。
+                  </p>
+                  <label style="display: block; margin-bottom: 10px;">効果説明テキスト（カードに表示されます）
+                    <textarea id="attack1Text" class="input" rows="3" placeholder="例: 自分の手札をすべてトラッシュし、山札を7枚引く。"></textarea>
+                  </label>
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <button id="trainerEffectButton" type="button" class="primary-button compact-btn effect-editor-open">⚙ バトル処理コードを編集</button>
+                    <span id="trainerEffectSummary" class="muted effect-summary-text"></span>
+                  </div>
+                </div>
+
+                <!-- ポケモン専用セクション: 特性 -->
+                <div id="pokemonAbilitiesSection" class="form-section">
+                  <h3>特性</h3>
+                  <div class="form-grid one">
+                    <label>特性名<input id="abilityName" class="input" placeholder="例: れんごくしはい"></label>
+                    <label style="margin-top: 4px;">特性の効果説明（カードに表示される効果テキスト）
+                      <textarea id="abilityText" class="input" rows="2" placeholder="特性の効果を記述（例: 自分の番に1回使える。山札から基本エネルギーを1枚手札に加える。）"></textarea>
+                    </label>
+                    <div style="display: flex; align-items: center; gap: 10px; margin-top: 6px;">
+                      <button id="abilityEffectButton" type="button" class="primary-button compact-btn effect-editor-open">⚙ バトル処理コードを編集</button>
+                      <span id="abilityEffectSummary" class="muted effect-summary-text"></span>
+                    </div>
+                    <input id="abilityCode" type="hidden">
+                  </div>
+                </div>
+
+                <!-- ポケモン専用セクション: ワザ1・ワザ2 -->
+                <div id="pokemonAttacksSection">
+                  <div class="form-section">
+                    <h3>ワザ 1</h3>
+                    <div class="form-grid three">
+                      <label>ワザ名<input id="attack1Name" class="input" placeholder="例: バーニングダーク"></label>
+                      <label>ダメージ (表示用)<input id="attack1Damage" class="input" type="text" placeholder="180 / 50+ / 30×" title="カード上の表示ダメージです。実際の処理は効果エディターで記述します。"></label>
+                      <label>必要エネルギー<input id="attack1Energy" class="input" placeholder="炎,炎,無"></label>
+                    </div>
+                    <label style="margin-top: 8px; display: block;">ワザ1の効果説明（追加効果や条件など）
+                      <textarea id="attack1Text" class="input" rows="2" placeholder="効果説明（例: 相手がすでにとったサイドの枚数×30ダメージ追加。）"></textarea>
+                    </label>
+                    <div style="display: flex; align-items: center; gap: 10px; margin-top: 6px;">
+                      <button id="attack1EffectButton" type="button" class="secondary-button compact-btn effect-editor-open">⚙ バトル処理コードを編集</button>
+                      <span id="attack1EffectSummary" class="muted effect-summary-text"></span>
+                    </div>
+                    <input id="attack1Code" type="hidden">
+                  </div>
+
+                  <div class="form-section">
+                    <h3>ワザ 2</h3>
+                    <div class="form-grid three">
+                      <label>ワザ名<input id="attack2Name" class="input" placeholder="例: 10まんボルト"></label>
+                      <label>ダメージ (表示用)<input id="attack2Damage" class="input" type="text" placeholder="60 / 50+ / 30×" title="カード上の表示ダメージです。実際の処理は効果エディターで記述します。"></label>
+                      <label>必要エネルギー<input id="attack2Energy" class="input" placeholder="雷,雷,無"></label>
+                    </div>
+                    <label style="margin-top: 8px; display: block;">ワザ2の効果説明（追加効果や条件など）
+                      <textarea id="attack2Text" class="input" rows="2" placeholder="効果説明（例: コインを1回投げオモテならマヒにする。）"></textarea>
+                    </label>
+                    <div style="display: flex; align-items: center; gap: 10px; margin-top: 6px;">
+                      <button id="attack2EffectButton" type="button" class="secondary-button compact-btn effect-editor-open">⚙ バトル処理コードを編集</button>
+                      <span id="attack2EffectSummary" class="muted effect-summary-text"></span>
+                    </div>
+                    <input id="attack2Code" type="hidden">
+                  </div>
+                </div>
+
+                <!-- 戦闘パラメータ -->
+                <div id="pokemonCombatSection" class="form-section">
+                  <h3>戦闘パラメータ</h3>
+                  <div class="form-grid three">
+                    <label>弱点<input id="weakness" class="input" placeholder="水"></label>
+                    <label>抵抗力<input id="resistance" class="input" placeholder="雷"></label>
+                    <label>にげる<input id="retreat" class="input" type="number" min="0"></label>
+                  </div>
+                </div>
+
+                <div class="form-section">
+                  <label>カード説明・テキスト<textarea id="description" class="input" rows="4" placeholder="カードの効果説明やフレーバーテキスト"></textarea></label>
+                </div>
+              </form>
+            </div>
+
+            <div class="preview-column" id="previewColumn">
+              <div class="preview-header-row">
+                <div class="preview-label">LIVE PREVIEW</div>
+                <button type="button" class="preview-toggle-btn" id="previewToggleBtn">👁 プレビュー拡大</button>
+              </div>
+              <div id="cardPreview">
+                <div class="orbital-card card-size-lg card-type-草" data-card-id="">
+                  <div class="card-top-header">
+                    <div class="card-top-left">
+                      <span class="card-type-badge type-草">
+                        <span>🌿</span>
+                        <span>草</span>
+                      </span>
+                      <span class="card-hp-badge">HP <strong>100</strong></span>
+                    </div>
+                    <div class="card-top-right">
+                      <span class="card-kind-badge">たね</span>
+                      <span class="card-rarity-badge">N</span>
+                    </div>
+                  </div>
+                  <div class="card-art-area">
+                    <div class="card-texture-placeholder">
+                      <div class="texture-watermark">🌿</div>
+                      <div class="texture-name">カード名</div>
+                    </div>
+                  </div>
+                  <div class="card-name-bar">
+                    <span class="card-name-text">カード名</span>
+                  </div>
+                  <div class="card-bottom-rules">
+                    <div class="card-rule-box attack-box">
+                      <div class="rule-title-row">
+                        <span class="attack-energies"><span class="energy-pip type-草" title="草">🌿</span></span>
+                        <strong class="rule-name">ワザ名</strong>
+                        <span class="rule-damage">30</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="card-footer-stats">
+                    <span>弱点: <strong>—</strong></span>
+                    <span>抵抗: <strong>—</strong></span>
+                    <span>逃げ: <strong>—</strong></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="page-deck" class="page">
+          <!-- デッキ一覧ギャラリービュー -->
+          <div id="deck-gallery-view">
+            <div class="page-heading">
+              <div>
+                <div class="eyebrow">DECK STUDIO</div>
+                <h1>デッキ管理</h1>
+              </div>
+              <button class="primary-button" onclick="DeckSystem.openEditor()">＋ 新規デッキ作成</button>
+            </div>
+            <div id="deck-gallery-tabs-container"></div>
+            <div id="deck-gallery-grid" class="deck-gallery-grid"></div>
+          </div>
+
+          <!-- デッキエディタービュー -->
+          <div id="deck-editor-view" style="display: none;">
+            <div class="page-heading">
+              <div>
+                <div class="eyebrow">DECK BUILDER</div>
+                <h1>デッキ編集</h1>
+              </div>
+              <div class="heading-actions">
+                <button class="secondary-button" onclick="DeckSystem.openGallery()">← 一覧へ戻る</button>
+                <button class="secondary-button" onclick="DeckSystem.clearActiveDeck()">リセット</button>
+                <button class="primary-button" onclick="DeckSystem.saveActiveDeck()">保存する</button>
+              </div>
+            </div>
+
+            <div class="deck-builder-layout">
+              <!-- 左ペイン: 現在のデッキ構成 -->
+              <div class="deck-builder-left">
+                <div class="deck-meta-card">
+                  <div class="form-grid one">
+                    <label>デッキ名
+                      <input id="deck-name-input" class="input" placeholder="デッキ名を入力...">
+                    </label>
+                    <label>説明
+                      <input id="deck-desc-input" class="input" placeholder="デッキの説明やメモ...">
+                    </label>
+                  </div>
+
+                  <!-- 60枚メーター & 検証バッジ -->
+                  <div class="deck-meter-box">
+                    <div class="meter-header">
+                      <span>カード合計枚数</span>
+                      <span id="deck-count-display" class="count-val">0 / 60</span>
+                    </div>
+                    <div class="deck-progress-track">
+                      <div id="deck-progress-bar" class="deck-progress-fill" style="width: 0%;"></div>
+                    </div>
+                    <div id="deck-rule-status" class="deck-rule-status"></div>
+                  </div>
+                </div>
+
+                <div class="deck-cards-container">
+                  <div class="deck-cards-header">
+                    <h3>デッキ内のカード一覧</h3>
+                  </div>
+                  <div id="deck-cards-list" class="deck-cards-list"></div>
+                </div>
+              </div>
+
+              <!-- 右ペイン: カードプール (カード追加・検索) -->
+              <div class="deck-builder-right">
+                <div class="pool-header-card">
+                  <div class="pool-title">カードプール（選択して追加）</div>
+                  <div class="filter-panel pool-filter-panel">
+                    <input id="deck-pool-search" class="input" placeholder="カード名・効果で検索...">
+                    <select id="deck-pool-category" class="input">
+                      <option value="all">全カテゴリ</option>
+                      <option value="たね">たね</option>
+                      <option value="1進化">1進化</option>
+                      <option value="2進化">2進化</option>
+                      <option value="グッズ">グッズ</option>
+                      <option value="サポート">サポート</option>
+                      <option value="基本エネルギー">基本エネルギー</option>
+                      <option value="特殊エネルギー">特殊エネルギー</option>
+                    </select>
+                    <select id="deck-pool-type" class="input">
+                      <option value="all">全タイプ</option>
+                      <option value="草">草</option><option value="炎">炎</option>
+                      <option value="水">水</option><option value="雷">雷</option>
+                      <option value="超">超</option><option value="闘">闘</option>
+                      <option value="悪">悪</option><option value="鋼">鋼</option>
+                      <option value="ドラゴン">ドラゴン</option><option value="無色">無色</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div id="deck-pool-grid" class="deck-pool-grid"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="page-battle" class="page">
+          <!-- デッキ選択 & 対戦準備ビュー -->
+          <div id="battle-select-view">
+            <div class="page-heading">
+              <div>
+                <div class="eyebrow">BATTLE ARENA</div>
+                <h1>TCG バトルスタジアム</h1>
+                <p class="muted">構築したデッキでAIライバルや世界中のプレイヤーと対戦！エネルギー供給、進化、グッズ/サポート、ワザ宣言、サイド制を完全再現！</p>
+              </div>
+            </div>
+
+            <!-- モード切り替えタブ -->
+            <div class="battle-mode-nav">
+              <button id="battleModeAiTab" type="button" class="battle-mode-tab active" onclick="BattleSystem.setBattleMode('ai')"><i class="fas fa-robot"></i> 🤖 AI対戦モード</button>
+              <button id="battleModeOnlineTab" type="button" class="battle-mode-tab" onclick="BattleSystem.setBattleMode('online')"><i class="fas fa-globe"></i> 🌐 オンライン対戦モード</button>
+            </div>
+
+            <!-- 1. AI対戦セットアップカード -->
+            <div id="battle-ai-setup-card" class="battle-setup-card">
+              <div class="battle-setup-grid">
+                <div class="setup-block">
+                  <div class="setup-title">👤 あなたのデッキ</div>
+                  <label>対戦デッキを選択
+                    <select id="battle-player-deck-select" class="input"></select>
+                  </label>
+                  <div id="battle-player-deck-preview" class="deck-preview-compact muted">デッキを選択してください</div>
+                </div>
+
+                <div class="setup-block">
+                  <div class="setup-title">🤖 対戦相手 (AIライバル)</div>
+                  <label>対戦相手デッキを選択
+                    <select id="battle-ai-deck-select" class="input">
+                      <option value="electric">⚡ 電撃ピカチュウデッキ (スピード型)</option>
+                      <option value="fire">🔥 灼熱リザードデッキ (高火力型)</option>
+                      <option value="water">💧 激流水流デッキ (テクニカル型)</option>
+                    </select>
+                  </label>
+                  <div id="battle-ai-deck-preview" class="deck-preview-compact muted">AIライバルが相手を務めます</div>
+                </div>
+
+                <div class="setup-block">
+                  <div class="setup-title">⚙ ルール設定</div>
+                  <label>サイドカード枚数
+                    <select id="battle-prize-count-select" class="input">
+                      <option value="6" selected>6枚 (フルスタンダードバトル・おすすめ)</option>
+                      <option value="4">4枚 (カジュアルバトル)</option>
+                      <option value="3">3枚 (ハーフバトル / スピード戦)</option>
+                    </select>
+                  </label>
+                  <div class="rules-tip">
+                    <span>💡 先攻1ターン目はワザ宣言不可</span><br>
+                    <span>💡 エネルギー手札付けは1ターン1回、サポートは1ターン1枚</span><br>
+                    <span>💡 相手バトルポケモンを倒すごとにサイドを1枚獲得！</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="battle-setup-actions">
+                <button id="battle-start-btn" class="primary-button battle-launch-btn" type="button">⚔ AIバトル開始！</button>
+              </div>
+            </div>
+
+            <!-- 2. オンライン対戦ロビーカード -->
+            <div id="battle-online-lobby-card" class="battle-setup-card" style="display: none;">
+              <div class="setup-block" style="margin-bottom: 20px;">
+                <div class="setup-title">👤 使用するあなたのデッキ</div>
+                <label>対戦デッキを選択
+                  <select id="battle-online-deck-select" class="input"></select>
+                </label>
+                <div id="battle-online-deck-preview" class="deck-preview-compact muted">デッキを選択してください</div>
+              </div>
+
+              <div class="online-lobby-grid">
+                <!-- 部屋を作る -->
+                <div class="online-box-card">
+                  <div class="online-box-title">🚪 部屋を作成する（ホスト）</div>
+                  <label>ルーム名
+                    <input id="online-room-name-input" class="input" placeholder="例: 初心者歓迎バトル！">
+                  </label>
+                  <label>サイドカード枚数
+                    <select id="online-prize-count-select" class="input">
+                      <option value="6" selected>6枚 (フルスタンダード)</option>
+                      <option value="4">4枚 (カジュアル)</option>
+                      <option value="3">3枚 (スピード戦)</option>
+                    </select>
+                  </label>
+                  <button id="createOnlineRoomBtn" type="button" class="primary-button" onclick="BattleSystem.createRoom()"><i class="fas fa-plus-circle"></i> 部屋を作成して待機</button>
+                </div>
+
+                <!-- 部屋に参加する -->
+                <div class="online-box-card">
+                  <div class="online-box-title">🔍 部屋番号で直接参加（ゲスト）</div>
+                  <div class="room-code-input-row">
+                    <input id="online-room-id-input" class="input room-code-input" placeholder="ROOM-XXXX" maxlength="12">
+                    <button type="button" class="primary-button" onclick="BattleSystem.joinRoomDirect()"><i class="fas fa-sign-in-alt"></i> 参加</button>
+                  </div>
+
+                  <div class="room-list-header" style="margin-top: 10px;">
+                    <div class="online-box-title" style="font-size: 14px;"><i class="fas fa-list"></i> 待機中のルーム一覧</div>
+                    <button type="button" class="secondary-button mini-button" onclick="BattleSystem.refreshRoomList()"><i class="fas fa-sync-alt"></i> 更新</button>
+                  </div>
+                  <div id="online-room-list" class="room-list-container">
+                    <div class="empty-room-msg">待機中の部屋を読み込み中…</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- オンライン対戦 相手待機ビュー -->
+          <div id="battle-online-waiting-view" style="display: none;">
+            <div class="online-waiting-panel">
+              <div class="eyebrow">ONLINE MATCHMAKING</div>
+              <h2 style="margin: 10px 0;">対戦相手を待っています…</h2>
+              <p class="muted">相手プレイヤーに以下のルームIDを共有してください。</p>
+
+              <div class="online-room-code-display">
+                <span id="waitingRoomIdDisplay">ROOM-XXXX</span>
+                <button type="button" class="copy-code-btn" onclick="BattleSystem.copyWaitingRoomId()"><i class="fas fa-copy"></i> コピー</button>
+              </div>
+
+              <div class="waiting-spinner"></div>
+              <p class="muted" style="font-size: 13px;">相手が入室すると自動的にバトルが開始します。</p>
+
+              <div style="margin-top: 20px;">
+                <button type="button" class="secondary-button danger-btn" onclick="BattleSystem.cancelWaitingRoom()">部屋を解散して戻る</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- バトルスタジアム対戦ビュー -->
+          <div id="battle-arena-view" style="display: none;">
+            <!-- スタジアムトップバー: ターン情報・フェーズ・操作ボタン -->
+            <div class="stadium-topbar">
+              <div class="stadium-turn-badge" id="stadiumTurnBadge">TURN 1</div>
+              <div class="stadium-active-player" id="stadiumPlayerBadge">プレイヤーの番</div>
+              <div class="stadium-phase-text" id="stadiumPhaseText">カードを1枚引きました。行動してください。</div>
+              <div class="stadium-actions">
+                <button id="battleEndTurnBtn" class="primary-button stadium-action-btn" type="button">ターン終了</button>
+                <button id="battleSurrenderBtn" class="secondary-button stadium-action-btn danger-btn" type="button">降参</button>
+              </div>
+            </div>
+
+            <!-- スタジアムフィールド全体 (中央一直線整列 ＆ 右側サイドカードゾーン) -->
+            <div class="battle-stadium">
+              <div class="stadium-main-grid">
+                <!-- === 左列: 山札・トラッシュ表示 === -->
+                <div class="stadium-col-left">
+                  <!-- 相手 山札 & トラッシュ -->
+                  <div class="zone-deck-tray opp-deck-tray">
+                    <div class="mini-deck-back" title="相手の山札">
+                      <span class="deck-count-pill" id="oppDeckCount">22</span>
+                      <small>相手山札</small>
+                    </div>
+                    <div class="mini-discard-slot" title="相手のトラッシュ">
+                      <span class="discard-count-pill" id="oppDiscardCount">0</span>
+                      <small>トラッシュ</small>
+                    </div>
+                  </div>
+
+                  <!-- 自分 山札 & トラッシュ -->
+                  <div class="zone-deck-tray player-deck-tray">
+                    <div class="mini-deck-back" title="あなたの山札">
+                      <span class="deck-count-pill" id="playerDeckCount">22</span>
+                      <small>自分山札</small>
+                    </div>
+                    <div class="mini-discard-slot" title="あなたのトラッシュ">
+                      <span class="discard-count-pill" id="playerDiscardCount">0</span>
+                      <small>トラッシュ</small>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- === 中央列: ベンチ・バトル場 完全一直線垂直整列 === -->
+                <div class="stadium-col-center">
+                  <!-- 相手情報バー -->
+                  <div class="player-meta-strip opponent-meta">
+                    <div class="player-identity">
+                      <span class="player-avatar">🤖</span>
+                      <strong id="oppName">AIライバル</strong>
+                    </div>
+                    <div class="zone-stats">
+                      <div class="stat-pill">🎴 手札: <span id="oppHandCount">0</span>枚</div>
+                    </div>
+                  </div>
+
+                  <!-- 相手ベンチ (中央揃え) -->
+                  <div class="bench-row" id="oppBenchRow"></div>
+
+                  <!-- 相手バトル場 (中央揃え) -->
+                  <div class="active-spot-wrap">
+                    <div class="spot-label">相手バトルポケモン</div>
+                    <div id="oppActiveSpot" class="active-pokemon-slot"></div>
+                  </div>
+
+                  <!-- フィールド中央: ライブ実況・演出ライン (中央揃え) -->
+                  <div class="arena-center-divider">
+                    <div class="stadium-ticker" id="stadiumTicker">試合開始！</div>
+                  </div>
+
+                  <!-- 自分バトル場 (中央揃え！一直線！) -->
+                  <div class="active-spot-wrap">
+                    <div class="spot-label">あなたのバトルポケモン</div>
+                    <div id="playerActiveSpot" class="active-pokemon-slot"></div>
+                  </div>
+
+                  <!-- 自分ベンチ (中央揃え！一直線！) -->
+                  <div class="bench-row" id="playerBenchRow"></div>
+
+                  <!-- 自分情報バー -->
+                  <div class="player-meta-strip player-meta">
+                    <div class="player-identity">
+                      <span class="player-avatar">👤</span>
+                      <strong id="playerName">プレイヤー</strong>
+                    </div>
+                    <div class="zone-stats">
+                      <div class="stat-pill">🎴 手札: <span id="playerHandCountText">0</span>枚</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- === 右列: サイド置き場 (右に増設) & コマンドパネル === -->
+                <div class="stadium-col-right">
+                  <!-- 相手サイドカード -->
+                  <div class="side-zone-box opp-side-box">
+                    <div class="side-zone-header">
+                      <span>🤖 相手サイド</span>
+                      <span class="side-badge" id="oppSideBadge">残り 6枚</span>
+                    </div>
+                    <div id="oppPrizes" class="side-cards-grid"></div>
+                  </div>
+
+                  <!-- アリーナガイド・指示バナー (カードタップで行動) -->
+                  <div class="field-action-guide-card">
+                    <div class="guide-card-icon">⚡</div>
+                    <div class="guide-card-text">
+                      <strong>カードをタップして行動</strong>
+                      <small>バトル場やベンチのカードをクリックすると、ワザ・特性・にげるのメニューが開きます。</small>
+                    </div>
+                  </div>
+
+                  <!-- 自分サイドカード -->
+                  <div class="side-zone-box player-side-box">
+                    <div class="side-zone-header">
+                      <span>👤 あなたのサイド</span>
+                      <span class="side-badge" id="playerSideBadge">残り 6枚</span>
+                    </div>
+                    <div id="playerPrizes" class="side-cards-grid"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- === プレイヤー手札トレイ (最下部) === -->
+            <div class="battle-hand-dock" id="battleHandDock">
+              <div class="hand-dock-header">
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <span>あなたの手札 (<span id="playerHandCount">0</span>枚)</span>
+                  <button type="button" id="toggleHandDockBtn" class="secondary-button" style="padding: 2px 10px; font-size: 11px; border-radius: 12px;">手札トレイ収納 ▼</button>
+                </div>
+                <span class="hand-tip-text">ドラッグ＆ドロップで [ベンチ出し] [エネ付け] [進化] [トレーナー発動] が可能です</span>
+              </div>
+              <div id="playerHandRow" class="hand-cards-rack"></div>
+            </div>
+          </div>
+
+          <!-- カードアクションモーダル (カードクリック時に出現: ワザ・特性・にげる) -->
+          <div class="card-action-overlay" id="battleCardActionModal" style="display: none;">
+            <div class="card-action-backdrop" id="battleCardActionBackdrop"></div>
+            <div class="card-action-dialog">
+              <div class="card-action-dialog-header">
+                <div class="card-action-identity">
+                  <span class="card-action-type-symbol" id="cardActionTypeSymbol">⚡</span>
+                  <div>
+                    <div class="card-action-title-line">
+                      <strong id="cardActionName">ピカチュウ</strong>
+                      <span class="card-action-category-badge" id="cardActionCategory">たね</span>
+                    </div>
+                    <div class="card-action-meta" id="cardActionMeta">HP 70/70 • エネルギー: ⚡ 1個</div>
+                  </div>
+                </div>
+                <button type="button" class="card-action-close-btn" id="closeCardActionModalBtn" title="閉じる">✕</button>
+              </div>
+
+              <div class="card-action-dialog-body" id="cardActionList">
+                <!-- ワザ1, ワザ2, 特性, にげる が動的に注入される -->
+              </div>
+
+              <div class="card-action-dialog-footer">
+                <button type="button" class="secondary-button" id="cardActionZoomBtn">🔍 全体拡大プレビュー</button>
+                <button type="button" class="secondary-button" id="cardActionCloseBtn">閉じる</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- バトル汎用選択モーダル (choiceCard / ターゲット選択 / サーチ) -->
+          <div id="battleChoiceModal" class="modal hidden">
+            <div class="modal-backdrop"></div>
+            <div class="modal-card battle-choice-card">
+              <button id="closeBattleChoiceModal" class="modal-close" type="button">×</button>
+              <div class="eyebrow" id="battleChoiceEyebrow">CARD SELECTION</div>
+              <h3 id="battleChoiceTitle">対象カードを選択してください</h3>
+              <p id="battleChoiceDesc" class="muted">選択可能なカード一覧</p>
+              <div id="battleChoiceGrid" class="battle-choice-grid"></div>
+              <div class="heading-actions">
+                <button id="cancelBattleChoiceBtn" class="secondary-button" type="button">キャンセル</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 勝敗リザルトモーダル -->
+          <div id="battleResultModal" class="modal hidden">
+            <div class="modal-backdrop"></div>
+            <div class="modal-card battle-result-card">
+              <div class="result-banner" id="resultBanner">VICTORY!</div>
+              <h2 id="resultTitle">あなたの勝利！</h2>
+              <p id="resultMessage" class="muted">相手のバトルポケモンをすべて倒すか、サイドをすべて獲得しました！</p>
+              <div class="result-stats-box" id="resultStats"></div>
+              <button id="battleRestartBtn" class="primary-button full-button" type="button">もう一度対戦する</button>
+              <button id="battleExitBtn" class="secondary-button full-button" type="button" style="margin-top: 8px;">デッキ選択へ戻る</button>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div id="adminLoginModal" class="modal hidden">
+      <div class="modal-backdrop"></div>
+      <div class="modal-card login-card">
+        <button id="closeAdminLoginButton" class="modal-close">×</button>
+        <div class="eyebrow">ADMINISTRATOR</div><h2>管理者ログイン</h2>
+        <p class="muted">カード作成・編集・削除・画像アップロードは管理者だけが行えます。</p>
+        <label>管理者パスワード<input id="adminPassword" class="input" type="password" autocomplete="current-password" placeholder="パスワード"></label>
+        <button id="adminLoginSubmit" class="primary-button full-button" type="button">ログイン</button>
+        <div id="adminLoginHelp" class="login-help">初回はREADMEの手順で管理者パスワードを設定してください。</div>
+      </div>
+    </div>
+
+    <div id="effectEditorModal" class="modal hidden">
+      <div class="modal-backdrop"></div>
+      <div class="modal-card effect-editor-card">
+        <button id="closeEffectEditorButton" class="modal-close" type="button">×</button>
+        <div class="eyebrow">JAVASCRIPT EFFECT</div>
+        <h2 id="effectEditorTitle">効果エディター</h2>
+        <p class="effect-editor-description">カード効果をJavaScriptで記述します。補完・イベント・条件分岐・カードフィルター用APIを利用できます。</p>
+        <div class="effect-code-tabs">
+          <button type="button" class="effect-tab active" data-effect-tab="ability">特性</button>
+          <button type="button" class="effect-tab" data-effect-tab="attack1">ワザ1</button>
+          <button type="button" class="effect-tab" data-effect-tab="attack2">ワザ2</button>
+          <button type="button" class="effect-tab" data-effect-tab="trainer">グッズ/サポート</button>
+        </div>
+        <div class="effect-code-toolbar">
+          <button id="toggleFunctionListButton" type="button" class="secondary-button compact-btn" title="利用可能な関数の一覧と引数・説明を表示します">📋 関数データリスト</button>
+          <button id="toggleAutoCompletionButton" type="button" class="secondary-button compact-btn active" title="タイピング時の自動予測変換をON/OFFします">⚡ 自動補完: ON</button>
+          <button id="toggleCompletionButton" type="button" class="secondary-button compact-btn">⚡ 補完リストを表示</button>
+          <button id="shiftCompletionButton" type="button" class="secondary-button compact-btn" title="補完ウィンドウの位置を右/左に切り替えます">↔ 補完をずらす</button>
+          <input id="completionSearchInput" type="text" class="input compact-input" placeholder="🔍 日本語/英字でAPI効果を検索 (例: 30ダメージ, ドロー, coin)">
+        </div>
+        <div id="functionListPanel" class="function-list-panel hidden">
+          <div class="func-list-header">
+            <div class="func-list-title-row">
+              <div class="func-list-title">
+                <span>📋 関数データリスト (APIリファレンス)</span>
+                <span id="funcListCountBadge" class="func-count-badge">26件</span>
+              </div>
+              <button type="button" id="closeFunctionListButton" class="completion-close-btn" title="閉じる">×</button>
+            </div>
+            <div class="func-list-filter-row">
+              <input type="text" id="funcListSearchInput" class="input compact-input" placeholder="🔍 関数名・引数・説明で検索 (例: kill, attached, ダメージ, コイン...)">
+              <div class="func-cat-tabs" id="funcCatTabs">
+                <button type="button" class="func-cat-btn active" data-func-cat="all">すべて</button>
+                <button type="button" class="func-cat-btn" data-func-cat="choice">選択・取得</button>
+                <button type="button" class="func-cat-btn" data-func-cat="action">撃破・進化・移動</button>
+                <button type="button" class="func-cat-btn" data-func-cat="battle">ダメージ・回復</button>
+                <button type="button" class="func-cat-btn" data-func-cat="cards">手札・山札・トラッシュ</button>
+                <button type="button" class="func-cat-btn" data-func-cat="event">特性イベント</button>
+              </div>
+            </div>
+          </div>
+          <div id="funcListContainer" class="func-list-container"></div>
+        </div>
+        <div class="code-editor-wrapper">
+          <textarea id="effectCodeEditor" class="effect-code-editor" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
+          <div id="effectCompletion" class="code-completion"></div>
+        </div>
+        <div style="margin: 8px 0; padding: 8px 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--line); border-radius: 9px;">
+          <label style="font-size: 12px; font-weight: 700; color: var(--accent2); display: block;">
+            カード表示用テキスト（自分で自由に効果説明を記述できます）
+            <textarea id="effectEditorDisplayText" class="input" rows="2" style="width: 100%; margin-top: 4px; box-sizing: border-box;" placeholder="カードに印刷される効果説明を記述（空欄の場合はコードから自動生成）"></textarea>
+          </label>
+        </div>
+        <div class="effect-code-status" id="effectCodeStatus">英字入力や「opponent.」「self.」などのドット入力でプロパティ補完（↑↓選択＋Tabで挿入、Enterは通常改行）。特性は毎ターン等のイベント、ワザは直接効果や条件分岐を記述します。</div>
+        <div class="effect-api-help">
+          <div class="effect-title" id="effectApiHelpTitle">クイック挿入スニペット</div>
+          <div class="api-help-grid" id="effectApiGrid">
+            <button type="button" data-effect-insert="damage(opponent.active, 30);">
+              <code>30ダメージ</code>
+              <span>damage()</span>
+            </button>
+            <button type="button" data-effect-insert="const n = getEnergy(self.active);&#10;damage(opponent.active, n * 20);">
+              <code>エネ数×20ダメ</code>
+              <span>getEnergy() * 20</span>
+            </button>
+            <button type="button" data-effect-insert="addEnergy(self.active, 1);">
+              <code>自分にエネ1個つける</code>
+              <span>addEnergy()</span>
+            </button>
+            <button type="button" data-effect-insert="removeEnergy(opponent.active, 1);">
+              <code>相手エネ1個破壊</code>
+              <span>removeEnergy()</span>
+            </button>
+            <button type="button" data-effect-insert="const c = flipCoin(&quot;表が出るまで&quot;);&#10;damage(opponent.active, c * 30);">
+              <code>表が出るまで×30</code>
+              <span>flipCoin(&quot;表が出るまで&quot;)</span>
+            </button>
+            <button type="button" data-effect-insert="if (coinFlip() === 1) {&#10;  damage(opponent.active, 20);&#10;}">
+              <code>コイン表で+20</code>
+              <span>if (coinFlip)</span>
+            </button>
+            <button type="button" data-effect-insert="applyStatus(opponent.active, &quot;どく&quot;);">
+              <code>相手を「どく」</code>
+              <span>applyStatus</span>
+            </button>
+            <button type="button" data-effect-insert="const card = choiceCard(self.deck, { category: &quot;たね&quot; });&#10;toHand(self, card);&#10;shuffleDeck(self);">
+              <code>山札サーチ</code>
+              <span>choiceCard + toHand</span>
+            </button>
+            <button type="button" data-effect-insert="benchDamage(opponent, 10);">
+              <code>相手ベンチ全員10</code>
+              <span>benchDamage</span>
+            </button>
+            <button type="button" data-effect-insert="heal(self.active, 30);">
+              <code>HP30回復</code>
+              <span>heal()</span>
+            </button>
+            <button type="button" data-effect-insert="draw(self, 1);">
+              <code>1枚ドロー</code>
+              <span>draw()</span>
+            </button>
+          </div>
+        </div>
+        <div class="effect-code-preview">
+          <div class="effect-title">カード効果コード</div>
+          <pre id="effectJsonPreview"></pre>
+        </div>
+        <div class="heading-actions effect-editor-actions">
+          <button id="cancelEffectEditorButton" type="button" class="secondary-button">キャンセル</button>
+          <button id="saveEffectEditorButton" type="button" class="primary-button">この効果を反映</button>
+        </div>
+      </div>
+    </div>
+
+  <div id="toast" class="toast"></div>
+    <div id="detailModal" class="modal hidden">
+      <div class="modal-backdrop"></div>
+      <div class="modal-card">
+        <button id="closeModalButton" class="modal-close">×</button>
+        <div id="detailContent"></div>
+      </div>
+    </div>
+  </div>
+
+  <?!= include('ActionEngine.js'); ?>
+  <?!= include('EffectEditor.js'); ?>
+  <?!= include('CardSystem.js'); ?>
+  <?!= include('DeckSystem.js'); ?>
+  <?!= include('BattleSystem.js'); ?>
+  <?!= include('App.js'); ?>
+  <script>
+    (function() {
+      var _started = false;
+      function tryStart() {
+        if (_started) return true;
+        if (window.App && typeof window.App.init === 'function') {
+          _started = true;
+          try {
+            window.App.init();
+            console.log('[ORBITAL] App initialized successfully.');
+          } catch (e) {
+            console.error('[ORBITAL] App.init threw error:', e);
+          }
+          return true;
+        }
+        return false;
+      }
+
+      if (!tryStart()) {
+        document.addEventListener('DOMContentLoaded', tryStart);
+        window.addEventListener('load', tryStart);
+        var attempts = 0;
+        var timer = setInterval(function() {
+          attempts++;
+          if (tryStart() || attempts > 40) {
+            clearInterval(timer);
+          }
+        }, 100);
+      }
+
+      // 確実なインライン直接バインド (キャプチャフェーズ)
+      document.addEventListener('input', function(e) {
+        if (!e.target) return;
+        var isCardInput = e.target.closest && (e.target.closest('#cardForm') || (e.target.form && e.target.form.id === 'cardForm'));
+        if (isCardInput) {
+          if (window.__showDebugMsg) window.__showDebugMsg('入力検知: ' + (e.target.id || e.target.name || 'field'));
+          if (window.CardSystem && window.CardSystem.updatePreview) {
+            window.CardSystem.updatePreview();
+          }
+          // 直接テキスト反映フォールバック (万一CardSystemが遅延・エラーでもプレビューに反映)
+          if (e.target.id === 'name') {
+            document.querySelectorAll('#cardPreview .card-name-text, #cardPreview .texture-name').forEach(function(el) {
+              el.textContent = e.target.value || 'カード名';
+            });
+          }
+        }
+      }, true);
+
+      document.addEventListener('click', function(e) {
+        if (!e.target) return;
+
+        // 効果エディター起動ボタン
+        var btn = e.target.closest && e.target.closest('#attack1EffectButton, #attack2EffectButton, #abilityEffectButton, #trainerEffectButton, .effect-editor-open');
+        if (btn) {
+          e.preventDefault();
+          var target = 'attack1';
+          if (btn.id === 'abilityEffectButton') target = 'ability';
+          else if (btn.id === 'attack2EffectButton') target = 'attack2';
+          else if (btn.id === 'trainerEffectButton') target = 'trainer';
+          if (window.__showDebugMsg) window.__showDebugMsg('効果エディターボタン押下: ' + target);
+          if (window.CardSystem && window.CardSystem.openEffectEditor) {
+            window.CardSystem.openEffectEditor(target);
+          } else {
+            var m = document.getElementById('effectEditorModal');
+            if (m) { m.classList.remove('hidden'); m.style.display = 'grid'; }
+            if (window.CardSystem && window.CardSystem.renderCodeEditor) {
+              window.CardSystem.renderCodeEditor();
+            } else if (window.CardSystem && window.CardSystem.renderApiHelpGrid) {
+              window.CardSystem.renderApiHelpGrid();
+            }
+          }
+          return;
+        }
+
+        // 補完リスト表示トグルボタン
+        var toggleBtn = e.target.closest && e.target.closest('#toggleCompletionButton');
+        if (toggleBtn) {
+          e.preventDefault();
+          var popup = document.getElementById('effectCompletion');
+          if (popup) {
+            var isHidden = popup.style.display === 'none' || !popup.style.display;
+            if (isHidden) {
+              if (window.CardSystem && window.CardSystem.updateCompletion) {
+                window.CardSystem.updateCompletion(true);
+              } else {
+                popup.style.display = 'block';
+              }
+            } else {
+              popup.style.display = 'none';
+            }
+          }
+          return;
+        }
+
+        // 補完リストずらしボタン
+        var shiftBtn = e.target.closest && e.target.closest('#shiftCompletionButton, #dockCompletionToggleBtn');
+        if (shiftBtn) {
+          e.preventDefault();
+          if (window.CardSystem && window.CardSystem.toggleCompletionDock) {
+            window.CardSystem.toggleCompletionDock();
+          } else {
+            var popup = document.getElementById('effectCompletion');
+            if (popup) {
+              if (popup.style.left === '14px') {
+                popup.style.left = 'auto';
+                popup.style.right = '12px';
+              } else {
+                popup.style.left = '14px';
+                popup.style.right = 'auto';
+              }
+            }
+          }
+          return;
+        }
+
+        // 補完リスト閉じるボタン
+        var closeCompBtn = e.target.closest && e.target.closest('#closeCompletionPopupBtn');
+        if (closeCompBtn) {
+          e.preventDefault();
+          var p = document.getElementById('effectCompletion');
+          if (p) p.style.display = 'none';
+          return;
+        }
+
+        // スニペットクイック挿入フォールバック
+        var insBtn = e.target.closest && e.target.closest('[data-effect-insert]');
+        if (insBtn) {
+          e.preventDefault();
+          var code = insBtn.dataset.effectInsert || insBtn.getAttribute('data-effect-insert') || '';
+          if (window.CardSystem && window.CardSystem.insertEffectCode) {
+            window.CardSystem.insertEffectCode(code);
+          } else {
+            var ed = document.getElementById('effectCodeEditor');
+            if (ed) {
+              ed.focus();
+              var a = ed.selectionStart || ed.value.length;
+              var b = ed.selectionEnd || ed.value.length;
+              ed.setRangeText(code, a, b, 'end');
+              ed.focus();
+            }
+          }
+          return;
+        }
+      }, true);
+
+      // 補完検索バー入力連動
+      document.addEventListener('input', function(e) {
+        if (e.target && e.target.id === 'completionSearchInput') {
+          var q = e.target.value;
+          if (window.CardSystem && window.CardSystem.filterCompletionByQuery) {
+            window.CardSystem.filterCompletionByQuery(q);
+          } else if (window.CardSystem && window.CardSystem.updateCompletion) {
+            window.CardSystem.updateCompletion(true, q);
+          }
+        }
+      }, true);
+    })();
+  </script>
+</body>
+</html>
