@@ -462,8 +462,31 @@
         if (window.BroadcastChannel) {
           if (!this._onlineChannel) {
             this._onlineChannel = new BroadcastChannel('orbital_online_bus');
+            const self = this;
+            this._onlineChannel.onmessage = function (evt) {
+              if (evt && evt.data && evt.data.type === 'sync_rooms') {
+                if (self.state.phase === 'battle' || (self.state.mode === 'online' && self.state.online.roomId)) {
+                  self.pollRoomImmediate();
+                } else {
+                  self.refreshRoomList();
+                }
+              }
+            };
           }
           this._onlineChannel.postMessage({ type: 'sync_rooms', rooms: rooms });
+        }
+        if (!this._storageListenerAdded && typeof window !== 'undefined') {
+          this._storageListenerAdded = true;
+          const self = this;
+          window.addEventListener('storage', function (e) {
+            if (e.key === 'orbital_online_rooms') {
+              if (self.state.phase === 'battle' || (self.state.mode === 'online' && self.state.online.roomId)) {
+                self.pollRoomImmediate();
+              } else {
+                self.refreshRoomList();
+              }
+            }
+          });
         }
       } catch (e) {}
     },
@@ -765,6 +788,9 @@
         room.actions.push(actionEntry);
         room.lastSeq = Math.max(room.lastSeq || 0, actionEntry.seq);
         this.saveClientRooms(rooms);
+      }
+      if (this.state.mode === 'online') {
+        this.pollRoomImmediate();
       }
     },
 
