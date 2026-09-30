@@ -523,10 +523,28 @@
     clientJoinOnlineRoom(roomId, deck, userEmail) {
       const cleanRoomId = String(roomId).trim().toUpperCase();
       const rooms = this.getClientRooms();
-      const room = rooms.find(r => r.roomId === cleanRoomId);
+      let room = rooms.find(r => r.roomId === cleanRoomId);
 
       if (!room) {
-        return { ok: false, message: 'ルームが見つかりません。期限切れか解散された可能性があります。' };
+        // Cross-device / cross-account direct join via PeerJS P2P
+        room = {
+          roomId: cleanRoomId,
+          name: '対戦ルーム (' + cleanRoomId + ')',
+          status: 'waiting',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          timestamp: Date.now(),
+          hostConnectedAt: Date.now(),
+          hostReady: true,
+          guestConnectedAt: null,
+          guestReady: false,
+          rules: { prizeCount: 6 },
+          host: { role: 'host', email: 'host@gmail.com', name: 'ホスト', deck: [] },
+          guest: null,
+          actions: [],
+          lastSeq: 0
+        };
+        rooms.unshift(room);
       }
       if (room.status !== 'waiting' && room.status !== 'connecting') {
         return { ok: false, message: 'このルームはすでに対戦中か終了しています。' };
