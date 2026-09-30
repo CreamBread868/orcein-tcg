@@ -55,10 +55,7 @@ fs.writeFileSync(path.join(__dirname, 'Index.html'), indexHtml, 'utf8');
 // Write local testing file
 fs.writeFileSync(path.join(__dirname, 'index_local.html'), indexHtml, 'utf8');
 
-// Write main GitHub Pages entry file (index.html)
-fs.writeFileSync(path.join(__dirname, 'index.html'), indexHtml, 'utf8');
-
-// GAS loader
+// GAS loader HTML
 const gasLoaderHtml = `<!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -94,7 +91,13 @@ const gasLoaderHtml = `<!DOCTYPE html>
 
       console.log('🐙 GAS Bootstrapping from GitHub:', rawBase);
 
-      fetch(rawBase + 'index.html?t=' + Date.now())
+      fetch(rawBase + 'Index.html?t=' + Date.now())
+        .then(function(res) {
+          if (!res.ok) {
+            return fetch(rawBase + 'index_local.html?t=' + Date.now());
+          }
+          return res;
+        })
         .then(function(res) {
           if (!res.ok) throw new Error('GitHubからのプログラム取得に失敗しました (HTTP ' + res.status + ')');
           return res.text();
@@ -119,4 +122,4 @@ if (fs.existsSync(gasDir)) {
   fs.writeFileSync(path.join(gasDir, 'index_local.html'), gasLoaderHtml, 'utf8');
 }
 
-console.log('Successfully generated Index.html, index_local.html, index.html, and gas/index_local.html!');
+console.log('Successfully generated Index.html, index_local.html, and gas/index_local.html!');
