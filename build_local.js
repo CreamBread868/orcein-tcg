@@ -103,12 +103,16 @@ const gasLoaderHtml = `<!DOCTYPE html>
 
   <script>
     (function() {
+      window._is_gas_env = true;
+      var savedG = window.google || (window.top && window.top.google) || (window.parent && window.parent.google);
+      window._saved_google = savedG;
+
       var repo = localStorage.getItem('ORBITAL_GITHUB_REPO') || 'CreamBread868/orcein-tcg';
       var cleanRepo = repo.replace(/^https?:\\/\\/github\\.com\\//i, '').replace(/\\/$/, '');
       if (cleanRepo.indexOf('/') === -1) cleanRepo += '/orcein-tcg';
       var rawBase = 'https://raw.githubusercontent.com/' + cleanRepo + '/main/';
 
-      console.log('🐙 GAS Bootstrapping from GitHub:', rawBase);
+      console.log('🐙 GAS Bootstrapping from GitHub:', rawBase, 'GAS Google Object:', !!savedG);
 
       fetch(rawBase + 'index.html?t=' + Date.now())
         .then(function(res) {
@@ -127,6 +131,12 @@ const gasLoaderHtml = `<!DOCTYPE html>
           document.open();
           document.write(html);
           document.close();
+          window._is_gas_env = true;
+          if (savedG) {
+            window.google = savedG;
+            window._saved_google = savedG;
+            console.log('✅ Real google.script.run restored to window.google!');
+          }
         })
         .catch(function(err) {
           console.error('GitHub Bootstrap Error:', err);

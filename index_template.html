@@ -5119,8 +5119,15 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
 
   <!-- Localhost & Standalone Mock for google.script.run (Only activates when NOT running inside GAS) -->
   <script>
-    if (typeof window !== 'undefined' && (!window.google || !window.google.script || !window.google.script.run)) {
-      (function() {
+    (function() {
+      if (typeof window !== 'undefined') {
+        if (!window.google && window._saved_google) window.google = window._saved_google;
+        try {
+          if (!window.google && window.top && window.top.google) window.google = window.top.google;
+          if (!window.google && window.parent && window.parent.google) window.google = window.parent.google;
+        } catch(e) {}
+      }
+      if (typeof window !== 'undefined' && (!window.google || !window.google.script || !window.google.script.run) && !window._is_gas_env) {
         var DEFAULT_SAMPLE_CARDS = [];
 
         function getLocalCards() {
