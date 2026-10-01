@@ -263,7 +263,12 @@ var CardSystem;
 
       const imgStyle = "object-fit: " + fit + "; object-position: " + posX + "% " + posY + "%; transform: scale(" + scale / 100 + "); transform-origin: " + posX + "% " + posY + "%;";
 
-      const rawImgUrl = card.image ? String(card.image).trim() : this.findCardImage(card.name, card.id);
+      const rawImgUrl = String(
+        card.image || card.imageUrl || card.image_url ||
+        card['画像'] || card['画像URL'] || card['画像url'] || card['イラスト'] || card['URL'] || card['url'] ||
+        (typeof this.findCardImage === 'function' ? this.findCardImage(card.name, card.id) : '') || ''
+      ).trim();
+
       let imgUrl = rawImgUrl;
       const driveMatch = rawImgUrl.match(/(?:drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?export=view&id=)|lh3\.googleusercontent\.com\/d\/)([a-zA-Z0-9_-]+)/);
       if (driveMatch && driveMatch[1]) {
@@ -272,7 +277,7 @@ var CardSystem;
 
       // 画像 / テクスチャアート (真ん中から上)
       const artHtml = imgUrl ? "<img src=\"" +
-      this.escape(imgUrl) + "\" alt=\"" + this.escape(card.name) + "\" class=\"card-texture-img\" draggable=\"false\" style=\"" + imgStyle + "\" referrerpolicy=\"no-referrer\" loading=\"lazy\" onerror=\"this.style.display='none'; this.nextElementSibling.style.display='flex';\"><div class=\"card-texture-placeholder\" style=\"display:none\"><div class=\"texture-watermark\">" + symbol + "</div><div class=\"texture-name\">" + this.escape(card.name || 'CARD') + "</div></div>" : "<div class=\"card-texture-placeholder\"><div class=\"texture-watermark\">" +
+      this.escape(imgUrl) + "\" alt=\"" + this.escape(card.name) + "\" class=\"card-texture-img\" draggable=\"false\" style=\"" + imgStyle + "\" referrerpolicy=\"no-referrer\" loading=\"lazy\" onerror=\"console.warn('Image load error for ' + this.alt + ':', this.src); this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';\"><div class=\"card-texture-placeholder\" style=\"display:none\"><div class=\"texture-watermark\">" + symbol + "</div><div class=\"texture-name\">" + this.escape(card.name || 'CARD') + "</div></div>" : "<div class=\"card-texture-placeholder\"><div class=\"texture-watermark\">" +
       symbol + "</div><div class=\"texture-name\">" + this.escape(card.name || 'CARD') + "</div></div>";
 
       // 特性ブロック

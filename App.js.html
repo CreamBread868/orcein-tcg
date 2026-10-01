@@ -628,7 +628,7 @@
           return '';
         };
 
-        const image = String(getVal(['image', 'imageUrl', '画像', '画像url', 'イラスト', '写真', 'url', 'img', 'src']) || '').trim();
+        const image = String(getVal(['image', 'imageUrl', 'image_url', '画像url', '画像URL', '画像', 'イラスト', '写真', 'url', 'img', 'src']) || '').trim();
         const attack1Name = String(getVal(['attack1Name', 'attack1name', 'attack1', 'ワザ1', 'ワザ1名', '技1', '技1名']) || '').trim();
         const attack1Damage = getVal(['attack1Damage', 'attack1damage', 'ワザ1ダメージ', '技1ダメージ', 'ダメージ1']);
         const attack1Energy = String(getVal(['attack1Energy', 'attack1energy', 'ワザ1エネ', 'ワザ1エネルギー', '技1エネ', 'コスト1']) || '').trim();
