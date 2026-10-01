@@ -6728,9 +6728,16 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
           <label>カバー画像URL (空欄の場合は標準ホロデザイン)
             <input id="adminPackImage" class="input" placeholder="https://...">
           </label>
-          <label>収録カード枚数 (1パックあたり)
-            <input id="adminPackCardCount" class="input" type="number" value="5" min="1" max="10">
-          </label>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+            <label>収録カード枚数 (1パックあたり)
+              <input id="adminPackCardCount" class="input" type="number" value="5" min="1" max="10">
+            </label>
+            <label>収録対象カードプール設定 (Ctrl/Cmd+クリックで複数選択)
+              <select id="adminPackCardPool" class="input" multiple size="3" style="height:60px;">
+                <!-- Dynamically filled with card list -->
+              </select>
+            </label>
+          </div>
           <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px;">
             <button type="button" class="secondary-button" onclick="App.resetPackForm()">フォームリセット</button>
             <button type="submit" class="primary-button">💾 パックを保存</button>

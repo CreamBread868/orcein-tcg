@@ -1260,6 +1260,19 @@
       }).join('');
     },
 
+    getCardTypeEmblem(type) {
+      const t = String(type || '').trim();
+      if (t.includes('雷') || t.includes('電')) return '⚡';
+      if (t.includes('炎') || t.includes('火')) return '🔥';
+      if (t.includes('水')) return '💧';
+      if (t.includes('草') || t.includes('葉')) return '🌿';
+      if (t.includes('超') || t.includes('エスパー')) return '👁️';
+      if (t.includes('闘') || t.includes('格闘')) return '👊';
+      if (t.includes('悪') || t.includes('闇')) return '💀';
+      if (t.includes('鋼') || t.includes('鉄')) return '⚙️';
+      return '◇';
+    },
+
     buyAndOpenPack(packId) {
       const pack = (this.state.packs || []).find(p => p.id === packId);
       if (!pack) {
@@ -1275,14 +1288,20 @@
       this.state.nmtBalance -= pack.price;
       this.updateNmtBadge();
 
-      // カードプールからランダムにカードを抽選 (5枚)
+      // カードプールからランダムにカードを抽選 (パック設定済みの収録対象カードプールを優先)
       const allCards = (window.CardSystem && CardSystem.cards && CardSystem.cards.length > 0) ? CardSystem.cards : (this.state.cards || []);
+      let targetPool = allCards;
+      if (Array.isArray(pack.cardPool) && pack.cardPool.length > 0) {
+        const filtered = allCards.filter(c => pack.cardPool.includes(c.id) || pack.cardPool.includes(c.name));
+        if (filtered.length > 0) targetPool = filtered;
+      }
+
       const count = pack.cardCount || 5;
       const drawnCards = [];
 
-      if (allCards.length > 0) {
+      if (targetPool.length > 0) {
         for (let i = 0; i < count; i++) {
-          const randCard = allCards[Math.floor(Math.random() * allCards.length)];
+          const randCard = targetPool[Math.floor(Math.random() * targetPool.length)];
           drawnCards.push(JSON.parse(JSON.stringify(randCard)));
         }
       } else {
@@ -1343,22 +1362,32 @@
         const rarityClass = card.rarity ? `rarity-aura-${card.rarity}` : '';
         const rot = (idx - 2) * 6; // ファン状の傾き angle (-12deg ~ +12deg)
         const transY = Math.abs(idx - 2) * 8; // 中央が高くなるアーチ型
+        const emblem = this.getCardTypeEmblem(card.type);
+        const hasImg = !!(card.imageUrl || card.image);
+        const artContent = hasImg ? 
+          `<img src="${this.escapeHtml(card.imageUrl || card.image)}" style="width:100%; height:100%; object-fit:cover; border-radius:6px;">` :
+          `<div style="width:100%; height:100px; display:flex; flex-direction:column; align-items:center; justify-content:center; background:linear-gradient(135deg, rgba(30,41,59,0.9), rgba(15,23,42,0.95)); border:1px solid rgba(255,215,0,0.3); border-radius:8px; position:relative; overflow:hidden;">
+            <div style="font-size:42px; color:#ffd700; text-shadow:0 0 15px rgba(255,215,0,0.8);">${emblem}</div>
+            <div style="font-size:9px; color:#94a3b8; font-weight:800; letter-spacing:1px; margin-top:2px;">◇ ORBITAL FOIL ◇</div>
+          </div>`;
 
         return `
           <div class="pokepoke-card-item ${rarityClass}" style="transform: rotate(${rot}deg) translateY(${transY}px); z-index:${10 + idx};" onclick="App.flipPokepokeCard(this, ${idx})">
             <div class="pokepoke-card-inner">
               <div class="pokepoke-card-back">
-                <div style="font-size:10px; color:#ffd700; font-weight:800; margin-top:8px;">ORBITAL CARD</div>
+                <div style="font-size:36px; color:#ffd700;">◇</div>
+                <div style="font-size:10px; color:#ffd700; font-weight:800; margin-top:6px; letter-spacing:1px;">ORBITAL CARD</div>
               </div>
               <div class="pokepoke-card-front">
-                <div style="font-size:10px; color:#00e5ff; font-weight:800; display:flex; justify-content:space-between;">
+                <div style="font-size:10px; color:#00e5ff; font-weight:800; display:flex; justify-content:space-between; margin-bottom:4px;">
                   <span>${this.escapeHtml(card.category || 'カード')}</span>
-                  <span>${this.escapeHtml(card.type || '無色')}</span>
+                  <span>${emblem} ${this.escapeHtml(card.type || '無色')}</span>
                 </div>
-                <div style="font-size:15px; font-weight:900; color:#fff; text-align:center; margin:10px 0; text-shadow:0 2px 8px rgba(0,0,0,0.8);">${this.escapeHtml(card.name)}</div>
-                <div style="display:flex; justify-content:space-between; align-items:center;">
+                ${artContent}
+                <div style="font-size:14px; font-weight:900; color:#fff; text-align:center; margin:6px 0; text-shadow:0 2px 8px rgba(0,0,0,0.8);">${this.escapeHtml(card.name)}</div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:auto;">
                   <span style="font-size:10px; color:#94a3b8;">HP ${card.hp || 80}</span>
-                  <span style="font-size:12px; color:#ffd700; font-weight:900; background:rgba(255,215,0,0.2); padding:1px 6px; border-radius:4px;">${this.escapeHtml(card.rarity || 'R')}</span>
+                  <span style="font-size:11px; color:#ffd700; font-weight:900; background:rgba(255,215,0,0.2); padding:1px 6px; border-radius:4px;">${this.escapeHtml(card.rarity || 'R')}</span>
                 </div>
               </div>
             </div>
@@ -1413,9 +1442,23 @@
         this.requireAdmin();
         return;
       }
+      this.populateAdminCardPoolSelect();
       const modal = this.el('adminPackModal');
       if (modal) modal.classList.remove('hidden');
       this.renderAdminPackTable();
+    },
+
+    populateAdminCardPoolSelect() {
+      const sel = this.el('adminPackCardPool');
+      if (!sel) return;
+      const allCards = (window.CardSystem && CardSystem.cards && CardSystem.cards.length > 0) ? CardSystem.cards : (this.state.cards || []);
+      if (allCards.length === 0) {
+        sel.innerHTML = '<option value="" disabled>登録されているカードがありません</option>';
+        return;
+      }
+      sel.innerHTML = allCards.map(c => `
+        <option value="${this.escapeHtml(c.id)}">[${this.escapeHtml(c.category || 'カード')}] ${this.escapeHtml(c.name)} (${this.escapeHtml(c.type || '無色')})</option>
+      `).join('');
     },
 
     closeAdminPackModal() {
@@ -1430,6 +1473,10 @@
       this.el('adminPackDesc').value = '';
       this.el('adminPackImage').value = '';
       this.el('adminPackCardCount').value = '5';
+      const sel = this.el('adminPackCardPool');
+      if (sel) {
+        Array.from(sel.options).forEach(o => o.selected = false);
+      }
     },
 
     handleAdminSavePack(e) {
@@ -1441,12 +1488,15 @@
       const image = this.el('adminPackImage').value.trim();
       const cardCount = Number(this.el('adminPackCardCount').value) || 5;
 
+      const sel = this.el('adminPackCardPool');
+      const cardPool = sel ? Array.from(sel.selectedOptions).map(o => o.value) : [];
+
       if (!title) {
         this.toast('パックタイトルを入力してください', true);
         return;
       }
 
-      const newPack = { id, title, price, description, image, cardCount };
+      const newPack = { id, title, price, description, image, cardCount, cardPool };
       let packs = this.state.packs || [];
       const idx = packs.findIndex(p => p.id === id);
       if (idx >= 0) packs[idx] = newPack;
@@ -1497,6 +1547,7 @@
               <th style="padding:6px;">タイトル</th>
               <th style="padding:6px;">価格 (NMT)</th>
               <th style="padding:6px;">枚数</th>
+              <th style="padding:6px;">対象カード</th>
               <th style="padding:6px; text-align:right;">操作</th>
             </tr>
           </thead>
@@ -1506,6 +1557,7 @@
                 <td style="padding:6px; font-weight:700;">${this.escapeHtml(p.title)}</td>
                 <td style="padding:6px; color:#ffd700;">✨ ${p.price}</td>
                 <td style="padding:6px;">${p.cardCount || 5}枚</td>
+                <td style="padding:6px; font-size:11px; color:#94a3b8;">${(p.cardPool && p.cardPool.length > 0) ? (p.cardPool.length + '枚指定') : '全カード対象'}</td>
                 <td style="padding:6px; text-align:right;">
                   <button type="button" class="secondary-button compact-btn" onclick="App.editAdminPack('${p.id}')">編集</button>
                   <button type="button" class="secondary-button compact-btn danger-btn" onclick="App.deleteAdminPack('${p.id}')">削除</button>
@@ -1526,6 +1578,14 @@
       this.el('adminPackDesc').value = pack.description || '';
       this.el('adminPackImage').value = pack.image || '';
       this.el('adminPackCardCount').value = pack.cardCount || 5;
+
+      const sel = this.el('adminPackCardPool');
+      if (sel) {
+        const pool = pack.cardPool || [];
+        Array.from(sel.options).forEach(o => {
+          o.selected = pool.includes(o.value);
+        });
+      }
     },
 
     escapeHtml(str) {
