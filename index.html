@@ -14271,13 +14271,19 @@ window.DeckSystem = function () {
     populateOnlineDeckSelect() {
       const sel = document.getElementById('battle-online-deck-select');
       if (!sel) return;
+
+      if (window.DeckSystem && typeof window.DeckSystem.loadDecks === 'function' && (!DeckSystem.state || !Array.isArray(DeckSystem.state.decks) || DeckSystem.state.decks.length === 0)) {
+        DeckSystem.loadDecks();
+      }
+
       const decks = window.DeckSystem && DeckSystem.state && DeckSystem.state.decks || [];
       sel.innerHTML = '';
       if (decks.length > 0) {
         decks.forEach((d) => {
           const opt = document.createElement('option');
           opt.value = d.id;
-          opt.textContent = d.name + ' (' + (d.totalCount || 60) + '枚)';
+          const cardCount = Array.isArray(d.cards) ? d.cards.reduce((sum, item) => sum + (Number(item.count || item.qty || 1) || 1), 0) : 0;
+          opt.textContent = d.name + ' (' + (cardCount || d.totalCount || 60) + '枚)';
           sel.appendChild(opt);
         });
       }
@@ -15529,10 +15535,25 @@ window.DeckSystem = function () {
         if (res.status === 'closed' || res.status === 'finished') {
           if (self.state.phase === 'battle') {
             self.stopPolling();
-            App.toast('⚠️ 対戦相手が退出したか接続が切れました。', true);
-            self.log('⚠️ 対戦相手が退出したためオンライン対戦を終了しました。');
+            App.toast('🏆 対戦相手が退出・切断しました。あなたの不戦勝です！');
+            self.log('🏆 対戦相手が退出したため不戦勝となりました！');
+            self.finishBattle('player', '対戦相手が退出・切断しました。あなたの勝利です！');
           }
           return;
+        }
+
+        const isOppConnected = (self.state.online.role === 'host') ? res.guestConnected : res.hostConnected;
+        if (isOppConnected === false && self.state.phase === 'battle') {
+          self.state.online.missedOpponentPolls = (self.state.online.missedOpponentPolls || 0) + 1;
+          if (self.state.online.missedOpponentPolls >= 4) {
+            self.stopPolling();
+            App.toast('🏆 対戦相手の通信が切断されたため、あなたの不戦勝となりました！');
+            self.log('🏆 対戦相手の通信切断により不戦勝！');
+            self.finishBattle('player', '対戦相手の通信が切断されました。あなたの勝利です！');
+            return;
+          }
+        } else {
+          self.state.online.missedOpponentPolls = 0;
         }
         if (res.ok && Array.isArray(res.actions)) {
           if (res.actions.length > 0) {
@@ -15959,13 +15980,24 @@ window.DeckSystem = function () {
       deck.cards.forEach((entry) => {
         if (!entry) return;
         const key = String(entry.id || entry.name || entry.cardId || '').toLowerCase();
-        const c = allCards.find((card) => String(card.id).toLowerCase() === key || String(card.name).toLowerCase() === key) ||
+        let c = allCards.find((card) => String(card.id).toLowerCase() === key || String(card.name).toLowerCase() === key) ||
                   (entry.name && entry.category ? entry : null);
-        if (c) {
-          const count = Number(entry.count || entry.qty || entry.num || 1) || 1;
-          for (let i = 0; i < count; i++) {
-            expanded.push(JSON.parse(JSON.stringify(c)));
-          }
+        if (!c) {
+          c = {
+            id: entry.id || key,
+            name: entry.name || entry.id || key,
+            category: entry.category || 'たね',
+            type: entry.type || '無',
+            hp: Number(entry.hp) || 70,
+            image: entry.image || '',
+            attack1Name: entry.attack1Name || 'たいあたり',
+            attack1Damage: entry.attack1Damage || '20',
+            attack1Energy: entry.attack1Energy || '無'
+          };
+        }
+        const count = Number(entry.count || entry.qty || entry.num || 1) || 1;
+        for (let i = 0; i < count; i++) {
+          expanded.push(JSON.parse(JSON.stringify(c)));
         }
       });
 
