@@ -1,11 +1,13 @@
 const fs = require('fs');
 const path = require('path');
 
-let indexHtmlPath = fs.existsSync(path.join(__dirname, 'index.html'))
-  ? path.join(__dirname, 'index.html')
-  : path.join(__dirname, 'Index.html');
+// Master template with full HTML structure
+const templatePath = path.join(__dirname, 'index_template.html');
+if (!fs.existsSync(templatePath)) {
+  fs.copyFileSync(path.join(__dirname, 'restored_index.html'), templatePath);
+}
 
-let indexHtml = fs.readFileSync(indexHtmlPath, 'utf8');
+let indexHtml = fs.readFileSync(templatePath, 'utf8');
 
 const includes = {
   'CSS': 'CSS.html',
@@ -27,30 +29,30 @@ indexHtml = indexHtml.replace(/<\?!=\s*include\(['"]([^'"]+)['"]\);\s*\?>/g, (ma
   return match;
 });
 
-// 2. Replace already-inlined component script blocks
+// 2. Replace already-inlined component script blocks safely (using negative lookahead for </script>)
 for (const [key, file] of Object.entries(includes)) {
   if (fs.existsSync(path.join(__dirname, file))) {
     const content = fs.readFileSync(path.join(__dirname, file), 'utf8');
     if (file === 'BattleSystem.js.html') {
-      const regex = /<script>\s*[\s\S]*?console\.log\('\[ORBITAL\] BattleSystem\.js\.html started execution'\);[\s\S]*?console\.log\('\[ORBITAL\] BattleSystem\.js\.html finished execution[\s\S]*?<\/script>/;
+      const regex = /<script>(?:(?!<\/script>)[\s\S])*?console\.log\('\[ORBITAL\] BattleSystem\.js\.html started execution'\);[\s\S]*?console\.log\('\[ORBITAL\] BattleSystem\.js\.html finished execution[\s\S]*?<\/script>/;
       if (regex.test(indexHtml)) {
         console.log('Replacing inlined BattleSystem.js.html block');
         indexHtml = indexHtml.replace(regex, () => content);
       }
     } else if (file === 'EffectEditor.js.html') {
-      const regex = /<script>\s*[\s\S]*?console\.log\('\[ORBITAL\] EffectEditor\.js\.html started execution'\);[\s\S]*?console\.log\('\[ORBITAL\] EffectEditor\.js\.html finished execution[\s\S]*?<\/script>/;
+      const regex = /<script>(?:(?!<\/script>)[\s\S])*?console\.log\('\[ORBITAL\] EffectEditor\.js\.html started execution'\);[\s\S]*?console\.log\('\[ORBITAL\] EffectEditor\.js\.html finished execution[\s\S]*?<\/script>/;
       if (regex.test(indexHtml)) {
         console.log('Replacing inlined EffectEditor.js.html block');
         indexHtml = indexHtml.replace(regex, () => content);
       }
     } else if (file === 'CardSystem.js.html') {
-      const regex = /<script>\s*[\s\S]*?console\.log\('\[ORBITAL\] CardSystem\.js\.html started execution'\);[\s\S]*?console\.log\('\[ORBITAL\] CardSystem\.js\.html finished execution[\s\S]*?<\/script>/;
+      const regex = /<script>(?:(?!<\/script>)[\s\S])*?console\.log\('\[ORBITAL\] CardSystem\.js\.html started execution'\);[\s\S]*?console\.log\('\[ORBITAL\] CardSystem\.js\.html finished execution[\s\S]*?<\/script>/;
       if (regex.test(indexHtml)) {
         console.log('Replacing inlined CardSystem.js.html block');
         indexHtml = indexHtml.replace(regex, () => content);
       }
     } else if (file === 'App.js.html') {
-      const regex = /<script>\s*[\s\S]*?const App = \{[\s\S]*?window\.App = App;[\s\S]*?<\/script>/;
+      const regex = /<script>(?:(?!<\/script>)[\s\S])*?const App = \{[\s\S]*?window\.App = App;[\s\S]*?<\/script>/;
       if (regex.test(indexHtml)) {
         console.log('Replacing inlined App.js.html block');
         indexHtml = indexHtml.replace(regex, () => content);
@@ -59,7 +61,7 @@ for (const [key, file] of Object.entries(includes)) {
   }
 }
 
-// Write compiled output to index.html and index_local.html
+// Write compiled output to index.html, index_local.html, and Index.html
 fs.writeFileSync(path.join(__dirname, 'index.html'), indexHtml, 'utf8');
 fs.writeFileSync(path.join(__dirname, 'index_local.html'), indexHtml, 'utf8');
 if (fs.existsSync(path.join(__dirname, 'Index.html'))) {
