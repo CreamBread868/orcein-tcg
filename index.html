@@ -19940,28 +19940,44 @@ window.DeckSystem = function () {
       if (!Array.isArray(rawCards)) return [];
       return rawCards.map((c, i) => {
         if (!c) return c;
-        const getVal = (keys) => {
-          for (let k of keys) {
-            if (c[k] !== undefined && c[k] !== null && c[k] !== '') return c[k];
+
+        // 全プロパティキーを小文字・記号除去でインデックス化
+        const normKeyMap = {};
+        Object.keys(c).forEach(k => {
+          if (k != null) {
+            const cleanKey = String(k).trim().toLowerCase().replace(/[\s_ー-]+/g, '');
+            normKeyMap[cleanKey] = c[k];
+          }
+        });
+
+        const getVal = (candidates) => {
+          for (let cand of candidates) {
+            if (c[cand] !== undefined && c[cand] !== null && String(c[cand]).trim() !== '') {
+              return c[cand];
+            }
+            const cleanCand = String(cand).trim().toLowerCase().replace(/[\s_ー-]+/g, '');
+            if (normKeyMap[cleanCand] !== undefined && normKeyMap[cleanCand] !== null && String(normKeyMap[cleanCand]).trim() !== '') {
+              return normKeyMap[cleanCand];
+            }
           }
           return '';
         };
 
-        const image = String(getVal(['image', 'Image', 'imageUrl', '画像', '画像URL', 'イラスト', '写真', 'URL', 'url', 'img', 'src']) || '').trim();
-        const attack1Name = String(getVal(['attack1Name', 'ワザ1', 'ワザ1名', '技1', '技1名', 'Attack1Name', 'attack1']) || '').trim();
-        const attack1Damage = getVal(['attack1Damage', 'ワザ1ダメージ', '技1ダメージ', 'ダメージ1', 'Attack1Damage']);
-        const attack1Energy = String(getVal(['attack1Energy', 'ワザ1エネ', 'ワザ1エネルギー', '技1エネ', 'コスト1', 'Attack1Energy']) || '').trim();
-        const attack1Text = String(getVal(['attack1Text', 'ワザ1説明', 'ワザ1効果', 'ワザ1テキスト', '技1効果', 'Attack1Text']) || '').trim();
+        const image = String(getVal(['image', 'imageUrl', '画像', '画像url', 'イラスト', '写真', 'url', 'img', 'src']) || '').trim();
+        const attack1Name = String(getVal(['attack1Name', 'attack1name', 'attack1', 'ワザ1', 'ワザ1名', '技1', '技1名']) || '').trim();
+        const attack1Damage = getVal(['attack1Damage', 'attack1damage', 'ワザ1ダメージ', '技1ダメージ', 'ダメージ1']);
+        const attack1Energy = String(getVal(['attack1Energy', 'attack1energy', 'ワザ1エネ', 'ワザ1エネルギー', '技1エネ', 'コスト1']) || '').trim();
+        const attack1Text = String(getVal(['attack1Text', 'attack1text', 'ワザ1説明', 'ワザ1効果', 'ワザ1テキスト', '技1効果']) || '').trim();
 
-        const attack2Name = String(getVal(['attack2Name', 'ワザ2', 'ワザ2名', '技2', '技2名', 'Attack2Name', 'attack2']) || '').trim();
-        const attack2Damage = getVal(['attack2Damage', 'ワザ2ダメージ', '技2ダメージ', 'ダメージ2', 'Attack2Damage']);
-        const attack2Energy = String(getVal(['attack2Energy', 'ワザ2エネ', 'ワザ2エネルギー', '技2エネ', 'コスト2', 'Attack2Energy']) || '').trim();
-        const attack2Text = String(getVal(['attack2Text', 'ワザ2説明', 'ワザ2効果', 'ワザ2テキスト', '技2効果', 'Attack2Text']) || '').trim();
+        const attack2Name = String(getVal(['attack2Name', 'attack2name', 'attack2', 'ワザ2', 'ワザ2名', '技2', '技2名']) || '').trim();
+        const attack2Damage = getVal(['attack2Damage', 'attack2damage', 'ワザ2ダメージ', '技2ダメージ', 'ダメージ2']);
+        const attack2Energy = String(getVal(['attack2Energy', 'attack2energy', 'ワザ2エネ', 'ワザ2エネルギー', '技2エネ', 'コスト2']) || '').trim();
+        const attack2Text = String(getVal(['attack2Text', 'attack2text', 'ワザ2説明', 'ワザ2効果', 'ワザ2テキスト', '技2効果']) || '').trim();
 
-        const abilityName = String(getVal(['abilityName', '特性', '特性名', 'とくせい', 'AbilityName', 'ability']) || '').trim();
-        const abilityText = String(getVal(['abilityText', '特性説明', '特性効果', '特性テキスト', 'AbilityText']) || '').trim();
+        const abilityName = String(getVal(['abilityName', 'abilityname', 'ability', '特性', '特性名', 'とくせい']) || '').trim();
+        const abilityText = String(getVal(['abilityText', 'abilitytext', '特性説明', '特性効果', '特性テキスト']) || '').trim();
 
-        const description = String(getVal(['description', '説明', '説明文', 'テキスト', 'フレーバー', 'Description', 'text', 'info']) || '').trim();
+        const description = String(getVal(['description', '説明', '説明文', 'テキスト', 'フレーバー', 'text', 'info']) || '').trim();
 
         return {
           ...c,
