@@ -32,28 +32,7 @@ window.DeckSystem = function () {
       try { return localStorage.getItem('orbital_mock_user_email') || ''; } catch (e) { return ''; }
     })();
 
-    if (window.google && google.script && google.script.run) {
-      try {
-        google.script.run
-          .withSuccessHandler(function (user) {
-            state.currentUser = user || { email: 'player@gmail.com', displayName: 'プレイヤー', avatar: '⚡', isLoggedIn: true };
-            updateUserBadge();
-            if (callback) callback(state.currentUser);
-          })
-          .withFailureHandler(function (err) {
-            console.warn('Failed to get current user:', err);
-            state.currentUser = { email: 'player@gmail.com', displayName: 'プレイヤー', avatar: '⚡', isLoggedIn: true };
-            updateUserBadge();
-            if (callback) callback(state.currentUser);
-          })
-          .getUserProfile(localEmail);
-      } catch (e) {
-        console.warn('fetchCurrentUser error:', e);
-        state.currentUser = { email: 'player@gmail.com', displayName: 'プレイヤー', avatar: '⚡', isLoggedIn: true };
-        updateUserBadge();
-        if (callback) callback(state.currentUser);
-      }
-    } else {
+    const fallbackUser = () => {
       var email = localEmail || 'player@gmail.com';
       var users = [];
       try {
@@ -69,6 +48,31 @@ window.DeckSystem = function () {
       };
       updateUserBadge();
       if (callback) callback(state.currentUser);
+    };
+
+    if (window.google && google.script && google.script.run) {
+      try {
+        const runner = google.script.run
+          .withSuccessHandler(function (user) {
+            state.currentUser = user || { email: 'player@gmail.com', displayName: 'プレイヤー', avatar: '⚡', isLoggedIn: true };
+            updateUserBadge();
+            if (callback) callback(state.currentUser);
+          })
+          .withFailureHandler(function (err) {
+            console.warn('Failed to get current user:', err);
+            fallbackUser();
+          });
+        if (typeof runner.getUserProfile === 'function') {
+          runner.getUserProfile(localEmail);
+        } else {
+          fallbackUser();
+        }
+      } catch (e) {
+        console.warn('fetchCurrentUser error:', e);
+        fallbackUser();
+      }
+    } else {
+      fallbackUser();
     }
   }
 
@@ -108,21 +112,42 @@ window.DeckSystem = function () {
       return;
     }
 
+    const fallbackCardPool = () => {
+      try {
+        const raw = localStorage.getItem('orbital_cards_mock') || localStorage.getItem('orbital_cards');
+        state.cardPool = raw ? JSON.parse(raw) : [];
+      } catch (e) {
+        state.cardPool = [];
+      }
+      if (window.App && window.App.state) window.App.state.cards = state.cardPool;
+      if (callback) callback(state.cardPool);
+      renderEditor();
+    };
+
     if (window.google && google.script && google.script.run) {
-      google.script.run.
-      withSuccessHandler(function (cards) {
-        state.cardPool = Array.isArray(cards) ? cards : [];
-        if (window.App && window.App.state) window.App.state.cards = state.cardPool;
-        if (callback) callback(state.cardPool);
-        renderEditor();
-      }).
-      withFailureHandler(function (err) {
-        console.error('Failed to load card pool:', err);
-        if (callback) callback([]);
-      }).
-      getCards();
-    } else if (callback) {
-      callback(state.cardPool);
+      try {
+        const runner = google.script.run
+          .withSuccessHandler(function (cards) {
+            state.cardPool = Array.isArray(cards) ? cards : [];
+            if (window.App && window.App.state) window.App.state.cards = state.cardPool;
+            if (callback) callback(state.cardPool);
+            renderEditor();
+          })
+          .withFailureHandler(function (err) {
+            console.warn('Failed to load card pool:', err);
+            fallbackCardPool();
+          });
+        if (typeof runner.getCards === 'function') {
+          runner.getCards();
+        } else {
+          fallbackCardPool();
+        }
+      } catch (e) {
+        console.warn('syncCardPool runner error:', e);
+        fallbackCardPool();
+      }
+    } else {
+      fallbackCardPool();
     }
   }
 
@@ -179,18 +204,30 @@ window.DeckSystem = function () {
       if (callback) callback(state.decks);
     };
 
-    if (window.google && google.script && google.script.run) {
-      google.script.run.
-      withSuccessHandler(onLoaded).
-      withFailureHandler(function (err) {
-        console.error('Failed to load decks from server:', err);
-        loadLocalDecks();
-        onLoaded(state.decks);
-      }).
-      getDecks(userEmail);
-    } else {
+    const fallbackDecks = () => {
       loadLocalDecks();
       onLoaded(state.decks);
+    };
+
+    if (window.google && google.script && google.script.run) {
+      try {
+        const runner = google.script.run
+          .withSuccessHandler(onLoaded)
+          .withFailureHandler(function (err) {
+            console.warn('Failed to load decks from server:', err);
+            fallbackDecks();
+          });
+        if (typeof runner.getDecks === 'function') {
+          runner.getDecks(userEmail);
+        } else {
+          fallbackDecks();
+        }
+      } catch (e) {
+        console.warn('loadDecks runner error:', e);
+        fallbackDecks();
+      }
+    } else {
+      fallbackDecks();
     }
   }
 

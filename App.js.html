@@ -598,12 +598,26 @@
     },
 
     loadDefaultLocalCards() {
-      this.state.cards = this.state.cards || [];
+      if (!Array.isArray(this.state.cards) || this.state.cards.length === 0) {
+        try {
+          const raw = localStorage.getItem('orbital_cards_mock') || localStorage.getItem('orbital_cards');
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              this.state.cards = parsed;
+            }
+          }
+        } catch (e) {}
+      }
+      this.state.cards = Array.isArray(this.state.cards) ? this.state.cards : [];
       const el = this.el('homeCardCount');
       if (el) el.textContent = this.state.cards.length + '枚のカード';
       if (window.CardSystem) {
-        CardSystem.renderList();
-        CardSystem.renderRecent();
+        if (typeof CardSystem.renderList === 'function') CardSystem.renderList();
+        if (typeof CardSystem.renderRecent === 'function') CardSystem.renderRecent();
+      }
+      if (window.DeckSystem) {
+        if (typeof DeckSystem.syncCardPool === 'function') DeckSystem.syncCardPool();
       }
     },
 
