@@ -5147,6 +5147,13 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
       safe('BattleSystem.init', () => {
         if (window.BattleSystem && window.BattleSystem.init) BattleSystem.init();
       });
+      const initialPage = (() => {
+        try {
+          return new URLSearchParams(window.location.search).get('page') ||
+          window.location.hash.replace('#', '') ||
+          'home';
+        } catch (e) { return 'home'; }
+      })();
       safe('showPage', () => this.showPage(initialPage));
       try {
         const loaderScreen = document.getElementById('gas-loader-screen');
@@ -6037,6 +6044,7 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   // 初期化は Index.html 末尾の inline script から行います
 })();
 </script>
+
 
 
 
