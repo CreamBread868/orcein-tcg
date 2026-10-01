@@ -5688,9 +5688,9 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
         </div>
       </div>
       <div style="display:flex; align-items:center; gap:12px;">
-        <div class="nmt-balance-badge" id="nmtBalanceBadge" title="NMT通貨 (毎日ログインボーナスでゲット！)" onclick="App.claimDailyBonus()">
+        <div class="nmt-balance-badge" id="nmtBalanceBadge" title="NMT通貨 (毎日ログインボーナスでゲット！)" onclick="App.openDailyBonusModal()">
           <span class="nmt-icon">✨</span>
-          <span id="nmtBalanceVal" class="nmt-val">100 NMT</span>
+          <span id="nmtBalanceVal" class="nmt-val">1000 NMT</span>
           <button id="dailyBonusClaimBtn" class="daily-bonus-claim-btn" type="button">デイリーボーナス!</button>
         </div>
         <button id="homeGitHubSyncBtn" class="secondary-button small-button" type="button" title="GitHubリポジトリからカード・デッキデータを読み込む" onclick="App.promptGitHubSync()">🐙 GitHub同期</button>
@@ -6600,13 +6600,13 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
             </div>
             <div style="display:flex; gap:10px;">
               <button class="secondary-button admin-only-ui hidden" id="adminAddPackBtn" onclick="App.openAdminPackModal()">＋ 管理者: パック追加/編集</button>
-              <button class="primary-button" onclick="App.claimDailyBonus()">🎁 ログインボーナス取得 (+100 NMT)</button>
+              <button class="primary-button" onclick="App.openDailyBonusModal()">🎁 ログインボーナス取得 (+1000 NMT)</button>
             </div>
           </div>
 
           <div class="pack-shop-intro" style="margin-bottom:20px; padding:15px 20px; background:linear-gradient(135deg, rgba(255,215,0,0.1), rgba(129,140,248,0.1)); border:1px solid rgba(255,215,0,0.3); border-radius:12px;">
-            <div style="font-weight:700; color:#ffd700; margin-bottom:4px;">✨ 毎日ログインボーナス＆パック開封システム</div>
-            <div style="font-size:13px; color:#cbd5e1;">毎日ログインして100 NMTを獲得！溜まったNMTでオリジナル拡張パックを購入・開封しよう！獲得したカードは自動的にカード一覧＆デッキビルドで即座に使用可能です。</div>
+            <div style="font-weight:700; color:#ffd700; margin-bottom:4px;">✨ 毎日ログインボーナス (1000 NMT) ＆ ポケポケ風パック開封体験！</div>
+            <div style="font-size:13px; color:#cbd5e1;">毎日ログインして **1000 NMT** を獲得！リアルな3Dパック破り・カード裏返し演出でカードを引き当てよう！獲得したカードは自動的にデッキ作成で使用可能です。</div>
           </div>
 
           <div id="packListGrid" class="pack-grid">
@@ -6616,27 +6616,88 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
       </main>
     </div>
 
-    <!-- 3Dパック開封オーバーレイ -->
-    <div id="packOpeningOverlay" class="modal hidden" style="background: rgba(5,7,15,0.95); backdrop-filter: blur(15px); z-index:9999;">
+    <!-- 大型 毎日ログインボーナス モーダル -->
+    <div id="dailyBonusModal" class="modal hidden" style="z-index:9999;">
+      <div class="modal-backdrop" onclick="App.closeDailyBonusModal()"></div>
+      <div class="modal-card daily-bonus-modal-card">
+        <button class="modal-close" onclick="App.closeDailyBonusModal()">×</button>
+        <div class="eyebrow" style="color:#ffd700; font-size:12px; letter-spacing:2px;">SPECIAL PRESENT</div>
+        <h1 style="color:#fff; font-size:26px; font-weight:900; margin-top:4px;">✨ DAILY LOGIN BONUS ✨</h1>
+        <p class="muted" style="font-size:13px; margin-top:2px;">本日のログインボーナスが届きました！</p>
+        
+        <div class="daily-bonus-hero-icon">💰</div>
+        <div id="dailyBonusAmountText" class="daily-bonus-amount-badge">+1,000 NMT</div>
+        <div style="color:#cbd5e1; font-size:13px; font-weight:700;">ゲーム内通貨 NMT を使ってパックを開封しよう！</div>
+
+        <div class="daily-bonus-streak-container">
+          <div class="streak-day-box active">
+            <span class="streak-day-title">Day 1</span>
+            <span class="streak-day-reward">1000</span>
+          </div>
+          <div class="streak-day-box">
+            <span class="streak-day-title">Day 2</span>
+            <span class="streak-day-reward">1000</span>
+          </div>
+          <div class="streak-day-box">
+            <span class="streak-day-title">Day 3</span>
+            <span class="streak-day-reward">1000</span>
+          </div>
+          <div class="streak-day-box">
+            <span class="streak-day-title">Day 4</span>
+            <span class="streak-day-reward">1000</span>
+          </div>
+          <div class="streak-day-box">
+            <span class="streak-day-title">Day 5</span>
+            <span class="streak-day-reward">1000</span>
+          </div>
+          <div class="streak-day-box">
+            <span class="streak-day-title">Day 6</span>
+            <span class="streak-day-reward">1000</span>
+          </div>
+          <div class="streak-day-box" style="border-color:#ffd700;">
+            <span class="streak-day-title" style="color:#ffd700;">Day 7</span>
+            <span class="streak-day-reward" style="color:#ff0055;">3000</span>
+          </div>
+        </div>
+
+        <button id="claimBigDailyBonusBtn" class="claim-big-button" type="button" onclick="App.claimDailyBonus()">🎁 1,000 NMT を受け取る！</button>
+      </div>
+    </div>
+
+    <!-- ポケポケ風 3Dパック開封オーバーレイ -->
+    <div id="packOpeningOverlay" class="modal hidden" style="background: rgba(5,7,15,0.96); backdrop-filter: blur(15px); z-index:9999;">
       <div class="pack-opening-container">
         <button class="modal-close" style="z-index: 100;" onclick="App.closePackOpening()">×</button>
-        <div id="packStageVisual" class="pack-stage-visual">
-          <div id="pack3dWrapper" class="pack-3d-wrapper" onclick="App.triggerPackTear()">
-            <div class="pack-foil-cover" id="packFoilCover">
-              <div class="pack-foil-header">ORBITAL BOOSTER</div>
+        
+        <!-- PHASE 1: ポケポケ風 パック外観 & 上部カット破り -->
+        <div id="packStageVisual" class="pokepoke-pack-stage">
+          <h2 style="color:#ffd700; text-align:center; font-size:22px; font-weight:900; margin-bottom:15px; text-shadow:0 0 12px rgba(255,215,0,0.6);">
+            ✂️ パックの上部をタップ・破って開封！
+          </h2>
+          <div id="pokepokePackWrapper" class="pokepoke-pack-wrapper" onclick="App.triggerPackTear()">
+            <div class="pokepoke-pack-body" id="packFoilCover">
+              <div class="pokepoke-tear-line"></div>
+              <div class="pokepoke-tear-handle">✂️ OPEN</div>
+              <div class="pack-foil-header" style="margin-top:55px;">ORBITAL BOOSTER</div>
               <div class="pack-foil-art" id="packFoilArt">✦</div>
               <div class="pack-foil-title" id="packFoilTitle">拡張パック</div>
-              <div class="pack-foil-sub">5 CARDS INSIDE</div>
-              <div class="pack-tear-hint">クリックしてパックを開封！</div>
+              <div class="pack-foil-sub" style="margin-bottom:20px;">5 CARDS INSIDE</div>
             </div>
           </div>
         </div>
 
-        <div id="packRevealStage" class="pack-reveal-stage hidden">
-          <h2 style="text-align:center; color:#ffd700; margin-bottom:15px; text-shadow:0 0 10px rgba(255,215,0,0.5);">🎉 パック開封完了！</h2>
-          <div id="revealedCardsContainer" class="revealed-cards-grid"></div>
-          <div style="text-align:center; margin-top:25px;">
-            <button class="primary-button" style="padding:12px 30px; font-size:16px;" onclick="App.closePackOpening()">コレクションに追加して完了</button>
+        <!-- PHASE 2: ポケポケ風 カードファン演出 & 手動めくり -->
+        <div id="packRevealStage" class="pack-reveal-stage hidden" style="width:100%;">
+          <div style="text-align:center; margin-bottom:10px;">
+            <div style="color:#94a3b8; font-size:12px; letter-spacing:1px;">BOOSTER REVEAL</div>
+            <h2 style="color:#ffd700; font-size:24px; font-weight:900; text-shadow:0 0 12px rgba(255,215,0,0.6);">✨ カードを1枚ずつタップしてめくろう！</h2>
+          </div>
+
+          <div id="pokepokeCardsFanContainer" class="pokepoke-cards-fan"></div>
+
+          <div style="display:flex; justify-content:center; gap:15px; margin-top:25px;">
+            <button class="secondary-button" style="padding:10px 24px;" onclick="App.revealAllPackCards()">✨ すべてめくる</button>
+            <button class="primary-button" style="padding:10px 30px; font-size:15px; font-weight:900;" onclick="App.closePackOpening()">コレクションに保存して完了</button>
           </div>
         </div>
       </div>

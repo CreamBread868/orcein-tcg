@@ -1089,6 +1089,15 @@
     initNmtAndPacks() {
       this.updateNmtBadge();
       this.loadPacks();
+      // 今日のログインボーナスが未取得の場合、自動的に大型モータルをポップアップ表示！
+      const today = new Date().toISOString().slice(0, 10);
+      let lastClaim = '';
+      try { lastClaim = localStorage.getItem('ORBITAL_LAST_DAILY_BONUS') || ''; } catch(e) {}
+      if (lastClaim !== today) {
+        setTimeout(() => {
+          this.openDailyBonusModal();
+        }, 800);
+      }
     },
 
     updateNmtBadge() {
@@ -1114,22 +1123,66 @@
       }
     },
 
+    openDailyBonusModal() {
+      const modal = this.el('dailyBonusModal');
+      if (modal) modal.classList.remove('hidden');
+      const today = new Date().toISOString().slice(0, 10);
+      let lastClaim = '';
+      try { lastClaim = localStorage.getItem('ORBITAL_LAST_DAILY_BONUS') || ''; } catch(e) {}
+      const btn = this.el('claimBigDailyBonusBtn');
+      if (btn) {
+        if (lastClaim === today) {
+          btn.textContent = '✅ 本日の 1,000 NMT 受取完了';
+          btn.style.opacity = '0.6';
+          btn.disabled = true;
+        } else {
+          btn.textContent = '🎁 1,000 NMT を受け取る！';
+          btn.style.opacity = '1';
+          btn.disabled = false;
+        }
+      }
+    },
+
+    closeDailyBonusModal() {
+      const modal = this.el('dailyBonusModal');
+      if (modal) modal.classList.add('hidden');
+    },
+
     claimDailyBonus() {
       const today = new Date().toISOString().slice(0, 10);
       let lastClaim = '';
       try { lastClaim = localStorage.getItem('ORBITAL_LAST_DAILY_BONUS') || ''; } catch(e) {}
 
       if (lastClaim === today) {
-        this.toast('ℹ️ 本日のデイリーボーナス (100 NMT) は取得済みです！明日またご来店ください。');
+        this.toast('ℹ️ 本日のデイリーボーナス (1,000 NMT) は取得済みです！明日またご来店ください。');
         return;
       }
 
-      this.state.nmtBalance += 100;
+      this.state.nmtBalance += 1000;
       try {
         localStorage.setItem('ORBITAL_LAST_DAILY_BONUS', today);
       } catch (e) {}
       this.updateNmtBadge();
-      this.toast('🎁 毎日ログインボーナス +100 NMT を獲得しました！');
+      
+      const btn = this.el('claimBigDailyBonusBtn');
+      if (btn) {
+        btn.textContent = '✅ 本日の 1,000 NMT 受取完了';
+        btn.style.opacity = '0.6';
+        btn.disabled = true;
+      }
+
+      // 金コインエフェクト表示
+      this.triggerCoinBurst();
+      this.toast('🎉 毎日ログインボーナス +1,000 NMT を獲得しました！');
+      setTimeout(() => this.closeDailyBonusModal(), 1600);
+    },
+
+    triggerCoinBurst() {
+      const burst = document.createElement('div');
+      burst.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); font-size:64px; z-index:10000; pointer-events:none; animation:coinBurstAnim 1.2s ease-out forwards;';
+      burst.innerHTML = '💰✨ 💰✨ 💰✨';
+      document.body.appendChild(burst);
+      setTimeout(() => { if (burst.parentNode) burst.parentNode.removeChild(burst); }, 1300);
     },
 
     loadPacks() {
@@ -1138,7 +1191,7 @@
         {
           id: 'pack_standard',
           title: '第1弾: 星界の覚醒 (Standard)',
-          description: 'たね・進化ポケモンと基本エネルギー、汎用グッズ・サポートが封入された基本拡張パック！',
+          description: 'たne・進化ポケモンと基本エネルギー、汎用グッズ・サポートが封入された基本拡張パック！',
           price: 100,
           cardCount: 5,
           image: ''
@@ -1243,7 +1296,7 @@
             hp: 80,
             attack1Name: 'スターバースト',
             attack1Damage: 40,
-            rarity: (i === 4 ? 'SR' : (i === 3 ? 'R' : 'N'))
+            rarity: (i === 4 ? 'UR' : (i === 3 ? 'SR' : (i === 2 ? 'R' : 'N')))
           });
         }
       }
@@ -1282,28 +1335,68 @@
       if (stageVis) stageVis.style.display = 'none';
       if (revealStage) revealStage.classList.remove('hidden');
 
-      const container = this.el('revealedCardsContainer');
+      const container = this.el('pokepokeCardsFanContainer');
       if (!container) return;
 
       const drawn = this.state.activeDrawnCards || [];
       container.innerHTML = drawn.map((card, idx) => {
         const rarityClass = card.rarity ? `rarity-aura-${card.rarity}` : '';
+        const rot = (idx - 2) * 6; // ファン状の傾き angle (-12deg ~ +12deg)
+        const transY = Math.abs(idx - 2) * 8; // 中央が高くなるアーチ型
+
         return `
-          <div class="card-flip-wrap ${rarityClass}" style="width:160px; height:235px; perspective:1000px; cursor:pointer;" onclick="this.querySelector('.card-flip-inner').style.transform = 'rotateY(180deg)'">
-            <div class="card-flip-inner" style="width:100%; height:100%; transition:transform 0.6s cubic-bezier(0.4, 0, 0.2, 1); transform-style:preserve-3d; position:relative;">
-              <div class="flip-card-front" style="position:absolute; width:100%; height:100%; backface-visibility:hidden; border-radius:12px; background:linear-gradient(145deg, #1e293b, #0f172a); border:2px solid rgba(255,215,0,0.5); display:flex; flex-direction:column; align-items:center; justify-content:center;">
-                <div style="font-size:36px; color:#ffd700;">✦</div>
-                <div style="font-size:11px; color:#94a3b8; margin-top:8px;">クリックでめくる</div>
+          <div class="pokepoke-card-item ${rarityClass}" style="transform: rotate(${rot}deg) translateY(${transY}px); z-index:${10 + idx};" onclick="App.flipPokepokeCard(this, ${idx})">
+            <div class="pokepoke-card-inner">
+              <div class="pokepoke-card-back">
+                <div style="font-size:10px; color:#ffd700; font-weight:800; margin-top:8px;">ORBITAL CARD</div>
               </div>
-              <div class="flip-card-back" style="position:absolute; width:100%; height:100%; backface-visibility:hidden; transform:rotateY(180deg); border-radius:12px; background:#0f172a; border:2px solid rgba(0,229,255,0.6); padding:10px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 8px 20px rgba(0,0,0,0.8);">
-                <div style="font-size:10px; color:#00e5ff; font-weight:800;">${this.escapeHtml(card.category || 'カード')} [${this.escapeHtml(card.type || '無色')}]</div>
-                <div style="font-size:14px; font-weight:900; color:#fff; text-align:center; margin:8px 0;">${this.escapeHtml(card.name)}</div>
-                <div style="font-size:11px; color:#ffd700; text-align:right; font-weight:900;">${this.escapeHtml(card.rarity || 'R')}</div>
+              <div class="pokepoke-card-front">
+                <div style="font-size:10px; color:#00e5ff; font-weight:800; display:flex; justify-content:space-between;">
+                  <span>${this.escapeHtml(card.category || 'カード')}</span>
+                  <span>${this.escapeHtml(card.type || '無色')}</span>
+                </div>
+                <div style="font-size:15px; font-weight:900; color:#fff; text-align:center; margin:10px 0; text-shadow:0 2px 8px rgba(0,0,0,0.8);">${this.escapeHtml(card.name)}</div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <span style="font-size:10px; color:#94a3b8;">HP ${card.hp || 80}</span>
+                  <span style="font-size:12px; color:#ffd700; font-weight:900; background:rgba(255,215,0,0.2); padding:1px 6px; border-radius:4px;">${this.escapeHtml(card.rarity || 'R')}</span>
+                </div>
               </div>
             </div>
           </div>
         `;
       }).join('');
+    },
+
+    flipPokepokeCard(el, idx) {
+      if (!el) return;
+      const inner = el.querySelector('.pokepoke-card-inner');
+      if (!inner || inner.classList.contains('flipped')) return;
+
+      inner.classList.add('flipped');
+      const card = (this.state.activeDrawnCards || [])[idx];
+      if (!card) return;
+
+      // レアリティに応じたポッピン演出
+      if (card.rarity === 'UR' || card.rarity === 'SR') {
+        const glow = document.createElement('div');
+        glow.className = 'ur-glow-effect';
+        document.body.appendChild(glow);
+        setTimeout(() => { if (glow.parentNode) glow.parentNode.removeChild(glow); }, 1500);
+        this.toast(`🌟 ULTRA RARE！【${card.name}】を引き当てました！`);
+      } else if (card.rarity === 'R') {
+        this.toast(`✨ RARE！【${card.name}】を手に入れました！`);
+      }
+    },
+
+    revealAllPackCards() {
+      const container = this.el('pokepokeCardsFanContainer');
+      if (!container) return;
+      const items = container.querySelectorAll('.pokepoke-card-item');
+      items.forEach((item, i) => {
+        setTimeout(() => {
+          this.flipPokepokeCard(item, i);
+        }, i * 150);
+      });
     },
 
     closePackOpening() {

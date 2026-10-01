@@ -5688,9 +5688,9 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
         </div>
       </div>
       <div style="display:flex; align-items:center; gap:12px;">
-        <div class="nmt-balance-badge" id="nmtBalanceBadge" title="NMT通貨 (毎日ログインボーナスでゲット！)" onclick="App.claimDailyBonus()">
+        <div class="nmt-balance-badge" id="nmtBalanceBadge" title="NMT通貨 (毎日ログインボーナスでゲット！)" onclick="App.openDailyBonusModal()">
           <span class="nmt-icon">✨</span>
-          <span id="nmtBalanceVal" class="nmt-val">100 NMT</span>
+          <span id="nmtBalanceVal" class="nmt-val">1000 NMT</span>
           <button id="dailyBonusClaimBtn" class="daily-bonus-claim-btn" type="button">デイリーボーナス!</button>
         </div>
         <button id="homeGitHubSyncBtn" class="secondary-button small-button" type="button" title="GitHubリポジトリからカード・デッキデータを読み込む" onclick="App.promptGitHubSync()">🐙 GitHub同期</button>
@@ -6600,13 +6600,13 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
             </div>
             <div style="display:flex; gap:10px;">
               <button class="secondary-button admin-only-ui hidden" id="adminAddPackBtn" onclick="App.openAdminPackModal()">＋ 管理者: パック追加/編集</button>
-              <button class="primary-button" onclick="App.claimDailyBonus()">🎁 ログインボーナス取得 (+100 NMT)</button>
+              <button class="primary-button" onclick="App.openDailyBonusModal()">🎁 ログインボーナス取得 (+1000 NMT)</button>
             </div>
           </div>
 
           <div class="pack-shop-intro" style="margin-bottom:20px; padding:15px 20px; background:linear-gradient(135deg, rgba(255,215,0,0.1), rgba(129,140,248,0.1)); border:1px solid rgba(255,215,0,0.3); border-radius:12px;">
-            <div style="font-weight:700; color:#ffd700; margin-bottom:4px;">✨ 毎日ログインボーナス＆パック開封システム</div>
-            <div style="font-size:13px; color:#cbd5e1;">毎日ログインして100 NMTを獲得！溜まったNMTでオリジナル拡張パックを購入・開封しよう！獲得したカードは自動的にカード一覧＆デッキビルドで即座に使用可能です。</div>
+            <div style="font-weight:700; color:#ffd700; margin-bottom:4px;">✨ 毎日ログインボーナス (1000 NMT) ＆ ポケポケ風パック開封体験！</div>
+            <div style="font-size:13px; color:#cbd5e1;">毎日ログインして **1000 NMT** を獲得！リアルな3Dパック破り・カード裏返し演出でカードを引き当てよう！獲得したカードは自動的にデッキ作成で使用可能です。</div>
           </div>
 
           <div id="packListGrid" class="pack-grid">
@@ -6616,27 +6616,88 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
       </main>
     </div>
 
-    <!-- 3Dパック開封オーバーレイ -->
-    <div id="packOpeningOverlay" class="modal hidden" style="background: rgba(5,7,15,0.95); backdrop-filter: blur(15px); z-index:9999;">
+    <!-- 大型 毎日ログインボーナス モーダル -->
+    <div id="dailyBonusModal" class="modal hidden" style="z-index:9999;">
+      <div class="modal-backdrop" onclick="App.closeDailyBonusModal()"></div>
+      <div class="modal-card daily-bonus-modal-card">
+        <button class="modal-close" onclick="App.closeDailyBonusModal()">×</button>
+        <div class="eyebrow" style="color:#ffd700; font-size:12px; letter-spacing:2px;">SPECIAL PRESENT</div>
+        <h1 style="color:#fff; font-size:26px; font-weight:900; margin-top:4px;">✨ DAILY LOGIN BONUS ✨</h1>
+        <p class="muted" style="font-size:13px; margin-top:2px;">本日のログインボーナスが届きました！</p>
+        
+        <div class="daily-bonus-hero-icon">💰</div>
+        <div id="dailyBonusAmountText" class="daily-bonus-amount-badge">+1,000 NMT</div>
+        <div style="color:#cbd5e1; font-size:13px; font-weight:700;">ゲーム内通貨 NMT を使ってパックを開封しよう！</div>
+
+        <div class="daily-bonus-streak-container">
+          <div class="streak-day-box active">
+            <span class="streak-day-title">Day 1</span>
+            <span class="streak-day-reward">1000</span>
+          </div>
+          <div class="streak-day-box">
+            <span class="streak-day-title">Day 2</span>
+            <span class="streak-day-reward">1000</span>
+          </div>
+          <div class="streak-day-box">
+            <span class="streak-day-title">Day 3</span>
+            <span class="streak-day-reward">1000</span>
+          </div>
+          <div class="streak-day-box">
+            <span class="streak-day-title">Day 4</span>
+            <span class="streak-day-reward">1000</span>
+          </div>
+          <div class="streak-day-box">
+            <span class="streak-day-title">Day 5</span>
+            <span class="streak-day-reward">1000</span>
+          </div>
+          <div class="streak-day-box">
+            <span class="streak-day-title">Day 6</span>
+            <span class="streak-day-reward">1000</span>
+          </div>
+          <div class="streak-day-box" style="border-color:#ffd700;">
+            <span class="streak-day-title" style="color:#ffd700;">Day 7</span>
+            <span class="streak-day-reward" style="color:#ff0055;">3000</span>
+          </div>
+        </div>
+
+        <button id="claimBigDailyBonusBtn" class="claim-big-button" type="button" onclick="App.claimDailyBonus()">🎁 1,000 NMT を受け取る！</button>
+      </div>
+    </div>
+
+    <!-- ポケポケ風 3Dパック開封オーバーレイ -->
+    <div id="packOpeningOverlay" class="modal hidden" style="background: rgba(5,7,15,0.96); backdrop-filter: blur(15px); z-index:9999;">
       <div class="pack-opening-container">
         <button class="modal-close" style="z-index: 100;" onclick="App.closePackOpening()">×</button>
-        <div id="packStageVisual" class="pack-stage-visual">
-          <div id="pack3dWrapper" class="pack-3d-wrapper" onclick="App.triggerPackTear()">
-            <div class="pack-foil-cover" id="packFoilCover">
-              <div class="pack-foil-header">ORBITAL BOOSTER</div>
+        
+        <!-- PHASE 1: ポケポケ風 パック外観 & 上部カット破り -->
+        <div id="packStageVisual" class="pokepoke-pack-stage">
+          <h2 style="color:#ffd700; text-align:center; font-size:22px; font-weight:900; margin-bottom:15px; text-shadow:0 0 12px rgba(255,215,0,0.6);">
+            ✂️ パックの上部をタップ・破って開封！
+          </h2>
+          <div id="pokepokePackWrapper" class="pokepoke-pack-wrapper" onclick="App.triggerPackTear()">
+            <div class="pokepoke-pack-body" id="packFoilCover">
+              <div class="pokepoke-tear-line"></div>
+              <div class="pokepoke-tear-handle">✂️ OPEN</div>
+              <div class="pack-foil-header" style="margin-top:55px;">ORBITAL BOOSTER</div>
               <div class="pack-foil-art" id="packFoilArt">✦</div>
               <div class="pack-foil-title" id="packFoilTitle">拡張パック</div>
-              <div class="pack-foil-sub">5 CARDS INSIDE</div>
-              <div class="pack-tear-hint">クリックしてパックを開封！</div>
+              <div class="pack-foil-sub" style="margin-bottom:20px;">5 CARDS INSIDE</div>
             </div>
           </div>
         </div>
 
-        <div id="packRevealStage" class="pack-reveal-stage hidden">
-          <h2 style="text-align:center; color:#ffd700; margin-bottom:15px; text-shadow:0 0 10px rgba(255,215,0,0.5);">🎉 パック開封完了！</h2>
-          <div id="revealedCardsContainer" class="revealed-cards-grid"></div>
-          <div style="text-align:center; margin-top:25px;">
-            <button class="primary-button" style="padding:12px 30px; font-size:16px;" onclick="App.closePackOpening()">コレクションに追加して完了</button>
+        <!-- PHASE 2: ポケポケ風 カードファン演出 & 手動めくり -->
+        <div id="packRevealStage" class="pack-reveal-stage hidden" style="width:100%;">
+          <div style="text-align:center; margin-bottom:10px;">
+            <div style="color:#94a3b8; font-size:12px; letter-spacing:1px;">BOOSTER REVEAL</div>
+            <h2 style="color:#ffd700; font-size:24px; font-weight:900; text-shadow:0 0 12px rgba(255,215,0,0.6);">✨ カードを1枚ずつタップしてめくろう！</h2>
+          </div>
+
+          <div id="pokepokeCardsFanContainer" class="pokepoke-cards-fan"></div>
+
+          <div style="display:flex; justify-content:center; gap:15px; margin-top:25px;">
+            <button class="secondary-button" style="padding:10px 24px;" onclick="App.revealAllPackCards()">✨ すべてめくる</button>
+            <button class="primary-button" style="padding:10px 30px; font-size:15px; font-weight:900;" onclick="App.closePackOpening()">コレクションに保存して完了</button>
           </div>
         </div>
       </div>
@@ -20622,6 +20683,15 @@ window.DeckSystem = function () {
     initNmtAndPacks() {
       this.updateNmtBadge();
       this.loadPacks();
+      // 今日のログインボーナスが未取得の場合、自動的に大型モータルをポップアップ表示！
+      const today = new Date().toISOString().slice(0, 10);
+      let lastClaim = '';
+      try { lastClaim = localStorage.getItem('ORBITAL_LAST_DAILY_BONUS') || ''; } catch(e) {}
+      if (lastClaim !== today) {
+        setTimeout(() => {
+          this.openDailyBonusModal();
+        }, 800);
+      }
     },
 
     updateNmtBadge() {
@@ -20647,22 +20717,66 @@ window.DeckSystem = function () {
       }
     },
 
+    openDailyBonusModal() {
+      const modal = this.el('dailyBonusModal');
+      if (modal) modal.classList.remove('hidden');
+      const today = new Date().toISOString().slice(0, 10);
+      let lastClaim = '';
+      try { lastClaim = localStorage.getItem('ORBITAL_LAST_DAILY_BONUS') || ''; } catch(e) {}
+      const btn = this.el('claimBigDailyBonusBtn');
+      if (btn) {
+        if (lastClaim === today) {
+          btn.textContent = '✅ 本日の 1,000 NMT 受取完了';
+          btn.style.opacity = '0.6';
+          btn.disabled = true;
+        } else {
+          btn.textContent = '🎁 1,000 NMT を受け取る！';
+          btn.style.opacity = '1';
+          btn.disabled = false;
+        }
+      }
+    },
+
+    closeDailyBonusModal() {
+      const modal = this.el('dailyBonusModal');
+      if (modal) modal.classList.add('hidden');
+    },
+
     claimDailyBonus() {
       const today = new Date().toISOString().slice(0, 10);
       let lastClaim = '';
       try { lastClaim = localStorage.getItem('ORBITAL_LAST_DAILY_BONUS') || ''; } catch(e) {}
 
       if (lastClaim === today) {
-        this.toast('ℹ️ 本日のデイリーボーナス (100 NMT) は取得済みです！明日またご来店ください。');
+        this.toast('ℹ️ 本日のデイリーボーナス (1,000 NMT) は取得済みです！明日またご来店ください。');
         return;
       }
 
-      this.state.nmtBalance += 100;
+      this.state.nmtBalance += 1000;
       try {
         localStorage.setItem('ORBITAL_LAST_DAILY_BONUS', today);
       } catch (e) {}
       this.updateNmtBadge();
-      this.toast('🎁 毎日ログインボーナス +100 NMT を獲得しました！');
+      
+      const btn = this.el('claimBigDailyBonusBtn');
+      if (btn) {
+        btn.textContent = '✅ 本日の 1,000 NMT 受取完了';
+        btn.style.opacity = '0.6';
+        btn.disabled = true;
+      }
+
+      // 金コインエフェクト表示
+      this.triggerCoinBurst();
+      this.toast('🎉 毎日ログインボーナス +1,000 NMT を獲得しました！');
+      setTimeout(() => this.closeDailyBonusModal(), 1600);
+    },
+
+    triggerCoinBurst() {
+      const burst = document.createElement('div');
+      burst.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); font-size:64px; z-index:10000; pointer-events:none; animation:coinBurstAnim 1.2s ease-out forwards;';
+      burst.innerHTML = '💰✨ 💰✨ 💰✨';
+      document.body.appendChild(burst);
+      setTimeout(() => { if (burst.parentNode) burst.parentNode.removeChild(burst); }, 1300);
     },
 
     loadPacks() {
@@ -20671,7 +20785,7 @@ window.DeckSystem = function () {
         {
           id: 'pack_standard',
           title: '第1弾: 星界の覚醒 (Standard)',
-          description: 'たね・進化ポケモンと基本エネルギー、汎用グッズ・サポートが封入された基本拡張パック！',
+          description: 'たne・進化ポケモンと基本エネルギー、汎用グッズ・サポートが封入された基本拡張パック！',
           price: 100,
           cardCount: 5,
           image: ''
@@ -20776,7 +20890,7 @@ window.DeckSystem = function () {
             hp: 80,
             attack1Name: 'スターバースト',
             attack1Damage: 40,
-            rarity: (i === 4 ? 'SR' : (i === 3 ? 'R' : 'N'))
+            rarity: (i === 4 ? 'UR' : (i === 3 ? 'SR' : (i === 2 ? 'R' : 'N')))
           });
         }
       }
@@ -20815,28 +20929,68 @@ window.DeckSystem = function () {
       if (stageVis) stageVis.style.display = 'none';
       if (revealStage) revealStage.classList.remove('hidden');
 
-      const container = this.el('revealedCardsContainer');
+      const container = this.el('pokepokeCardsFanContainer');
       if (!container) return;
 
       const drawn = this.state.activeDrawnCards || [];
       container.innerHTML = drawn.map((card, idx) => {
         const rarityClass = card.rarity ? `rarity-aura-${card.rarity}` : '';
+        const rot = (idx - 2) * 6; // ファン状の傾き angle (-12deg ~ +12deg)
+        const transY = Math.abs(idx - 2) * 8; // 中央が高くなるアーチ型
+
         return `
-          <div class="card-flip-wrap ${rarityClass}" style="width:160px; height:235px; perspective:1000px; cursor:pointer;" onclick="this.querySelector('.card-flip-inner').style.transform = 'rotateY(180deg)'">
-            <div class="card-flip-inner" style="width:100%; height:100%; transition:transform 0.6s cubic-bezier(0.4, 0, 0.2, 1); transform-style:preserve-3d; position:relative;">
-              <div class="flip-card-front" style="position:absolute; width:100%; height:100%; backface-visibility:hidden; border-radius:12px; background:linear-gradient(145deg, #1e293b, #0f172a); border:2px solid rgba(255,215,0,0.5); display:flex; flex-direction:column; align-items:center; justify-content:center;">
-                <div style="font-size:36px; color:#ffd700;">✦</div>
-                <div style="font-size:11px; color:#94a3b8; margin-top:8px;">クリックでめくる</div>
+          <div class="pokepoke-card-item ${rarityClass}" style="transform: rotate(${rot}deg) translateY(${transY}px); z-index:${10 + idx};" onclick="App.flipPokepokeCard(this, ${idx})">
+            <div class="pokepoke-card-inner">
+              <div class="pokepoke-card-back">
+                <div style="font-size:10px; color:#ffd700; font-weight:800; margin-top:8px;">ORBITAL CARD</div>
               </div>
-              <div class="flip-card-back" style="position:absolute; width:100%; height:100%; backface-visibility:hidden; transform:rotateY(180deg); border-radius:12px; background:#0f172a; border:2px solid rgba(0,229,255,0.6); padding:10px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 8px 20px rgba(0,0,0,0.8);">
-                <div style="font-size:10px; color:#00e5ff; font-weight:800;">${this.escapeHtml(card.category || 'カード')} [${this.escapeHtml(card.type || '無色')}]</div>
-                <div style="font-size:14px; font-weight:900; color:#fff; text-align:center; margin:8px 0;">${this.escapeHtml(card.name)}</div>
-                <div style="font-size:11px; color:#ffd700; text-align:right; font-weight:900;">${this.escapeHtml(card.rarity || 'R')}</div>
+              <div class="pokepoke-card-front">
+                <div style="font-size:10px; color:#00e5ff; font-weight:800; display:flex; justify-content:space-between;">
+                  <span>${this.escapeHtml(card.category || 'カード')}</span>
+                  <span>${this.escapeHtml(card.type || '無色')}</span>
+                </div>
+                <div style="font-size:15px; font-weight:900; color:#fff; text-align:center; margin:10px 0; text-shadow:0 2px 8px rgba(0,0,0,0.8);">${this.escapeHtml(card.name)}</div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <span style="font-size:10px; color:#94a3b8;">HP ${card.hp || 80}</span>
+                  <span style="font-size:12px; color:#ffd700; font-weight:900; background:rgba(255,215,0,0.2); padding:1px 6px; border-radius:4px;">${this.escapeHtml(card.rarity || 'R')}</span>
+                </div>
               </div>
             </div>
           </div>
         `;
       }).join('');
+    },
+
+    flipPokepokeCard(el, idx) {
+      if (!el) return;
+      const inner = el.querySelector('.pokepoke-card-inner');
+      if (!inner || inner.classList.contains('flipped')) return;
+
+      inner.classList.add('flipped');
+      const card = (this.state.activeDrawnCards || [])[idx];
+      if (!card) return;
+
+      // レアリティに応じたポッピン演出
+      if (card.rarity === 'UR' || card.rarity === 'SR') {
+        const glow = document.createElement('div');
+        glow.className = 'ur-glow-effect';
+        document.body.appendChild(glow);
+        setTimeout(() => { if (glow.parentNode) glow.parentNode.removeChild(glow); }, 1500);
+        this.toast(`🌟 ULTRA RARE！【${card.name}】を引き当てました！`);
+      } else if (card.rarity === 'R') {
+        this.toast(`✨ RARE！【${card.name}】を手に入れました！`);
+      }
+    },
+
+    revealAllPackCards() {
+      const container = this.el('pokepokeCardsFanContainer');
+      if (!container) return;
+      const items = container.querySelectorAll('.pokepoke-card-item');
+      items.forEach((item, i) => {
+        setTimeout(() => {
+          this.flipPokepokeCard(item, i);
+        }, i * 150);
+      });
     },
 
     closePackOpening() {
