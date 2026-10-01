@@ -2001,10 +2001,12 @@
       ];
       const expanded = [];
       deck.cards.forEach((entry) => {
-        const c = allCards.find((card) => String(card.id) === String(entry.id) || (entry.name && card.name === entry.name)) ||
+        if (!entry) return;
+        const key = String(entry.id || entry.name || entry.cardId || '').toLowerCase();
+        const c = allCards.find((card) => String(card.id).toLowerCase() === key || String(card.name).toLowerCase() === key) ||
                   (entry.name && entry.category ? entry : null);
         if (c) {
-          const count = Number(entry.count) || 1;
+          const count = Number(entry.count || entry.qty || entry.num || 1) || 1;
           for (let i = 0; i < count; i++) {
             expanded.push(JSON.parse(JSON.stringify(c)));
           }

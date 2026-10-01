@@ -13257,20 +13257,43 @@ window.DeckSystem = function () {
   function loadDecks(callback) {
     syncCardPool();
     const userEmail = (state.currentUser && state.currentUser.email) || '';
+    const parseLocalCards = function(raw) {
+      if (Array.isArray(raw)) return raw;
+      if (typeof raw === 'string' && raw.trim()) {
+        try { return JSON.parse(raw); } catch (e) {}
+      }
+      return [];
+    };
+
     const onLoaded = function (decks) {
       if (Array.isArray(decks)) {
         state.decks = decks.map(d => {
           if (!d) return d;
           let cards = d.cards;
-          if (typeof d.cardsJson === 'string' && d.cardsJson && (!Array.isArray(cards) || cards.length === 0)) {
-            try { cards = JSON.parse(d.cardsJson); } catch (e) {}
+          if (!Array.isArray(cards) || cards.length === 0) {
+            const raw = d.cardsJson || d.cards_json || d.cardsList || d.cardslist || d['カードリスト'] || d['デッキカード'] || d['内容'] || d['カード'];
+            cards = parseLocalCards(raw);
+          }
+          let normCards = [];
+          if (Array.isArray(cards)) {
+            normCards = cards.map(c => {
+              if (typeof c === 'string') return { id: c, count: 1 };
+              if (c && typeof c === 'object') {
+                return {
+                  id: String(c.id || c.cardId || c.code || c.name || ''),
+                  name: String(c.name || ''),
+                  count: Number(c.count || c.qty || c.num || 1) || 1
+                };
+              }
+              return null;
+            }).filter(Boolean);
           }
           return {
             ...d,
             id: String(d.id || 'deck_' + Math.random().toString(36).substr(2, 6)),
             name: String(d.name || d.デッキ名 || '無題のデッキ'),
             description: String(d.description || d.説明 || ''),
-            cards: Array.isArray(cards) ? cards : []
+            cards: normCards
           };
         });
       } else {
@@ -13346,23 +13369,31 @@ window.DeckSystem = function () {
     const warnings = [];
     const overLimitCards = [];
 
-    const poolMap = {};
     const pool = state.cardPool && state.cardPool.length ?
-    state.cardPool :
-    window.App && window.App.state && window.App.state.cards || [];
-    pool.forEach((c) => {if (c && c.id) poolMap[c.id] = c;});
+      state.cardPool :
+      (window.App && window.App.state && window.App.state.cards || []);
+
+    const poolMap = {};
+    pool.forEach((c) => {
+      if (c) {
+        if (c.id) poolMap[String(c.id).toLowerCase()] = c;
+        if (c.name) poolMap[String(c.name).toLowerCase()] = c;
+      }
+    });
 
     cards.forEach((item) => {
-      const card = poolMap[item.id] ||
-                   pool.find((c) => String(c.id) === String(item.id) || (item.name && c.name === item.name)) ||
-                   { name: item.name || '不明なカード', category: item.category || '' };
-      const count = Number(item.count) || 0;
+      if (!item) return;
+      const key = String(item.id || item.name || item.cardId || '').toLowerCase();
+      const card = poolMap[key] ||
+                   pool.find((c) => String(c.id).toLowerCase() === key || String(c.name).toLowerCase() === key) ||
+                   { name: item.name || item.id || '不明なカード', category: item.category || '' };
+      const count = Number(item.count || item.qty || item.num || 1) || 1;
       totalCount += count;
 
       const isBasicEnergy = isNormalEnergy(card);
 
       if (count > 4 && !isBasicEnergy) {
-        overLimitCards.push({ id: item.id, name: card.name, count: count });
+        overLimitCards.push({ id: item.id || item.name, name: card.name, count: count });
         errors.push("「" + card.name + "」が" + count + "枚（上限4枚）");
       }
 
@@ -15926,10 +15957,12 @@ window.DeckSystem = function () {
       ];
       const expanded = [];
       deck.cards.forEach((entry) => {
-        const c = allCards.find((card) => String(card.id) === String(entry.id) || (entry.name && card.name === entry.name)) ||
+        if (!entry) return;
+        const key = String(entry.id || entry.name || entry.cardId || '').toLowerCase();
+        const c = allCards.find((card) => String(card.id).toLowerCase() === key || String(card.name).toLowerCase() === key) ||
                   (entry.name && entry.category ? entry : null);
         if (c) {
-          const count = Number(entry.count) || 1;
+          const count = Number(entry.count || entry.qty || entry.num || 1) || 1;
           for (let i = 0; i < count; i++) {
             expanded.push(JSON.parse(JSON.stringify(c)));
           }
