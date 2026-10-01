@@ -13262,6 +13262,11 @@ window.DeckSystem = function () {
   }
 
   function loadDecks(callback) {
+    if (state.isLoadingDecks) {
+      if (callback) callback(state.decks);
+      return;
+    }
+    state.isLoadingDecks = true;
     syncCardPool();
     const userEmail = (state.currentUser && state.currentUser.email) || '';
     const parseLocalCards = function(raw) {
@@ -13273,6 +13278,7 @@ window.DeckSystem = function () {
     };
 
     const onLoaded = function (decks) {
+      state.isLoadingDecks = false;
       if (Array.isArray(decks)) {
         state.decks = decks.map(d => {
           if (!d) return d;
@@ -13315,6 +13321,7 @@ window.DeckSystem = function () {
     };
 
     const fallbackDecks = () => {
+      state.isLoadingDecks = false;
       loadLocalDecks();
       onLoaded(state.decks);
     };
