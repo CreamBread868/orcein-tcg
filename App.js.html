@@ -540,7 +540,10 @@
           updateProgress(50, 'GitHubリポジトリからデータ・モジュールを検出中…');
           const savedRepo = localStorage.getItem('ORBITAL_GITHUB_REPO');
 
-          if (savedRepo) {
+          if (window.google && google.script && google.script.run && !window._is_mock_gas) {
+            updateProgress(80, 'スプレッドシートからカードデータを読み込み中…');
+            this.loadCards();
+          } else if (savedRepo) {
             updateProgress(75, `GitHub (${savedRepo}) から最新データを取得中…`);
             await this.loadFromGitHub(savedRepo, false);
           } else {
@@ -557,14 +560,9 @@
     },
 
     loadCards() {
-      const savedGitHubRepo = localStorage.getItem('ORBITAL_GITHUB_REPO');
-      if (savedGitHubRepo) {
-        this.loadFromGitHub(savedGitHubRepo);
-        return;
-      }
-
       const countEl = this.el('homeCardCount');
       if (countEl) countEl.textContent = '読み込み中…';
+
       if (window.google && google.script && google.script.run && !window._is_mock_gas) {
         try {
           console.log('📡 Requesting getCards from Spreadsheet via GAS...');
@@ -575,8 +573,11 @@
               const el = this.el('homeCardCount');
               if (el) el.textContent = this.state.cards.length + '枚のカード';
               if (window.CardSystem) {
-                CardSystem.renderList();
-                CardSystem.renderRecent();
+                if (typeof CardSystem.renderList === 'function') CardSystem.renderList();
+                if (typeof CardSystem.renderRecent === 'function') CardSystem.renderRecent();
+              }
+              if (window.DeckSystem && typeof DeckSystem.syncCardPool === 'function') {
+                DeckSystem.syncCardPool();
               }
             })
             .withFailureHandler((err) => {
@@ -588,9 +589,16 @@
           console.error('❌ Exception in getCards runner:', e);
           this.loadDefaultLocalCards();
         }
-      } else {
-        this.loadDefaultLocalCards();
+        return;
       }
+
+      const savedGitHubRepo = localStorage.getItem('ORBITAL_GITHUB_REPO');
+      if (savedGitHubRepo) {
+        this.loadFromGitHub(savedGitHubRepo);
+        return;
+      }
+
+      this.loadDefaultLocalCards();
     },
 
     loadDefaultLocalCards() {
