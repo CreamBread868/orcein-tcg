@@ -609,6 +609,28 @@
           }
         } catch (e) {}
       }
+
+      if (!Array.isArray(this.state.cards) || this.state.cards.length === 0) {
+        const cardMap = new Map();
+        if (window.BattleSystem && window.BattleSystem.aiDecks) {
+          Object.values(window.BattleSystem.aiDecks).forEach(d => {
+            if (Array.isArray(d.cards)) {
+              d.cards.forEach(c => {
+                if (c && c.name && !cardMap.has(c.name)) {
+                  cardMap.set(c.name, { ...c, id: 'card_' + (cardMap.size + 1) });
+                }
+              });
+            }
+          });
+        }
+        if (cardMap.size > 0) {
+          this.state.cards = Array.from(cardMap.values());
+          try {
+            localStorage.setItem('orbital_cards_mock', JSON.stringify(this.state.cards));
+          } catch(e) {}
+        }
+      }
+
       this.state.cards = Array.isArray(this.state.cards) ? this.state.cards : [];
       const el = this.el('homeCardCount');
       if (el) el.textContent = this.state.cards.length + '枚のカード';
