@@ -187,7 +187,24 @@ window.DeckSystem = function () {
     syncCardPool();
     const userEmail = (state.currentUser && state.currentUser.email) || '';
     const onLoaded = function (decks) {
-      state.decks = Array.isArray(decks) ? decks : [];
+      if (Array.isArray(decks)) {
+        state.decks = decks.map(d => {
+          if (!d) return d;
+          let cards = d.cards;
+          if (typeof d.cardsJson === 'string' && d.cardsJson && (!Array.isArray(cards) || cards.length === 0)) {
+            try { cards = JSON.parse(d.cardsJson); } catch (e) {}
+          }
+          return {
+            ...d,
+            id: String(d.id || 'deck_' + Math.random().toString(36).substr(2, 6)),
+            name: String(d.name || d.デッキ名 || '無題のデッキ'),
+            description: String(d.description || d.説明 || ''),
+            cards: Array.isArray(cards) ? cards : []
+          };
+        });
+      } else {
+        state.decks = [];
+      }
       renderGallery();
       if (window.BattleSystem) {
         if (typeof BattleSystem.populateDeckSelect === 'function') BattleSystem.populateDeckSelect();
