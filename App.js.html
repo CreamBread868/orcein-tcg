@@ -75,14 +75,15 @@
       safe('BattleSystem.init', () => {
         if (window.BattleSystem && window.BattleSystem.init) BattleSystem.init();
       });
-      const initialPage = (() => {
+      safe('showPage', () => {
+        let initialPage = 'home';
         try {
-          return new URLSearchParams(window.location.search).get('page') ||
-          window.location.hash.replace('#', '') ||
-          'home';
-        } catch (e) { return 'home'; }
-      })();
-      safe('showPage', () => this.showPage(initialPage));
+          initialPage = new URLSearchParams(window.location.search).get('page') ||
+            window.location.hash.replace('#', '') ||
+            'home';
+        } catch (e) { initialPage = 'home'; }
+        this.showPage(initialPage);
+      });
       try {
         const loaderScreen = document.getElementById('gas-loader-screen');
         if (loaderScreen) {
