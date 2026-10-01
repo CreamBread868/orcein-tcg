@@ -19709,7 +19709,7 @@ window.DeckSystem = function () {
     checkForUpdates() {
       if (!window.google || !google.script || !google.script.run || window._is_mock_gas) return;
       try {
-        const runner = google.script.run
+        google.script.run
           .withSuccessHandler((res) => {
             if (!res || !res.ok || !res.update) return;
             const update = res.update;
@@ -19724,10 +19724,9 @@ window.DeckSystem = function () {
               if (banner) banner.classList.remove('hidden');
             }
           })
-          runner.getLatestAppUpdate();
-        } catch (e) {
-          console.warn('checkForUpdates warning:', e);
-        }
+          .getLatestAppUpdate();
+      } catch (e) {
+        console.warn('checkForUpdates warning:', e);
       }
     },
 
