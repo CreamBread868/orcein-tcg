@@ -389,12 +389,10 @@
               if (banner) banner.classList.remove('hidden');
             }
           })
-          .withFailureHandler(() => {});
-        if (typeof runner.getLatestAppUpdate === 'function') {
           runner.getLatestAppUpdate();
+        } catch (e) {
+          console.warn('checkForUpdates warning:', e);
         }
-      } catch (e) {
-        console.warn('checkForUpdates warning:', e);
       }
     },
 
@@ -570,8 +568,10 @@
       if (countEl) countEl.textContent = '読み込み中…';
       if (window.google && google.script && google.script.run && !window._is_mock_gas) {
         try {
-          const runner = google.script.run
+          console.log('📡 Requesting getCards from Spreadsheet via GAS...');
+          google.script.run
             .withSuccessHandler((cards) => {
+              console.log('✅ Received cards from Spreadsheet:', cards);
               this.state.cards = Array.isArray(cards) ? cards : [];
               const el = this.el('homeCardCount');
               if (el) el.textContent = this.state.cards.length + '枚のカード';
@@ -581,15 +581,12 @@
               }
             })
             .withFailureHandler((err) => {
-              console.warn('GAS loadCards fallback:', err);
+              console.error('❌ GAS getCards error:', err);
               this.loadDefaultLocalCards();
-            });
-          if (typeof runner.getCards === 'function') {
-            runner.getCards();
-          } else {
-            this.loadDefaultLocalCards();
-          }
+            })
+            .getCards();
         } catch (e) {
+          console.error('❌ Exception in getCards runner:', e);
           this.loadDefaultLocalCards();
         }
       } else {

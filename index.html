@@ -13118,7 +13118,7 @@ window.DeckSystem = function () {
 
     if (window.google && google.script && google.script.run) {
       try {
-        const runner = google.script.run
+        google.script.run
           .withSuccessHandler(function (user) {
             state.currentUser = user || { email: 'player@gmail.com', displayName: 'プレイヤー', avatar: '⚡', isLoggedIn: true };
             updateUserBadge();
@@ -13127,12 +13127,8 @@ window.DeckSystem = function () {
           .withFailureHandler(function (err) {
             console.warn('Failed to get current user:', err);
             fallbackUser();
-          });
-        if (typeof runner.getUserProfile === 'function') {
-          runner.getUserProfile(localEmail);
-        } else {
-          fallbackUser();
-        }
+          })
+          .getUserProfile(localEmail);
       } catch (e) {
         console.warn('fetchCurrentUser error:', e);
         fallbackUser();
@@ -13192,7 +13188,7 @@ window.DeckSystem = function () {
 
     if (window.google && google.script && google.script.run) {
       try {
-        const runner = google.script.run
+        google.script.run
           .withSuccessHandler(function (cards) {
             state.cardPool = Array.isArray(cards) ? cards : [];
             if (window.App && window.App.state) window.App.state.cards = state.cardPool;
@@ -13202,12 +13198,8 @@ window.DeckSystem = function () {
           .withFailureHandler(function (err) {
             console.warn('Failed to load card pool:', err);
             fallbackCardPool();
-          });
-        if (typeof runner.getCards === 'function') {
-          runner.getCards();
-        } else {
-          fallbackCardPool();
-        }
+          })
+          .getCards();
       } catch (e) {
         console.warn('syncCardPool runner error:', e);
         fallbackCardPool();
@@ -13277,19 +13269,19 @@ window.DeckSystem = function () {
 
     if (window.google && google.script && google.script.run) {
       try {
-        const runner = google.script.run
-          .withSuccessHandler(onLoaded)
+        console.log('📡 Requesting getDecks from Spreadsheet via GAS...');
+        google.script.run
+          .withSuccessHandler(function (decks) {
+            console.log('✅ Received decks from Spreadsheet:', decks);
+            onLoaded(decks);
+          })
           .withFailureHandler(function (err) {
-            console.warn('Failed to load decks from server:', err);
+            console.error('❌ Failed to load decks from server:', err);
             fallbackDecks();
-          });
-        if (typeof runner.getDecks === 'function') {
-          runner.getDecks(userEmail);
-        } else {
-          fallbackDecks();
-        }
+          })
+          .getDecks(userEmail);
       } catch (e) {
-        console.warn('loadDecks runner error:', e);
+        console.error('❌ loadDecks runner error:', e);
         fallbackDecks();
       }
     } else {
@@ -19732,12 +19724,10 @@ window.DeckSystem = function () {
               if (banner) banner.classList.remove('hidden');
             }
           })
-          .withFailureHandler(() => {});
-        if (typeof runner.getLatestAppUpdate === 'function') {
           runner.getLatestAppUpdate();
+        } catch (e) {
+          console.warn('checkForUpdates warning:', e);
         }
-      } catch (e) {
-        console.warn('checkForUpdates warning:', e);
       }
     },
 
@@ -19913,8 +19903,10 @@ window.DeckSystem = function () {
       if (countEl) countEl.textContent = '読み込み中…';
       if (window.google && google.script && google.script.run && !window._is_mock_gas) {
         try {
-          const runner = google.script.run
+          console.log('📡 Requesting getCards from Spreadsheet via GAS...');
+          google.script.run
             .withSuccessHandler((cards) => {
+              console.log('✅ Received cards from Spreadsheet:', cards);
               this.state.cards = Array.isArray(cards) ? cards : [];
               const el = this.el('homeCardCount');
               if (el) el.textContent = this.state.cards.length + '枚のカード';
@@ -19924,15 +19916,12 @@ window.DeckSystem = function () {
               }
             })
             .withFailureHandler((err) => {
-              console.warn('GAS loadCards fallback:', err);
+              console.error('❌ GAS getCards error:', err);
               this.loadDefaultLocalCards();
-            });
-          if (typeof runner.getCards === 'function') {
-            runner.getCards();
-          } else {
-            this.loadDefaultLocalCards();
-          }
+            })
+            .getCards();
         } catch (e) {
+          console.error('❌ Exception in getCards runner:', e);
           this.loadDefaultLocalCards();
         }
       } else {
