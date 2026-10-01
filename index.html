@@ -5688,6 +5688,11 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
         </div>
       </div>
       <div style="display:flex; align-items:center; gap:12px;">
+        <div class="nmt-balance-badge" id="nmtBalanceBadge" title="NMT通貨 (毎日ログインボーナスでゲット！)" onclick="App.claimDailyBonus()">
+          <span class="nmt-icon">✨</span>
+          <span id="nmtBalanceVal" class="nmt-val">100 NMT</span>
+          <button id="dailyBonusClaimBtn" class="daily-bonus-claim-btn" type="button">デイリーボーナス!</button>
+        </div>
         <button id="homeGitHubSyncBtn" class="secondary-button small-button" type="button" title="GitHubリポジトリからカード・デッキデータを読み込む" onclick="App.promptGitHubSync()">🐙 GitHub同期</button>
         <button id="fontSizeToggleBtn" class="secondary-button small-button" type="button" title="文字サイズ変更 (標準 / 大 / 特大)">Aa 文字サイズ: 標準</button>
         <div class="user-account-badge" id="topbarUserAccount" title="クリックしてアカウント切替・プロフ編集" onclick="App.openAccountProfileModal()">
@@ -5711,6 +5716,8 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
         <button class="nav-button" data-page="deck">◆ <span>デッキ</span></button>
         <button class="nav-button admin-only-ui hidden" data-page="create">＋ <span>カード作成</span></button>
         <button class="nav-button" data-page="battle">⚔ <span>バトル</span></button>
+        <button class="nav-button" data-page="pack">🎁 <span>パック開封</span></button>
+        <button class="nav-button admin-only-ui hidden" id="adminPackNavBtn" data-page="admin-pack" onclick="App.openAdminPackModal()">⚙️ <span>パック管理</span></button>
       </aside>
 
       <main class="main">
@@ -6583,7 +6590,97 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
             </div>
           </div>
         </section>
+
+        <!-- パック開封ページ -->
+        <section id="page-pack" class="page">
+          <div class="page-heading">
+            <div>
+              <div class="eyebrow">BOOSTER PACK SHOP</div>
+              <h1>ブースターパックショップ</h1>
+            </div>
+            <div style="display:flex; gap:10px;">
+              <button class="secondary-button admin-only-ui hidden" id="adminAddPackBtn" onclick="App.openAdminPackModal()">＋ 管理者: パック追加/編集</button>
+              <button class="primary-button" onclick="App.claimDailyBonus()">🎁 ログインボーナス取得 (+100 NMT)</button>
+            </div>
+          </div>
+
+          <div class="pack-shop-intro" style="margin-bottom:20px; padding:15px 20px; background:linear-gradient(135deg, rgba(255,215,0,0.1), rgba(129,140,248,0.1)); border:1px solid rgba(255,215,0,0.3); border-radius:12px;">
+            <div style="font-weight:700; color:#ffd700; margin-bottom:4px;">✨ 毎日ログインボーナス＆パック開封システム</div>
+            <div style="font-size:13px; color:#cbd5e1;">毎日ログインして100 NMTを獲得！溜まったNMTでオリジナル拡張パックを購入・開封しよう！獲得したカードは自動的にカード一覧＆デッキビルドで即座に使用可能です。</div>
+          </div>
+
+          <div id="packListGrid" class="pack-grid">
+            <!-- Dynamic pack cards loaded by JS -->
+          </div>
+        </section>
       </main>
+    </div>
+
+    <!-- 3Dパック開封オーバーレイ -->
+    <div id="packOpeningOverlay" class="modal hidden" style="background: rgba(5,7,15,0.95); backdrop-filter: blur(15px); z-index:9999;">
+      <div class="pack-opening-container">
+        <button class="modal-close" style="z-index: 100;" onclick="App.closePackOpening()">×</button>
+        <div id="packStageVisual" class="pack-stage-visual">
+          <div id="pack3dWrapper" class="pack-3d-wrapper" onclick="App.triggerPackTear()">
+            <div class="pack-foil-cover" id="packFoilCover">
+              <div class="pack-foil-header">ORBITAL BOOSTER</div>
+              <div class="pack-foil-art" id="packFoilArt">✦</div>
+              <div class="pack-foil-title" id="packFoilTitle">拡張パック</div>
+              <div class="pack-foil-sub">5 CARDS INSIDE</div>
+              <div class="pack-tear-hint">クリックしてパックを開封！</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="packRevealStage" class="pack-reveal-stage hidden">
+          <h2 style="text-align:center; color:#ffd700; margin-bottom:15px; text-shadow:0 0 10px rgba(255,215,0,0.5);">🎉 パック開封完了！</h2>
+          <div id="revealedCardsContainer" class="revealed-cards-grid"></div>
+          <div style="text-align:center; margin-top:25px;">
+            <button class="primary-button" style="padding:12px 30px; font-size:16px;" onclick="App.closePackOpening()">コレクションに追加して完了</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 管理者パック管理モーダル -->
+    <div id="adminPackModal" class="modal hidden">
+      <div class="modal-backdrop" onclick="App.closeAdminPackModal()"></div>
+      <div class="modal-card" style="max-width: 750px; width: 90%;">
+        <button class="modal-close" onclick="App.closeAdminPackModal()">×</button>
+        <div class="eyebrow">ADMINISTRATOR MODE</div>
+        <h2>🎁 パック管理 &amp; 新規追加</h2>
+        <p class="muted">パックの作成・価格設定・収録カードプールを管理できます。(GASスプレッドシート連動)</p>
+        
+        <form id="adminPackForm" style="display:flex; flex-direction:column; gap:12px; margin-bottom:20px;" onsubmit="App.handleAdminSavePack(event)">
+          <input type="hidden" id="adminPackId" value="">
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+            <label>パックタイトル
+              <input id="adminPackTitle" class="input" required placeholder="例: 零号機・時空の覚醒">
+            </label>
+            <label>価格 (NMT)
+              <input id="adminPackPrice" class="input" type="number" value="100" min="0" required>
+            </label>
+          </div>
+          <label>パック説明文
+            <textarea id="adminPackDesc" class="input" rows="2" placeholder="例: 強力な伝説ポケモンとトレーナーズが収録された特別パック！"></textarea>
+          </label>
+          <label>カバー画像URL (空欄の場合は標準ホロデザイン)
+            <input id="adminPackImage" class="input" placeholder="https://...">
+          </label>
+          <label>収録カード枚数 (1パックあたり)
+            <input id="adminPackCardCount" class="input" type="number" value="5" min="1" max="10">
+          </label>
+          <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px;">
+            <button type="button" class="secondary-button" onclick="App.resetPackForm()">フォームリセット</button>
+            <button type="submit" class="primary-button">💾 パックを保存</button>
+          </div>
+        </form>
+
+        <h3>既存パック一覧</h3>
+        <div id="adminPackTableContainer" style="max-height:250px; overflow-y:auto; border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:10px;">
+          <!-- JS populates existing packs table -->
+        </div>
+      </div>
     </div>
 
     <div id="adminLoginModal" class="modal hidden">
@@ -19480,7 +19577,10 @@ window.DeckSystem = function () {
       editingCardId: null,
       adminToken: safeGetSession('orbital_admin_token'),
       currentVersion: (function() { try { return localStorage.getItem('orbital_app_version') || 'v1.0.0'; } catch(e) { return 'v1.0.0'; } })(),
-      latestUpdate: null
+      latestUpdate: null,
+      nmtBalance: (function() { try { var b = localStorage.getItem('ORBITAL_NMT_BALANCE'); return b !== null ? Number(b) : 100; } catch(e) { return 100; } })(),
+      packs: [],
+      activeDrawnCards: []
     },
 
     init() {
@@ -19491,6 +19591,7 @@ window.DeckSystem = function () {
       safe('initStartupLoader', () => this.initStartupLoader());
       safe('bindNavigation', () => this.bindNavigation());
       safe('initFontSize', () => this.initFontSize());
+      safe('initNmtAndPacks', () => this.initNmtAndPacks());
       safe('bindHome', () => this.bindHome());
       safe('bindEditor', () => this.bindEditor());
       safe('bindFilters', () => this.bindFilters());
@@ -19607,6 +19708,9 @@ window.DeckSystem = function () {
       if (page === 'create' && window.CardSystem) {
         CardSystem.syncCategoryForm();
         CardSystem.updatePreview();
+      }
+      if (page === 'pack') {
+        this.loadPacks();
       }
     },
 
@@ -20513,6 +20617,355 @@ window.DeckSystem = function () {
           self.toast('アカウント切替失敗: ' + e.message, true);
         }
       }
+    },
+
+    initNmtAndPacks() {
+      this.updateNmtBadge();
+      this.loadPacks();
+    },
+
+    updateNmtBadge() {
+      try {
+        localStorage.setItem('ORBITAL_NMT_BALANCE', String(this.state.nmtBalance));
+      } catch (e) {}
+      const valEl = this.el('nmtBalanceVal');
+      if (valEl) {
+        valEl.textContent = this.state.nmtBalance + ' NMT';
+      }
+      const today = new Date().toISOString().slice(0, 10);
+      let lastClaim = '';
+      try { lastClaim = localStorage.getItem('ORBITAL_LAST_DAILY_BONUS') || ''; } catch(e) {}
+      const claimBtn = this.el('dailyBonusClaimBtn');
+      if (claimBtn) {
+        if (lastClaim === today) {
+          claimBtn.textContent = '取得済み';
+          claimBtn.style.opacity = '0.6';
+        } else {
+          claimBtn.textContent = 'デイリーボーナス!';
+          claimBtn.style.opacity = '1';
+        }
+      }
+    },
+
+    claimDailyBonus() {
+      const today = new Date().toISOString().slice(0, 10);
+      let lastClaim = '';
+      try { lastClaim = localStorage.getItem('ORBITAL_LAST_DAILY_BONUS') || ''; } catch(e) {}
+
+      if (lastClaim === today) {
+        this.toast('ℹ️ 本日のデイリーボーナス (100 NMT) は取得済みです！明日またご来店ください。');
+        return;
+      }
+
+      this.state.nmtBalance += 100;
+      try {
+        localStorage.setItem('ORBITAL_LAST_DAILY_BONUS', today);
+      } catch (e) {}
+      this.updateNmtBadge();
+      this.toast('🎁 毎日ログインボーナス +100 NMT を獲得しました！');
+    },
+
+    loadPacks() {
+      const self = this;
+      const defaultPacks = [
+        {
+          id: 'pack_standard',
+          title: '第1弾: 星界の覚醒 (Standard)',
+          description: 'たね・進化ポケモンと基本エネルギー、汎用グッズ・サポートが封入された基本拡張パック！',
+          price: 100,
+          cardCount: 5,
+          image: ''
+        },
+        {
+          id: 'pack_legend',
+          title: '第2弾: 時空の覇者 (Legend)',
+          description: '強力な伝説のポケモンと強力ワザを持つ進化カード、特殊トレーナーズが封入された特別パック！',
+          price: 150,
+          cardCount: 5,
+          image: ''
+        }
+      ];
+
+      try {
+        var rawLocal = localStorage.getItem('ORBITAL_CUSTOM_PACKS');
+        if (rawLocal) {
+          var customPacks = JSON.parse(rawLocal);
+          if (Array.isArray(customPacks) && customPacks.length > 0) {
+            this.state.packs = customPacks;
+            this.renderPackGrid();
+          }
+        }
+      } catch (e) {}
+
+      if (!this.state.packs || this.state.packs.length === 0) {
+        this.state.packs = defaultPacks;
+        this.renderPackGrid();
+      }
+
+      if (window.google && google.script && google.script.run && !window._is_mock_gas) {
+        google.script.run.withSuccessHandler((serverPacks) => {
+          if (Array.isArray(serverPacks) && serverPacks.length > 0) {
+            self.state.packs = serverPacks;
+            try { localStorage.setItem('ORBITAL_CUSTOM_PACKS', JSON.stringify(serverPacks)); } catch(e) {}
+            self.renderPackGrid();
+          }
+        }).withFailureHandler((err) => {
+          console.warn('getPacks from server failed, using local packs:', err);
+        }).getPacks();
+      }
+    },
+
+    renderPackGrid() {
+      const grid = this.el('packListGrid');
+      if (!grid) return;
+      const packs = this.state.packs || [];
+      if (packs.length === 0) {
+        grid.innerHTML = '<div class="muted" style="text-align:center; padding:30px;">パックが登録されていません</div>';
+        return;
+      }
+
+      grid.innerHTML = packs.map(p => {
+        const coverArt = p.image ? `<img src="${this.escapeHtml(p.image)}" style="width:100%; height:100%; object-fit:cover; border-radius:8px;">` : `<div class="pack-foil-art">✦</div><div class="pack-foil-header">${this.escapeHtml(p.title)}</div>`;
+        return `
+          <div class="pack-card">
+            <div class="pack-cover-wrapper">
+              ${coverArt}
+            </div>
+            <div class="pack-title">${this.escapeHtml(p.title)}</div>
+            <div class="pack-desc">${this.escapeHtml(p.description || '5枚のカードを収録')}</div>
+            <div class="pack-price-tag">✨ ${p.price || 100} NMT</div>
+            <button class="pack-buy-btn" type="button" onclick="App.buyAndOpenPack('${p.id}')">🎁 ${p.price || 100} NMT で開封</button>
+          </div>
+        `;
+      }).join('');
+    },
+
+    buyAndOpenPack(packId) {
+      const pack = (this.state.packs || []).find(p => p.id === packId);
+      if (!pack) {
+        this.toast('指定されたパックが見つかりません', true);
+        return;
+      }
+
+      if (this.state.nmtBalance < pack.price) {
+        this.toast(`❌ NMTが足りません！ (必要: ${pack.price} NMT / 所持: ${this.state.nmtBalance} NMT) 毎日ログインボーナスを取得してください。`, true);
+        return;
+      }
+
+      this.state.nmtBalance -= pack.price;
+      this.updateNmtBadge();
+
+      // カードプールからランダムにカードを抽選 (5枚)
+      const allCards = (window.CardSystem && CardSystem.cards && CardSystem.cards.length > 0) ? CardSystem.cards : (this.state.cards || []);
+      const count = pack.cardCount || 5;
+      const drawnCards = [];
+
+      if (allCards.length > 0) {
+        for (let i = 0; i < count; i++) {
+          const randCard = allCards[Math.floor(Math.random() * allCards.length)];
+          drawnCards.push(JSON.parse(JSON.stringify(randCard)));
+        }
+      } else {
+        // デフォルトサンプルカード生成
+        for (let i = 0; i < count; i++) {
+          drawnCards.push({
+            id: 'drawn_' + Date.now() + '_' + i,
+            name: 'キラカード ' + (i + 1) + '号',
+            category: 'たね',
+            type: '無色',
+            hp: 80,
+            attack1Name: 'スターバースト',
+            attack1Damage: 40,
+            rarity: (i === 4 ? 'SR' : (i === 3 ? 'R' : 'N'))
+          });
+        }
+      }
+
+      this.state.activeDrawnCards = drawnCards;
+
+      // 獲得したカードをCardSystemのカスタムカードに登録し、所持状態にする
+      if (window.CardSystem && typeof CardSystem.addCardsToCollection === 'function') {
+        CardSystem.addCardsToCollection(drawnCards);
+      } else if (window.CardSystem && Array.isArray(CardSystem.customCards)) {
+        drawnCards.forEach(c => {
+          if (!CardSystem.customCards.some(x => x.id === c.id)) {
+            CardSystem.customCards.push(c);
+          }
+        });
+        try { localStorage.setItem('ORBITAL_CUSTOM_CARDS', JSON.stringify(CardSystem.customCards)); } catch(e) {}
+      }
+
+      this.openPackOpeningModal(pack);
+    },
+
+    openPackOpeningModal(pack) {
+      const titleEl = this.el('packFoilTitle');
+      if (titleEl) titleEl.textContent = pack.title || '拡張パック';
+      const stageVis = this.el('packStageVisual');
+      const revealStage = this.el('packRevealStage');
+      if (stageVis) stageVis.style.display = 'flex';
+      if (revealStage) revealStage.classList.add('hidden');
+      const modal = this.el('packOpeningOverlay');
+      if (modal) modal.classList.remove('hidden');
+    },
+
+    triggerPackTear() {
+      const stageVis = this.el('packStageVisual');
+      const revealStage = this.el('packRevealStage');
+      if (stageVis) stageVis.style.display = 'none';
+      if (revealStage) revealStage.classList.remove('hidden');
+
+      const container = this.el('revealedCardsContainer');
+      if (!container) return;
+
+      const drawn = this.state.activeDrawnCards || [];
+      container.innerHTML = drawn.map((card, idx) => {
+        const rarityClass = card.rarity ? `rarity-aura-${card.rarity}` : '';
+        return `
+          <div class="card-flip-wrap ${rarityClass}" style="width:160px; height:235px; perspective:1000px; cursor:pointer;" onclick="this.querySelector('.card-flip-inner').style.transform = 'rotateY(180deg)'">
+            <div class="card-flip-inner" style="width:100%; height:100%; transition:transform 0.6s cubic-bezier(0.4, 0, 0.2, 1); transform-style:preserve-3d; position:relative;">
+              <div class="flip-card-front" style="position:absolute; width:100%; height:100%; backface-visibility:hidden; border-radius:12px; background:linear-gradient(145deg, #1e293b, #0f172a); border:2px solid rgba(255,215,0,0.5); display:flex; flex-direction:column; align-items:center; justify-content:center;">
+                <div style="font-size:36px; color:#ffd700;">✦</div>
+                <div style="font-size:11px; color:#94a3b8; margin-top:8px;">クリックでめくる</div>
+              </div>
+              <div class="flip-card-back" style="position:absolute; width:100%; height:100%; backface-visibility:hidden; transform:rotateY(180deg); border-radius:12px; background:#0f172a; border:2px solid rgba(0,229,255,0.6); padding:10px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 8px 20px rgba(0,0,0,0.8);">
+                <div style="font-size:10px; color:#00e5ff; font-weight:800;">${this.escapeHtml(card.category || 'カード')} [${this.escapeHtml(card.type || '無色')}]</div>
+                <div style="font-size:14px; font-weight:900; color:#fff; text-align:center; margin:8px 0;">${this.escapeHtml(card.name)}</div>
+                <div style="font-size:11px; color:#ffd700; text-align:right; font-weight:900;">${this.escapeHtml(card.rarity || 'R')}</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    },
+
+    closePackOpening() {
+      const modal = this.el('packOpeningOverlay');
+      if (modal) modal.classList.add('hidden');
+      this.toast('🎉 開封したカードはコレクションに保存されました！');
+      if (window.CardSystem && typeof CardSystem.renderCardList === 'function') {
+        CardSystem.renderCardList();
+      }
+    },
+
+    openAdminPackModal() {
+      if (!this.isAdmin()) {
+        this.requireAdmin();
+        return;
+      }
+      const modal = this.el('adminPackModal');
+      if (modal) modal.classList.remove('hidden');
+      this.renderAdminPackTable();
+    },
+
+    closeAdminPackModal() {
+      const modal = this.el('adminPackModal');
+      if (modal) modal.classList.add('hidden');
+    },
+
+    resetPackForm() {
+      this.el('adminPackId').value = '';
+      this.el('adminPackTitle').value = '';
+      this.el('adminPackPrice').value = '100';
+      this.el('adminPackDesc').value = '';
+      this.el('adminPackImage').value = '';
+      this.el('adminPackCardCount').value = '5';
+    },
+
+    handleAdminSavePack(e) {
+      if (e && e.preventDefault) e.preventDefault();
+      const id = this.el('adminPackId').value || ('pack_' + Date.now());
+      const title = this.el('adminPackTitle').value.trim();
+      const price = Number(this.el('adminPackPrice').value) || 100;
+      const description = this.el('adminPackDesc').value.trim();
+      const image = this.el('adminPackImage').value.trim();
+      const cardCount = Number(this.el('adminPackCardCount').value) || 5;
+
+      if (!title) {
+        this.toast('パックタイトルを入力してください', true);
+        return;
+      }
+
+      const newPack = { id, title, price, description, image, cardCount };
+      let packs = this.state.packs || [];
+      const idx = packs.findIndex(p => p.id === id);
+      if (idx >= 0) packs[idx] = newPack;
+      else packs.push(newPack);
+
+      this.state.packs = packs;
+      try { localStorage.setItem('ORBITAL_CUSTOM_PACKS', JSON.stringify(packs)); } catch(err) {}
+
+      if (window.google && google.script && google.script.run && !window._is_mock_gas) {
+        google.script.run.withSuccessHandler(() => {
+          App.toast('✅ パックをスプレッドシートDBに保存しました！');
+        }).savePack(newPack, this.state.adminToken);
+      }
+
+      this.toast('🎁 パックを保存しました！');
+      this.resetPackForm();
+      this.renderAdminPackTable();
+      this.renderPackGrid();
+    },
+
+    deleteAdminPack(packId) {
+      if (!confirm('このパックを削除してもよろしいですか？')) return;
+      this.state.packs = (this.state.packs || []).filter(p => p.id !== packId);
+      try { localStorage.setItem('ORBITAL_CUSTOM_PACKS', JSON.stringify(this.state.packs)); } catch(err) {}
+
+      if (window.google && google.script && google.script.run && !window._is_mock_gas) {
+        google.script.run.deletePack(packId, this.state.adminToken);
+      }
+
+      this.toast('🗑️ パックを削除しました');
+      this.renderAdminPackTable();
+      this.renderPackGrid();
+    },
+
+    renderAdminPackTable() {
+      const container = this.el('adminPackTableContainer');
+      if (!container) return;
+      const packs = this.state.packs || [];
+      if (packs.length === 0) {
+        container.innerHTML = '<div class="muted">パックが存在しません</div>';
+        return;
+      }
+
+      container.innerHTML = `
+        <table style="width:100%; border-collapse:collapse; font-size:13px;">
+          <thead>
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.2); text-align:left;">
+              <th style="padding:6px;">タイトル</th>
+              <th style="padding:6px;">価格 (NMT)</th>
+              <th style="padding:6px;">枚数</th>
+              <th style="padding:6px; text-align:right;">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${packs.map(p => `
+              <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                <td style="padding:6px; font-weight:700;">${this.escapeHtml(p.title)}</td>
+                <td style="padding:6px; color:#ffd700;">✨ ${p.price}</td>
+                <td style="padding:6px;">${p.cardCount || 5}枚</td>
+                <td style="padding:6px; text-align:right;">
+                  <button type="button" class="secondary-button compact-btn" onclick="App.editAdminPack('${p.id}')">編集</button>
+                  <button type="button" class="secondary-button compact-btn danger-btn" onclick="App.deleteAdminPack('${p.id}')">削除</button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    },
+
+    editAdminPack(packId) {
+      const pack = (this.state.packs || []).find(p => p.id === packId);
+      if (!pack) return;
+      this.el('adminPackId').value = pack.id;
+      this.el('adminPackTitle').value = pack.title || '';
+      this.el('adminPackPrice').value = pack.price || 100;
+      this.el('adminPackDesc').value = pack.description || '';
+      this.el('adminPackImage').value = pack.image || '';
+      this.el('adminPackCardCount').value = pack.cardCount || 5;
     },
 
     escapeHtml(str) {

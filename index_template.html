@@ -5688,6 +5688,11 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
         </div>
       </div>
       <div style="display:flex; align-items:center; gap:12px;">
+        <div class="nmt-balance-badge" id="nmtBalanceBadge" title="NMT通貨 (毎日ログインボーナスでゲット！)" onclick="App.claimDailyBonus()">
+          <span class="nmt-icon">✨</span>
+          <span id="nmtBalanceVal" class="nmt-val">100 NMT</span>
+          <button id="dailyBonusClaimBtn" class="daily-bonus-claim-btn" type="button">デイリーボーナス!</button>
+        </div>
         <button id="homeGitHubSyncBtn" class="secondary-button small-button" type="button" title="GitHubリポジトリからカード・デッキデータを読み込む" onclick="App.promptGitHubSync()">🐙 GitHub同期</button>
         <button id="fontSizeToggleBtn" class="secondary-button small-button" type="button" title="文字サイズ変更 (標準 / 大 / 特大)">Aa 文字サイズ: 標準</button>
         <div class="user-account-badge" id="topbarUserAccount" title="クリックしてアカウント切替・プロフ編集" onclick="App.openAccountProfileModal()">
@@ -5711,6 +5716,8 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
         <button class="nav-button" data-page="deck">◆ <span>デッキ</span></button>
         <button class="nav-button admin-only-ui hidden" data-page="create">＋ <span>カード作成</span></button>
         <button class="nav-button" data-page="battle">⚔ <span>バトル</span></button>
+        <button class="nav-button" data-page="pack">🎁 <span>パック開封</span></button>
+        <button class="nav-button admin-only-ui hidden" id="adminPackNavBtn" data-page="admin-pack" onclick="App.openAdminPackModal()">⚙️ <span>パック管理</span></button>
       </aside>
 
       <main class="main">
@@ -6583,7 +6590,97 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
             </div>
           </div>
         </section>
+
+        <!-- パック開封ページ -->
+        <section id="page-pack" class="page">
+          <div class="page-heading">
+            <div>
+              <div class="eyebrow">BOOSTER PACK SHOP</div>
+              <h1>ブースターパックショップ</h1>
+            </div>
+            <div style="display:flex; gap:10px;">
+              <button class="secondary-button admin-only-ui hidden" id="adminAddPackBtn" onclick="App.openAdminPackModal()">＋ 管理者: パック追加/編集</button>
+              <button class="primary-button" onclick="App.claimDailyBonus()">🎁 ログインボーナス取得 (+100 NMT)</button>
+            </div>
+          </div>
+
+          <div class="pack-shop-intro" style="margin-bottom:20px; padding:15px 20px; background:linear-gradient(135deg, rgba(255,215,0,0.1), rgba(129,140,248,0.1)); border:1px solid rgba(255,215,0,0.3); border-radius:12px;">
+            <div style="font-weight:700; color:#ffd700; margin-bottom:4px;">✨ 毎日ログインボーナス＆パック開封システム</div>
+            <div style="font-size:13px; color:#cbd5e1;">毎日ログインして100 NMTを獲得！溜まったNMTでオリジナル拡張パックを購入・開封しよう！獲得したカードは自動的にカード一覧＆デッキビルドで即座に使用可能です。</div>
+          </div>
+
+          <div id="packListGrid" class="pack-grid">
+            <!-- Dynamic pack cards loaded by JS -->
+          </div>
+        </section>
       </main>
+    </div>
+
+    <!-- 3Dパック開封オーバーレイ -->
+    <div id="packOpeningOverlay" class="modal hidden" style="background: rgba(5,7,15,0.95); backdrop-filter: blur(15px); z-index:9999;">
+      <div class="pack-opening-container">
+        <button class="modal-close" style="z-index: 100;" onclick="App.closePackOpening()">×</button>
+        <div id="packStageVisual" class="pack-stage-visual">
+          <div id="pack3dWrapper" class="pack-3d-wrapper" onclick="App.triggerPackTear()">
+            <div class="pack-foil-cover" id="packFoilCover">
+              <div class="pack-foil-header">ORBITAL BOOSTER</div>
+              <div class="pack-foil-art" id="packFoilArt">✦</div>
+              <div class="pack-foil-title" id="packFoilTitle">拡張パック</div>
+              <div class="pack-foil-sub">5 CARDS INSIDE</div>
+              <div class="pack-tear-hint">クリックしてパックを開封！</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="packRevealStage" class="pack-reveal-stage hidden">
+          <h2 style="text-align:center; color:#ffd700; margin-bottom:15px; text-shadow:0 0 10px rgba(255,215,0,0.5);">🎉 パック開封完了！</h2>
+          <div id="revealedCardsContainer" class="revealed-cards-grid"></div>
+          <div style="text-align:center; margin-top:25px;">
+            <button class="primary-button" style="padding:12px 30px; font-size:16px;" onclick="App.closePackOpening()">コレクションに追加して完了</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 管理者パック管理モーダル -->
+    <div id="adminPackModal" class="modal hidden">
+      <div class="modal-backdrop" onclick="App.closeAdminPackModal()"></div>
+      <div class="modal-card" style="max-width: 750px; width: 90%;">
+        <button class="modal-close" onclick="App.closeAdminPackModal()">×</button>
+        <div class="eyebrow">ADMINISTRATOR MODE</div>
+        <h2>🎁 パック管理 &amp; 新規追加</h2>
+        <p class="muted">パックの作成・価格設定・収録カードプールを管理できます。(GASスプレッドシート連動)</p>
+        
+        <form id="adminPackForm" style="display:flex; flex-direction:column; gap:12px; margin-bottom:20px;" onsubmit="App.handleAdminSavePack(event)">
+          <input type="hidden" id="adminPackId" value="">
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+            <label>パックタイトル
+              <input id="adminPackTitle" class="input" required placeholder="例: 零号機・時空の覚醒">
+            </label>
+            <label>価格 (NMT)
+              <input id="adminPackPrice" class="input" type="number" value="100" min="0" required>
+            </label>
+          </div>
+          <label>パック説明文
+            <textarea id="adminPackDesc" class="input" rows="2" placeholder="例: 強力な伝説ポケモンとトレーナーズが収録された特別パック！"></textarea>
+          </label>
+          <label>カバー画像URL (空欄の場合は標準ホロデザイン)
+            <input id="adminPackImage" class="input" placeholder="https://...">
+          </label>
+          <label>収録カード枚数 (1パックあたり)
+            <input id="adminPackCardCount" class="input" type="number" value="5" min="1" max="10">
+          </label>
+          <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px;">
+            <button type="button" class="secondary-button" onclick="App.resetPackForm()">フォームリセット</button>
+            <button type="submit" class="primary-button">💾 パックを保存</button>
+          </div>
+        </form>
+
+        <h3>既存パック一覧</h3>
+        <div id="adminPackTableContainer" style="max-height:250px; overflow-y:auto; border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:10px;">
+          <!-- JS populates existing packs table -->
+        </div>
+      </div>
     </div>
 
     <div id="adminLoginModal" class="modal hidden">
