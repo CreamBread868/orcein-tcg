@@ -1,7 +1,11 @@
 const fs = require('fs');
 const path = require('path');
 
-let indexHtml = fs.readFileSync(path.join(__dirname, 'Index.html'), 'utf8');
+let indexHtmlPath = fs.existsSync(path.join(__dirname, 'index.html'))
+  ? path.join(__dirname, 'index.html')
+  : path.join(__dirname, 'Index.html');
+
+let indexHtml = fs.readFileSync(indexHtmlPath, 'utf8');
 
 const includes = {
   'CSS': 'CSS.html',
@@ -23,7 +27,7 @@ indexHtml = indexHtml.replace(/<\?!=\s*include\(['"]([^'"]+)['"]\);\s*\?>/g, (ma
   return match;
 });
 
-// 2. Replace already-inlined component script blocks in Index.html
+// 2. Replace already-inlined component script blocks
 for (const [key, file] of Object.entries(includes)) {
   if (fs.existsSync(path.join(__dirname, file))) {
     const content = fs.readFileSync(path.join(__dirname, file), 'utf8');
@@ -49,13 +53,14 @@ for (const [key, file] of Object.entries(includes)) {
   }
 }
 
-// Write back updated template to Index.html so template stays fresh
-fs.writeFileSync(path.join(__dirname, 'Index.html'), indexHtml, 'utf8');
-
-// Write local testing file
+// Write compiled output to index.html and index_local.html
+fs.writeFileSync(path.join(__dirname, 'index.html'), indexHtml, 'utf8');
 fs.writeFileSync(path.join(__dirname, 'index_local.html'), indexHtml, 'utf8');
+if (fs.existsSync(path.join(__dirname, 'Index.html'))) {
+  fs.writeFileSync(path.join(__dirname, 'Index.html'), indexHtml, 'utf8');
+}
 
-// GAS loader HTML
+// GAS loader HTML (fetches index.html -> Index.html -> index_local.html with failover)
 const gasLoaderHtml = `<!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -91,11 +96,13 @@ const gasLoaderHtml = `<!DOCTYPE html>
 
       console.log('🐙 GAS Bootstrapping from GitHub:', rawBase);
 
-      fetch(rawBase + 'Index.html?t=' + Date.now())
+      fetch(rawBase + 'index.html?t=' + Date.now())
         .then(function(res) {
-          if (!res.ok) {
-            return fetch(rawBase + 'index_local.html?t=' + Date.now());
-          }
+          if (!res.ok) return fetch(rawBase + 'Index.html?t=' + Date.now());
+          return res;
+        })
+        .then(function(res) {
+          if (!res.ok) return fetch(rawBase + 'index_local.html?t=' + Date.now());
           return res;
         })
         .then(function(res) {
@@ -122,4 +129,4 @@ if (fs.existsSync(gasDir)) {
   fs.writeFileSync(path.join(gasDir, 'index_local.html'), gasLoaderHtml, 'utf8');
 }
 
-console.log('Successfully generated Index.html, index_local.html, and gas/index_local.html!');
+console.log('Successfully generated index.html, index_local.html, and gas/index_local.html!');
