@@ -75,14 +75,19 @@
       safe('BattleSystem.init', () => {
         if (window.BattleSystem && window.BattleSystem.init) BattleSystem.init();
       });
-      const initialPage = (() => {
-        try {
-          return new URLSearchParams(window.location.search).get('page') ||
-          window.location.hash.replace('#', '') ||
-          'home';
-        } catch (e) {return 'home';}
-      })();
       safe('showPage', () => this.showPage(initialPage));
+      try {
+        const loaderScreen = document.getElementById('gas-loader-screen');
+        if (loaderScreen) {
+          loaderScreen.style.display = 'none';
+          loaderScreen.remove();
+        }
+        const startupOverlay = document.getElementById('startupLoadingOverlay');
+        if (startupOverlay) {
+          startupOverlay.style.display = 'none';
+          startupOverlay.classList.add('hidden');
+        }
+      } catch (e) {}
     },
 
     initFontSize() {
