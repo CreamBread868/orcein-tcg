@@ -970,6 +970,14 @@
   };
 
   window.App = App;
-  // 初期化は Index.html 末尾の inline script から行います
+  try {
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      setTimeout(() => { if (window.App && window.App.init) window.App.init(); }, 0);
+    } else {
+      document.addEventListener('DOMContentLoaded', () => { if (window.App && window.App.init) window.App.init(); });
+    }
+  } catch (e) {
+    console.error('App auto-init trigger error:', e);
+  }
 })();
 </script>

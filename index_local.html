@@ -11480,7 +11480,15 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   };
 
   window.App = App;
-  // 初期化は Index.html 末尾の inline script から行います
+  try {
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      setTimeout(() => { if (window.App && window.App.init) window.App.init(); }, 0);
+    } else {
+      document.addEventListener('DOMContentLoaded', () => { if (window.App && window.App.init) window.App.init(); });
+    }
+  } catch (e) {
+    console.error('App auto-init trigger error:', e);
+  }
 })();
 </script>
 
@@ -11790,10 +11798,20 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
       <div id="connectingStatusMsg" style="font-size:13px; font-weight:800; color:var(--accent); min-height:20px;">
         お互いの接続を認証しています...
       </div>
-      <button id="cancelConnectingBtn" type="button" class="secondary-button" style="margin-top:14px;" onclick="BattleSystem.cancelOnlineConnection()">
-        接続キャンセル
-      </button>
-    </div>
-  </div>
+  <script>
+    (function() {
+      var tryStart = function() {
+        if (window.App && typeof window.App.init === 'function') {
+          console.log('🚀 [ORBITAL] Bootstrapping App.init()...');
+          window.App.init();
+        }
+      };
+      if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        setTimeout(tryStart, 0);
+      } else {
+        document.addEventListener('DOMContentLoaded', tryStart);
+      }
+    })();
+  </script>
 </body>
 </html>
