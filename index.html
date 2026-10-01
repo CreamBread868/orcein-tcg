@@ -19982,7 +19982,17 @@ window.DeckSystem = function () {
         const abilityName = String(getVal(['abilityName', 'abilityname', 'ability', '特性', '特性名', 'とくせい']) || '').trim();
         const abilityText = String(getVal(['abilityText', 'abilitytext', '特性説明', '特性効果', '特性テキスト']) || '').trim();
 
-        const description = String(getVal(['description', '説明', '説明文', 'テキスト', 'フレーバー', 'text', 'info']) || '').trim();
+        const weakness = String(getVal(['weakness', '弱点', 'じゃくてん', '弱点タイプ']) || '').trim();
+        const resistance = String(getVal(['resistance', '抵抗力', '抵抗', 'ていこう', '抵抗タイプ']) || '').trim();
+        const retreat = getVal(['retreat', 'にげる', '逃げる', '逃げ', '逃げエネ', '逃げコスト', 'にげるコスト', 'にげるエネルギー']);
+
+        let description = String(getVal(['description', '説明', '説明文', 'テキスト', 'フレーバー', 'text', 'info']) || '').trim();
+
+        // 【自動修復】もし image が空で、description に URL (http/https) が入っている場合、画像URLとして自動修復
+        if (!image && /^https?:\/\//i.test(description)) {
+          image = description;
+          description = '';
+        }
 
         return {
           ...c,
@@ -20003,6 +20013,9 @@ window.DeckSystem = function () {
           attack2Damage: attack2Damage !== undefined && attack2Damage !== null ? String(attack2Damage) : '',
           attack2Energy: attack2Energy,
           attack2Text: attack2Text,
+          weakness: weakness,
+          resistance: resistance,
+          retreat: retreat !== '' && retreat != null ? Number(retreat) : '',
           description: description
         };
       });
