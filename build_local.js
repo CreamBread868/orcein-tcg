@@ -51,6 +51,12 @@ for (const [key, file] of Object.entries(includes)) {
         console.log('Replacing inlined CardSystem.js.html block');
         indexHtml = indexHtml.replace(regex, () => content);
       }
+    } else if (file === 'DeckSystem.js.html') {
+      const regex = /<script>(?:(?!<\/script>)[\s\S])*?window\.DeckSystem\s*=\s*function\s*\(\)[\s\S]*?<\/script>/;
+      if (regex.test(indexHtml)) {
+        console.log('Replacing inlined DeckSystem.js.html block');
+        indexHtml = indexHtml.replace(regex, () => content);
+      }
     } else if (file === 'App.js.html') {
       const regex = /<script>(?:(?!<\/script>)[\s\S])*?const App = \{[\s\S]*?window\.App = App;[\s\S]*?<\/script>/;
       if (regex.test(indexHtml)) {
