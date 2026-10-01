@@ -88,12 +88,13 @@
         const loaderScreen = document.getElementById('gas-loader-screen');
         if (loaderScreen) {
           loaderScreen.style.display = 'none';
-          loaderScreen.remove();
+          if (loaderScreen.parentNode) loaderScreen.parentNode.removeChild(loaderScreen);
         }
         const startupOverlay = document.getElementById('startupLoadingOverlay');
         if (startupOverlay) {
           startupOverlay.style.display = 'none';
           startupOverlay.classList.add('hidden');
+          if (startupOverlay.parentNode) startupOverlay.parentNode.removeChild(startupOverlay);
         }
       } catch (e) {}
     },
@@ -507,7 +508,26 @@
       const overlay = this.el('startupLoadingOverlay');
       const bar = this.el('startupProgressBar');
       const text = this.el('startupStatusText');
-      if (!overlay || !bar) return;
+
+      const hideAllLoaders = () => {
+        try {
+          if (overlay) {
+            overlay.style.display = 'none';
+            overlay.classList.add('hidden');
+            if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+          }
+          const gasLoader = document.getElementById('gas-loader-screen');
+          if (gasLoader) {
+            gasLoader.style.display = 'none';
+            if (gasLoader.parentNode) gasLoader.parentNode.removeChild(gasLoader);
+          }
+        } catch (e) {}
+      };
+
+      if (!overlay || !bar) {
+        hideAllLoaders();
+        return;
+      }
 
       let progress = 0;
       const updateProgress = (target, statusText) => {
@@ -519,22 +539,24 @@
       updateProgress(20, 'システムコンポーネント初期化中…');
 
       setTimeout(async () => {
-        updateProgress(50, 'GitHubリポジトリからデータ・モジュールを検出中…');
-        const savedRepo = localStorage.getItem('ORBITAL_GITHUB_REPO');
+        try {
+          updateProgress(50, 'GitHubリポジトリからデータ・モジュールを検出中…');
+          const savedRepo = localStorage.getItem('ORBITAL_GITHUB_REPO');
 
-        if (savedRepo) {
-          updateProgress(75, `GitHub (${savedRepo}) から最新データを取得中…`);
-          await this.loadFromGitHub(savedRepo, false);
-        } else {
-          updateProgress(80, 'カードライブラリをロード中…');
-          this.loadCards();
+          if (savedRepo) {
+            updateProgress(75, `GitHub (${savedRepo}) から最新データを取得中…`);
+            await this.loadFromGitHub(savedRepo, false);
+          } else {
+            updateProgress(80, 'カードライブラリをロード中…');
+            this.loadCards();
+          }
+          updateProgress(100, '起動完了！');
+        } catch (err) {
+          console.warn('Startup loader data fetch warning:', err);
+        } finally {
+          setTimeout(hideAllLoaders, 200);
         }
-
-        updateProgress(100, '起動完了！');
-        setTimeout(() => {
-          overlay.classList.add('hidden');
-        }, 450);
-      }, 350);
+      }, 100);
     },
 
     loadCards() {
