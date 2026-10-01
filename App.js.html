@@ -105,15 +105,17 @@
     },
 
     setFontSizeMode(mode, showToast) {
-      document.body.classList.remove('font-size-large', 'font-size-xlarge');
-      let label = 'Aa 文字サイズ: 標準';
-      if (mode === 'large') {
-        document.body.classList.add('font-size-large');
-        label = 'Aa 文字サイズ: 大';
-      } else if (mode === 'xlarge') {
-        document.body.classList.add('font-size-xlarge');
-        label = 'Aa 文字サイズ: 特大';
+      if (document.body) {
+        document.body.classList.remove('font-size-large', 'font-size-xlarge');
+        if (mode === 'large') {
+          document.body.classList.add('font-size-large');
+        } else if (mode === 'xlarge') {
+          document.body.classList.add('font-size-xlarge');
+        }
       }
+      let label = 'Aa 文字サイズ: 標準';
+      if (mode === 'large') label = 'Aa 文字サイズ: 大';
+      else if (mode === 'xlarge') label = 'Aa 文字サイズ: 特大';
       try {
         localStorage.setItem('orbital_font_scale', mode);
       } catch (e) {}
@@ -356,21 +358,30 @@
     /* ---------- アプデ配信・通知機能 ---------- */
 
     checkForUpdates() {
-      if (!window.google || !google.script || !google.script.run) return;
-      google.script.run.withSuccessHandler((res) => {
-        if (!res || !res.ok || !res.update) return;
-        const update = res.update;
-        this.state.latestUpdate = update;
-        const currentVer = this.state.currentVersion || 'v1.0.0';
-        if (update.version && update.version !== currentVer) {
-          const banner = this.el('appUpdateTopBanner');
-          const bannerText = this.el('appUpdateTopBannerText');
-          if (bannerText) {
-            bannerText.textContent = `🚀 新しいアップデート (${update.version}: ${update.title}) が配信されました！`;
-          }
-          if (banner) banner.classList.remove('hidden');
+      if (!window.google || !google.script || !google.script.run || window._is_mock_gas) return;
+      try {
+        const runner = google.script.run
+          .withSuccessHandler((res) => {
+            if (!res || !res.ok || !res.update) return;
+            const update = res.update;
+            this.state.latestUpdate = update;
+            const currentVer = this.state.currentVersion || 'v1.0.0';
+            if (update.version && update.version !== currentVer) {
+              const banner = this.el('appUpdateTopBanner');
+              const bannerText = this.el('appUpdateTopBannerText');
+              if (bannerText) {
+                bannerText.textContent = `🚀 新しいアップデート (${update.version}: ${update.title}) が配信されました！`;
+              }
+              if (banner) banner.classList.remove('hidden');
+            }
+          })
+          .withFailureHandler(() => {});
+        if (typeof runner.getLatestAppUpdate === 'function') {
+          runner.getLatestAppUpdate();
         }
-      }).withFailureHandler(() => {}).getLatestAppUpdate();
+      } catch (e) {
+        console.warn('checkForUpdates warning:', e);
+      }
     },
 
     openUpdatePublishModal() {
@@ -520,22 +531,32 @@
         return;
       }
 
-      this.el('homeCardCount').textContent = '読み込み中…';
-      if (window.google && google.script && google.script.run) {
-        google.script.run.
-        withSuccessHandler((cards) => {
-          this.state.cards = Array.isArray(cards) ? cards : [];
-          this.el('homeCardCount').textContent = this.state.cards.length + '枚のカード';
-          if (window.CardSystem) {
-            CardSystem.renderList();
-            CardSystem.renderRecent();
+      const countEl = this.el('homeCardCount');
+      if (countEl) countEl.textContent = '読み込み中…';
+      if (window.google && google.script && google.script.run && !window._is_mock_gas) {
+        try {
+          const runner = google.script.run
+            .withSuccessHandler((cards) => {
+              this.state.cards = Array.isArray(cards) ? cards : [];
+              const el = this.el('homeCardCount');
+              if (el) el.textContent = this.state.cards.length + '枚のカード';
+              if (window.CardSystem) {
+                CardSystem.renderList();
+                CardSystem.renderRecent();
+              }
+            })
+            .withFailureHandler((err) => {
+              console.warn('GAS loadCards fallback:', err);
+              this.loadDefaultLocalCards();
+            });
+          if (typeof runner.getCards === 'function') {
+            runner.getCards();
+          } else {
+            this.loadDefaultLocalCards();
           }
-        }).
-        withFailureHandler((err) => {
-          console.warn('GAS loadCards fallback:', err);
+        } catch (e) {
           this.loadDefaultLocalCards();
-        }).
-        getCards();
+        }
       } else {
         this.loadDefaultLocalCards();
       }
@@ -543,7 +564,8 @@
 
     loadDefaultLocalCards() {
       this.state.cards = this.state.cards || [];
-      this.el('homeCardCount').textContent = this.state.cards.length + '枚のカード';
+      const el = this.el('homeCardCount');
+      if (el) el.textContent = this.state.cards.length + '枚のカード';
       if (window.CardSystem) {
         CardSystem.renderList();
         CardSystem.renderRecent();
