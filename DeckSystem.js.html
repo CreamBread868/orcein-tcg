@@ -239,30 +239,9 @@ window.DeckSystem = function () {
     } catch (e) {
       state.decks = [];
     }
-    if (state.decks.length === 0) {
-      state.decks = getSampleDecks();
-    }
   }
 
   function getSampleDecks() {
-    if (window.BattleSystem && window.BattleSystem.aiDecks) {
-      const decks = [];
-      const keys = Object.keys(window.BattleSystem.aiDecks);
-      keys.forEach((key, idx) => {
-        const d = window.BattleSystem.aiDecks[key];
-        if (d && d.name && Array.isArray(d.cards)) {
-          decks.push({
-            id: 'sample_deck_' + (idx + 1),
-            name: d.name,
-            description: d.description || '',
-            cards: JSON.parse(JSON.stringify(d.cards)),
-            isSample: true,
-            createdAt: new Date().toISOString()
-          });
-        }
-      });
-      if (decks.length > 0) return decks;
-    }
     return [];
   }
 

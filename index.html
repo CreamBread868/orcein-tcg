@@ -13305,30 +13305,9 @@ window.DeckSystem = function () {
     } catch (e) {
       state.decks = [];
     }
-    if (state.decks.length === 0) {
-      state.decks = getSampleDecks();
-    }
   }
 
   function getSampleDecks() {
-    if (window.BattleSystem && window.BattleSystem.aiDecks) {
-      const decks = [];
-      const keys = Object.keys(window.BattleSystem.aiDecks);
-      keys.forEach((key, idx) => {
-        const d = window.BattleSystem.aiDecks[key];
-        if (d && d.name && Array.isArray(d.cards)) {
-          decks.push({
-            id: 'sample_deck_' + (idx + 1),
-            name: d.name,
-            description: d.description || '',
-            cards: JSON.parse(JSON.stringify(d.cards)),
-            isSample: true,
-            createdAt: new Date().toISOString()
-          });
-        }
-      });
-      if (decks.length > 0) return decks;
-    }
     return [];
   }
 
@@ -19972,27 +19951,6 @@ window.DeckSystem = function () {
             }
           }
         } catch (e) {}
-      }
-
-      if (!Array.isArray(this.state.cards) || this.state.cards.length === 0) {
-        const cardMap = new Map();
-        if (window.BattleSystem && window.BattleSystem.aiDecks) {
-          Object.values(window.BattleSystem.aiDecks).forEach(d => {
-            if (Array.isArray(d.cards)) {
-              d.cards.forEach(c => {
-                if (c && c.name && !cardMap.has(c.name)) {
-                  cardMap.set(c.name, { ...c, id: 'card_' + (cardMap.size + 1) });
-                }
-              });
-            }
-          });
-        }
-        if (cardMap.size > 0) {
-          this.state.cards = Array.from(cardMap.values());
-          try {
-            localStorage.setItem('orbital_cards_mock', JSON.stringify(this.state.cards));
-          } catch(e) {}
-        }
       }
 
       this.state.cards = Array.isArray(this.state.cards) ? this.state.cards : [];
