@@ -1752,21 +1752,24 @@
           } else if (typeof arg === 'function') {
             filter = arg;
           } else if (typeof arg === 'object' && arg !== null) {
-            if (arg.to || arg.onSelect || arg.remove || arg.message || arg.prompt || arg.desc || arg.title || arg.autoPick) {
+            if (arg.to || arg.onSelect || arg.remove || arg.message || arg.prompt || arg.desc || arg.title || arg.text || arg.autoPick) {
               options = Object.assign({}, options, arg);
-              if (arg.message || arg.prompt || arg.desc) {
-                customMessage = arg.message || arg.prompt || arg.desc;
+              if (arg.message || arg.prompt || arg.desc || arg.text) {
+                customMessage = arg.message || arg.prompt || arg.desc || arg.text;
               }
             } else {
               filter = arg;
             }
           } else if (typeof arg === 'string') {
-            if (isLast && (filter !== null || customMessage !== null || !isKnownFilterToken(arg) || restArgs.length > 2)) {
-              customMessage = arg;
-            } else if (!isKnownFilterToken(arg) && (filter !== null || isLast)) {
-              customMessage = arg;
+            const s = arg.trim();
+            if (isLast && (filter !== null || customMessage !== null || !isKnownFilterToken(s) || restArgs.length > 1)) {
+              customMessage = s;
+            } else if (!isKnownFilterToken(s)) {
+              customMessage = s;
+            } else if (filter === null) {
+              filter = s;
             } else {
-              filter = arg;
+              customMessage = s;
             }
           }
         }
@@ -1794,7 +1797,7 @@
               hp: c.hp,
               _raw: c
             }));
-            const stepTitle = options?.title || (count > 1 ? 'カードを選択 (' + (step + 1) + '/' + (count) + '枚目)' : 'カードを選択');
+            const stepTitle = options?.title || (customMessage ? 'カード選択' : (count > 1 ? 'カードを選択 (' + (step + 1) + '/' + (count) + '枚目)' : 'カードを選択'));
             const stepDesc = customMessage
               ? (count > 1 ? '' + (customMessage) + ' (' + (step + 1) + '/' + (count) + '枚目)' : customMessage)
               : (options?.desc || options?.message || options?.prompt || (count > 1 ? '対象カードをあと' + (count - step) + '枚選んでください。' : '対象カードを選んでください。'));
