@@ -33,7 +33,13 @@ indexHtml = indexHtml.replace(/<\?!=\s*include\(['"]([^'"]+)['"]\);\s*\?>/g, (ma
 for (const [key, file] of Object.entries(includes)) {
   if (fs.existsSync(path.join(__dirname, file))) {
     const content = fs.readFileSync(path.join(__dirname, file), 'utf8');
-    if (file === 'BattleSystem.js.html') {
+    if (file === 'CSS.html') {
+      const regex = /<style>[\s\S]*?<\/style>/;
+      if (regex.test(indexHtml)) {
+        console.log('Replacing inlined CSS.html block');
+        indexHtml = indexHtml.replace(regex, () => content);
+      }
+    } else if (file === 'BattleSystem.js.html') {
       const regex = /<script>(?:(?!<\/script>)[\s\S])*?console\.log\('\[ORBITAL\] BattleSystem\.js\.html started execution'\);[\s\S]*?console\.log\('\[ORBITAL\] BattleSystem\.js\.html finished execution[\s\S]*?<\/script>/;
       if (regex.test(indexHtml)) {
         console.log('Replacing inlined BattleSystem.js.html block');
