@@ -1334,7 +1334,7 @@
               <span style="font-weight:700; color:#ffd700;">🎴 コレクション所持枚数:</span>
               <span style="font-size:18px; font-weight:900; color:#fff; margin-left:8px;">${count > 0 ? count + ' 枚' : '🔒 未所持'}</span>
             </div>
-            ${count === 0 ? '<button class="primary-button" style="padding:4px 10px; font-size:12px;" onclick="App.closeModal(); App.showPage(\'pack\');">パックで引く</button>' : ''}
+            ${count === 0 ? `<button class="primary-button" style="padding:4px 10px; font-size:12px;" onclick="App.closeModal(); App.showPage('pack');">パックで引く</button>` : ''}
           `;
             modalCol.insertBefore(banner, modalCol.firstChild);
           }
