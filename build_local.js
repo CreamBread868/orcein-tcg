@@ -156,7 +156,7 @@ const gasLoaderHtml = `<!DOCTYPE html>
 
 const gasDir = path.join(__dirname, 'gas');
 if (fs.existsSync(gasDir)) {
-  fs.writeFileSync(path.join(gasDir, 'index_local.html'), gasLoaderHtml, 'utf8');
+  fs.writeFileSync(path.join(gasDir, 'index_local.html'), indexHtml, 'utf8');
 }
 
-console.log('Successfully generated index.html, index_local.html, and gas/index_local.html!');
+console.log('Successfully generated index.html, index_local.html, and gas/index_local.html with full CSS & JS compiled!');
