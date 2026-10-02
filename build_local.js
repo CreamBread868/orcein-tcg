@@ -120,6 +120,20 @@ const gasLoaderHtml = `<!DOCTYPE html>
 
       console.log('🐙 GAS Bootstrapping from GitHub:', rawBase, 'GAS Google Object:', !!savedG);
 
+      function showResetUI(msg) {
+        try { localStorage.removeItem('ORBITAL_GITHUB_REPO'); } catch(e) {}
+        var st = document.getElementById('gas-loader-status');
+        if (st) {
+          st.innerHTML = '<span style="color:#ef4444;font-weight:bold;">' + msg + '</span><br/><br/>' +
+            '<button onclick="try{localStorage.removeItem(\'ORBITAL_GITHUB_REPO\');}catch(e){}location.reload();" style="padding:10px 18px;background:linear-gradient(135deg,#6366f1,#3b82f6);color:#fff;border:none;border-radius:10px;font-weight:bold;cursor:pointer;box-shadow:0 4px 14px rgba(99,102,241,0.4);">🧹 リポジトリ設定をリセットして再読み込み</button>';
+        }
+      }
+
+      var bootTimer = setTimeout(function() {
+        console.warn('GitHub bootstrap timeout');
+        showResetUI('⏰ GitHubからの取得がタイムアウトしました。');
+      }, 7000);
+
       fetch(rawBase + 'index.html?t=' + Date.now())
         .then(function(res) {
           if (!res.ok) return fetch(rawBase + 'Index.html?t=' + Date.now());
@@ -134,6 +148,7 @@ const gasLoaderHtml = `<!DOCTYPE html>
           return res.text();
         })
         .then(function(html) {
+          clearTimeout(bootTimer);
           document.open();
           document.write(html);
           document.close();
@@ -145,9 +160,9 @@ const gasLoaderHtml = `<!DOCTYPE html>
           }
         })
         .catch(function(err) {
+          clearTimeout(bootTimer);
           console.error('GitHub Bootstrap Error:', err);
-          var st = document.getElementById('gas-loader-status');
-          if (st) st.textContent = '❌ エラー: ' + err.message + ' (再読み込みしてください)';
+          showResetUI('❌ エラー: ' + err.message);
         });
     })();
   </script>

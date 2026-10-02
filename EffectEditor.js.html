@@ -726,6 +726,105 @@ var EffectEditor;
       targets: ['attack1', 'attack2', 'ability']
     },
     {
+      keyword: 'nextTurnReduceOpponentAttack',
+      label: 'nextTurnReduceOpponentAttack(20);',
+      category: 'action',
+      badge: '相手攻撃力-20',
+      desc: '次の相手の番、相手のポケモンが使うワザの威力を -20 する（統一形式）',
+      snippet: 'nextTurnReduceOpponentAttack(20);',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'reduceOpponentAttackNextTurn',
+      label: 'reduceOpponentAttackNextTurn(20);',
+      category: 'action',
+      badge: '相手攻撃力-20',
+      desc: '次の相手の番、相手のポケモンが使うワザの威力を -20 する（統一エイリアス）',
+      snippet: 'reduceOpponentAttackNextTurn(20);',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'nextTurnReduceDamage',
+      label: 'nextTurnReduceDamage(30);',
+      category: 'action',
+      badge: '次ターン被ダメ-30',
+      desc: '次の相手の番、自分が受けるワザのダメージを -30 軽減する（統一形式）',
+      snippet: 'nextTurnReduceDamage(30);',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'reduceDamageNextTurn',
+      label: 'reduceDamageNextTurn(30);',
+      category: 'action',
+      badge: '次ターン被ダメ-30',
+      desc: '次の相手の番、自分が受けるワザのダメージを -30 軽減する（統一エイリアス）',
+      snippet: 'reduceDamageNextTurn(30);',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'nextTurnCantAttack',
+      label: 'nextTurnCantAttack();',
+      category: 'action',
+      badge: '次回ワザ不可',
+      desc: '次の自分の番、このポケモンはワザを使えない（統一形式）',
+      snippet: 'nextTurnCantAttack();',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'cantAttackNextTurn',
+      label: 'cantAttackNextTurn();',
+      category: 'action',
+      badge: '次回ワザ不可',
+      desc: '次の自分の番、このポケモンはワザを使えない（統一エイリアス）',
+      snippet: 'cantAttackNextTurn();',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'reduceHp',
+      label: 'reduceHp(opponent.active, 20);',
+      category: 'action',
+      badge: 'HP直接減少',
+      desc: '指定したポケモンのHPを直接減少させる（弱点・抵抗力・軽減無視）',
+      snippet: 'reduceHp(opponent.active, 20);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'reduceOpponentHp',
+      label: 'reduceOpponentHp(20);',
+      category: 'action',
+      badge: '相手HP直接減少',
+      desc: '相手バトル場ポケモンのHPを直接減少させる',
+      snippet: 'reduceOpponentHp(20);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'reduceMaxHp',
+      label: 'reduceMaxHp(opponent.active, 20);',
+      category: 'action',
+      badge: '最大HP減少',
+      desc: '指定したポケモンの最大HPを減少させる（現在HPが最大HPを超える場合は調整）',
+      snippet: 'reduceMaxHp(opponent.active, 20);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'increaseMaxHp',
+      label: 'increaseMaxHp(self.active, 30);',
+      category: 'action',
+      badge: '最大HP増加',
+      desc: '指定したポケモンの最大HPおよび現在HPを増加させる',
+      snippet: 'increaseMaxHp(self.active, 30);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'setHp',
+      label: 'setHp(self.active, 100);',
+      category: 'action',
+      badge: 'HP設定',
+      desc: '指定ポケモンのHPを直接特定の数値に設定する',
+      snippet: 'setHp(self.active, 100);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
       keyword: 'cant',
       label: 'if (条件不一致) cant("発動条件を満たしていません");',
       category: 'action',
@@ -1169,6 +1268,81 @@ var EffectEditor;
         ],
         example: 'nextTurnDamage(80);\n// または特定ポケモン限定:\nnextTurnDamage(80, self.active);\n// または属性限定:\nnextTurnDamage(80, { type: "Fire" });',
         snippet: 'nextTurnDamage(80);'
+      },
+      {
+        name: 'reduceOpponentAttackNextTurn',
+        signature: 'reduceOpponentAttackNextTurn(amount, targetOrFilter?)',
+        category: 'battle',
+        catLabel: 'ダメージ・回復',
+        badge: '相手攻撃力ダウン',
+        returns: 'number',
+        desc: '次の相手の番、相手のポケモンが使うワザのダメージを減少させます。（統一エイリアス: nextTurnReduceOpponentAttack）',
+        params: [
+          { name: 'amount', type: 'number', desc: '減少させるワザの威力数値（例: 20）' },
+          { name: 'targetOrFilter', type: 'object | null', desc: '（省略可）特定の相手ポケモン（opponent.active 等）' }
+        ],
+        example: 'reduceOpponentAttackNextTurn(20);',
+        snippet: 'reduceOpponentAttackNextTurn(20);'
+      },
+      {
+        name: 'reduceDamageNextTurn',
+        signature: 'reduceDamageNextTurn(amount, target?)',
+        category: 'battle',
+        catLabel: 'ダメージ・回復',
+        badge: '次ターン被ダメ軽減',
+        returns: 'number',
+        desc: '次の相手の番、自分が受けるワザのダメージを軽減します。（統一エイリアス: nextTurnReduceDamage）',
+        params: [
+          { name: 'amount', type: 'number', desc: '軽減するダメージ数値（例: 30）' },
+          { name: 'target', type: 'pokemon | null', desc: '（省略可）対象ポケモン（デフォルト: self.active）' }
+        ],
+        example: 'reduceDamageNextTurn(30);',
+        snippet: 'reduceDamageNextTurn(30);'
+      },
+      {
+        name: 'reduceHp',
+        signature: 'reduceHp(target?, amount)',
+        category: 'battle',
+        catLabel: 'ダメージ・回復',
+        badge: 'HP直接減少',
+        returns: 'number',
+        desc: '指定したポケモンのHPを直接減少させます（弱点・抵抗力・ダメージ軽減を無視してHPを削ります）。',
+        params: [
+          { name: 'target', type: 'pokemon', desc: '（省略時は opponent.active）対象ポケモン' },
+          { name: 'amount', type: 'number', desc: '減少させるHP数値' }
+        ],
+        example: '// 相手バトル場のHPを20減少:\nreduceHp(opponent.active, 20);\n// 数値のみ指定（相手バトル場に20ダメージ相当）:\nreduceHp(20);',
+        snippet: 'reduceHp(opponent.active, 20);'
+      },
+      {
+        name: 'reduceMaxHp',
+        signature: 'reduceMaxHp(target?, amount)',
+        category: 'battle',
+        catLabel: 'ダメージ・回復',
+        badge: '最大HP減少',
+        returns: 'number',
+        desc: '指定したポケモンの最大HPを減少させます。現在HPが減少後の最大HPを上回っている場合、現在HPも自動的に制限されます。',
+        params: [
+          { name: 'target', type: 'pokemon', desc: '（省略時は opponent.active）対象ポケモン' },
+          { name: 'amount', type: 'number', desc: '減少させる最大HP数値' }
+        ],
+        example: 'reduceMaxHp(opponent.active, 20);',
+        snippet: 'reduceMaxHp(opponent.active, 20);'
+      },
+      {
+        name: 'increaseMaxHp',
+        signature: 'increaseMaxHp(target?, amount)',
+        category: 'battle',
+        catLabel: 'ダメージ・回復',
+        badge: '最大HP増加',
+        returns: 'number',
+        desc: '指定したポケモンの最大HPおよび現在HPを増加させます。',
+        params: [
+          { name: 'target', type: 'pokemon', desc: '（省略時は self.active）対象ポケモン' },
+          { name: 'amount', type: 'number', desc: '増加させる最大HP数値' }
+        ],
+        example: 'increaseMaxHp(self.active, 30);',
+        snippet: 'increaseMaxHp(self.active, 30);'
       },
       {
         name: 'cant',
@@ -1697,6 +1871,11 @@ var EffectEditor;
       } else {
         buttons = [
         { label: '30ダメージ', sub: 'damage()', code: 'damage(opponent.active, 30);' },
+        { label: '相手次攻撃力-20', sub: 'reduceOpponentAttackNextTurn', code: 'reduceOpponentAttackNextTurn(20);' },
+        { label: '次ターン被ダメ-30', sub: 'reduceDamageNextTurn', code: 'reduceDamageNextTurn(30);' },
+        { label: '相手HP直接-20', sub: 'reduceHp', code: 'reduceHp(opponent.active, 20);' },
+        { label: '相手最大HP-20', sub: 'reduceMaxHp', code: 'reduceMaxHp(opponent.active, 20);' },
+        { label: '自分最大HP+30', sub: 'increaseMaxHp', code: 'increaseMaxHp(self.active, 30);' },
         { label: 'ベンチ狙撃30', sub: 'choiceCard + damage', code: 'const target = choiceCard(opponent.bench);\ndamage(target, 30);' },
         { label: 'エネ数×20ダメ', sub: 'getEnergy() * 20', code: 'const n = getEnergy(self.active);\ndamage(opponent.active, n * 20);' },
         { label: 'エネをつける', sub: 'attach()', code: 'const card = choiceCard(self, "hand", { category: "Energy" });\nattach(card, self.active);' },
@@ -2427,6 +2606,13 @@ var EffectEditor;
         const aFit = a.targets.includes(tab) ? 1 : 0;
         const bFit = b.targets.includes(tab) ? 1 : 0;
         if (aFit !== bFit) return bFit - aFit;
+
+        if (wordLower) {
+          const aStarts = a.keyword.toLowerCase().startsWith(wordLower) ? 1 : 0;
+          const bStarts = b.keyword.toLowerCase().startsWith(wordLower) ? 1 : 0;
+          if (aStarts !== bStarts) return bStarts - aStarts;
+        }
+
         return a.keyword.localeCompare(b.keyword);
       });
 

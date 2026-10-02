@@ -9893,6 +9893,53 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
           }, 50);
         };
 
+        MockRunner.prototype.getPacks = function() {
+          var self = this;
+          setTimeout(function() {
+            var raw = localStorage.getItem('ORBITAL_CUSTOM_PACKS');
+            var packs = [];
+            if (raw) {
+              try { packs = JSON.parse(raw); } catch(e) {}
+            }
+            self._success(packs);
+          }, 50);
+          return this;
+        };
+
+        MockRunner.prototype.savePack = function(pack) {
+          var self = this;
+          setTimeout(function() {
+            try {
+              var raw = localStorage.getItem('ORBITAL_CUSTOM_PACKS');
+              var packs = raw ? JSON.parse(raw) : [];
+              if (!pack.id) pack.id = 'pack_' + Date.now();
+              var idx = packs.findIndex(function(p) { return p.id === pack.id; });
+              if (idx >= 0) packs[idx] = pack; else packs.push(pack);
+              localStorage.setItem('ORBITAL_CUSTOM_PACKS', JSON.stringify(packs));
+              self._success({ ok: true, packId: pack.id });
+            } catch(e) {
+              self._failure(e);
+            }
+          }, 50);
+          return this;
+        };
+
+        MockRunner.prototype.deletePack = function(packId) {
+          var self = this;
+          setTimeout(function() {
+            try {
+              var raw = localStorage.getItem('ORBITAL_CUSTOM_PACKS');
+              var packs = raw ? JSON.parse(raw) : [];
+              packs = packs.filter(function(p) { return p.id !== packId; });
+              localStorage.setItem('ORBITAL_CUSTOM_PACKS', JSON.stringify(packs));
+              self._success({ ok: true });
+            } catch(e) {
+              self._failure(e);
+            }
+          }, 50);
+          return this;
+        };
+
         function getLocalRooms() {
           try {
             var raw = localStorage.getItem('orbital_mock_rooms');
@@ -10384,7 +10431,6 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
       <aside id="sidebar" class="sidebar">
         <button class="nav-button active" data-page="home">⌂ <span>ホーム</span></button>
         <button class="nav-button" data-page="cards">▣ <span>カード</span></button>
-        <button class="nav-button" data-page="collection">🎴 <span>コレクション</span></button>
         <button class="nav-button" data-page="deck">◆ <span>デッキ</span></button>
         <button class="nav-button admin-only-ui hidden" data-page="create">＋ <span>カード作成</span></button>
         <button class="nav-button" data-page="battle">⚔ <span>バトル</span></button>
@@ -10472,109 +10518,6 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
           </div>
 
           <div id="cardList" class="card-grid"></div>
-        </section>
-
-        <!-- コレクションページ -->
-        <section id="page-collection" class="page">
-          <div class="page-heading">
-            <div>
-              <div class="eyebrow">CARD ALBUM & COLLECTION</div>
-              <h1>🎴 コレクションリスト</h1>
-            </div>
-            <div style="display:flex; gap:10px;">
-              <button class="secondary-button" onclick="CardSystem.renderCollectionPage()">🔄 リフレッシュ</button>
-              <button class="primary-button" onclick="App.showPage('pack')">🎁 パックを開けてカードを集める</button>
-            </div>
-          </div>
-
-          <!-- コレクション進捗統計パネル -->
-          <div class="collection-stats-panel">
-            <div class="collection-main-stats">
-              <div class="collection-trophy-icon">🏆</div>
-              <div class="collection-progress-info">
-                <div class="collection-stat-label">コンプリート率</div>
-                <div class="collection-stat-percent" id="collectionPercentText">0.0%</div>
-                <div class="collection-progress-bar-bg">
-                  <div class="collection-progress-bar-fill" id="collectionProgressBarFill" style="width: 0%;"></div>
-                </div>
-                <div class="collection-stat-sub" id="collectionCountText">0 / 0 種類コンプリート (総枚数: 0枚)</div>
-              </div>
-            </div>
-
-            <div class="collection-rarity-breakdown">
-              <div class="rarity-stat-pill ur-pill">
-                <span class="rarity-badge ur">UR</span>
-                <span id="colCountUR" class="stat-num">0/0</span>
-              </div>
-              <div class="rarity-stat-pill sr-pill">
-                <span class="rarity-badge sr">SR</span>
-                <span id="colCountSR" class="stat-num">0/0</span>
-              </div>
-              <div class="rarity-stat-pill r-pill">
-                <span class="rarity-badge r">R</span>
-                <span id="colCountR" class="stat-num">0/0</span>
-              </div>
-              <div class="rarity-stat-pill n-pill">
-                <span class="rarity-badge n">N</span>
-                <span id="colCountN" class="stat-num">0/0</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- フィルター＆検索ツールバー -->
-          <div class="filter-panel collection-filter-panel">
-            <input id="collectionSearchInput" class="input" placeholder="🔍 カード名・ワザ名で検索…" oninput="CardSystem.renderCollectionGrid()">
-            
-            <select id="colCategoryFilter" class="input" onchange="CardSystem.renderCollectionGrid()">
-              <option value="">全カテゴリ</option>
-              <option value="たね">たね</option>
-              <option value="1進化">1進化</option>
-              <option value="2進化">2進化</option>
-              <option value="進化">進化</option>
-              <option value="ex">ex (すべて)</option>
-              <option value="たねex">たねex</option>
-              <option value="1進化ex">1進化ex</option>
-              <option value="2進化ex">2進化ex</option>
-              <option value="トレーナー">トレーナー</option>
-              <option value="グッズ">グッズ</option>
-              <option value="サポート">サポート</option>
-              <option value="エネルギー">エネルギー</option>
-            </select>
-
-            <select id="colTypeFilter" class="input" onchange="CardSystem.renderCollectionGrid()">
-              <option value="">全タイプ</option>
-              <option value="草">草</option><option value="炎">炎</option>
-              <option value="水">水</option><option value="雷">雷</option>
-              <option value="超">超</option><option value="闘">闘</option>
-              <option value="悪">悪</option><option value="鋼">鋼</option>
-              <option value="ドラゴン">ドラゴン</option><option value="無色">無色</option>
-            </select>
-
-            <select id="colRarityFilter" class="input" onchange="CardSystem.renderCollectionGrid()">
-              <option value="">全レアリティ</option>
-              <option value="UR">UR</option>
-              <option value="SR">SR</option>
-              <option value="R">R</option>
-              <option value="N">N</option>
-            </select>
-
-            <select id="colOwnershipFilter" class="input" onchange="CardSystem.renderCollectionGrid()">
-              <option value="all">すべて (図鑑表示)</option>
-              <option value="owned" selected>✅ 所持済みのみ</option>
-              <option value="unowned">🔒 未所持のみ</option>
-            </select>
-
-            <select id="colSortSelect" class="input" onchange="CardSystem.renderCollectionGrid()">
-              <option value="id">図鑑順</option>
-              <option value="rarityDesc">レアリティ順 (高→低)</option>
-              <option value="rarityAsc">レアリティ順 (低→高)</option>
-              <option value="countDesc">所持枚数順 (多→少)</option>
-              <option value="hpDesc">HP順</option>
-            </select>
-          </div>
-
-          <!-- コレクションカードグリッド -->
-          <div id="collectionGrid" class="card-grid"></div>
         </section>
 
         <section id="page-create" class="page">
@@ -11759,7 +11702,7 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
           };
 
           if (t.abilityCode && window.executeCardEffectCode &&
-              /event\s*\.\s*on\s*\(\s*['"`]beforeDamage['"`]/.test(t.abilityCode)) {
+              /event\s*\.\s*on\s*\(\s*['"]beforeDamage['"]/.test(t.abilityCode)) {
             try {
               window.executeCardEffectCode(
                 t.abilityCode,
@@ -12289,39 +12232,15 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
               // 複数回の結果を表示
               const coinsHtml = flipResults.map((r, i) => {
                 const isH = r === '表';
-                return `<div class="coin-flip-coin ${isH ? 'coin-heads' : 'coin-tails'}" style="
-                  width:90px;height:90px;border-radius:50%;
-                  display:flex;align-items:center;justify-content:center;
-                  font-size:2.4rem;font-weight:900;
-                  background:${isH ? 'linear-gradient(135deg,#ffd700,#ff9f00)' : 'linear-gradient(135deg,#6c7ae0,#3a3f7a)'};
-                  border:4px solid ${isH ? '#ffe566' : '#8899ff'};
-                  box-shadow:0 0 24px ${isH ? 'rgba(255,215,0,0.7)' : 'rgba(100,120,255,0.6)'};
-                  margin:6px;
-                  animation:coinFlipAnim 0.6s cubic-bezier(.4,0,.2,1) ${i * 0.18}s both;
-                ">${isH ? '🌟' : '💙'}</div>`;
+                return '<div class="coin-flip-coin ' + (isH ? 'coin-heads' : 'coin-tails') + '" style="\n                  width:90px;height:90px;border-radius:50%;\n                  display:flex;align-items:center;justify-content:center;\n                  font-size:2.4rem;font-weight:900;\n                  background:' + (isH ? 'linear-gradient(135deg,#ffd700,#ff9f00)' : 'linear-gradient(135deg,#6c7ae0,#3a3f7a)') + ';\n                  border:4px solid ' + (isH ? '#ffe566' : '#8899ff') + ';\n                  box-shadow:0 0 24px ' + (isH ? 'rgba(255,215,0,0.7)' : 'rgba(100,120,255,0.6)') + ';\n                  margin:6px;\n                  animation:coinFlipAnim 0.6s cubic-bezier(.4,0,.2,1) ' + (i * 0.18) + 's both;\n                ">' + (isH ? '🌟' : '💙') + '</div>';
               }).join('');
 
               const headsCount = flipResults.filter(r => r === '表').length;
               const summary = flipResults.length === 1
-                ? `<span style="font-size:2rem;font-weight:900;color:${headsCount === 1 ? '#ffd700' : '#8899ff'}">${headsCount === 1 ? '✨ 表！' : '💙 裏！'}</span>`
-                : `<span style="font-size:1.5rem;font-weight:900;color:#fff">${headsCount}回 表 / ${flipResults.length - headsCount}回 裏</span>`;
+                ? '<span style="font-size:2rem;font-weight:900;color:' + (headsCount === 1 ? '#ffd700' : '#8899ff') + '">' + (headsCount === 1 ? '✨ 表！' : '💙 裏！') + '</span>'
+                : '<span style="font-size:1.5rem;font-weight:900;color:#fff">' + (headsCount) + '回 表 / ' + (flipResults.length - headsCount) + '回 裏</span>';
 
-              overlay.innerHTML = `
-                <style>
-                  @keyframes fadeInOverlay { from { opacity:0 } to { opacity:1 } }
-                  @keyframes coinFlipAnim {
-                    0%   { transform: scale(0) rotateY(0deg); opacity:0 }
-                    50%  { transform: scale(1.15) rotateY(360deg); opacity:1 }
-                    100% { transform: scale(1) rotateY(720deg); opacity:1 }
-                  }
-                </style>
-                <div style="text-align:center;padding:32px 40px;background:rgba(20,20,40,0.95);border:2px solid rgba(255,255,255,0.1);border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
-                  <div style="font-size:1.1rem;color:rgba(255,255,255,0.6);margin-bottom:16px;letter-spacing:0.05em">🪙 コイントス</div>
-                  <div style="display:flex;flex-wrap:wrap;justify-content:center;max-width:360px;margin-bottom:20px">${coinsHtml}</div>
-                  ${summary}
-                  <div style="margin-top:16px;color:rgba(255,255,255,0.5);font-size:0.85rem">[${flipResults.join(', ')}]</div>
-                  <div style="margin-top:20px;color:rgba(255,255,255,0.4);font-size:0.8rem">タップして続ける</div>
-                </div>`;
+              overlay.innerHTML = '\n                <style>\n                  @keyframes fadeInOverlay { from { opacity:0 } to { opacity:1 } }\n                  @keyframes coinFlipAnim {\n                    0%   { transform: scale(0) rotateY(0deg); opacity:0 }\n                    50%  { transform: scale(1.15) rotateY(360deg); opacity:1 }\n                    100% { transform: scale(1) rotateY(720deg); opacity:1 }\n                  }\n                </style>\n                <div style="text-align:center;padding:32px 40px;background:rgba(20,20,40,0.95);border:2px solid rgba(255,255,255,0.1);border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,0.5);">\n                  <div style="font-size:1.1rem;color:rgba(255,255,255,0.6);margin-bottom:16px;letter-spacing:0.05em">🪙 コイントス</div>\n                  <div style="display:flex;flex-wrap:wrap;justify-content:center;max-width:360px;margin-bottom:20px">' + (coinsHtml) + '</div>\n                  ' + (summary) + '\n                  <div style="margin-top:16px;color:rgba(255,255,255,0.5);font-size:0.85rem">[' + (flipResults.join(', ')) + ']</div>\n                  <div style="margin-top:20px;color:rgba(255,255,255,0.4);font-size:0.8rem">タップして続ける</div>\n                </div>';
 
               document.body.appendChild(overlay);
               const cleanup = () => {
@@ -13185,10 +13104,10 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
               hp: c.hp,
               _raw: c
             }));
-            const stepTitle = options?.title || (count > 1 ? `カードを選択 (${step + 1}/${count}枚目)` : 'カードを選択');
+            const stepTitle = options?.title || (count > 1 ? 'カードを選択 (' + (step + 1) + '/' + (count) + '枚目)' : 'カードを選択');
             const stepDesc = customMessage
-              ? (count > 1 ? `${customMessage} (${step + 1}/${count}枚目)` : customMessage)
-              : (options?.desc || options?.message || options?.prompt || (count > 1 ? `対象カードをあと${count - step}枚選んでください。` : '対象カードを選んでください。'));
+              ? (count > 1 ? '' + (customMessage) + ' (' + (step + 1) + '/' + (count) + '枚目)' : customMessage)
+              : (options?.desc || options?.message || options?.prompt || (count > 1 ? '対象カードをあと' + (count - step) + '枚選んでください。' : '対象カードを選んでください。'));
             const selectedItem = await window.BattleSystem.showChoiceModalPromise(modalCards, {
               title: stepTitle,
               desc: stepDesc
@@ -13678,11 +13597,11 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
       const EVENT_DISPATCH_NAMES = ['turnStart', 'start', 'beforeDamage', 'onKnockout', 'onKnockoutOpponent', 'onAttach', 'onEvolution', ...ALLY_KO_ALIASES];
       if (eventName && EVENT_DISPATCH_NAMES.includes(eventName)) {
         if (eventName === 'allyKnockedOut' || ALLY_KO_ALIASES.includes(eventName)) {
-          const hasListener = /event\s*\.\s*on\s*\(\s*['"`](allyKnockedOut|onAllyKnockout|allyKnockout|ally_knocked_out|allyFainted|味方気絶|仲間気絶|自分のポケモン気絶|自分の仲間が気絶したら|仲間が気絶したら|味方が気絶したら)['"`]/.test(code);
+          const hasListener = /event\s*\.\s*on\s*\(\s*['"](allyKnockedOut|onAllyKnockout|allyKnockout|ally_knocked_out|allyFainted|味方気絶|仲間気絶|自分のポケモン気絶|自分の仲間が気絶したら|仲間が気絶したら|味方が気絶したら)['"]/.test(code);
           if (!hasListener) return;
         } else {
           const escapedEvent = eventName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const hasListener = new RegExp(`event\\s*\\.\\s*on\\s*\\(\\s*['"\`]${escapedEvent}['"\`]`).test(code);
+          const hasListener = new RegExp('event\\\\s*\\\\.\\\\s*on\\\\s*\\\\(\\\\s*[\'"\\']${escapedEvent}['"\']').test(code);
           if (!hasListener) return; // このコードはこのイベントをリッスンしていない → スキップ
         }
       }
@@ -20471,7 +20390,7 @@ window.DeckSystem = function () {
       }
 
       if (coinTossText) {
-        coinTossText.textContent = `COIN TOSS: ${isFirst ? 'あなたが先攻！' : '相手が先攻！'}`;
+        coinTossText.textContent = 'COIN TOSS: ' + (isFirst ? 'あなたが先攻！' : '相手が先攻！') + '';
       }
 
       // アバター画像設定
@@ -20723,7 +20642,7 @@ window.DeckSystem = function () {
       // ※ event.on('turnStart', ...) または event.on('start', ...) を明示的に宣言しているコードのみ実行する
       // ※ useLimit() 等の起動型特性（上位コードがイベント登録なし）は絶対に自動実行しない
       const activePokemons = [cur.active, ...(cur.bench || [])].filter(Boolean);
-      const TURN_START_EVENT_REGEX = /event\s*\.\s*on\s*\(\s*['"`](?:turnStart|start)['"`]/;
+      const TURN_START_EVENT_REGEX = /event\s*\.\s*on\s*\(\s*['"](?:turnStart|start)['"]/;
       activePokemons.forEach((pk) => {
         const code = String(pk.abilityCode || '');
         if (code && window.executeCardEffectCode && TURN_START_EVENT_REGEX.test(code)) {
@@ -21845,7 +21764,7 @@ window.DeckSystem = function () {
           currentCount: currentCount,
           reqList: reqList,
           missingTypes: [],
-          missingDesc: `エネ不足 (${currentCount}/${reqCount})`
+          missingDesc: 'エネ不足 (' + (currentCount) + '/' + (reqCount) + ')'
         };
       }
 
@@ -21898,7 +21817,7 @@ window.DeckSystem = function () {
           currentCount: currentCount,
           reqList: reqList,
           missingTypes: missingTypes,
-          missingDesc: `属性不一致 (${missingFormatted})`
+          missingDesc: '属性不一致 (' + (missingFormatted) + ')'
         };
       }
 
@@ -21910,7 +21829,7 @@ window.DeckSystem = function () {
           currentCount: currentCount,
           reqList: reqList,
           missingTypes: [],
-          missingDesc: `エネ不足 (${currentCount}/${reqCount})`
+          missingDesc: 'エネ不足 (' + (currentCount) + '/' + (reqCount) + ')'
         };
       }
 
@@ -21972,7 +21891,7 @@ window.DeckSystem = function () {
       }
 
       // 自身の仲間（味方）きぜつ時イベント allyKnockedOut / 味方気絶 の発火
-      const ALLY_KO_REGEX = /event\s*\.\s*on\s*\(\s*['"`](allyKnockedOut|onAllyKnockout|allyKnockout|ally_knocked_out|allyFainted|味方気絶|仲間気絶|自分のポケモン気絶|自分の仲間が気絶したら|仲間が気絶したら|味方が気絶したら)['"`]/;
+      const ALLY_KO_REGEX = /event\s*\.\s*on\s*\(\s*['"](allyKnockedOut|onAllyKnockout|allyKnockout|ally_knocked_out|allyFainted|味方気絶|仲間気絶|自分のポケモン気絶|自分の仲間が気絶したら|仲間が気絶したら|味方が気絶したら)['"]/;
       const victimAllies = [...(victim.bench || [])];
       if (victim.active) victimAllies.push(victim.active);
       victimAllies.forEach((allyPk) => {
@@ -22376,13 +22295,7 @@ window.DeckSystem = function () {
         const emptyMsg = cards.length === 0 ?
           ownerName + "のトラッシュにはまだカードがありません。" :
           "該当するカテゴリ（" + filter + "）のカードはありません。";
-        grid.innerHTML = `
-          <div class="discard-empty-state">
-            <div class="discard-empty-icon">🗑️</div>
-            <div class="discard-empty-title">${ownerName}のトラッシュ</div>
-            <div class="discard-empty-sub">${emptyMsg}</div>
-          </div>
-        `;
+        grid.innerHTML = '\n          <div class="discard-empty-state">\n            <div class="discard-empty-icon">🗑️</div>\n            <div class="discard-empty-title">' + (ownerName) + 'のトラッシュ</div>\n            <div class="discard-empty-sub">' + (emptyMsg) + '</div>\n          </div>\n        ';
         return;
       }
 
@@ -22394,20 +22307,10 @@ window.DeckSystem = function () {
         if (window.CardSystem && typeof window.CardSystem.createCardHtml === 'function') {
           cardHtml = window.CardSystem.createCardHtml(card, { size: 'sm' });
         } else {
-          cardHtml = `
-            <div class="card-fallback" style="padding:10px; background:#1e293b; border-radius:8px;">
-              <strong>${this.escape(card.name)}</strong>
-              <div>${this.escape(card.category || '')}</div>
-            </div>
-          `;
+          cardHtml = '\n            <div class="card-fallback" style="padding:10px; background:#1e293b; border-radius:8px;">\n              <strong>' + (this.escape(card.name)) + '</strong>\n              <div>' + (this.escape(card.category || '')) + '</div>\n            </div>\n          ';
         }
 
-        return `
-          <div class="discard-grid-item" data-discard-idx="${idx}" title="クリックして【${this.escape(card.name)}】の詳細を拡大表示">
-            <span class="discard-grid-zoom-pill">🔍 拡大</span>
-            ${cardHtml}
-          </div>
-        `;
+        return '\n          <div class="discard-grid-item" data-discard-idx="' + (idx) + '" title="クリックして【' + (this.escape(card.name)) + '】の詳細を拡大表示">\n            <span class="discard-grid-zoom-pill">🔍 拡大</span>\n            ' + (cardHtml) + '\n          </div>\n        ';
       }).join('');
 
       // クリックで CardSystem.showDetail を呼び出してフル拡大表示
@@ -22440,16 +22343,7 @@ window.DeckSystem = function () {
       grid.innerHTML = cards.map((c, i) => {
         const typeHtml = c.type ? '【' + this.escape(c.type) + '】' : '';
         const hpHtml = c.hp ? '<span>HP ' + c.hp + '</span>' : '';
-        return `
-          <div class="choice-card-item" data-choice-idx="${i}">
-            <div class="choice-card-title">${this.escape(c.name)}</div>
-            <div class="choice-card-meta">
-              <span>${this.escape(c.category || '')}</span>
-              <span>${typeHtml}</span>
-              ${hpHtml}
-            </div>
-          </div>
-        `;
+        return '\n          <div class="choice-card-item" data-choice-idx="' + (i) + '">\n            <div class="choice-card-title">' + (this.escape(c.name)) + '</div>\n            <div class="choice-card-meta">\n              <span>' + (this.escape(c.category || '')) + '</span>\n              <span>' + (typeHtml) + '</span>\n              ' + (hpHtml) + '\n            </div>\n          </div>\n        ';
       }).join('');
 
       modal.classList.remove('hidden');
@@ -23090,20 +22984,7 @@ window.DeckSystem = function () {
       else if (handEnergyIndices.length === 0) energyBtnLabel = '手札にエネルギーなし';
       else if (isEnergyBlocked) energyBtnLabel = '🚫 エネルギー手札付け禁止中';
 
-      itemsHtml += `
-        <div class="card-act-item is-energy">
-          <div class="act-item-content">
-            <div class="act-item-header">
-              <span class="act-badge energy" style="background:#00b4db;">手札付け</span>
-              <span class="act-item-name">エネルギー装着</span>
-            </div>
-            <div class="act-item-text">手札のエネルギーカードをこのポケモンに付けます（1ターン1回まで）。</div>
-          </div>
-          <button type="button" class="primary-button card-act-btn energy-btn" data-action="attach_hand_energy" ${canAttachEnergyFromHand ? '' : 'disabled'}>
-            ${energyBtnLabel}
-          </button>
-        </div>
-      `;
+      itemsHtml += '\n        <div class="card-act-item is-energy">\n          <div class="act-item-content">\n            <div class="act-item-header">\n              <span class="act-badge energy" style="background:#00b4db;">手札付け</span>\n              <span class="act-item-name">エネルギー装着</span>\n            </div>\n            <div class="act-item-text">手札のエネルギーカードをこのポケモンに付けます（1ターン1回まで）。</div>\n          </div>\n          <button type="button" class="primary-button card-act-btn energy-btn" data-action="attach_hand_energy" ' + (canAttachEnergyFromHand ? '' : 'disabled') + '>\n            ' + (energyBtnLabel) + '\n          </button>\n        </div>\n      ';
 
       // 6. 手札から進化させる
       const validEvos = [];
@@ -23114,20 +22995,7 @@ window.DeckSystem = function () {
       });
 
       validEvos.forEach(item => {
-        itemsHtml += `
-          <div class="card-act-item is-evo">
-            <div class="act-item-content">
-              <div class="act-item-header">
-                <span class="act-badge evo" style="background:#ff9900;">進化</span>
-                <span class="act-item-name">「${this.escape(item.card.name)}」へ進化</span>
-              </div>
-              <div class="act-item-text">手札の「${this.escape(item.card.name)}」を重ねて進化させます。</div>
-            </div>
-            <button type="button" class="primary-button card-act-btn evo-btn" data-action="evolve_hand" data-hand-idx="${item.handIdx}" ${isMyTurn ? '' : 'disabled'}>
-              🌟 【${this.escape(item.card.name)}】に進化
-            </button>
-          </div>
-        `;
+        itemsHtml += '\n          <div class="card-act-item is-evo">\n            <div class="act-item-content">\n              <div class="act-item-header">\n                <span class="act-badge evo" style="background:#ff9900;">進化</span>\n                <span class="act-item-name">「' + (this.escape(item.card.name)) + '」へ進化</span>\n              </div>\n              <div class="act-item-text">手札の「' + (this.escape(item.card.name)) + '」を重ねて進化させます。</div>\n            </div>\n            <button type="button" class="primary-button card-act-btn evo-btn" data-action="evolve_hand" data-hand-idx="' + (item.handIdx) + '" ' + (isMyTurn ? '' : 'disabled') + '>\n              🌟 【' + (this.escape(item.card.name)) + '】に進化\n            </button>\n          </div>\n        ';
       });
 
       if (!itemsHtml) {
@@ -23812,7 +23680,7 @@ window.DeckSystem = function () {
           const banner = this.el('appUpdateTopBanner');
           const bannerText = this.el('appUpdateTopBannerText');
           if (bannerText) {
-            bannerText.textContent = `🚀 新しいアップデート (${update.version}: ${update.title}) が配信されました！`;
+            bannerText.textContent = '🚀 新しいアップデート (' + (update.version) + ': ' + (update.title) + ') が配信されました！';
           }
           if (banner) banner.classList.remove('hidden');
         }
@@ -23862,7 +23730,7 @@ window.DeckSystem = function () {
           return;
         }
         this.closeUpdatePublishModal();
-        this.toast(`🎉 アプデ (${version}) の配信が完了しました！`);
+        this.toast('🎉 アプデ (' + (version) + ') の配信が完了しました！');
         this.state.currentVersion = version;
         try { localStorage.setItem('orbital_app_version', version); } catch(e) {}
         if (titleInput) titleInput.value = '';
@@ -23922,7 +23790,7 @@ window.DeckSystem = function () {
         window.DeckSystem.loadDecks();
       }
 
-      this.toast(`🎉 バージョン ${version} へ更新を適用しました！`);
+      this.toast('🎉 バージョン ' + (version) + ' へ更新を適用しました！');
     },
 
     loadCards() {
@@ -23980,7 +23848,7 @@ window.DeckSystem = function () {
         const owner = parts[0];
         const repo = parts[1];
         const branch = parts[3] || 'main';
-        return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/`;
+        return 'https://raw.githubusercontent.com/' + (owner) + '/' + (repo) + '/' + (branch) + '/';
       }
       return null;
     },
@@ -23999,7 +23867,7 @@ window.DeckSystem = function () {
         const cardsUrl = baseUrl + 'cards.json';
         const cardsRes = await fetch(cardsUrl);
         if (!cardsRes.ok) {
-          throw new Error(`cards.json の取得に失敗しました (HTTP ${cardsRes.status})`);
+          throw new Error('cards.json の取得に失敗しました (HTTP ' + (cardsRes.status) + ')');
         }
         let cardsData = await cardsRes.json();
         if (!Array.isArray(cardsData) && cardsData && Array.isArray(cardsData.cards)) {
@@ -24240,18 +24108,7 @@ window.DeckSystem = function () {
         let html = '';
         users.forEach((u) => {
           const isCur = String(u.email).toLowerCase() === curEmail;
-          html += `
-            <div class="account-switch-item ${isCur ? 'current' : ''}" onclick="App.switchToAccount('${self.escapeHtml(u.email)}')">
-              <div class="account-item-left">
-                <span class="account-item-avatar">${self.escapeHtml(u.avatar || '👤')}</span>
-                <div>
-                  <div class="account-item-name">${self.escapeHtml(u.displayName || u.email.split('@')[0])}</div>
-                  <div class="account-item-email">${self.escapeHtml(u.email)}</div>
-                </div>
-              </div>
-              ${isCur ? '<span style="font-size:11px; font-weight:800; color:var(--accent2);">使用中</span>' : '<span style="font-size:11px; color:var(--muted);">切替 ➔</span>'}
-            </div>
-          `;
+          html += '\n            <div class="account-switch-item ' + (isCur ? 'current' : '') + '" onclick="App.switchToAccount(\'' + (self.escapeHtml(u.email)) + '\')">\n              <div class="account-item-left">\n                <span class="account-item-avatar">' + (self.escapeHtml(u.avatar || '👤')) + '</span>\n                <div>\n                  <div class="account-item-name">' + (self.escapeHtml(u.displayName || u.email.split('@')[0])) + '</div>\n                  <div class="account-item-email">' + (self.escapeHtml(u.email)) + '</div>\n                </div>\n              </div>\n              ' + (isCur ? '<span style="font-size:11px; font-weight:800; color:var(--accent2);">使用中</span>' : '<span style="font-size:11px; color:var(--muted);">切替 ➔</span>') + '\n            </div>\n          ';
         });
         container.innerHTML = html;
       };

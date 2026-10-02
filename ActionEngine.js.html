@@ -91,6 +91,58 @@
             }
           }
 
+          // 次回ターン攻撃力低下デバフ (nextTurnAttackDebuffs) の適用判定 (相手の攻撃力を下げる効果)
+          let nextTurnAttackDebuffDmg = 0;
+          if (player && Array.isArray(player.nextTurnAttackDebuffs) && player.nextTurnAttackDebuffs.length > 0) {
+            const remainingDebuffs = [];
+            player.nextTurnAttackDebuffs.forEach((debuff) => {
+              let applies = false;
+              if (!debuff.target || debuff.target === player || debuff.target === 'self' || debuff.target === 'all') {
+                applies = true;
+              } else if (typeof debuff.target === 'object' && (debuff.target.hp !== undefined || debuff.target.instanceId || debuff.target.name)) {
+                if (attacker === debuff.target || (attacker && debuff.target && attacker.instanceId && attacker.instanceId === debuff.target.instanceId) || (attacker && attacker.name === debuff.target.name)) {
+                  applies = true;
+                }
+              } else if (typeof debuff.target === 'object' || typeof debuff.target === 'string') {
+                if (attacker && typeof matchesCardFilter === 'function' && matchesCardFilter(attacker, debuff.target)) {
+                  applies = true;
+                }
+              }
+
+              if (applies) {
+                nextTurnAttackDebuffDmg += (Number(debuff.amount) || 0);
+              } else {
+                remainingDebuffs.push(debuff);
+              }
+            });
+            player.nextTurnAttackDebuffs = remainingDebuffs;
+          } else if (attacker && attacker.nextTurnAttackDebuff) {
+            nextTurnAttackDebuffDmg += Number(attacker.nextTurnAttackDebuff) || 0;
+            attacker.nextTurnAttackDebuff = 0;
+          } else if (player && player.nextTurnAttackDebuff) {
+            nextTurnAttackDebuffDmg += Number(player.nextTurnAttackDebuff) || 0;
+            player.nextTurnAttackDebuff = 0;
+          }
+
+          if (nextTurnAttackDebuffDmg > 0) {
+            actualDamage = Math.max(0, actualDamage - nextTurnAttackDebuffDmg);
+            if (ctx?.game?.logs) {
+              ctx.game.logs.push('❄️ 攻撃力低下発動！ワザの威力が -' + nextTurnAttackDebuffDmg + ' 減少された！');
+            }
+          }
+
+          // 次ターン被ダメージ軽減 (nextTurnDamageReduction) の適用判定
+          if (t && t.nextTurnDamageReduction) {
+            const nextRed = Number(t.nextTurnDamageReduction) || 0;
+            if (nextRed > 0) {
+              actualDamage = Math.max(0, actualDamage - nextRed);
+              if (ctx?.game?.logs) {
+                ctx.game.logs.push('🛡️ 次ターン軽減効果発動！ダメージが -' + nextRed + ' 減少された！');
+              }
+            }
+            t.nextTurnDamageReduction = 0;
+          }
+
           // 弱点・抵抗力計算 (バトルポケモンへのダメージ時)
           const isBattler = t === ctx?.opponent?.active || t === ctx?.self?.active;
           if (isBattler && attacker && attacker.type && t.hp !== undefined) {
@@ -118,7 +170,7 @@
           };
 
           if (t.abilityCode && window.executeCardEffectCode &&
-              /event\s*\.\s*on\s*\(\s*['"`]beforeDamage['"`]/.test(t.abilityCode)) {
+              /event\s*\.\s*on\s*\(\s*['"]beforeDamage['"]/.test(t.abilityCode)) {
             try {
               window.executeCardEffectCode(
                 t.abilityCode,
@@ -648,39 +700,15 @@
               // 複数回の結果を表示
               const coinsHtml = flipResults.map((r, i) => {
                 const isH = r === '表';
-                return `<div class="coin-flip-coin ${isH ? 'coin-heads' : 'coin-tails'}" style="
-                  width:90px;height:90px;border-radius:50%;
-                  display:flex;align-items:center;justify-content:center;
-                  font-size:2.4rem;font-weight:900;
-                  background:${isH ? 'linear-gradient(135deg,#ffd700,#ff9f00)' : 'linear-gradient(135deg,#6c7ae0,#3a3f7a)'};
-                  border:4px solid ${isH ? '#ffe566' : '#8899ff'};
-                  box-shadow:0 0 24px ${isH ? 'rgba(255,215,0,0.7)' : 'rgba(100,120,255,0.6)'};
-                  margin:6px;
-                  animation:coinFlipAnim 0.6s cubic-bezier(.4,0,.2,1) ${i * 0.18}s both;
-                ">${isH ? '🌟' : '💙'}</div>`;
+                return '<div class="coin-flip-coin ' + (isH ? 'coin-heads' : 'coin-tails') + '" style="\n                  width:90px;height:90px;border-radius:50%;\n                  display:flex;align-items:center;justify-content:center;\n                  font-size:2.4rem;font-weight:900;\n                  background:' + (isH ? 'linear-gradient(135deg,#ffd700,#ff9f00)' : 'linear-gradient(135deg,#6c7ae0,#3a3f7a)') + ';\n                  border:4px solid ' + (isH ? '#ffe566' : '#8899ff') + ';\n                  box-shadow:0 0 24px ' + (isH ? 'rgba(255,215,0,0.7)' : 'rgba(100,120,255,0.6)') + ';\n                  margin:6px;\n                  animation:coinFlipAnim 0.6s cubic-bezier(.4,0,.2,1) ' + (i * 0.18) + 's both;\n                ">' + (isH ? '🌟' : '💙') + '</div>';
               }).join('');
 
               const headsCount = flipResults.filter(r => r === '表').length;
               const summary = flipResults.length === 1
-                ? `<span style="font-size:2rem;font-weight:900;color:${headsCount === 1 ? '#ffd700' : '#8899ff'}">${headsCount === 1 ? '✨ 表！' : '💙 裏！'}</span>`
-                : `<span style="font-size:1.5rem;font-weight:900;color:#fff">${headsCount}回 表 / ${flipResults.length - headsCount}回 裏</span>`;
+                ? '<span style="font-size:2rem;font-weight:900;color:' + (headsCount === 1 ? '#ffd700' : '#8899ff') + '">' + (headsCount === 1 ? '✨ 表！' : '💙 裏！') + '</span>'
+                : '<span style="font-size:1.5rem;font-weight:900;color:#fff">' + (headsCount) + '回 表 / ' + (flipResults.length - headsCount) + '回 裏</span>';
 
-              overlay.innerHTML = `
-                <style>
-                  @keyframes fadeInOverlay { from { opacity:0 } to { opacity:1 } }
-                  @keyframes coinFlipAnim {
-                    0%   { transform: scale(0) rotateY(0deg); opacity:0 }
-                    50%  { transform: scale(1.15) rotateY(360deg); opacity:1 }
-                    100% { transform: scale(1) rotateY(720deg); opacity:1 }
-                  }
-                </style>
-                <div style="text-align:center;padding:32px 40px;background:rgba(20,20,40,0.95);border:2px solid rgba(255,255,255,0.1);border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
-                  <div style="font-size:1.1rem;color:rgba(255,255,255,0.6);margin-bottom:16px;letter-spacing:0.05em">🪙 コイントス</div>
-                  <div style="display:flex;flex-wrap:wrap;justify-content:center;max-width:360px;margin-bottom:20px">${coinsHtml}</div>
-                  ${summary}
-                  <div style="margin-top:16px;color:rgba(255,255,255,0.5);font-size:0.85rem">[${flipResults.join(', ')}]</div>
-                  <div style="margin-top:20px;color:rgba(255,255,255,0.4);font-size:0.8rem">タップして続ける</div>
-                </div>`;
+              overlay.innerHTML = '\n                <style>\n                  @keyframes fadeInOverlay { from { opacity:0 } to { opacity:1 } }\n                  @keyframes coinFlipAnim {\n                    0%   { transform: scale(0) rotateY(0deg); opacity:0 }\n                    50%  { transform: scale(1.15) rotateY(360deg); opacity:1 }\n                    100% { transform: scale(1) rotateY(720deg); opacity:1 }\n                  }\n                </style>\n                <div style="text-align:center;padding:32px 40px;background:rgba(20,20,40,0.95);border:2px solid rgba(255,255,255,0.1);border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,0.5);">\n                  <div style="font-size:1.1rem;color:rgba(255,255,255,0.6);margin-bottom:16px;letter-spacing:0.05em">🪙 コイントス</div>\n                  <div style="display:flex;flex-wrap:wrap;justify-content:center;max-width:360px;margin-bottom:20px">' + (coinsHtml) + '</div>\n                  ' + (summary) + '\n                  <div style="margin-top:16px;color:rgba(255,255,255,0.5);font-size:0.85rem">[' + (flipResults.join(', ')) + ']</div>\n                  <div style="margin-top:20px;color:rgba(255,255,255,0.4);font-size:0.8rem">タップして続ける</div>\n                </div>';
 
               document.body.appendChild(overlay);
               const cleanup = () => {
@@ -834,6 +862,168 @@
           ctx.game.logs.push('🔥 ' + desc);
         }
         return n;
+      },
+      boostDamageNextTurn(ctx, amount = 80, targetOrFilter = null) {
+        return this.nextTurnDamage(ctx, amount, targetOrFilter);
+      },
+      increaseDamageNextTurn(ctx, amount = 80, targetOrFilter = null) {
+        return this.nextTurnDamage(ctx, amount, targetOrFilter);
+      },
+      nextTurnBoostDamage(ctx, amount = 80, targetOrFilter = null) {
+        return this.nextTurnDamage(ctx, amount, targetOrFilter);
+      },
+
+      reduceOpponentAttackNextTurn(ctx, amount = 20, targetOrFilter = null) {
+        const n = Math.max(0, Number(amount) || 0);
+        const opp = ctx?.opponent;
+        if (!opp) return n;
+
+        opp.nextTurnAttackDebuffs = opp.nextTurnAttackDebuffs || [];
+        opp.nextTurnAttackDebuffs.push({
+          amount: n,
+          target: targetOrFilter || opp.active,
+          sourcePokemon: ctx?.self?.active
+        });
+
+        let desc = '次の相手の番、相手のポケモンが使うワザの威力を -' + n + ' する！';
+        if (targetOrFilter && typeof targetOrFilter === 'object' && targetOrFilter.name) {
+          desc = '【' + targetOrFilter.name + '】の次のワザの威力を -' + n + ' する！';
+        }
+
+        if (ctx?.game?.logs) {
+          ctx.game.logs.push('❄️ ' + desc);
+        }
+        return n;
+      },
+      nextTurnReduceOpponentAttack(ctx, amount = 20, targetOrFilter = null) {
+        return this.reduceOpponentAttackNextTurn(ctx, amount, targetOrFilter);
+      },
+      reduceAttackNextTurn(ctx, amount = 20, targetOrFilter = null) {
+        return this.reduceOpponentAttackNextTurn(ctx, amount, targetOrFilter);
+      },
+      nextTurnReduceAttack(ctx, amount = 20, targetOrFilter = null) {
+        return this.reduceOpponentAttackNextTurn(ctx, amount, targetOrFilter);
+      },
+
+      reduceDamageNextTurn(ctx, amount = 20, target = null) {
+        const n = Math.max(0, Number(amount) || 0);
+        let tgt = target;
+        if (typeof target === 'number') {
+          tgt = ctx?.self?.active;
+        }
+        tgt = tgt || ctx?.self?.active || ctx?.thisPokemon;
+        if (!tgt) return n;
+
+        tgt.nextTurnDamageReduction = (tgt.nextTurnDamageReduction || 0) + n;
+        const desc = '次の相手の番、【' + (tgt.name || 'ポケモン') + '】が受けるワザのダメージを -' + n + ' する！';
+        if (ctx?.game?.logs) {
+          ctx.game.logs.push('🛡️ ' + desc);
+        }
+        return n;
+      },
+      nextTurnReduceDamage(ctx, amount = 20, target = null) {
+        return this.reduceDamageNextTurn(ctx, amount, target);
+      },
+      preventDamageNextTurn(ctx, amount = 20, target = null) {
+        return this.reduceDamageNextTurn(ctx, amount, target);
+      },
+      nextTurnPreventDamage(ctx, amount = 20, target = null) {
+        return this.reduceDamageNextTurn(ctx, amount, target);
+      },
+
+      reduceHp(ctx, target = null, amount = 20) {
+        let tgt = target;
+        let n = amount;
+        if (typeof target === 'number') {
+          n = target;
+          tgt = ctx?.opponent?.active;
+        }
+        tgt = tgt || ctx?.opponent?.active;
+        if (!tgt || tgt.hp === undefined) return 0;
+        const sub = Math.max(0, Number(n) || 0);
+        tgt.hp = Math.max(0, tgt.hp - sub);
+        if (ctx?.game?.logs) {
+          ctx.game.logs.push('💔 【' + (tgt.name || 'ポケモン') + '】のHPが ' + sub + ' 減少し ' + tgt.hp + ' になった！');
+        }
+        return sub;
+      },
+      reduceOpponentHp(ctx, amount = 20) {
+        return this.reduceHp(ctx, ctx?.opponent?.active, amount);
+      },
+      reduceSelfHp(ctx, amount = 20) {
+        return this.reduceHp(ctx, ctx?.self?.active, amount);
+      },
+      subHp(ctx, target, amount) {
+        return this.reduceHp(ctx, target, amount);
+      },
+
+      reduceMaxHp(ctx, target = null, amount = 20) {
+        let tgt = target;
+        let n = amount;
+        if (typeof target === 'number') {
+          n = target;
+          tgt = ctx?.opponent?.active;
+        }
+        tgt = tgt || ctx?.opponent?.active;
+        if (!tgt || tgt.hp === undefined) return 0;
+        const sub = Math.max(0, Number(n) || 0);
+        const curMax = tgt.maxHp || 100;
+        tgt.maxHp = Math.max(10, curMax - sub);
+        if (tgt.hp > tgt.maxHp) {
+          tgt.hp = tgt.maxHp;
+        }
+        if (ctx?.game?.logs) {
+          ctx.game.logs.push('📉 【' + (tgt.name || 'ポケモン') + '】の最大HPが ' + curMax + ' から ' + tgt.maxHp + ' に減少した！ (現在HP: ' + tgt.hp + ')');
+        }
+        return sub;
+      },
+      lowerMaxHp(ctx, target, amount) {
+        return this.reduceMaxHp(ctx, target, amount);
+      },
+      subMaxHp(ctx, target, amount) {
+        return this.reduceMaxHp(ctx, target, amount);
+      },
+
+      increaseMaxHp(ctx, target = null, amount = 20) {
+        let tgt = target;
+        let n = amount;
+        if (typeof target === 'number') {
+          n = target;
+          tgt = ctx?.self?.active;
+        }
+        tgt = tgt || ctx?.self?.active;
+        if (!tgt || tgt.hp === undefined) return 0;
+        const add = Math.max(0, Number(n) || 0);
+        const curMax = tgt.maxHp || 100;
+        tgt.maxHp = curMax + add;
+        tgt.hp += add;
+        if (ctx?.game?.logs) {
+          ctx.game.logs.push('📈 【' + (tgt.name || 'ポケモン') + '】の最大HPが ' + curMax + ' から ' + tgt.maxHp + ' に増加した！ (現在HP: ' + tgt.hp + ')');
+        }
+        return add;
+      },
+      addMaxHp(ctx, target, amount) {
+        return this.increaseMaxHp(ctx, target, amount);
+      },
+      boostMaxHp(ctx, target, amount) {
+        return this.increaseMaxHp(ctx, target, amount);
+      },
+
+      setHp(ctx, target = null, value = 100) {
+        let tgt = target;
+        let val = value;
+        if (typeof target === 'number') {
+          val = target;
+          tgt = ctx?.self?.active;
+        }
+        tgt = tgt || ctx?.self?.active;
+        if (!tgt || tgt.hp === undefined) return 0;
+        const maxH = tgt.maxHp || 100;
+        tgt.hp = Math.min(maxH, Math.max(0, Number(val) || 0));
+        if (ctx?.game?.logs) {
+          ctx.game.logs.push('💚 【' + (tgt.name || 'ポケモン') + '】のHPが ' + tgt.hp + ' に設定された！');
+        }
+        return tgt.hp;
       },
       block(ctx, actionType, target = null, optionsOrTurns = 1) {
         let turns = 1;
@@ -1544,10 +1734,10 @@
               hp: c.hp,
               _raw: c
             }));
-            const stepTitle = options?.title || (count > 1 ? `カードを選択 (${step + 1}/${count}枚目)` : 'カードを選択');
+            const stepTitle = options?.title || (count > 1 ? 'カードを選択 (' + (step + 1) + '/' + (count) + '枚目)' : 'カードを選択');
             const stepDesc = customMessage
-              ? (count > 1 ? `${customMessage} (${step + 1}/${count}枚目)` : customMessage)
-              : (options?.desc || options?.message || options?.prompt || (count > 1 ? `対象カードをあと${count - step}枚選んでください。` : '対象カードを選んでください。'));
+              ? (count > 1 ? '' + (customMessage) + ' (' + (step + 1) + '/' + (count) + '枚目)' : customMessage)
+              : (options?.desc || options?.message || options?.prompt || (count > 1 ? '対象カードをあと' + (count - step) + '枚選んでください。' : '対象カードを選んでください。'));
             const selectedItem = await window.BattleSystem.showChoiceModalPromise(modalCards, {
               title: stepTitle,
               desc: stepDesc
@@ -1929,6 +2119,28 @@
         addEnergy: (t, n) => api.addEnergy(ctx, t, n),
         removeEnergy: (t, n) => api.removeEnergy(ctx, t, n),
         nextTurnDamage: (n, t) => api.nextTurnDamage(ctx, n, t),
+        boostDamageNextTurn: (n, t) => api.boostDamageNextTurn(ctx, n, t),
+        increaseDamageNextTurn: (n, t) => api.increaseDamageNextTurn(ctx, n, t),
+        nextTurnBoostDamage: (n, t) => api.nextTurnBoostDamage(ctx, n, t),
+        reduceOpponentAttackNextTurn: (n, t) => api.reduceOpponentAttackNextTurn(ctx, n, t),
+        nextTurnReduceOpponentAttack: (n, t) => api.nextTurnReduceOpponentAttack(ctx, n, t),
+        reduceAttackNextTurn: (n, t) => api.reduceAttackNextTurn(ctx, n, t),
+        nextTurnReduceAttack: (n, t) => api.nextTurnReduceAttack(ctx, n, t),
+        reduceDamageNextTurn: (n, t) => api.reduceDamageNextTurn(ctx, n, t),
+        nextTurnReduceDamage: (n, t) => api.nextTurnReduceDamage(ctx, n, t),
+        preventDamageNextTurn: (n, t) => api.preventDamageNextTurn(ctx, n, t),
+        nextTurnPreventDamage: (n, t) => api.nextTurnPreventDamage(ctx, n, t),
+        reduceHp: (t, n) => api.reduceHp(ctx, t, n),
+        reduceOpponentHp: (n) => api.reduceOpponentHp(ctx, n),
+        reduceSelfHp: (n) => api.reduceSelfHp(ctx, n),
+        subHp: (t, n) => api.subHp(ctx, t, n),
+        reduceMaxHp: (t, n) => api.reduceMaxHp(ctx, t, n),
+        lowerMaxHp: (t, n) => api.lowerMaxHp(ctx, t, n),
+        subMaxHp: (t, n) => api.subMaxHp(ctx, t, n),
+        increaseMaxHp: (t, n) => api.increaseMaxHp(ctx, t, n),
+        addMaxHp: (t, n) => api.addMaxHp(ctx, t, n),
+        boostMaxHp: (t, n) => api.boostMaxHp(ctx, t, n),
+        setHp: (t, v) => api.setHp(ctx, t, v),
         cancelDamage: (e) => api.cancelDamage(ctx, e),
         preventDamage: (e) => api.preventDamage(ctx, e),
         block: (act, tgt, opt) => api.block(ctx, act, tgt, opt),
@@ -2037,11 +2249,11 @@
       const EVENT_DISPATCH_NAMES = ['turnStart', 'start', 'beforeDamage', 'onKnockout', 'onKnockoutOpponent', 'onAttach', 'onEvolution', ...ALLY_KO_ALIASES];
       if (eventName && EVENT_DISPATCH_NAMES.includes(eventName)) {
         if (eventName === 'allyKnockedOut' || ALLY_KO_ALIASES.includes(eventName)) {
-          const hasListener = /event\s*\.\s*on\s*\(\s*['"`](allyKnockedOut|onAllyKnockout|allyKnockout|ally_knocked_out|allyFainted|味方気絶|仲間気絶|自分のポケモン気絶|自分の仲間が気絶したら|仲間が気絶したら|味方が気絶したら)['"`]/.test(code);
+          const hasListener = /event\s*\.\s*on\s*\(\s*['"](allyKnockedOut|onAllyKnockout|allyKnockout|ally_knocked_out|allyFainted|味方気絶|仲間気絶|自分のポケモン気絶|自分の仲間が気絶したら|仲間が気絶したら|味方が気絶したら)['"]/.test(code);
           if (!hasListener) return;
         } else {
           const escapedEvent = eventName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const hasListener = new RegExp(`event\\s*\\.\\s*on\\s*\\(\\s*['"\`]${escapedEvent}['"\`]`).test(code);
+          const hasListener = new RegExp('event\\\\s*\\\\.\\\\s*on\\\\s*\\\\(\\\\s*[\'"\\']${escapedEvent}['"\']').test(code);
           if (!hasListener) return; // このコードはこのイベントをリッスンしていない → スキップ
         }
       }
@@ -2085,6 +2297,8 @@
         'choiceCard', 'choiceCards', 'isKnockedOut', 'isDefeated', 'knockout', 'defeat', 'didKnockout', 'defeatedOpponent', 'takePrize', 'takeSide', 'takePrizes', 'drawPrize',
         'getCards', 'kill', 'attach', 'move',
         'getEnergy', 'hasEnergy', 'addEnergy', 'removeEnergy', 'nextTurnDamage', 'cancelDamage', 'preventDamage',
+        'reduceOpponentAttackNextTurn', 'nextTurnReduceOpponentAttack', 'reduceDamageNextTurn', 'nextTurnReduceDamage',
+        'reduceHp', 'reduceOpponentHp', 'reduceSelfHp', 'subHp', 'reduceMaxHp', 'lowerMaxHp', 'increaseMaxHp', 'addMaxHp', 'setHp',
         'block', 'lock', 'ban', 'disable', 'unblock', 'isBlocked',
         'blockAbility', 'blockAttack', 'blockRetreat', 'blockItem', 'blockSupporter', 'blockTrainer', 'blockEnergy', 'blockEvolution', 'blockEffect',
         'cantAttackNextTurn', 'cannotAttackNextTurn', 'nextTurnCantAttack', 'nextTurnCannotAttack',
@@ -2107,6 +2321,8 @@
           ctx.isKnockedOut, ctx.isDefeated, ctx.knockout, ctx.defeat, ctx.didKnockout, ctx.defeatedOpponent, ctx.takePrize, ctx.takeSide, ctx.takePrizes, ctx.drawPrize,
           ctx.getCards, ctx.kill, ctx.attach, ctx.move,
           ctx.getEnergy, ctx.hasEnergy, ctx.addEnergy, ctx.removeEnergy, ctx.nextTurnDamage, ctx.cancelDamage, ctx.preventDamage,
+          ctx.reduceOpponentAttackNextTurn, ctx.nextTurnReduceOpponentAttack, ctx.reduceDamageNextTurn, ctx.nextTurnReduceDamage,
+          ctx.reduceHp, ctx.reduceOpponentHp, ctx.reduceSelfHp, ctx.subHp, ctx.reduceMaxHp, ctx.lowerMaxHp, ctx.increaseMaxHp, ctx.addMaxHp, ctx.setHp,
           ctx.block, ctx.lock, ctx.ban, ctx.disable, ctx.unblock, ctx.isBlocked,
           ctx.blockAbility, ctx.blockAttack, ctx.blockRetreat, ctx.blockItem, ctx.blockSupporter, ctx.blockTrainer, ctx.blockEnergy, ctx.blockEvolution, ctx.blockEffect,
           ctx.cantAttackNextTurn, ctx.cannotAttackNextTurn, ctx.nextTurnCantAttack, ctx.nextTurnCannotAttack,
@@ -2140,6 +2356,14 @@
     window.didKnockout = (t) => window.ORBITAL_EFFECT_API.didKnockout(null, t);
     window.getEnergy = (t) => window.ORBITAL_EFFECT_API.getEnergy(null, t);
     window.nextTurnDamage = (n, t) => window.ORBITAL_EFFECT_API.nextTurnDamage(null, n, t);
+    window.reduceOpponentAttackNextTurn = (n, t) => window.ORBITAL_EFFECT_API.reduceOpponentAttackNextTurn(null, n, t);
+    window.nextTurnReduceOpponentAttack = (n, t) => window.ORBITAL_EFFECT_API.nextTurnReduceOpponentAttack(null, n, t);
+    window.reduceDamageNextTurn = (n, t) => window.ORBITAL_EFFECT_API.reduceDamageNextTurn(null, n, t);
+    window.nextTurnReduceDamage = (n, t) => window.ORBITAL_EFFECT_API.nextTurnReduceDamage(null, n, t);
+    window.reduceHp = (t, n) => window.ORBITAL_EFFECT_API.reduceHp(null, t, n);
+    window.reduceMaxHp = (t, n) => window.ORBITAL_EFFECT_API.reduceMaxHp(null, t, n);
+    window.increaseMaxHp = (t, n) => window.ORBITAL_EFFECT_API.increaseMaxHp(null, t, n);
+    window.setHp = (t, v) => window.ORBITAL_EFFECT_API.setHp(null, t, v);
     window.cancelDamage = (e) => window.ORBITAL_EFFECT_API.cancelDamage(null, e);
     window.choiceCard = (src, ...args) => window.ORBITAL_EFFECT_API.choiceCard(null, src, ...args);
     window.choiceCards = (src, ...args) => window.ORBITAL_EFFECT_API.choiceCards(null, src, ...args);
