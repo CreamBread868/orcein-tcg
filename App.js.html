@@ -1123,24 +1123,105 @@
       }
     },
 
+    getDailyBonusRewards() {
+      return [
+        { day: 1, nmt: 1000, pack: 0, icon: '💰', label: '+1000 NMT', desc: '1日目報酬' },
+        { day: 2, nmt: 1000, pack: 0, icon: '💰', label: '+1000 NMT', desc: '2日目報酬' },
+        { day: 3, nmt: 1000, pack: 1, icon: '🎁', label: '+1000 NMT & 1パック', desc: '3日目パック特典！', special: true },
+        { day: 4, nmt: 1000, pack: 0, icon: '💰', label: '+1000 NMT', desc: '4日目報酬' },
+        { day: 5, nmt: 1000, pack: 0, icon: '💰', label: '+1000 NMT', desc: '5日目報酬' },
+        { day: 6, nmt: 1000, pack: 0, icon: '💰', label: '+1000 NMT', desc: '6日目報酬' },
+        { day: 7, nmt: 3000, pack: 2, icon: '🌟', label: '+3000 NMT & 2パック', desc: '7日目豪華大売出し！', special: true }
+      ];
+    },
+
+    getLoginStreakInfo() {
+      const today = new Date().toISOString().slice(0, 10);
+      let lastClaim = '';
+      let streakDay = 1;
+      try {
+        lastClaim = localStorage.getItem('ORBITAL_LAST_DAILY_BONUS') || '';
+        streakDay = Number(localStorage.getItem('ORBITAL_LOGIN_STREAK_DAY')) || 1;
+      } catch(e) {}
+
+      const isClaimedToday = (lastClaim === today);
+
+      if (!isClaimedToday && lastClaim) {
+        // 前回取得から1日経過したかのチェック
+        const lastDate = new Date(lastClaim);
+        const currDate = new Date(today);
+        const diffDays = Math.floor((currDate - lastDate) / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 1) {
+          // 連続ログイン成功
+          streakDay = (streakDay % 7) + 1;
+        } else if (diffDays > 1) {
+          // リセット
+          streakDay = 1;
+        }
+      }
+
+      return { today, lastClaim, isClaimedToday, streakDay };
+    },
+
     openDailyBonusModal() {
       const modal = this.el('dailyBonusModal');
       if (modal) modal.classList.remove('hidden');
-      const today = new Date().toISOString().slice(0, 10);
-      let lastClaim = '';
-      try { lastClaim = localStorage.getItem('ORBITAL_LAST_DAILY_BONUS') || ''; } catch(e) {}
+      this.renderDailyBonusStreak();
+    },
+
+    renderDailyBonusStreak() {
+      const { today, lastClaim, isClaimedToday, streakDay } = this.getLoginStreakInfo();
+      const rewards = this.getDailyBonusRewards();
+      const grid = this.el('dailyBonusStreakGrid');
+      const curReward = rewards[streakDay - 1] || rewards[0];
+
+      const heroIcon = this.el('dailyBonusHeroIcon');
+      if (heroIcon) heroIcon.textContent = curReward.icon;
+
+      const amtText = this.el('dailyBonusAmountText');
+      if (amtText) amtText.textContent = `+${curReward.nmt.toLocaleString()} NMT` + (curReward.pack > 0 ? ` ＋ 🎁${curReward.pack}パック` : '');
+
+      const subtext = this.el('dailyBonusSubtext');
+      if (subtext) subtext.textContent = curReward.desc || 'ゲーム内通貨 NMT ＆ 特典拡張パックで強力なカードをゲット！';
+
       const btn = this.el('claimBigDailyBonusBtn');
       if (btn) {
-        if (lastClaim === today) {
-          btn.textContent = '✅ 本日の 1,000 NMT 受取完了';
+        if (isClaimedToday) {
+          btn.textContent = `✅ Day ${streakDay} 本日の受取完了 (${curReward.label})`;
           btn.style.opacity = '0.6';
           btn.disabled = true;
         } else {
-          btn.textContent = '🎁 1,000 NMT を受け取る！';
+          btn.textContent = `🎁 Day ${streakDay} ボーナスを受け取る！ (${curReward.label})`;
           btn.style.opacity = '1';
           btn.disabled = false;
         }
       }
+
+      if (!grid) return;
+      grid.innerHTML = rewards.map((r, idx) => {
+        const dNum = r.day;
+        const isPastClaimed = (dNum < streakDay) || (dNum === streakDay && isClaimedToday);
+        const isActiveToday = (dNum === streakDay && !isClaimedToday);
+        const isSpecial = r.special;
+
+        let statusClass = '';
+        if (isPastClaimed) statusClass = 'claimed';
+        else if (isActiveToday) statusClass = 'active-today';
+        if (isSpecial) statusClass += ' special-day';
+
+        return `
+          <div class="streak-day-card ${statusClass}">
+            ${isPastClaimed ? '<span class="claimed-check-tag">✓ 済</span>' : (isActiveToday ? '<span class="claimed-check-tag" style="background:#ffd700; color:#000;">TODAY!</span>' : '')}
+            <div class="streak-day-badge">DAY ${dNum}</div>
+            <div class="reward-icon-frame">
+              <span>${r.icon}</span>
+            </div>
+            <div class="reward-amount-label">+${r.nmt}</div>
+            ${r.pack > 0 ? `<div class="reward-pack-label">🎁 +${r.pack} Pack</div>` : '<div style="height:12px;"></div>'}
+          </div>
+        `;
+      }).join('');
     },
 
     closeDailyBonusModal() {
@@ -1149,38 +1230,45 @@
     },
 
     claimDailyBonus() {
-      const today = new Date().toISOString().slice(0, 10);
-      let lastClaim = '';
-      try { lastClaim = localStorage.getItem('ORBITAL_LAST_DAILY_BONUS') || ''; } catch(e) {}
-
-      if (lastClaim === today) {
-        this.toast('ℹ️ 本日のデイリーボーナス (1,000 NMT) は取得済みです！明日またご来店ください。');
+      const { today, isClaimedToday, streakDay } = this.getLoginStreakInfo();
+      if (isClaimedToday) {
+        this.toast('ℹ️ 本日のログインボーナスは取得済みです！明日またご来店ください。');
         return;
       }
 
-      this.state.nmtBalance += 1000;
+      const rewards = this.getDailyBonusRewards();
+      const curReward = rewards[streakDay - 1] || rewards[0];
+
+      this.state.nmtBalance += curReward.nmt;
       try {
         localStorage.setItem('ORBITAL_LAST_DAILY_BONUS', today);
+        localStorage.setItem('ORBITAL_LOGIN_STREAK_DAY', String(streakDay));
       } catch (e) {}
       this.updateNmtBadge();
       
-      const btn = this.el('claimBigDailyBonusBtn');
-      if (btn) {
-        btn.textContent = '✅ 本日の 1,000 NMT 受取完了';
-        btn.style.opacity = '0.6';
-        btn.disabled = true;
-      }
+      this.renderDailyBonusStreak();
 
       // 金コインエフェクト表示
       this.triggerCoinBurst();
-      this.toast('🎉 毎日ログインボーナス +1,000 NMT を獲得しました！');
-      setTimeout(() => this.closeDailyBonusModal(), 1600);
+
+      if (curReward.pack > 0) {
+        this.toast(`🎉 Day ${streakDay} ボーナス (+${curReward.nmt} NMT ＆ 特典パック ${curReward.pack}個) を獲得しました！`);
+        // 無料パック即時開封体験
+        setTimeout(() => {
+          this.closeDailyBonusModal();
+          const packToOpen = (this.state.packs && this.state.packs.length > 0) ? this.state.packs[0].id : 'pack_standard';
+          this.buyAndOpenPack(packToOpen, true); // freeFlag = true
+        }, 1500);
+      } else {
+        this.toast(`🎉 Day ${streakDay} ボーナス (+${curReward.nmt} NMT) を獲得しました！`);
+        setTimeout(() => this.closeDailyBonusModal(), 1600);
+      }
     },
 
     triggerCoinBurst() {
       const burst = document.createElement('div');
       burst.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); font-size:64px; z-index:10000; pointer-events:none; animation:coinBurstAnim 1.2s ease-out forwards;';
-      burst.innerHTML = '💰✨ 💰✨ 💰✨';
+      burst.innerHTML = '💰✨ 🎁✨ 💰✨';
       document.body.appendChild(burst);
       setTimeout(() => { if (burst.parentNode) burst.parentNode.removeChild(burst); }, 1300);
     },
@@ -1273,20 +1361,22 @@
       return '◇';
     },
 
-    buyAndOpenPack(packId) {
-      const pack = (this.state.packs || []).find(p => p.id === packId);
+    buyAndOpenPack(packId, isFree = false) {
+      const pack = (this.state.packs || []).find(p => p.id === packId) || (this.state.packs && this.state.packs[0]);
       if (!pack) {
         this.toast('指定されたパックが見つかりません', true);
         return;
       }
 
-      if (this.state.nmtBalance < pack.price) {
-        this.toast(`❌ NMTが足りません！ (必要: ${pack.price} NMT / 所持: ${this.state.nmtBalance} NMT) 毎日ログインボーナスを取得してください。`, true);
-        return;
-      }
+      if (!isFree) {
+        if (this.state.nmtBalance < pack.price) {
+          this.toast(`❌ NMTが足りません！ (必要: ${pack.price} NMT / 所持: ${this.state.nmtBalance} NMT) 毎日ログインボーナスを取得してください。`, true);
+          return;
+        }
 
-      this.state.nmtBalance -= pack.price;
-      this.updateNmtBadge();
+        this.state.nmtBalance -= pack.price;
+        this.updateNmtBadge();
+      }
 
       // カードプールからランダムにカードを抽選 (パック設定済みの収録対象カードプールを優先)
       const allCards = (window.CardSystem && CardSystem.cards && CardSystem.cards.length > 0) ? CardSystem.cards : (this.state.cards || []);

@@ -6625,42 +6625,15 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
         <h1 style="color:#fff; font-size:26px; font-weight:900; margin-top:4px;">✨ DAILY LOGIN BONUS ✨</h1>
         <p class="muted" style="font-size:13px; margin-top:2px;">本日のログインボーナスが届きました！</p>
         
-        <div class="daily-bonus-hero-icon">💰</div>
+        <div id="dailyBonusHeroIcon" class="daily-bonus-hero-icon">💰</div>
         <div id="dailyBonusAmountText" class="daily-bonus-amount-badge">+1,000 NMT</div>
-        <div style="color:#cbd5e1; font-size:13px; font-weight:700;">ゲーム内通貨 NMT を使ってパックを開封しよう！</div>
+        <div id="dailyBonusSubtext" style="color:#cbd5e1; font-size:13px; font-weight:700;">ゲーム内通貨 NMT ＆ 特典拡張パックで強力なカードをゲット！</div>
 
-        <div class="daily-bonus-streak-container">
-          <div class="streak-day-box active">
-            <span class="streak-day-title">Day 1</span>
-            <span class="streak-day-reward">1000</span>
-          </div>
-          <div class="streak-day-box">
-            <span class="streak-day-title">Day 2</span>
-            <span class="streak-day-reward">1000</span>
-          </div>
-          <div class="streak-day-box">
-            <span class="streak-day-title">Day 3</span>
-            <span class="streak-day-reward">1000</span>
-          </div>
-          <div class="streak-day-box">
-            <span class="streak-day-title">Day 4</span>
-            <span class="streak-day-reward">1000</span>
-          </div>
-          <div class="streak-day-box">
-            <span class="streak-day-title">Day 5</span>
-            <span class="streak-day-reward">1000</span>
-          </div>
-          <div class="streak-day-box">
-            <span class="streak-day-title">Day 6</span>
-            <span class="streak-day-reward">1000</span>
-          </div>
-          <div class="streak-day-box" style="border-color:#ffd700;">
-            <span class="streak-day-title" style="color:#ffd700;">Day 7</span>
-            <span class="streak-day-reward" style="color:#ff0055;">3000</span>
-          </div>
+        <div id="dailyBonusStreakGrid" class="daily-bonus-streak-grid">
+          <!-- Dynamically populated by App.renderDailyBonusStreak() -->
         </div>
 
-        <button id="claimBigDailyBonusBtn" class="claim-big-button" type="button" onclick="App.claimDailyBonus()">🎁 1,000 NMT を受け取る！</button>
+        <button id="claimBigDailyBonusBtn" class="claim-big-button" type="button" onclick="App.claimDailyBonus()">🎁 ボーナスを受け取る！</button>
       </div>
     </div>
 
