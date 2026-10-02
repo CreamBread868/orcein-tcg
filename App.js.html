@@ -169,6 +169,9 @@
         DeckSystem.init();
         DeckSystem.loadDecks();
       }
+      if (page === 'collection' && window.CardSystem && typeof CardSystem.renderCollectionPage === 'function') {
+        CardSystem.renderCollectionPage();
+      }
       if (page === 'battle' && window.BattleSystem) {
         BattleSystem.init();
       }
@@ -582,6 +585,7 @@
               if (window.CardSystem) {
                 if (typeof CardSystem.renderList === 'function') CardSystem.renderList();
                 if (typeof CardSystem.renderRecent === 'function') CardSystem.renderRecent();
+                if (typeof CardSystem.renderCollectionPage === 'function' && this.state.page === 'collection') CardSystem.renderCollectionPage();
               }
               if (window.DeckSystem && typeof DeckSystem.syncCardPool === 'function') {
                 DeckSystem.syncCardPool();
@@ -707,6 +711,7 @@
       if (window.CardSystem) {
         if (typeof CardSystem.renderList === 'function') CardSystem.renderList();
         if (typeof CardSystem.renderRecent === 'function') CardSystem.renderRecent();
+        if (typeof CardSystem.renderCollectionPage === 'function' && this.state.page === 'collection') CardSystem.renderCollectionPage();
       }
       if (window.DeckSystem) {
         if (typeof DeckSystem.syncCardPool === 'function') DeckSystem.syncCardPool();

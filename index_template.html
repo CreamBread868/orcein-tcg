@@ -10384,6 +10384,7 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
       <aside id="sidebar" class="sidebar">
         <button class="nav-button active" data-page="home">⌂ <span>ホーム</span></button>
         <button class="nav-button" data-page="cards">▣ <span>カード</span></button>
+        <button class="nav-button" data-page="collection">🎴 <span>コレクション</span></button>
         <button class="nav-button" data-page="deck">◆ <span>デッキ</span></button>
         <button class="nav-button admin-only-ui hidden" data-page="create">＋ <span>カード作成</span></button>
         <button class="nav-button" data-page="battle">⚔ <span>バトル</span></button>
@@ -10471,6 +10472,109 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
           </div>
 
           <div id="cardList" class="card-grid"></div>
+        </section>
+
+        <!-- コレクションページ -->
+        <section id="page-collection" class="page">
+          <div class="page-heading">
+            <div>
+              <div class="eyebrow">CARD ALBUM & COLLECTION</div>
+              <h1>🎴 コレクションリスト</h1>
+            </div>
+            <div style="display:flex; gap:10px;">
+              <button class="secondary-button" onclick="CardSystem.renderCollectionPage()">🔄 リフレッシュ</button>
+              <button class="primary-button" onclick="App.showPage('pack')">🎁 パックを開けてカードを集める</button>
+            </div>
+          </div>
+
+          <!-- コレクション進捗統計パネル -->
+          <div class="collection-stats-panel">
+            <div class="collection-main-stats">
+              <div class="collection-trophy-icon">🏆</div>
+              <div class="collection-progress-info">
+                <div class="collection-stat-label">コンプリート率</div>
+                <div class="collection-stat-percent" id="collectionPercentText">0.0%</div>
+                <div class="collection-progress-bar-bg">
+                  <div class="collection-progress-bar-fill" id="collectionProgressBarFill" style="width: 0%;"></div>
+                </div>
+                <div class="collection-stat-sub" id="collectionCountText">0 / 0 種類コンプリート (総枚数: 0枚)</div>
+              </div>
+            </div>
+
+            <div class="collection-rarity-breakdown">
+              <div class="rarity-stat-pill ur-pill">
+                <span class="rarity-badge ur">UR</span>
+                <span id="colCountUR" class="stat-num">0/0</span>
+              </div>
+              <div class="rarity-stat-pill sr-pill">
+                <span class="rarity-badge sr">SR</span>
+                <span id="colCountSR" class="stat-num">0/0</span>
+              </div>
+              <div class="rarity-stat-pill r-pill">
+                <span class="rarity-badge r">R</span>
+                <span id="colCountR" class="stat-num">0/0</span>
+              </div>
+              <div class="rarity-stat-pill n-pill">
+                <span class="rarity-badge n">N</span>
+                <span id="colCountN" class="stat-num">0/0</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- フィルター＆検索ツールバー -->
+          <div class="filter-panel collection-filter-panel">
+            <input id="collectionSearchInput" class="input" placeholder="🔍 カード名・ワザ名で検索…" oninput="CardSystem.renderCollectionGrid()">
+            
+            <select id="colCategoryFilter" class="input" onchange="CardSystem.renderCollectionGrid()">
+              <option value="">全カテゴリ</option>
+              <option value="たね">たね</option>
+              <option value="1進化">1進化</option>
+              <option value="2進化">2進化</option>
+              <option value="進化">進化</option>
+              <option value="ex">ex (すべて)</option>
+              <option value="たねex">たねex</option>
+              <option value="1進化ex">1進化ex</option>
+              <option value="2進化ex">2進化ex</option>
+              <option value="トレーナー">トレーナー</option>
+              <option value="グッズ">グッズ</option>
+              <option value="サポート">サポート</option>
+              <option value="エネルギー">エネルギー</option>
+            </select>
+
+            <select id="colTypeFilter" class="input" onchange="CardSystem.renderCollectionGrid()">
+              <option value="">全タイプ</option>
+              <option value="草">草</option><option value="炎">炎</option>
+              <option value="水">水</option><option value="雷">雷</option>
+              <option value="超">超</option><option value="闘">闘</option>
+              <option value="悪">悪</option><option value="鋼">鋼</option>
+              <option value="ドラゴン">ドラゴン</option><option value="無色">無色</option>
+            </select>
+
+            <select id="colRarityFilter" class="input" onchange="CardSystem.renderCollectionGrid()">
+              <option value="">全レアリティ</option>
+              <option value="UR">UR</option>
+              <option value="SR">SR</option>
+              <option value="R">R</option>
+              <option value="N">N</option>
+            </select>
+
+            <select id="colOwnershipFilter" class="input" onchange="CardSystem.renderCollectionGrid()">
+              <option value="all">すべて (図鑑表示)</option>
+              <option value="owned" selected>✅ 所持済みのみ</option>
+              <option value="unowned">🔒 未所持のみ</option>
+            </select>
+
+            <select id="colSortSelect" class="input" onchange="CardSystem.renderCollectionGrid()">
+              <option value="id">図鑑順</option>
+              <option value="rarityDesc">レアリティ順 (高→低)</option>
+              <option value="rarityAsc">レアリティ順 (低→高)</option>
+              <option value="countDesc">所持枚数順 (多→少)</option>
+              <option value="hpDesc">HP順</option>
+            </select>
+          </div>
+
+          <!-- コレクションカードグリッド -->
+          <div id="collectionGrid" class="card-grid"></div>
         </section>
 
         <section id="page-create" class="page">

@@ -1028,6 +1028,277 @@ var CardSystem;
       if (btn) {
         btn.textContent = isExpanded ? '✕ プレビュー縮小' : '👁 プレビュー拡大';
       }
+    },
+
+    // ==========================================
+    // 🎴 CARD COLLECTION SYSTEM IMPLEMENTATION
+    // ==========================================
+    getUserCollection() {
+      try {
+        const raw = localStorage.getItem('ORBITAL_USER_COLLECTION');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === 'object') return parsed;
+        }
+      } catch (e) {
+        console.warn('Failed to parse ORBITAL_USER_COLLECTION:', e);
+      }
+      // 初回デフォルトコレクション: マスターカードの初期カード2枚ずつ所有状態にする
+      const defaultCol = {};
+      const allMaster = (window.App?.state?.cards || []);
+      allMaster.forEach(c => {
+        if (c && (c.id || c.name)) {
+          defaultCol[c.id || c.name] = 2;
+        }
+      });
+      try {
+        localStorage.setItem('ORBITAL_USER_COLLECTION', JSON.stringify(defaultCol));
+      } catch(e) {}
+      return defaultCol;
+    },
+
+    saveUserCollection(colMap) {
+      try {
+        localStorage.setItem('ORBITAL_USER_COLLECTION', JSON.stringify(colMap));
+      } catch (e) {
+        console.error('Failed to save ORBITAL_USER_COLLECTION:', e);
+      }
+    },
+
+    getCardOwnedCount(cardId) {
+      if (!cardId) return 0;
+      const col = this.getUserCollection();
+      return Number(col[cardId] || col[String(cardId)]) || 0;
+    },
+
+    addCardsToCollection(drawnCards) {
+      if (!drawnCards) return;
+      const cardsArr = Array.isArray(drawnCards) ? drawnCards : [drawnCards];
+      const col = this.getUserCollection();
+
+      if (!Array.isArray(this.customCards)) this.customCards = [];
+
+      cardsArr.forEach(c => {
+        if (!c) return;
+        const key = c.id || c.name;
+        col[key] = (Number(col[key]) || 0) + 1;
+
+        if (window.App && Array.isArray(window.App.state?.cards)) {
+          if (!window.App.state.cards.some(x => x.id === c.id || (x.name === c.name && x.id === c.id))) {
+            window.App.state.cards.push(c);
+          }
+        }
+        if (!this.customCards.some(x => x.id === c.id)) {
+          this.customCards.push(c);
+        }
+      });
+
+      this.saveUserCollection(col);
+      try {
+        localStorage.setItem('ORBITAL_CUSTOM_CARDS', JSON.stringify(this.customCards));
+      } catch(e) {}
+
+      if (window.App && window.App.state && window.App.state.page === 'collection') {
+        this.renderCollectionPage();
+      }
+    },
+
+    getAllCollectionCards() {
+      const cardMap = new Map();
+      const masterCards = (window.App?.state?.cards || []);
+      masterCards.forEach(c => {
+        if (c && (c.id || c.name)) cardMap.set(String(c.id || c.name), c);
+      });
+      if (Array.isArray(this.customCards)) {
+        this.customCards.forEach(c => {
+          if (c && (c.id || c.name)) cardMap.set(String(c.id || c.name), c);
+        });
+      }
+      return Array.from(cardMap.values());
+    },
+
+    renderCollectionPage() {
+      const allCards = this.getAllCollectionCards();
+      const col = this.getUserCollection();
+
+      let uniqueOwned = 0;
+      let totalCardCount = 0;
+      const rarityStats = { UR: { owned: 0, total: 0 }, SR: { owned: 0, total: 0 }, R: { owned: 0, total: 0 }, N: { owned: 0, total: 0 } };
+
+      allCards.forEach(card => {
+        const count = Number(col[card.id] || col[String(card.id)] || col[card.name]) || 0;
+        const r = (card.rarity || 'N').toUpperCase();
+
+        if (rarityStats[r]) {
+          rarityStats[r].total++;
+          if (count > 0) rarityStats[r].owned++;
+        }
+
+        if (count > 0) {
+          uniqueOwned++;
+          totalCardCount += count;
+        }
+      });
+
+      const totalUnique = allCards.length;
+      const percent = totalUnique > 0 ? ((uniqueOwned / totalUnique) * 100).toFixed(1) : '0.0';
+
+      const pctEl = document.getElementById('collectionPercentText');
+      if (pctEl) pctEl.textContent = `${percent}%`;
+
+      const barFill = document.getElementById('collectionProgressBarFill');
+      if (barFill) barFill.style.width = `${percent}%`;
+
+      const countEl = document.getElementById('collectionCountText');
+      if (countEl) countEl.textContent = `${uniqueOwned} / ${totalUnique} 種類コンプリート (総枚数: ${totalCardCount}枚)`;
+
+      const urEl = document.getElementById('colCountUR');
+      if (urEl) urEl.textContent = `${rarityStats.UR.owned}/${rarityStats.UR.total}`;
+      const srEl = document.getElementById('colCountSR');
+      if (srEl) srEl.textContent = `${rarityStats.SR.owned}/${rarityStats.SR.total}`;
+      const rEl = document.getElementById('colCountR');
+      if (rEl) rEl.textContent = `${rarityStats.R.owned}/${rarityStats.R.total}`;
+      const nEl = document.getElementById('colCountN');
+      if (nEl) nEl.textContent = `${rarityStats.N.owned}/${rarityStats.N.total}`;
+
+      this.renderCollectionGrid();
+    },
+
+    renderCollectionGrid() {
+      const root = document.getElementById('collectionGrid');
+      if (!root) return;
+
+      const search = (document.getElementById('collectionSearchInput')?.value || '').toLowerCase().trim();
+      const cat = document.getElementById('colCategoryFilter')?.value || '';
+      const typeFilter = document.getElementById('colTypeFilter')?.value || '';
+      const rarityFilter = document.getElementById('colRarityFilter')?.value || '';
+      const ownershipFilter = document.getElementById('colOwnershipFilter')?.value || 'all';
+      const sortBy = document.getElementById('colSortSelect')?.value || 'id';
+
+      const allCards = this.getAllCollectionCards();
+      const col = this.getUserCollection();
+
+      let filtered = allCards.filter(card => {
+        const count = Number(col[card.id] || col[String(card.id)] || col[card.name]) || 0;
+        
+        if (ownershipFilter === 'owned' && count <= 0) return false;
+        if (ownershipFilter === 'unowned' && count > 0) return false;
+
+        if (cat) {
+          if (cat === 'ex' && !String(card.category || '').includes('ex')) return false;
+          else if (cat !== 'ex' && String(card.category || '') !== cat) return false;
+        }
+
+        if (typeFilter && String(card.type || '') !== typeFilter) return false;
+
+        if (rarityFilter && String(card.rarity || 'N').toUpperCase() !== rarityFilter) return false;
+
+        if (search) {
+          const matchName = String(card.name || '').toLowerCase().includes(search);
+          const matchAtk1 = String(card.attack1Name || '').toLowerCase().includes(search);
+          const matchAtk2 = String(card.attack2Name || '').toLowerCase().includes(search);
+          const matchAbil = String(card.abilityName || '').toLowerCase().includes(search);
+          if (!matchName && !matchAtk1 && !matchAtk2 && !matchAbil) return false;
+        }
+
+        return true;
+      });
+
+      const rarityScore = { 'UR': 4, 'SR': 3, 'R': 2, 'N': 1 };
+      filtered.sort((a, b) => {
+        const countA = Number(col[a.id] || col[String(a.id)] || col[a.name]) || 0;
+        const countB = Number(col[b.id] || col[String(b.id)] || col[b.name]) || 0;
+
+        if (sortBy === 'rarityDesc') {
+          const rA = rarityScore[(a.rarity || 'N').toUpperCase()] || 1;
+          const rB = rarityScore[(b.rarity || 'N').toUpperCase()] || 1;
+          if (rB !== rA) return rB - rA;
+        } else if (sortBy === 'rarityAsc') {
+          const rA = rarityScore[(a.rarity || 'N').toUpperCase()] || 1;
+          const rB = rarityScore[(b.rarity || 'N').toUpperCase()] || 1;
+          if (rA !== rB) return rA - rB;
+        } else if (sortBy === 'countDesc') {
+          if (countB !== countA) return countB - countA;
+        } else if (sortBy === 'hpDesc') {
+          const hpA = Number(a.hp) || 0;
+          const hpB = Number(b.hp) || 0;
+          if (hpB !== hpA) return hpB - hpA;
+        }
+        return String(a.id || a.name).localeCompare(String(b.id || b.name));
+      });
+
+      if (!filtered.length) {
+        root.innerHTML = `
+          <div style="grid-column: 1 / -1; text-align: center; padding: 50px 20px; color: #94a3b8;">
+            <div style="font-size: 40px; margin-bottom: 10px;">🔍</div>
+            <div style="font-size: 16px; font-weight: 700;">条件に一致するカードが見つかりません</div>
+            <div style="font-size: 13px; margin-top: 4px;">フィルター条件を変更するか、パックを開封してカードを獲得してください。</div>
+          </div>
+        `;
+        return;
+      }
+
+      root.innerHTML = filtered.map(card => {
+        const count = Number(col[card.id] || col[String(card.id)] || col[card.name]) || 0;
+        const isOwned = count > 0;
+        const rarity = (card.rarity || 'N').toUpperCase();
+
+        if (isOwned) {
+          const cardInnerHtml = this.createCardHtml(card, { size: 'normal' });
+          return `
+            <div class="collection-card-item collection-owned rarity-border-${rarity}" data-card-id="${this.escape(card.id)}" onclick="CardSystem.showCollectionDetail('${this.escape(card.id)}')">
+              <div class="card-owned-badge">x${count}</div>
+              ${cardInnerHtml}
+            </div>
+          `;
+        } else {
+          const symbol = this.typeSymbols[card.type] || '✦';
+          return `
+            <div class="collection-card-item collection-unowned rarity-border-${rarity}" data-card-id="${this.escape(card.id)}" onclick="CardSystem.showCollectionDetail('${this.escape(card.id)}')">
+              <div class="unowned-lock-overlay">
+                <div class="unowned-lock-icon">🔒</div>
+                <div class="unowned-lock-text">未所持</div>
+                <div class="unowned-rarity-tag ${rarity.toLowerCase()}">${rarity}</div>
+              </div>
+              <div class="unowned-card-silhouette">
+                <div class="unowned-card-header">
+                  <span class="unowned-card-name">${this.escape(card.name)}</span>
+                  <span class="unowned-card-type">${symbol}</span>
+                </div>
+                <div class="unowned-card-body">
+                  <div class="unowned-card-art-placeholder">???</div>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+      }).join('');
+    },
+
+    showCollectionDetail(cardId) {
+      const allCards = this.getAllCollectionCards();
+      const card = allCards.find(c => String(c.id) === String(cardId) || String(c.name) === String(cardId));
+      if (!card) return;
+
+      const count = this.getCardOwnedCount(card.id);
+      this.showDetail(card);
+
+      setTimeout(() => {
+        const modalCol = document.querySelector('.detail-info-col');
+        if (modalCol) {
+          const banner = document.createElement('div');
+          banner.className = 'collection-modal-count-banner';
+          banner.style.cssText = 'background: linear-gradient(135deg, rgba(255,215,0,0.15), rgba(129,140,248,0.15)); border: 1px solid rgba(255,215,0,0.4); border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;';
+          banner.innerHTML = `
+            <div>
+              <span style="font-weight:700; color:#ffd700;">🎴 コレクション所持枚数:</span>
+              <span style="font-size:18px; font-weight:900; color:#fff; margin-left:8px;">${count > 0 ? count + ' 枚' : '🔒 未所持'}</span>
+            </div>
+            ${count === 0 ? '<button class="primary-button" style="padding:4px 10px; font-size:12px;" onclick="App.closeModal(); App.showPage(\'pack\');">パックで引く</button>' : ''}
+          `;
+          modalCol.insertBefore(banner, modalCol.firstChild);
+        }
+      }, 50);
     }
   };
 
