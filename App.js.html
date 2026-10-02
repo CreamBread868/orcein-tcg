@@ -545,7 +545,7 @@
 
       updateProgress(20, 'システムコンポーネント初期化中…');
 
-      setTimeout(() => {
+      setTimeout(async () => {
         try {
           updateProgress(50, 'GitHubリポジトリからデータ・モジュールを検出中…');
           const savedRepo = localStorage.getItem('ORBITAL_GITHUB_REPO');
@@ -553,22 +553,17 @@
           if (window.google && google.script && google.script.run && !window._is_mock_gas) {
             updateProgress(80, 'スプレッドシートからカードデータを読み込み中…');
             this.loadCards();
-            setTimeout(hideAllLoaders, 200);
           } else if (savedRepo) {
-            updateProgress(75, 'GitHubから最新データを取得中…');
-            this.loadFromGitHub(savedRepo, false).then(() => {
-              updateProgress(100, '起動完了！');
-              setTimeout(hideAllLoaders, 200);
-            }).catch(() => {
-              setTimeout(hideAllLoaders, 200);
-            });
+            updateProgress(75, `GitHub (${savedRepo}) から最新データを取得中…`);
+            await this.loadFromGitHub(savedRepo, false);
           } else {
             updateProgress(80, 'カードライブラリをロード中…');
             this.loadCards();
-            setTimeout(hideAllLoaders, 200);
           }
+          updateProgress(100, '起動完了！');
         } catch (err) {
           console.warn('Startup loader data fetch warning:', err);
+        } finally {
           setTimeout(hideAllLoaders, 200);
         }
       }, 100);
@@ -590,6 +585,7 @@
               if (window.CardSystem) {
                 if (typeof CardSystem.renderList === 'function') CardSystem.renderList();
                 if (typeof CardSystem.renderRecent === 'function') CardSystem.renderRecent();
+                if (typeof CardSystem.syncCollectionWithServer === 'function') CardSystem.syncCollectionWithServer();
                 if (typeof CardSystem.renderCollectionPage === 'function' && this.state.page === 'collection') CardSystem.renderCollectionPage();
               }
               if (window.DeckSystem && typeof DeckSystem.syncCardPool === 'function') {
@@ -746,82 +742,73 @@
       return null;
     },
 
-    loadFromGitHub(repoInput, showToast) {
-      if (typeof showToast === 'undefined') showToast = true;
+    async loadFromGitHub(repoInput, showToast = true) {
       const baseUrl = this.parseGitHubRawBaseUrl(repoInput);
       if (!baseUrl) {
         this.toast('有効なGitHubリポジトリURL（例: owner/repository）を入力してください。', true);
-        return Promise.resolve(false);
+        return false;
       }
 
       if (showToast) this.toast('🐙 GitHubリポジトリからデータを同期中…');
-      const countEl = this.el('homeCardCount');
-      if (countEl) countEl.textContent = 'GitHub同期中…';
+      this.el('homeCardCount').textContent = 'GitHub同期中…';
 
-      const cardsUrl = baseUrl + 'cards.json';
-      const self = this;
-      return fetch(cardsUrl)
-        .then(function(cardsRes) {
-          if (!cardsRes.ok) {
-            throw new Error('cards.json の取得に失敗しました (HTTP ' + cardsRes.status + ')');
-          }
-          return cardsRes.json();
-        })
-        .then(function(rawList) {
-          let cardsData = rawList;
-          if (!Array.isArray(cardsData) && cardsData && Array.isArray(cardsData.cards)) {
-            cardsData = cardsData.cards;
-          }
+      try {
+        const cardsUrl = baseUrl + 'cards.json';
+        const cardsRes = await fetch(cardsUrl);
+        if (!cardsRes.ok) {
+          throw new Error(`cards.json の取得に失敗しました (HTTP ${cardsRes.status})`);
+        }
+        let cardsData = await cardsRes.json();
+        if (!Array.isArray(cardsData) && cardsData && Array.isArray(cardsData.cards)) {
+          cardsData = cardsData.cards;
+        }
 
-          if (Array.isArray(cardsData)) {
-            cardsData = cardsData.map(function(c) {
-              if (!c) return c;
-              let img = String(c.image || '').trim();
-              if (img && !img.startsWith('http') && !img.startsWith('data:')) {
-                img = baseUrl + img.replace(/^\//, '');
-              }
-              return Object.assign({}, c, { image: img });
-            });
-
-            self.state.cards = cardsData;
-            try { localStorage.setItem('ORBITAL_GITHUB_REPO', repoInput); } catch(e) {}
-            const el = self.el('homeCardCount');
-            if (el) el.textContent = cardsData.length + '枚 (GitHub同期)';
-
-            if (window.CardSystem) {
-              if (typeof CardSystem.renderList === 'function') CardSystem.renderList();
-              if (typeof CardSystem.renderRecent === 'function') CardSystem.renderRecent();
+        if (Array.isArray(cardsData)) {
+          cardsData = cardsData.map(c => {
+            if (!c) return c;
+            let img = String(c.image || '').trim();
+            if (img && !img.startsWith('http') && !img.startsWith('data:')) {
+              img = baseUrl + img.replace(/^\//, '');
             }
+            return { ...c, image: img };
+          });
+
+          this.state.cards = cardsData;
+          localStorage.setItem('ORBITAL_GITHUB_REPO', repoInput);
+          this.el('homeCardCount').textContent = cardsData.length + '枚 (GitHub同期)';
+
+          if (window.CardSystem) {
+            CardSystem.renderList();
+            CardSystem.renderRecent();
           }
-          return fetch(baseUrl + 'decks.json');
-        })
-        .then(function(decksRes) {
-          if (decksRes && decksRes.ok) return decksRes.json();
-          return null;
-        })
-        .then(function(rawDecks) {
-          if (rawDecks && window.DeckSystem) {
-            let decksData = rawDecks;
+        }
+
+        // デッキデータ (decks.json) の同期
+        try {
+          const decksUrl = baseUrl + 'decks.json';
+          const decksRes = await fetch(decksUrl);
+          if (decksRes.ok) {
+            let decksData = await decksRes.json();
             if (!Array.isArray(decksData) && decksData && Array.isArray(decksData.decks)) {
               decksData = decksData.decks;
             }
-            if (Array.isArray(decksData)) {
-              window.DeckSystem.state = window.DeckSystem.state || {};
+            if (Array.isArray(decksData) && window.DeckSystem) {
               window.DeckSystem.state.decks = decksData;
-              if (typeof window.DeckSystem.renderDeckList === 'function') {
-                window.DeckSystem.renderDeckList();
-              }
+              window.DeckSystem.renderDeckList();
             }
           }
-          if (showToast) self.toast('✅ GitHubからのデータ同期に成功しました！');
-          return true;
-        })
-        .catch(function(err) {
-          console.error('loadFromGitHub error:', err);
-          if (showToast) self.toast('❌ GitHub同期エラー: ' + (err.message || err), true);
-          self.loadDefaultLocalCards();
-          return false;
-        });
+        } catch (e) {
+          console.warn('decks.json fetch info:', e);
+        }
+
+        if (showToast) this.toast('✅ GitHubからのデータ同期に成功しました！');
+        return true;
+      } catch (err) {
+        console.error('loadFromGitHub error:', err);
+        if (showToast) this.toast('❌ GitHub同期エラー: ' + err.message, true);
+        this.loadDefaultLocalCards();
+        return false;
+      }
     },
 
     bindAccountProfileModal() {
@@ -1010,16 +997,18 @@
         let html = '';
         users.forEach((u) => {
           const isCur = String(u.email).toLowerCase() === curEmail;
-          html += '<div class="account-switch-item ' + (isCur ? 'current' : '') + '" onclick="App.switchToAccount(\'' + self.escapeHtml(u.email) + '\')">' +
-            '<div class="account-item-left">' +
-              '<span class="account-item-avatar">' + self.escapeHtml(u.avatar || '👤') + '</span>' +
-              '<div>' +
-                '<div class="account-item-name">' + self.escapeHtml(u.displayName || u.email.split('@')[0]) + '</div>' +
-                '<div class="account-item-email">' + self.escapeHtml(u.email) + '</div>' +
-              '</div>' +
-            '</div>' +
-            (isCur ? '<span style="font-size:11px; font-weight:800; color:var(--accent2);">使用中</span>' : '<span style="font-size:11px; color:var(--muted);">切替 ➔</span>') +
-          '</div>';
+          html += `
+            <div class="account-switch-item ${isCur ? 'current' : ''}" onclick="App.switchToAccount('${self.escapeHtml(u.email)}')">
+              <div class="account-item-left">
+                <span class="account-item-avatar">${self.escapeHtml(u.avatar || '👤')}</span>
+                <div>
+                  <div class="account-item-name">${self.escapeHtml(u.displayName || u.email.split('@')[0])}</div>
+                  <div class="account-item-email">${self.escapeHtml(u.email)}</div>
+                </div>
+              </div>
+              ${isCur ? '<span style="font-size:11px; font-weight:800; color:var(--accent2);">使用中</span>' : '<span style="font-size:11px; color:var(--muted);">切替 ➔</span>'}
+            </div>
+          `;
         });
         container.innerHTML = html;
       };
@@ -1710,9 +1699,7 @@
     }
   };
 
-  window._App = App;
   window.App = App;
-  try { if (typeof globalThis !== 'undefined') globalThis.App = App; } catch(e) {}
   try {
     if (document.readyState === 'complete' || document.readyState === 'interactive') {
       setTimeout(() => { if (window.App && window.App.init) window.App.init(); }, 0);
