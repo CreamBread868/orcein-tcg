@@ -19697,7 +19697,7 @@ var EffectEditor;
         catLabel: 'ダメージ・回復',
         badge: '相手攻撃力ダウン',
         returns: 'number',
-        desc: '次の相手の番、相手のポケモンが使うワザのダメージを減少させます。（統一エイリアス: nextTurnReduceOpponentAttack）',
+        desc: '次の相手の番、相手のポケモンが使うワザのダメージを減少させます。（統一形式: nextTurnReduceOpponentAttack）',
         params: [
           { name: 'amount', type: 'number', desc: '減少させるワザの威力数値（例: 20）' },
           { name: 'targetOrFilter', type: 'object | null', desc: '（省略可）特定の相手ポケモン（opponent.active 等）' }
@@ -19706,19 +19706,49 @@ var EffectEditor;
         snippet: 'reduceOpponentAttackNextTurn(20);'
       },
       {
+        name: 'nextTurnReduceOpponentAttack',
+        signature: 'nextTurnReduceOpponentAttack(amount, targetOrFilter?)',
+        category: 'battle',
+        catLabel: 'ダメージ・回復',
+        badge: '相手攻撃力ダウン',
+        returns: 'number',
+        desc: '次の相手の番、相手のポケモンが使うワザのダメージを減少させます。（統一名: reduceOpponentAttackNextTurn）',
+        params: [
+          { name: 'amount', type: 'number', desc: '減少させるワザの威力数値（例: 20）' },
+          { name: 'targetOrFilter', type: 'object | null', desc: '（省略可）特定の相手ポケモン（opponent.active 等）' }
+        ],
+        example: 'nextTurnReduceOpponentAttack(20);',
+        snippet: 'nextTurnReduceOpponentAttack(20);'
+      },
+      {
         name: 'reduceDamageNextTurn',
         signature: 'reduceDamageNextTurn(amount, target?)',
         category: 'battle',
         catLabel: 'ダメージ・回復',
         badge: '次ターン被ダメ軽減',
         returns: 'number',
-        desc: '次の相手の番、自分が受けるワザのダメージを軽減します。（統一エイリアス: nextTurnReduceDamage）',
+        desc: '次の相手の番、自分が受けるワザのダメージを軽減します。（統一形式: nextTurnReduceDamage）',
         params: [
           { name: 'amount', type: 'number', desc: '軽減するダメージ数値（例: 30）' },
           { name: 'target', type: 'pokemon | null', desc: '（省略可）対象ポケモン（デフォルト: self.active）' }
         ],
         example: 'reduceDamageNextTurn(30);',
         snippet: 'reduceDamageNextTurn(30);'
+      },
+      {
+        name: 'nextTurnReduceDamage',
+        signature: 'nextTurnReduceDamage(amount, target?)',
+        category: 'battle',
+        catLabel: 'ダメージ・回復',
+        badge: '次ターン被ダメ軽減',
+        returns: 'number',
+        desc: '次の相手の番、自分が受けるワザのダメージを軽減します。（統一名: reduceDamageNextTurn）',
+        params: [
+          { name: 'amount', type: 'number', desc: '軽減するダメージ数値（例: 30）' },
+          { name: 'target', type: 'pokemon | null', desc: '（省略可）対象ポケモン（デフォルト: self.active）' }
+        ],
+        example: 'nextTurnReduceDamage(30);',
+        snippet: 'nextTurnReduceDamage(30);'
       },
       {
         name: 'reduceHp',
@@ -19764,6 +19794,21 @@ var EffectEditor;
         ],
         example: 'increaseMaxHp(self.active, 30);',
         snippet: 'increaseMaxHp(self.active, 30);'
+      },
+      {
+        name: 'setHp',
+        signature: 'setHp(target?, hpValue)',
+        category: 'battle',
+        catLabel: 'ダメージ・回復',
+        badge: 'HP設定',
+        returns: 'number',
+        desc: '指定ポケモンのHPを直接特定の数値に設定します。',
+        params: [
+          { name: 'target', type: 'pokemon', desc: '（省略時は self.active）対象ポケモン' },
+          { name: 'hpValue', type: 'number', desc: '設定するHP数値（例: 100）' }
+        ],
+        example: 'setHp(self.active, 100);',
+        snippet: 'setHp(self.active, 100);'
       },
       {
         name: 'cant',
@@ -21008,13 +21053,13 @@ var EffectEditor;
       const tab = this.effectEditor && this.effectEditor.activeTab ? this.effectEditor.activeTab : 'attack1';
 
       let candidates = [];
+      const wordLower = (word || '').toLowerCase();
       if (word) {
-        const wordLower = word.toLowerCase();
         candidates = this.effectApiCompletions.filter((x) => {
           return x.keyword.toLowerCase().includes(wordLower) ||
           x.label.toLowerCase().includes(wordLower) ||
-          x.badge && x.badge.toLowerCase().includes(wordLower) ||
-          x.desc && x.desc.toLowerCase().includes(wordLower);
+          (x.badge && x.badge.toLowerCase().includes(wordLower)) ||
+          (x.desc && x.desc.toLowerCase().includes(wordLower));
         });
       } else if (forceOpen) {
         candidates = this.effectApiCompletions.filter((x) => x.targets.includes(tab));
@@ -21432,7 +21477,7 @@ var EffectEditor;
       }
 
       // APIコール解析
-      const re = /(damage|benchDamage|heal|draw|attachEnergy|discardEnergy|applyStatus|clearStatus|switchActive|discardCards|searchCards|reduceDamage|takePrize|toHand|toDiscard|toDeck|toBench)\s*\(([^)]*)\)/g;
+      const re = /(damage|benchDamage|heal|draw|attachEnergy|discardEnergy|applyStatus|clearStatus|switchActive|discardCards|searchCards|reduceDamage|takePrize|toHand|toDiscard|toDeck|toBench|reduceOpponentAttackNextTurn|nextTurnReduceOpponentAttack|reduceDamageNextTurn|nextTurnReduceDamage|nextTurnDamage|boostDamageNextTurn|reduceHp|reduceOpponentHp|reduceSelfHp|subHp|reduceMaxHp|lowerMaxHp|increaseMaxHp|addMaxHp|setHp|cantAttackNextTurn|nextTurnCantAttack)\s*\(([^)]*)\)/g;
       let m;
       while (m = re.exec(code)) {
         const fn = m[1];
@@ -21451,7 +21496,17 @@ var EffectEditor;
         if (fn === 'toDiscard') lines.push(this.codeTarget(args) + "のトラッシュに送る。");else
         if (fn === 'toDeck') lines.push(this.codeTarget(args) + "の山札にもどす。");else
         if (fn === 'toBench') lines.push(this.codeTarget(args) + "のベンチに出す。");else
-        if (fn === 'reduceDamage') lines.push(this.codeTarget(args) + "が受けるダメージを" + this.codeNumber(args) + "軽減する。");
+        if (fn === 'reduceDamage') lines.push(this.codeTarget(args) + "が受けるダメージを" + this.codeNumber(args) + "軽減する。");else
+        if (fn === 'reduceOpponentAttackNextTurn' || fn === 'nextTurnReduceOpponentAttack') lines.push("次の相手の番、相手のワザの威力を-" + (this.codeNumber(args) || 20) + "する。");else
+        if (fn === 'reduceDamageNextTurn' || fn === 'nextTurnReduceDamage') lines.push("次の相手の番、受けるワザのダメージを-" + (this.codeNumber(args) || 30) + "軽減する。");else
+        if (fn === 'nextTurnDamage' || fn === 'boostDamageNextTurn') lines.push("次の自分の番、ワザの威力を+" + (this.codeNumber(args) || 80) + "する。");else
+        if (fn === 'reduceHp' || fn === 'subHp') lines.push(this.codeTarget(args) + "のHPを直接" + (this.codeNumber(args) || 20) + "減少させる。");else
+        if (fn === 'reduceOpponentHp') lines.push("相手バトル場のHPを直接" + (this.codeNumber(args) || 20) + "減少させる。");else
+        if (fn === 'reduceSelfHp') lines.push("自分のHPを直接" + (this.codeNumber(args) || 20) + "減少させる。");else
+        if (fn === 'reduceMaxHp' || fn === 'lowerMaxHp') lines.push(this.codeTarget(args) + "の最大HPを" + (this.codeNumber(args) || 20) + "減少させる。");else
+        if (fn === 'increaseMaxHp' || fn === 'addMaxHp') lines.push(this.codeTarget(args) + "の最大HPを" + (this.codeNumber(args) || 30) + "増加させる。");else
+        if (fn === 'setHp') lines.push(this.codeTarget(args) + "のHPを" + (this.codeNumber(args) || 100) + "に設定する。");else
+        if (fn === 'cantAttackNextTurn' || fn === 'nextTurnCantAttack') lines.push("次の自分の番、このポケモンはワザを使えない。");
       }
 
       // choiceCard / choiceCards の解析
@@ -21502,7 +21557,7 @@ var EffectEditor;
       return { 'self': '自分', 'opponent': '相手', 'self.active': '自分のバトルカード', 'opponent.active': '相手のバトルカード', 'self.bench': '自分のベンチ', 'opponent.bench': '相手のベンチ', 'self.hand': '自分の手札', 'opponent.hand': '相手の手札' }[a] || a;
     },
 
-    codeNumber(args) {const m = args.match(/,\s*(\d+)/);return m ? m[1] : '指定数';},
+    codeNumber(args) { const m = String(args || '').match(/\b(\d+)\b/); return m ? m[1] : ''; },
     escape(v) {return String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');},
 
     open(target) { return this.openEffectEditor(target); },
