@@ -22152,18 +22152,16 @@ window.DeckSystem = function () {
         let html = '';
         users.forEach((u) => {
           const isCur = String(u.email).toLowerCase() === curEmail;
-          html += `
-            <div class="account-switch-item ${isCur ? 'current' : ''}" onclick="App.switchToAccount('${self.escapeHtml(u.email)}')">
-              <div class="account-item-left">
-                <span class="account-item-avatar">${self.escapeHtml(u.avatar || '👤')}</span>
-                <div>
-                  <div class="account-item-name">${self.escapeHtml(u.displayName || u.email.split('@')[0])}</div>
-                  <div class="account-item-email">${self.escapeHtml(u.email)}</div>
-                </div>
-              </div>
-              ${isCur ? '<span style="font-size:11px; font-weight:800; color:var(--accent2);">使用中</span>' : '<span style="font-size:11px; color:var(--muted);">切替 ➔</span>'}
-            </div>
-          `;
+          html += '<div class="account-switch-item ' + (isCur ? 'current' : '') + '" onclick="App.switchToAccount(\'' + self.escapeHtml(u.email) + '\')">' +
+            '<div class="account-item-left">' +
+              '<span class="account-item-avatar">' + self.escapeHtml(u.avatar || '👤') + '</span>' +
+              '<div>' +
+                '<div class="account-item-name">' + self.escapeHtml(u.displayName || u.email.split('@')[0]) + '</div>' +
+                '<div class="account-item-email">' + self.escapeHtml(u.email) + '</div>' +
+              '</div>' +
+            '</div>' +
+            (isCur ? '<span style="font-size:11px; font-weight:800; color:var(--accent2);">使用中</span>' : '<span style="font-size:11px; color:var(--muted);">切替 ➔</span>') +
+          '</div>';
         });
         container.innerHTML = html;
       };
