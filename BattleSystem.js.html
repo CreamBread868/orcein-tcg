@@ -2730,6 +2730,11 @@
       cur.energyAttached = false;
       cur.supporterUsed = false;
       cur.retreated = false;
+      if (cur.allyKnockedOutThisTurn || cur.wasAllyKnockedOutLastTurn || cur.allyKnockedOutLastTurn) {
+        cur.allyKnockedOutLastTurn = true;
+        cur.wasAllyKnockedOutLastTurn = true;
+        cur.allyKnockedOutPreviousTurn = true;
+      }
       [cur.active, ...(cur.bench || [])].filter(Boolean).forEach((c) => {
         c._abilityUsedThisTurn = false;
         c._abilityUseCount = 0;
@@ -2802,6 +2807,13 @@
 
     endTurn() {
       if (this.state.phase === 'ended') return;
+      const curEnding = this.state.turnPlayer === 'player' ? this.state.player : this.state.opponent;
+      if (curEnding) {
+        curEnding.allyKnockedOutThisTurn = false;
+        curEnding.wasAllyKnockedOutLastTurn = false;
+        curEnding.allyKnockedOutLastTurn = false;
+        curEnding.allyKnockedOutPreviousTurn = false;
+      }
       const turnWhoName = this.state.turnPlayer === 'player' ? (this.state.player.name || 'プレイヤー') : (this.state.opponent.name || '対戦相手');
       this.log("【" + turnWhoName + "】がターンを終了しました。");
 
@@ -3953,6 +3965,10 @@
       this.log("💀 " + (koPokemon.name || 'ポケモン') + " はきぜつした！");
       victim.discard.push(koPokemon);
       victim.active = null;
+      victim.allyKnockedOutThisTurn = true;
+      victim.wasAllyKnockedOutLastTurn = true;
+      victim.allyKnockedOutLastTurn = true;
+      victim.allyKnockedOutPreviousTurn = true;
 
       // ex判定 (ポケモンexがきぜつしたとき、相手はサイドを2枚とる)
       const isEx = !!(koPokemon.isEx || String(koPokemon.category || '').includes('ex') || /[\s_・-]ex|ex/i.test(String(koPokemon.name || '')) || String(koPokemon.rarity || '').toLowerCase() === 'ex');

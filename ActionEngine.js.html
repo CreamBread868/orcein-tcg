@@ -832,21 +832,68 @@
       drawPrize(ctx, player, amount = 1) {
         return this.takePrize(ctx, player, amount);
       },
+      _getPlayer(ctx) {
+        if (ctx && ctx.self) return ctx.self;
+        if (window._currentExecutionContext && window._currentExecutionContext.self) return window._currentExecutionContext.self;
+        const st = window.BattleSystem?.state;
+        if (st) {
+          if (st.turnPlayer === 'player') return st.player;
+          if (st.turnPlayer === 'opponent') return st.opponent;
+          return st.player;
+        }
+        return null;
+      },
+      _getOpponent(ctx) {
+        if (ctx && ctx.opponent) return ctx.opponent;
+        if (window._currentExecutionContext && window._currentExecutionContext.opponent) return window._currentExecutionContext.opponent;
+        const st = window.BattleSystem?.state;
+        if (st) {
+          if (st.turnPlayer === 'player') return st.opponent;
+          if (st.turnPlayer === 'opponent') return st.player;
+          return st.opponent;
+        }
+        return null;
+      },
+      _getLogs(ctx) {
+        return ctx?.game?.logs || window._currentExecutionContext?.game?.logs || window.BattleSystem?.state?.logs || null;
+      },
+
+      didAllyKnockoutLastTurn(ctx, targetOrPlayer = null) {
+        let p = (targetOrPlayer && typeof targetOrPlayer === 'object' && targetOrPlayer.hand) ? targetOrPlayer : this._getPlayer(ctx);
+        if (!p) return false;
+        return !!(p.allyKnockedOutLastTurn || p.wasAllyKnockedOutLastTurn || p.allyKnockedOutPreviousTurn || p.allyKnockedOutThisTurn);
+      },
+      wasAllyKnockedOutLastTurn(ctx, targetOrPlayer = null) {
+        return this.didAllyKnockoutLastTurn(ctx, targetOrPlayer);
+      },
+      isAllyKnockedOutPreviousTurn(ctx, targetOrPlayer = null) {
+        return this.didAllyKnockoutLastTurn(ctx, targetOrPlayer);
+      },
+      allyKnockedOutLastTurn(ctx, targetOrPlayer = null) {
+        return this.didAllyKnockoutLastTurn(ctx, targetOrPlayer);
+      },
+      wasKnockedOutPreviousTurn(ctx, targetOrPlayer = null) {
+        return this.didAllyKnockoutLastTurn(ctx, targetOrPlayer);
+      },
+      wasKnockedOutLastTurn(ctx, targetOrPlayer = null) {
+        return this.didAllyKnockoutLastTurn(ctx, targetOrPlayer);
+      },
+
       applyStatus(ctx, target, status) { if (target) target.status = String(status || 'どく'); },
       clearStatus(ctx, target) { if (target) target.status = null; },
-      benchDamage(ctx, player, amount) { const dmg = Math.max(0, Number(amount) || 0); if (dmg && Array.isArray(player?.bench)) { player.bench.forEach((c) => { if (c) c.hp -= dmg; }); } },
-      reduceDamage(ctx, target, amount) { if (target) target.damageReduction = (target.damageReduction || 0) + Math.max(0, Number(amount) || 0); },
+      benchDamage(ctx, player, amount) { const dmg = Math.max(0, Number(amount) || 0); const p = this._getPlayer(ctx); if (dmg && Array.isArray(p?.bench)) { p.bench.forEach((c) => { if (c) c.hp -= dmg; }); } },
+      reduceDamage(ctx, target, amount) { const tgt = target || this._getPlayer(ctx)?.active; if (tgt) tgt.damageReduction = (tgt.damageReduction || 0) + Math.max(0, Number(amount) || 0); },
       increaseDamage(ctx, amount) { if (ctx) ctx.bonusDamage = (ctx.bonusDamage || 0) + Math.max(0, Number(amount) || 0); return Number(amount) || 0; },
       nextTurnDamage(ctx, amount = 80, targetOrFilter = null) {
         const n = Math.max(0, Number(amount) || 0);
-        const player = ctx?.self;
+        const player = this._getPlayer(ctx);
         if (!player) return n;
 
         player.nextTurnDamageBuffs = player.nextTurnDamageBuffs || [];
         player.nextTurnDamageBuffs.push({
           amount: n,
           target: targetOrFilter,
-          sourcePokemon: ctx?.self?.active
+          sourcePokemon: player?.active
         });
 
         let desc = '次の自分の番、ワザの威力が +' + n + ' される！（交代しても継続）';
@@ -858,8 +905,9 @@
           desc = '次の自分の番、【' + targetOrFilter.category + '】のワザの威力が +' + n + ' される！';
         }
 
-        if (ctx?.game?.logs) {
-          ctx.game.logs.push('🔥 ' + desc);
+        const logs = this._getLogs(ctx);
+        if (logs) {
+          logs.push('🔥 ' + desc);
         }
         return n;
       },
@@ -875,14 +923,15 @@
 
       reduceOpponentAttackNextTurn(ctx, amount = 20, targetOrFilter = null) {
         const n = Math.max(0, Number(amount) || 0);
-        const opp = ctx?.opponent;
+        const opp = this._getOpponent(ctx);
         if (!opp) return n;
+        const player = this._getPlayer(ctx);
 
         opp.nextTurnAttackDebuffs = opp.nextTurnAttackDebuffs || [];
         opp.nextTurnAttackDebuffs.push({
           amount: n,
           target: targetOrFilter || opp.active,
-          sourcePokemon: ctx?.self?.active
+          sourcePokemon: player?.active
         });
 
         let desc = '次の相手の番、相手のポケモンが使うワザの威力を -' + n + ' する！';
@@ -890,8 +939,9 @@
           desc = '【' + targetOrFilter.name + '】の次のワザの威力を -' + n + ' する！';
         }
 
-        if (ctx?.game?.logs) {
-          ctx.game.logs.push('❄️ ' + desc);
+        const logs = this._getLogs(ctx);
+        if (logs) {
+          logs.push('❄️ ' + desc);
         }
         return n;
       },
@@ -907,17 +957,19 @@
 
       reduceDamageNextTurn(ctx, amount = 20, target = null) {
         const n = Math.max(0, Number(amount) || 0);
+        const player = this._getPlayer(ctx);
         let tgt = target;
         if (typeof target === 'number') {
-          tgt = ctx?.self?.active;
+          tgt = player?.active;
         }
-        tgt = tgt || ctx?.self?.active || ctx?.thisPokemon;
+        tgt = tgt || player?.active || ctx?.thisPokemon;
         if (!tgt) return n;
 
         tgt.nextTurnDamageReduction = (tgt.nextTurnDamageReduction || 0) + n;
         const desc = '次の相手の番、【' + (tgt.name || 'ポケモン') + '】が受けるワザのダメージを -' + n + ' する！';
-        if (ctx?.game?.logs) {
-          ctx.game.logs.push('🛡️ ' + desc);
+        const logs = this._getLogs(ctx);
+        if (logs) {
+          logs.push('🛡️ ' + desc);
         }
         return n;
       },
@@ -934,24 +986,26 @@
       reduceHp(ctx, target = null, amount = 20) {
         let tgt = target;
         let n = amount;
+        const opp = this._getOpponent(ctx);
         if (typeof target === 'number') {
           n = target;
-          tgt = ctx?.opponent?.active;
+          tgt = opp?.active;
         }
-        tgt = tgt || ctx?.opponent?.active;
+        tgt = tgt || opp?.active;
         if (!tgt || tgt.hp === undefined) return 0;
         const sub = Math.max(0, Number(n) || 0);
         tgt.hp = Math.max(0, tgt.hp - sub);
-        if (ctx?.game?.logs) {
-          ctx.game.logs.push('💔 【' + (tgt.name || 'ポケモン') + '】のHPが ' + sub + ' 減少し ' + tgt.hp + ' になった！');
+        const logs = this._getLogs(ctx);
+        if (logs) {
+          logs.push('💔 【' + (tgt.name || 'ポケモン') + '】のHPが ' + sub + ' 減少し ' + tgt.hp + ' になった！');
         }
         return sub;
       },
       reduceOpponentHp(ctx, amount = 20) {
-        return this.reduceHp(ctx, ctx?.opponent?.active, amount);
+        return this.reduceHp(ctx, this._getOpponent(ctx)?.active, amount);
       },
       reduceSelfHp(ctx, amount = 20) {
-        return this.reduceHp(ctx, ctx?.self?.active, amount);
+        return this.reduceHp(ctx, this._getPlayer(ctx)?.active, amount);
       },
       subHp(ctx, target, amount) {
         return this.reduceHp(ctx, target, amount);
@@ -960,11 +1014,12 @@
       reduceMaxHp(ctx, target = null, amount = 20) {
         let tgt = target;
         let n = amount;
+        const opp = this._getOpponent(ctx);
         if (typeof target === 'number') {
           n = target;
-          tgt = ctx?.opponent?.active;
+          tgt = opp?.active;
         }
-        tgt = tgt || ctx?.opponent?.active;
+        tgt = tgt || opp?.active;
         if (!tgt || tgt.hp === undefined) return 0;
         const sub = Math.max(0, Number(n) || 0);
         const curMax = tgt.maxHp || 100;
@@ -972,8 +1027,9 @@
         if (tgt.hp > tgt.maxHp) {
           tgt.hp = tgt.maxHp;
         }
-        if (ctx?.game?.logs) {
-          ctx.game.logs.push('📉 【' + (tgt.name || 'ポケモン') + '】の最大HPが ' + curMax + ' から ' + tgt.maxHp + ' に減少した！ (現在HP: ' + tgt.hp + ')');
+        const logs = this._getLogs(ctx);
+        if (logs) {
+          logs.push('📉 【' + (tgt.name || 'ポケモン') + '】の最大HPが ' + curMax + ' から ' + tgt.maxHp + ' に減少した！ (現在HP: ' + tgt.hp + ')');
         }
         return sub;
       },
@@ -987,18 +1043,20 @@
       increaseMaxHp(ctx, target = null, amount = 20) {
         let tgt = target;
         let n = amount;
+        const player = this._getPlayer(ctx);
         if (typeof target === 'number') {
           n = target;
-          tgt = ctx?.self?.active;
+          tgt = player?.active;
         }
-        tgt = tgt || ctx?.self?.active;
+        tgt = tgt || player?.active;
         if (!tgt || tgt.hp === undefined) return 0;
         const add = Math.max(0, Number(n) || 0);
         const curMax = tgt.maxHp || 100;
         tgt.maxHp = curMax + add;
         tgt.hp += add;
-        if (ctx?.game?.logs) {
-          ctx.game.logs.push('📈 【' + (tgt.name || 'ポケモン') + '】の最大HPが ' + curMax + ' から ' + tgt.maxHp + ' に増加した！ (現在HP: ' + tgt.hp + ')');
+        const logs = this._getLogs(ctx);
+        if (logs) {
+          logs.push('📈 【' + (tgt.name || 'ポケモン') + '】の最大HPが ' + curMax + ' から ' + tgt.maxHp + ' に増加した！ (現在HP: ' + tgt.hp + ')');
         }
         return add;
       },
@@ -1012,16 +1070,18 @@
       setHp(ctx, target = null, value = 100) {
         let tgt = target;
         let val = value;
+        const player = this._getPlayer(ctx);
         if (typeof target === 'number') {
           val = target;
-          tgt = ctx?.self?.active;
+          tgt = player?.active;
         }
-        tgt = tgt || ctx?.self?.active;
+        tgt = tgt || player?.active;
         if (!tgt || tgt.hp === undefined) return 0;
         const maxH = tgt.maxHp || 100;
         tgt.hp = Math.min(maxH, Math.max(0, Number(val) || 0));
-        if (ctx?.game?.logs) {
-          ctx.game.logs.push('💚 【' + (tgt.name || 'ポケモン') + '】のHPが ' + tgt.hp + ' に設定された！');
+        const logs = this._getLogs(ctx);
+        if (logs) {
+          logs.push('💚 【' + (tgt.name || 'ポケモン') + '】のHPが ' + tgt.hp + ' に設定された！');
         }
         return tgt.hp;
       },
@@ -2097,6 +2157,12 @@
         defeat: (t) => api.defeat(ctx, t),
         didKnockout: (t) => api.didKnockout(ctx, t),
         defeatedOpponent: (t) => api.defeatedOpponent(ctx, t),
+        didAllyKnockoutLastTurn: (t) => api.didAllyKnockoutLastTurn(ctx, t),
+        wasAllyKnockedOutLastTurn: (t) => api.wasAllyKnockedOutLastTurn(ctx, t),
+        isAllyKnockedOutPreviousTurn: (t) => api.isAllyKnockedOutPreviousTurn(ctx, t),
+        allyKnockedOutLastTurn: (t) => api.allyKnockedOutLastTurn(ctx, t),
+        wasKnockedOutPreviousTurn: (t) => api.wasKnockedOutPreviousTurn(ctx, t),
+        wasKnockedOutLastTurn: (t) => api.wasKnockedOutLastTurn(ctx, t),
         takePrize: (p, n) => api.takePrize(ctx, p, n),
         takeSide: (p, n) => api.takeSide(ctx, p, n),
         takePrizes: (p, n) => api.takePrizes(ctx, p, n),
@@ -2253,7 +2319,7 @@
           if (!hasListener) return;
         } else {
           const escapedEvent = eventName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const hasListener = new RegExp('event\\\\s*\\\\.\\\\s*on\\\\s*\\\\(\\\\s*[\'"\\']${escapedEvent}['"\']').test(code);
+          const hasListener = new RegExp('event\\s*\\.\\s*on\\s*\\(\\s*[\'"]' + escapedEvent + '[\'"]').test(code);
           if (!hasListener) return; // このコードはこのイベントをリッスンしていない → スキップ
         }
       }
@@ -2294,7 +2360,9 @@
         'switchActive', 'toHand', 'toDiscard', 'toDeck', 'toBench', 'moveCard', 'discardCards', 'searchCards',
         'coinFlip', 'flipCoin', 'applyStatus', 'clearStatus', 'benchDamage',
         'reduceDamage', 'increaseDamage', 'shuffleDeck', 'lookAtDeckTop',
-        'choiceCard', 'choiceCards', 'isKnockedOut', 'isDefeated', 'knockout', 'defeat', 'didKnockout', 'defeatedOpponent', 'takePrize', 'takeSide', 'takePrizes', 'drawPrize',
+        'choiceCard', 'choiceCards', 'isKnockedOut', 'isDefeated', 'knockout', 'defeat', 'didKnockout', 'defeatedOpponent',
+        'didAllyKnockoutLastTurn', 'wasAllyKnockedOutLastTurn', 'isAllyKnockedOutPreviousTurn', 'allyKnockedOutLastTurn', 'wasKnockedOutPreviousTurn', 'wasKnockedOutLastTurn',
+        'takePrize', 'takeSide', 'takePrizes', 'drawPrize',
         'getCards', 'kill', 'attach', 'move',
         'getEnergy', 'hasEnergy', 'addEnergy', 'removeEnergy', 'nextTurnDamage', 'cancelDamage', 'preventDamage',
         'reduceOpponentAttackNextTurn', 'nextTurnReduceOpponentAttack', 'reduceDamageNextTurn', 'nextTurnReduceDamage',
@@ -2318,7 +2386,9 @@
           ctx.coinFlip, ctx.flipCoin, ctx.applyStatus, ctx.clearStatus, ctx.benchDamage,
           ctx.reduceDamage, ctx.increaseDamage, ctx.shuffleDeck, ctx.lookAtDeckTop,
           ctx.choiceCard, ctx.choiceCards,
-          ctx.isKnockedOut, ctx.isDefeated, ctx.knockout, ctx.defeat, ctx.didKnockout, ctx.defeatedOpponent, ctx.takePrize, ctx.takeSide, ctx.takePrizes, ctx.drawPrize,
+          ctx.isKnockedOut, ctx.isDefeated, ctx.knockout, ctx.defeat, ctx.didKnockout, ctx.defeatedOpponent,
+          ctx.didAllyKnockoutLastTurn, ctx.wasAllyKnockedOutLastTurn, ctx.isAllyKnockedOutPreviousTurn, ctx.allyKnockedOutLastTurn, ctx.wasKnockedOutPreviousTurn, ctx.wasKnockedOutLastTurn,
+          ctx.takePrize, ctx.takeSide, ctx.takePrizes, ctx.drawPrize,
           ctx.getCards, ctx.kill, ctx.attach, ctx.move,
           ctx.getEnergy, ctx.hasEnergy, ctx.addEnergy, ctx.removeEnergy, ctx.nextTurnDamage, ctx.cancelDamage, ctx.preventDamage,
           ctx.reduceOpponentAttackNextTurn, ctx.nextTurnReduceOpponentAttack, ctx.reduceDamageNextTurn, ctx.nextTurnReduceDamage,
@@ -2410,5 +2480,11 @@
     window.getNextEvolutions = (c, s) => window.ORBITAL_EFFECT_API.getNextEvolutions(null, c, s);
     window.isEvolutionOf = (e, b, s) => window.ORBITAL_EFFECT_API.isEvolutionOf(null, e, b, s);
     window.rareCandy = (p) => window.ORBITAL_EFFECT_API.rareCandy(null, p);
+    window.didAllyKnockoutLastTurn = (p) => window.ORBITAL_EFFECT_API.didAllyKnockoutLastTurn(null, p);
+    window.wasAllyKnockedOutLastTurn = (p) => window.ORBITAL_EFFECT_API.wasAllyKnockedOutLastTurn(null, p);
+    window.isAllyKnockedOutPreviousTurn = (p) => window.ORBITAL_EFFECT_API.isAllyKnockedOutPreviousTurn(null, p);
+    window.allyKnockedOutLastTurn = (p) => window.ORBITAL_EFFECT_API.allyKnockedOutLastTurn(null, p);
+    window.wasKnockedOutPreviousTurn = (p) => window.ORBITAL_EFFECT_API.wasKnockedOutPreviousTurn(null, p);
+    window.wasKnockedOutLastTurn = (p) => window.ORBITAL_EFFECT_API.wasKnockedOutLastTurn(null, p);
   })();
 </script>

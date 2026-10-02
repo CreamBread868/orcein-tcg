@@ -723,7 +723,7 @@ var EffectEditor;
       badge: '次回威力+80',
       desc: '次の自分の番、ワザのダメージを+80する（交代しても継続。第2引数で特定ポケモンや属性の限定も可能）',
       snippet: 'nextTurnDamage(80);',
-      targets: ['attack1', 'attack2', 'ability']
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
     },
     {
       keyword: 'nextTurnReduceOpponentAttack',
@@ -732,7 +732,7 @@ var EffectEditor;
       badge: '相手攻撃力-20',
       desc: '次の相手の番、相手のポケモンが使うワザの威力を -20 する（統一形式）',
       snippet: 'nextTurnReduceOpponentAttack(20);',
-      targets: ['attack1', 'attack2', 'ability']
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
     },
     {
       keyword: 'reduceOpponentAttackNextTurn',
@@ -741,7 +741,7 @@ var EffectEditor;
       badge: '相手攻撃力-20',
       desc: '次の相手の番、相手のポケモンが使うワザの威力を -20 する（統一エイリアス）',
       snippet: 'reduceOpponentAttackNextTurn(20);',
-      targets: ['attack1', 'attack2', 'ability']
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
     },
     {
       keyword: 'nextTurnReduceDamage',
@@ -750,7 +750,7 @@ var EffectEditor;
       badge: '次ターン被ダメ-30',
       desc: '次の相手の番、自分が受けるワザのダメージを -30 軽減する（統一形式）',
       snippet: 'nextTurnReduceDamage(30);',
-      targets: ['attack1', 'attack2', 'ability']
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
     },
     {
       keyword: 'reduceDamageNextTurn',
@@ -759,7 +759,7 @@ var EffectEditor;
       badge: '次ターン被ダメ-30',
       desc: '次の相手の番、自分が受けるワザのダメージを -30 軽減する（統一エイリアス）',
       snippet: 'reduceDamageNextTurn(30);',
-      targets: ['attack1', 'attack2', 'ability']
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
     },
     {
       keyword: 'nextTurnCantAttack',
@@ -768,7 +768,7 @@ var EffectEditor;
       badge: '次回ワザ不可',
       desc: '次の自分の番、このポケモンはワザを使えない（統一形式）',
       snippet: 'nextTurnCantAttack();',
-      targets: ['attack1', 'attack2', 'ability']
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
     },
     {
       keyword: 'cantAttackNextTurn',
@@ -777,7 +777,34 @@ var EffectEditor;
       badge: '次回ワザ不可',
       desc: '次の自分の番、このポケモンはワザを使えない（統一エイリアス）',
       snippet: 'cantAttackNextTurn();',
-      targets: ['attack1', 'attack2', 'ability']
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'wasAllyKnockedOutLastTurn',
+      label: 'wasAllyKnockedOutLastTurn()',
+      category: 'condition',
+      badge: '味方気絶判定',
+      desc: '【前の番のきぜつ判定】前の相手の番（前の番）に自分のポケモンがきぜつしていたなら true を返す（シロナ・キバナ等の効果）',
+      snippet: 'if (!wasAllyKnockedOutLastTurn()) {\n  cant("前の番に自分のポケモンがきぜつしていません");\n}',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'didAllyKnockoutLastTurn',
+      label: 'didAllyKnockoutLastTurn()',
+      category: 'condition',
+      badge: '味方気絶判定',
+      desc: '【前の番のきぜつ判定】前の相手の番（前の番）に自分のポケモンがきぜつしていたなら true を返す（wasAllyKnockedOutLastTurn の統一形式）',
+      snippet: 'if (!didAllyKnockoutLastTurn()) {\n  cant("前の番に自分のポケモンがきぜつしていません");\n}',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'allyKnockedOutLastTurn',
+      label: 'allyKnockedOutLastTurn()',
+      category: 'condition',
+      badge: '味方気絶判定',
+      desc: '【前の番のきぜつ判定】前の相手の番（前の番）に自分のポケモンがきぜつしていたなら true を返す（wasAllyKnockedOutLastTurn の統一エイリアス）',
+      snippet: 'allyKnockedOutLastTurn()',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
     },
     {
       keyword: 'reduceHp',
@@ -1703,6 +1730,20 @@ var EffectEditor;
         ],
         example: 'const pokemons = searchCards(self, { category: "Basic" });',
         snippet: 'searchCards(self, { category: "Basic" });'
+      },
+      {
+        name: 'wasAllyKnockedOutLastTurn',
+        signature: 'wasAllyKnockedOutLastTurn(player?)',
+        category: 'battle',
+        catLabel: 'バトル・条件判定',
+        badge: '味方気絶判定',
+        returns: 'boolean',
+        desc: '前の相手の番（前の番）に自分のポケモンがきぜつしていたなら true を返します。キバナ・シロナ等の発動条件に使用します。',
+        params: [
+          { name: 'player', type: 'player', desc: '（省略可）対象プレイヤー（デフォルト: self）' }
+        ],
+        example: '// 前の番に自分のポケモンがきぜつしていないと使えないサポート\nif (!wasAllyKnockedOutLastTurn()) {\n  cant("前の番に自分のポケモンがきぜつしていません");\n}\n\n// トラッシュから基本エネルギーを1枚つけ、山札から好きなカードを1枚探す\nconst card = choiceCard(self, "discard", { category: "Energy" });\nattach(card, self.active);\nconst target = choiceCard(self, "deck");\ntoHand(self, target);\nshuffleDeck(self);',
+        snippet: 'if (!wasAllyKnockedOutLastTurn()) {\n  cant("前の番に自分のポケモンがきぜつしていません");\n}'
       }
     ],
 
@@ -1911,6 +1952,7 @@ var EffectEditor;
         { label: 'たね手札サーチ', sub: '山札からたねを手札へ', code: 'const card = choiceCard(self, "deck", { category: "Basic" });\ntoHand(self, card);\nshuffleDeck(self);' },
         { label: 'エネ回収 (トラッシュから)', sub: 'エネ手札回収', code: 'const card = choiceCard(self, "discard", { category: "Energy" });\ntoHand(self, card);' },
         { label: '進化サーチ', sub: '山札から進化を手札へ', code: 'const card = choiceCard(self, "deck", { category: "Evolution" });\ntoHand(self, card);\nshuffleDeck(self);' },
+        { label: '前番味方きぜつ時のみ', sub: 'wasAllyKnockedOutLastTurn()', code: 'if (!wasAllyKnockedOutLastTurn()) {\n  cant("前の番に自分のポケモンがきぜつしていません");\n}' },
         { label: '2枚ドロー', sub: 'draw(self, 2)', code: 'draw(self, 2);' }];
 
       } else {
@@ -1931,6 +1973,7 @@ var EffectEditor;
         { label: 'コイン表で+20', sub: 'if (coinFlip)', code: 'if (coinFlip() === 1) {\n  damage(opponent.active, 20);\n}' },
         { label: '相手を「どく」', sub: 'applyStatus', code: 'applyStatus(opponent.active, "どく");' },
         { label: '相手手札破棄', sub: 'choiceCard + toDiscard', code: 'const card = choiceCard(opponent, "hand");\ntoDiscard(opponent, card);' },
+        { label: '前番味方きぜつ時のみ', sub: 'wasAllyKnockedOutLastTurn()', code: 'if (!wasAllyKnockedOutLastTurn()) {\n  cant("前の番に自分のポケモンがきぜつしていません");\n}' },
         { label: '山札サーチ', sub: 'choiceCard + toHand', code: 'const card = choiceCard(self, "deck", { category: "Basic" });\ntoHand(self, card);\nshuffleDeck(self);' },
         { label: '相手ベンチ全員10', sub: 'benchDamage', code: 'benchDamage(opponent, 10);' }];
 
@@ -3047,6 +3090,9 @@ var EffectEditor;
         lines.push('表が出るまでコインを投げ、出た回数分');
       } else if (/if\s*\(\s*(coinFlip|flipCoin)\s*\(/i.test(code)) {
         lines.push('コインを投げ表なら、');
+      }
+      if (/wasAllyKnockedOutLastTurn|didAllyKnockoutLastTurn|allyKnockedOutLastTurn/i.test(code)) {
+        lines.push('前の番に自分のポケモンがきぜつしていたなら、');
       }
       if (/if\s*\([^)]*hp\s*<=/i.test(code)) {
         lines.push('HP条件を満たせば、');
