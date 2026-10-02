@@ -19228,6 +19228,24 @@ var EffectEditor;
       targets: ['attack1', 'attack2', 'ability', 'trainer']
     },
     {
+      keyword: 'wasKnockedOutLastTurn',
+      label: 'wasKnockedOutLastTurn()',
+      category: 'condition',
+      badge: '味方気絶判定',
+      desc: '【前の番のきぜつ判定】前の相手の番（前の番）に自分のポケモンがきぜつしていたなら true を返す（エイリアス）',
+      snippet: 'if (!wasKnockedOutLastTurn()) {\n  cant("前の番に自分のポケモンがきぜつしていません");\n}',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'wasKnockedOutPreviousTurn',
+      label: 'wasKnockedOutPreviousTurn()',
+      category: 'condition',
+      badge: '味方気絶判定',
+      desc: '【前の番のきぜつ判定】前の相手の番（前の番）に自分のポケモンがきぜつしていたなら true を返す（エイリアス）',
+      snippet: 'if (!wasKnockedOutPreviousTurn()) {\n  cant("前の番に自分のポケモンがきぜつしていません");\n}',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
       keyword: 'reduceHp',
       label: 'reduceHp(opponent.active, 20);',
       category: 'action',
