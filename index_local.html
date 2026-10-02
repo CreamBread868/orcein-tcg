@@ -22672,6 +22672,42 @@ var CardSystem;
       } catch (e) {
         console.error('Failed to save ORBITAL_USER_COLLECTION:', e);
       }
+
+      // GASスプレッドシート DB へ保存
+      if (window.google && google.script && google.script.run && !window._is_mock_gas) {
+        try {
+          var email = window.App?.state?.userProfile?.email || '';
+          google.script.run
+            .withSuccessHandler(res => console.log('✅ Collection saved to GAS DB:', res))
+            .withFailureHandler(err => console.error('❌ Failed to save collection to GAS DB:', err))
+            .saveUserCollection(email, colMap);
+        } catch(err) {
+          console.error('saveUserCollection GAS runner error:', err);
+        }
+      }
+    },
+
+    fetchCollectionFromGAS() {
+      if (window.google && google.script && google.script.run && !window._is_mock_gas) {
+        try {
+          var email = window.App?.state?.userProfile?.email || '';
+          google.script.run
+            .withSuccessHandler(remoteCol => {
+              if (remoteCol && typeof remoteCol === 'object' && Object.keys(remoteCol).length > 0) {
+                console.log('✅ Synchronized collection from GAS DB:', remoteCol);
+                const localCol = this.getUserCollection();
+                const merged = Object.assign({}, localCol, remoteCol);
+                try { localStorage.setItem('ORBITAL_USER_COLLECTION', JSON.stringify(merged)); } catch(e) {}
+                if (window.App && window.App.state && window.App.state.page === 'collection') {
+                  this.renderCollectionPage();
+                }
+              }
+            })
+            .getUserCollection(email);
+        } catch(e) {
+          console.error('fetchCollectionFromGAS error:', e);
+        }
+      }
     },
 
     getCardOwnedCount(cardId) {
@@ -22727,6 +22763,10 @@ var CardSystem;
     },
 
     renderCollectionPage() {
+      if (!this._hasFetchedGasCol) {
+        this._hasFetchedGasCol = true;
+        this.fetchCollectionFromGAS();
+      }
       const allCards = this.getAllCollectionCards();
       const col = this.getUserCollection();
 
