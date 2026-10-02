@@ -1204,21 +1204,25 @@
         const isPastClaimed = (dNum < streakDay) || (dNum === streakDay && isClaimedToday);
         const isActiveToday = (dNum === streakDay && !isClaimedToday);
         const isSpecial = r.special;
+        const isPack = r.pack > 0;
+        const boxClass = isPack ? 'pack-box' : 'coin-box';
 
         let statusClass = '';
         if (isPastClaimed) statusClass = 'claimed';
         else if (isActiveToday) statusClass = 'active-today';
         if (isSpecial) statusClass += ' special-day';
 
+        const statusPill = isPastClaimed ? '✓ 受取完了' : (isActiveToday ? 'TODAY!' : '未解放');
+
         return `
           <div class="streak-day-card ${statusClass}">
-            ${isPastClaimed ? '<span class="claimed-check-tag">✓ 済</span>' : (isActiveToday ? '<span class="claimed-check-tag" style="background:#ffd700; color:#000;">TODAY!</span>' : '')}
-            <div class="streak-day-badge">DAY ${dNum}</div>
-            <div class="reward-icon-frame">
-              <span>${r.icon}</span>
+            <div class="streak-day-top-tag">DAY ${dNum}${isSpecial ? ' ★' : ''}</div>
+            <div class="streak-day-graphic-box ${boxClass}">
+              <div class="graphic-icon-emblem">${r.icon}</div>
+              <div class="graphic-amount-text">+${r.nmt}</div>
+              ${isPack ? `<div class="graphic-pack-text">🎁 +${r.pack} PACK</div>` : ''}
             </div>
-            <div class="reward-amount-label">+${r.nmt}</div>
-            ${r.pack > 0 ? `<div class="reward-pack-label">🎁 +${r.pack} Pack</div>` : '<div style="height:12px;"></div>'}
+            <div class="streak-day-status-pill">${statusPill}</div>
           </div>
         `;
       }).join('');

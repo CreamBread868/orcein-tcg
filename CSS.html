@@ -5689,95 +5689,135 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   }
 }
 
+/* 大型 7日間グラフィック報酬カード枠 */
+.daily-bonus-streak-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 10px;
+  margin: 22px 0;
+}
+@media (max-width: 680px) {
+  .daily-bonus-streak-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
 .streak-day-card {
-  background: linear-gradient(150deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.95));
-  border: 1.5px solid rgba(255, 255, 255, 0.12);
-  border-radius: 12px;
-  padding: 10px 4px;
+  width: 100%;
+  min-height: 135px;
+  background: linear-gradient(160deg, #1e293b, #0f172a);
+  border: 2px solid rgba(255, 215, 0, 0.3);
+  border-radius: 14px;
+  padding: 8px 5px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
-  min-height: 110px;
   position: relative;
+  overflow: hidden;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.6);
   transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
+.streak-day-card::before {
+  content: '';
+  position: absolute;
+  top: -50%; left: -50%; width: 200%; height: 200%;
+  background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+  transform: rotate(30deg);
+  pointer-events: none;
+}
+
 .streak-day-card.claimed {
   opacity: 0.65;
-  border-color: rgba(0, 245, 160, 0.5);
-  background: rgba(15, 23, 42, 0.8);
+  border-color: rgba(0, 245, 160, 0.6);
+  filter: grayscale(0.2);
 }
 .streak-day-card.active-today {
-  transform: translateY(-4px) scale(1.05);
+  transform: translateY(-6px) scale(1.06);
   border-color: #ffd700;
-  background: linear-gradient(150deg, rgba(255, 215, 0, 0.2), rgba(15, 23, 42, 0.95));
-  box-shadow: 0 8px 25px rgba(255, 215, 0, 0.4), 0 0 15px rgba(255, 215, 0, 0.6);
-  animation: todayPulse 1.8s infinite alternate ease-in-out;
+  background: linear-gradient(160deg, #2e1065, #0f172a);
+  box-shadow: 0 12px 30px rgba(255, 215, 0, 0.5), 0 0 20px rgba(255, 215, 0, 0.7);
+  animation: todayCardGlow 2s infinite alternate ease-in-out;
 }
-@keyframes todayPulse {
-  0% { border-color: #ffd700; box-shadow: 0 0 12px rgba(255, 215, 0, 0.5); }
-  100% { border-color: #ff8c00; box-shadow: 0 0 24px rgba(255, 140, 0, 0.8); }
+@keyframes todayCardGlow {
+  0% { border-color: #ffd700; box-shadow: 0 0 15px rgba(255, 215, 0, 0.6); }
+  100% { border-color: #ff8c00; box-shadow: 0 0 30px rgba(255, 140, 0, 0.9); }
 }
 .streak-day-card.special-day {
-  border-color: rgba(255, 0, 128, 0.8);
-  background: linear-gradient(150deg, rgba(255, 0, 128, 0.2), rgba(15, 23, 42, 0.95));
+  border-color: rgba(255, 0, 128, 0.9);
+  background: linear-gradient(160deg, #4c0519, #0f172a);
 }
 
-.streak-day-badge {
+.streak-day-top-tag {
   font-size: 10px;
   font-weight: 900;
-  color: #94a3b8;
-  letter-spacing: 0.5px;
-}
-.streak-day-card.active-today .streak-day-badge {
   color: #ffd700;
+  letter-spacing: 0.8px;
+  text-shadow: 0 0 6px rgba(255, 215, 0, 0.6);
 }
-.streak-day-card.special-day .streak-day-badge {
-  color: #ff007f;
+.streak-day-card.special-day .streak-day-top-tag {
+  color: #ff3399;
 }
 
-.reward-icon-frame {
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(255, 215, 0, 0.3);
+/* ミニカード枠内の視覚グラフィック */
+.streak-day-graphic-box {
+  width: 100%;
+  height: 60px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
-  margin: 6px 0;
   position: relative;
+  overflow: hidden;
 }
-.streak-day-card.active-today .reward-icon-frame {
-  border-color: #ffd700;
-  background: rgba(255, 215, 0, 0.15);
-  box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+.streak-day-graphic-box.coin-box {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 140, 0, 0.1));
+  border-color: rgba(255, 215, 0, 0.5);
+}
+.streak-day-graphic-box.pack-box {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(219, 39, 119, 0.3));
+  border-color: rgba(0, 229, 255, 0.6);
 }
 
-.reward-amount-label {
+.graphic-icon-emblem {
+  font-size: 28px;
+  text-shadow: 0 0 12px rgba(255, 215, 0, 0.8);
+}
+.graphic-amount-text {
   font-family: 'Outfit', sans-serif;
   font-size: 11px;
   font-weight: 900;
   color: #ffd700;
-  white-space: nowrap;
+  text-shadow: 0 0 6px rgba(255, 215, 0, 0.8);
+  margin-top: 2px;
 }
-.reward-pack-label {
+.graphic-pack-text {
   font-size: 9.5px;
+  font-weight: 900;
   color: #00e5ff;
-  font-weight: 800;
-  white-space: nowrap;
+  letter-spacing: 0.5px;
 }
-.claimed-check-tag {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  background: #00f5a0;
-  color: #000;
+
+.streak-day-status-pill {
   font-size: 9px;
   font-weight: 900;
-  padding: 1px 4px;
-  border-radius: 6px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+  margin-top: 4px;
+}
+.streak-day-card.claimed .streak-day-status-pill {
+  background: #00f5a0;
+  color: #000;
+}
+.streak-day-card.active-today .streak-day-status-pill {
+  background: linear-gradient(90deg, #ffd700, #ff8c00);
+  color: #000;
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
 }
 .claim-big-button {
   width: 100%;
