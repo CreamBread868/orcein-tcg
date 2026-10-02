@@ -93,18 +93,23 @@ const gasLoaderHtml = `<!DOCTYPE html>
     #gas-loader-screen { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background:radial-gradient(circle at 50% 40%, #0f172a 0%, #020617 100%); z-index:999999; }
     .brand-logo { width:76px; height:76px; border-radius:22px; background:linear-gradient(135deg, #6366f1, #38bdf8); display:grid; place-items:center; font-size:38px; font-weight:900; color:#fff; box-shadow:0 0 50px rgba(99,102,241,0.7); animation:startupPulse 2s infinite cubic-bezier(0.4, 0, 0.6, 1); margin-bottom:20px; }
     @keyframes startupPulse { 0%, 100% { transform:scale(1); box-shadow:0 0 40px rgba(99,102,241,0.7); } 50% { transform:scale(1.08); box-shadow:0 0 60px rgba(56,189,248,0.9); } }
-    .brand-title { font-size:28px; font-weight:900; letter-spacing:0.14em; background:linear-gradient(135deg, #ffffff 30%, #a5b4fc 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:24px; }
-    .spinner { width:40px; height:40px; border:4px solid rgba(255,255,255,0.1); border-top-color:#38bdf8; border-radius:50%; animation:spin 0.8s linear infinite; }
-    @keyframes spin { to { transform:rotate(360deg); } }
-    .status-msg { margin-top:18px; font-size:13px; color:#94a3b8; font-weight:600; letter-spacing:0.05em; }
+    .brand-title { font-size:28px; font-weight:900; letter-spacing:0.14em; background:linear-gradient(135deg, #ffffff 30%, #a5b4fc 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:16px; }
+    .status-msg { margin-top:14px; font-size:13px; color:#94a3b8; font-weight:600; letter-spacing:0.05em; min-height:20px; text-align:center; }
+    .progress-bar-box { width:300px; max-width:85vw; height:10px; background:rgba(255,255,255,0.08); border-radius:999px; overflow:hidden; margin-top:16px; border:1px solid rgba(255,255,255,0.12); box-shadow:inset 0 1px 3px rgba(0,0,0,0.6); position:relative; }
+    .progress-bar-fill { width:0%; height:100%; background:linear-gradient(90deg, #6366f1, #38bdf8, #a855f7); background-size:200% 100%; border-radius:999px; transition:width 0.2s cubic-bezier(0.4, 0, 0.2, 1); animation:shimmer 2s infinite linear; }
+    @keyframes shimmer { 0% { background-position:0% 50%; } 100% { background-position:200% 50%; } }
+    .progress-text { margin-top:8px; font-size:13px; color:#38bdf8; font-weight:800; letter-spacing:0.06em; }
   </style>
 </head>
 <body>
   <div id="gas-loader-screen">
     <div class="brand-logo">O</div>
     <div class="brand-title">ORBITAL TCG</div>
-    <div class="spinner"></div>
-    <div id="gas-loader-status" class="status-msg">🐙 GitHubから最新プログラムを読み込んでいます...</div>
+    <div class="progress-bar-box">
+      <div id="gas-progress-fill" class="progress-bar-fill"></div>
+    </div>
+    <div id="gas-progress-text" class="progress-text">0%</div>
+    <div id="gas-loader-status" class="status-msg">📡 初期化中...</div>
   </div>
 
   <script>
@@ -112,6 +117,33 @@ const gasLoaderHtml = `<!DOCTYPE html>
       window._is_gas_env = true;
       var savedG = window.google || (window.top && window.top.google) || (window.parent && window.parent.google);
       window._saved_google = savedG;
+
+      window._resetRepoConfig = function() {
+        try { localStorage.removeItem('ORBITAL_GITHUB_REPO'); } catch(e) {}
+        location.reload();
+      };
+
+      var fillEl = document.getElementById('gas-progress-fill');
+      var textEl = document.getElementById('gas-progress-text');
+      var statusEl = document.getElementById('gas-loader-status');
+
+      function setProgress(pct, msg) {
+        if (fillEl) fillEl.style.width = Math.min(100, Math.max(0, pct)) + '%';
+        if (textEl) textEl.textContent = Math.min(100, Math.max(0, Math.round(pct))) + '%';
+        if (statusEl && msg) statusEl.textContent = msg;
+      }
+
+      var currentPct = 5;
+      setProgress(currentPct, '📡 GitHubサーバーへ接続中...');
+
+      var progressInterval = setInterval(function() {
+        if (currentPct < 88) {
+          currentPct += Math.random() * 12 + 4;
+          if (currentPct > 88) currentPct = 88;
+          var msg = currentPct < 40 ? '📦 プログラムを取得中...' : (currentPct < 75 ? '⚡ JS/CSSコンポーネント展開中...' : '⚙️ DOM構築準備中...');
+          setProgress(currentPct, msg);
+        }
+      }, 120);
 
       var repo = localStorage.getItem('ORBITAL_GITHUB_REPO') || 'CreamBread868/orcein-tcg';
       var cleanRepo = repo.replace(/^https?:\\/\\/github\\.com\\//i, '').replace(/\\/$/, '');
@@ -121,18 +153,17 @@ const gasLoaderHtml = `<!DOCTYPE html>
       console.log('🐙 GAS Bootstrapping from GitHub:', rawBase, 'GAS Google Object:', !!savedG);
 
       function showResetUI(msg) {
-        try { localStorage.removeItem('ORBITAL_GITHUB_REPO'); } catch(e) {}
-        var st = document.getElementById('gas-loader-status');
-        if (st) {
-          st.innerHTML = '<span style="color:#ef4444;font-weight:bold;">' + msg + '</span><br/><br/>' +
-            '<button onclick="try{localStorage.removeItem(\'ORBITAL_GITHUB_REPO\');}catch(e){}location.reload();" style="padding:10px 18px;background:linear-gradient(135deg,#6366f1,#3b82f6);color:#fff;border:none;border-radius:10px;font-weight:bold;cursor:pointer;box-shadow:0 4px 14px rgba(99,102,241,0.4);">🧹 リポジトリ設定をリセットして再読み込み</button>';
+        clearInterval(progressInterval);
+        if (statusEl) {
+          statusEl.innerHTML = '<span style="color:#ef4444;font-weight:bold;">' + msg + '</span><br/><br/>' +
+            '<button onclick="window._resetRepoConfig()" style="padding:10px 18px;background:linear-gradient(135deg,#6366f1,#3b82f6);color:#fff;border:none;border-radius:10px;font-weight:bold;cursor:pointer;box-shadow:0 4px 14px rgba(99,102,241,0.4);">🧹 リポジトリ設定をリセットして再読み込み</button>';
         }
       }
 
       var bootTimer = setTimeout(function() {
         console.warn('GitHub bootstrap timeout');
         showResetUI('⏰ GitHubからの取得がタイムアウトしました。');
-      }, 7000);
+      }, 8000);
 
       fetch(rawBase + 'index.html?t=' + Date.now())
         .then(function(res) {
@@ -148,18 +179,23 @@ const gasLoaderHtml = `<!DOCTYPE html>
           return res.text();
         })
         .then(function(html) {
+          clearInterval(progressInterval);
           clearTimeout(bootTimer);
-          document.open();
-          document.write(html);
-          document.close();
-          window._is_gas_env = true;
-          if (savedG) {
-            window.google = savedG;
-            window._saved_google = savedG;
-            console.log('✅ Real google.script.run restored to window.google!');
-          }
+          setProgress(100, '✨ 起動完了！');
+          setTimeout(function() {
+            document.open();
+            document.write(html);
+            document.close();
+            window._is_gas_env = true;
+            if (savedG) {
+              window.google = savedG;
+              window._saved_google = savedG;
+              console.log('✅ Real google.script.run restored to window.google!');
+            }
+          }, 80);
         })
         .catch(function(err) {
+          clearInterval(progressInterval);
           clearTimeout(bootTimer);
           console.error('GitHub Bootstrap Error:', err);
           showResetUI('❌ エラー: ' + err.message);
@@ -171,7 +207,7 @@ const gasLoaderHtml = `<!DOCTYPE html>
 
 const gasDir = path.join(__dirname, 'gas');
 if (fs.existsSync(gasDir)) {
-  fs.writeFileSync(path.join(gasDir, 'index_local.html'), indexHtml, 'utf8');
+  fs.writeFileSync(path.join(gasDir, 'index_local.html'), gasLoaderHtml, 'utf8');
 }
 
 console.log('Successfully generated index.html, index_local.html, and gas/index_local.html with full CSS & JS compiled!');
