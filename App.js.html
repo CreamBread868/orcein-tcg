@@ -1698,7 +1698,9 @@
     }
   };
 
+  window._App = App;
   window.App = App;
+  try { if (typeof globalThis !== 'undefined') globalThis.App = App; } catch(e) {}
   try {
     if (document.readyState === 'complete' || document.readyState === 'interactive') {
       setTimeout(() => { if (window.App && window.App.init) window.App.init(); }, 0);

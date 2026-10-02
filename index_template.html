@@ -9742,6 +9742,35 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
 
 
   <script>
+    var App;
+    var CardSystem;
+    var DeckSystem;
+    var BattleSystem;
+    (function() {
+      if (typeof window !== 'undefined') {
+        var appProxy = new Proxy({}, {
+          get: function(target, prop) {
+            if (window._App && prop in window._App) {
+              var val = window._App[prop];
+              return typeof val === 'function' ? val.bind(window._App) : val;
+            }
+            if (prop === 'state') return (window._App && window._App.state) || { page: 'home', cards: [], packs: [] };
+            return function() {
+              if (window._App && typeof window._App[prop] === 'function') {
+                return window._App[prop].apply(window._App, arguments);
+              }
+              console.warn('[App Proxy] App.' + String(prop) + ' called before App initialization');
+            };
+          },
+          set: function(target, prop, value) {
+            if (window._App) window._App[prop] = value;
+            return true;
+          }
+        });
+        window.App = appProxy;
+        App = appProxy;
+      }
+    })();
     (function() {
       var queue = [];
       function renderMsg(msg, isErr) {
