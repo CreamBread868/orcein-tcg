@@ -61,7 +61,8 @@
         supporterUsed: false,
         retreated: false
       },
-      logs: []
+      logs: [],
+      activeStadium: null
     },
 
     // プリセット・フォールバック用AIデッキ
@@ -77,7 +78,9 @@
         { name: 'ボスの指令', category: 'サポート', type: '', hp: '', image: 'https://images.pokemontcg.io/sv2/172_hires.png', attack1Code: 'const target = choiceCard(opponent.bench);\nswitchActive(opponent, target);', attack1Text: '相手のベンチポケモンを1匹選び、バトル場へ入れ替える。', description: '相手のベンチポケモンを1匹選び、バトル場へ入れ替える。', count: 2 },
         { name: 'きずぐすり', category: 'グッズ', type: '', hp: '', image: 'https://images.pokemontcg.io/sv1/182_hires.png', attack1Code: 'heal(self.active, 30);', attack1Text: '自分のバトルポケモンのHPを30回復する。', description: '自分のバトルポケモンのHPを30回復する。', count: 3 },
         { name: 'ポケモンいれかえ', category: 'グッズ', type: '', hp: '', image: 'https://images.pokemontcg.io/sv1/191_hires.png', attack1Code: 'switchActive(self);', attack1Text: '自分のバトルポケモンをベンチと入れ替える。', description: '自分のバトルポケモンをベンチと入れ替える。', count: 2 },
-        { name: '基本雷エネルギー', category: 'エネルギー', type: '雷', hp: '', image: 'https://images.pokemontcg.io/sve/4_hires.png', description: '雷エネルギーを付ける。', count: 12 }]
+        { name: 'ボウルタウン', category: 'スタジアム', type: '', hp: '', image: 'https://images.pokemontcg.io/sv1/185_hires.png', attack1Code: 'useLimit(1);\nconst target = choiceCard(self.deck, { category: "たne" }, 1, "山札から「たねポケモン」をベンチに出す");\nif (target) {\n  toBench(self, target);\n  shuffleDeck(self);\n}', attack1Text: 'お互いのプレイヤーは、自分の番に1回、自分の山札から「たねポケモン」を1枚選び、ベンチに出してよい。', description: 'お互いのプレイヤーは、自分の番に1回、自分の山札から「たねポケモン」を1枚選び、ベンチに出してよい。', count: 2 },
+        { name: 'ダブルターボエネルギー', category: '特殊エネルギー', type: '無', hp: '', image: 'https://images.pokemontcg.io/swsh9/151_hires.png', description: 'このカードは無色エネルギー2個分としてはたらく。このカードをつけているポケモンのワザダメージは-20される。', count: 2 },
+        { name: '基本雷エネルギー', category: 'エネルギー', type: '雷', hp: '', image: 'https://images.pokemontcg.io/sve/4_hires.png', description: '雷エネルギーを付ける。', count: 8 }]
 
       },
       fire: {
@@ -89,7 +92,9 @@
         { name: 'リザードン', category: '2進化', preEvolution: 'ヒトカゲ', type: '炎', hp: 160, image: 'https://images.pokemontcg.io/pgo/10_hires.png', attack1Name: 'かえんほうしゃ', attack1Damage: 90, attack1Energy: '炎,炎,無色', attack1Text: '', attack1Code: 'damage(opponent.active, 90);', attack2Name: 'バーンストライク', attack2Damage: 150, attack2Energy: '炎,炎,炎,無色', attack2Text: '', attack2Code: 'damage(opponent.active, 150);', weakness: '水', resistance: '', retreat: 3, count: 2 },
         { name: '博士の研究', category: 'サポート', type: '', hp: '', image: 'https://images.pokemontcg.io/sv1/189_hires.png', attack1Code: 'discardCards(self.hand, self.hand.length); draw(self, 7);', attack1Text: '自分の手札をすべてトラッシュし、山札を7枚引く。', description: '自分の手札をすべてトラッシュし、山札を7枚引く。', count: 4 },
         { name: 'きずぐすり', category: 'グッズ', type: '', hp: '', image: 'https://images.pokemontcg.io/sv1/182_hires.png', attack1Code: 'heal(self.active, 30);', attack1Text: '自分のバトルポケモンのHPを30回復する。', count: 3 },
-        { name: '基本炎エネルギー', category: 'エネルギー', type: '炎', hp: '', image: 'https://images.pokemontcg.io/sve/2_hires.png', description: '炎エネルギーを付ける。', count: 16 }]
+        { name: 'ポケストップ', category: 'スタジアム', type: '', hp: '', image: 'https://images.pokemontcg.io/pgo/68_hires.png', attack1Code: 'useLimit(1);\nconst top = self.deck.slice(0,3);\nself.deck.splice(0, top.length);\ntop.forEach(c => {\n  const cat = String(c.category || "");\n  if (cat.includes("グッズ") || cat.includes("item")) toHand(self, c);\n  else toDiscard(self, c);\n});', attack1Text: 'お互いのプレイヤーは自分の山札の上から3枚をトラッシュし、その中のグッズをすべて手札に加える。', description: 'お互いのプレイヤーは自分の山札の上から3枚をトラッシュし、その中のグッズをすべて手札に加える。', count: 2 },
+        { name: 'ジェットエネルギー', category: '特殊エネルギー', type: '無', hp: '', image: 'https://images.pokemontcg.io/sv2a/171_hires.png', description: '無色1個分。ベンチポケモンにつけたとき、そのポケモンをバトル場へ入れ替える。', count: 2 },
+        { name: '基本炎エネルギー', category: 'エネルギー', type: '炎', hp: '', image: 'https://images.pokemontcg.io/sve/2_hires.png', description: '炎エネルギーを付ける。', count: 12 }]
 
       },
       water: {
@@ -101,8 +106,23 @@
         { name: 'カメックス', category: '2進化', preEvolution: 'ゼニガメ', type: '水', hp: 150, image: 'https://images.pokemontcg.io/pgo/17_hires.png', attack1Name: 'ハイドロポンプ', attack1Damage: 100, attack1Energy: '水,水,無', attack1Code: 'damage(opponent.active, 100);', weakness: '雷', resistance: '', retreat: 2, count: 2 },
         { name: '博士の研究', category: 'サポート', type: '', hp: '', image: 'https://images.pokemontcg.io/sv1/189_hires.png', attack1Code: 'discardCards(self.hand, self.hand.length); draw(self, 7);', count: 4 },
         { name: 'ポケモンいれかえ', category: 'グッズ', type: '', hp: '', image: 'https://images.pokemontcg.io/sv1/191_hires.png', attack1Code: 'switchActive(self);', count: 3 },
-        { name: '基本水エネルギー', category: 'エネルギー', type: '水', hp: '', image: 'https://images.pokemontcg.io/sve/3_hires.png', description: '水エネルギーを付ける。', count: 16 }]
+        { name: 'ボウルタウン', category: 'スタジアム', type: '', hp: '', image: 'https://images.pokemontcg.io/sv1/185_hires.png', attack1Text: 'お互いのプレイヤーは山札からたねポケモンを1枚選びベンチに出せる。', count: 2 },
+        { name: '基本水エネルギー', category: 'エネルギー', type: '水', hp: '', image: 'https://images.pokemontcg.io/sve/3_hires.png', description: '水エネルギーを付ける。', count: 14 }]
 
+      },
+      stadium_special: {
+        name: '🏟️ スタジアム＆特殊エネ戦術デッキ',
+        description: 'ボウルタウン・ポケストップ・ダブルターボ・ジェットエネをフル活用する高度戦術デッキ',
+        cards: [
+        { name: 'ミライドンex', category: 'たねex', type: '雷', hp: 220, image: 'https://images.pokemontcg.io/sv1/81_hires.png', attack1Name: 'フォトンレーザー', attack1Damage: 120, attack1Energy: '無,無', attack1Code: 'damage(opponent.active, 120);', count: 2, isEx: true },
+        { name: 'ピカチュウ', category: 'たね', type: '雷', hp: 70, image: 'https://images.pokemontcg.io/sv3pt5/25_hires.png', attack1Name: 'でんじは', attack1Damage: 20, attack1Energy: '無', attack1Code: 'damage(opponent.active, 20);', count: 4 },
+        { name: 'ライチュウ', category: '1進化', preEvolution: 'ピカチュウ', type: '雷', hp: 120, image: 'https://images.pokemontcg.io/sv3pt5/26_hires.png', attack1Name: 'ギガボルト', attack1Damage: 120, attack1Energy: '無,無,無', attack1Code: 'damage(opponent.active, 120);', count: 3 },
+        { name: 'ボウルタウン', category: 'スタジアム', type: '', hp: '', image: 'https://images.pokemontcg.io/sv1/185_hires.png', attack1Text: '山札からたねポケモンをベンチに出す。', count: 3 },
+        { name: 'ポケストップ', category: 'スタジアム', type: '', hp: '', image: 'https://images.pokemontcg.io/pgo/68_hires.png', attack1Text: '山札3枚をトラッシュしグッズを手札へ。', count: 2 },
+        { name: 'ダブルターボエネルギー', category: '特殊エネルギー', type: '無', hp: '', image: 'https://images.pokemontcg.io/swsh9/151_hires.png', description: '無色2個分。', count: 4 },
+        { name: 'ジェットエネルギー', category: '特殊エネルギー', type: '無', hp: '', image: 'https://images.pokemontcg.io/sv2a/171_hires.png', description: 'ベンチにつけると入れ替わる。', count: 4 },
+        { name: '博士の研究', category: 'サポート', type: '', hp: '', image: 'https://images.pokemontcg.io/sv1/189_hires.png', count: 4 },
+        { name: '基本雷エネルギー', category: 'エネルギー', type: '雷', hp: '', image: 'https://images.pokemontcg.io/sve/4_hires.png', count: 4 }]
       }
     },
 
@@ -3000,15 +3020,42 @@
       const sourceHandEl = document.querySelector("[data-hand-idx=\"" + handIndex + "\"]");
 
       p.hand.splice(handIndex, 1);
-      targetPokemon.energy = (targetPokemon.energy || 0) + 1;
+      let nrgVal = 1;
+      if (energyCard.name && energyCard.name.includes('ダブルターボ')) {
+        nrgVal = 2;
+      } else if (energyCard.name && energyCard.name.includes('リバーサル')) {
+        nrgVal = 3;
+      }
+      targetPokemon.energy = (targetPokemon.energy || 0) + nrgVal;
       targetPokemon.attachedEnergies = targetPokemon.attachedEnergies || [];
-      targetPokemon.attachedEnergies.push(energyCard.type || '無');
+      for (let i = 0; i < nrgVal; i++) {
+        targetPokemon.attachedEnergies.push(energyCard.type || '無');
+      }
       targetPokemon.attachedCards = targetPokemon.attachedCards || [];
       targetPokemon.attachedCards.push(energyCard);
       p.energyAttached = true;
 
-      this.log("⚡ " + targetPokemon.name + " に " + energyCard.name + " を付けました。(合計エネルギー: " + targetPokemon.energy + ")");
+      this.log("⚡ " + targetPokemon.name + " に「" + energyCard.name + "」を付けました。(合計エネルギー: " + targetPokemon.energy + ")");
       App.toast(targetPokemon.name + " にエネルギーを付けました！");
+
+      // 特殊エネルギー効果およびジェットエネルギー入れ替え処理
+      const isBench = Array.isArray(p.bench) && p.bench.includes(targetPokemon);
+      if (energyCard.name && energyCard.name.includes('ジェット') && isBench) {
+        this.switchActive(p, targetPokemon);
+        this.log("🌀 【ジェットエネルギー】の効果で " + targetPokemon.name + " がバトル場へ躍り出た！");
+      }
+      const eCode = energyCard.attack1Code || energyCard.abilityCode;
+      if (eCode && window.executeCardEffectCode) {
+        try {
+          window.executeCardEffectCode(
+            eCode,
+            { players: [this.state.player, this.state.opponent], logs: this.state.logs },
+            p,
+            'onAttach',
+            { card: energyCard, pokemon: targetPokemon }
+          );
+        } catch(e) { console.error('Energy attach effect error:', e); }
+      }
 
       this.broadcastOnlineAction('attach_energy', {
         energyCard: energyCard,
@@ -3522,18 +3569,33 @@
       // 効果中断(cant等)時の復元用スナップショット
       const snapshot = this.createBoardSnapshot();
 
+      const catStr = String(card.category || '');
+      const isStadium = kind === 'スタジアム' || catStr.includes('スタジアム') || catStr.includes('stadium');
+
       p.hand.splice(handIndex, 1);
-      p.discard.push(card);
+      if (isStadium) {
+        if (this.state.activeStadium) {
+          const oldStadium = this.state.activeStadium;
+          const oldOwner = (oldStadium.owner === this.state.opponent.id) ? this.state.opponent : this.state.player;
+          if (oldOwner && Array.isArray(oldOwner.discard)) {
+            oldOwner.discard.push(oldStadium);
+          }
+        }
+        this.state.activeStadium = Object.assign({}, card, { owner: p.id });
+      } else {
+        p.discard.push(card);
+      }
 
       if (kind === 'サポート') {
         p.supporterUsed = true;
       }
 
-      this.log('📜 【' + kind + '】「' + card.name + '」を使用しました！');
+      const icon = isStadium ? '🏟️' : '📜';
+      this.log(icon + ' 【' + (isStadium ? 'スタジアム' : kind) + '】「' + card.name + '」を使用しました！');
 
       this.broadcastOnlineAction('play_trainer', {
         card: card,
-        kind: kind
+        kind: isStadium ? 'スタジアム' : kind
       });
 
       // 手札表示を即座に更新（カードが消えるように見せる）
@@ -4613,7 +4675,35 @@
       if (ticker) ticker.textContent = text;
     },
 
+    updateStadiumUI() {
+      const active = this.state.activeStadium;
+      const slotEl = document.getElementById('stadiumCardSlot');
+      const nameEl = document.getElementById('activeStadiumName');
+
+      if (nameEl) {
+        nameEl.textContent = active ? ('🏟️ ' + active.name) : '🏟️ スタジアムなし';
+      }
+      if (slotEl) {
+        slotEl.className = 'stadium-card-slot ' + (active ? 'active-stadium-present' : '');
+        slotEl.title = active ? (active.name + ': ' + (active.description || active.attack1Text || 'クリックして効果詳細を確認')) : 'クリックしてスタジアム詳細を確認';
+      }
+    },
+
+    showActiveStadiumDetail() {
+      const active = this.state.activeStadium;
+      if (!active) {
+        if (window.App && typeof window.App.toast === 'function') {
+          window.App.toast('現在、場にスタジアムカードは出されていません。');
+        } else {
+          alert('現在、場にスタジアムカードは出されていません。');
+        }
+        return;
+      }
+      this.showCardActionModal(active, 'stadium');
+    },
+
     render() {
+      this.updateStadiumUI();
       // 1. トップバー
       const turnBadge = document.getElementById('stadiumTurnBadge');
       if (turnBadge) turnBadge.textContent = "TURN " + this.state.turnNumber;

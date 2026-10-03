@@ -5703,3 +5703,39 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   35% { opacity: 1; transform: scale(1.1); }
   100% { opacity: 0; transform: scale(1.35); }
 }
+
+/* バトルスタジアム カードスロット (対戦画面中央) */
+.stadium-card-slot {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(129, 140, 248, 0.35);
+  border-radius: 20px;
+  color: #94a3b8;
+  font-weight: 800;
+  font-size: 12.5px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  margin-right: 12px;
+}
+.stadium-card-slot:hover {
+  transform: translateY(-2px) scale(1.04);
+  border-color: #fbbf24;
+  color: #ffffff;
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.4);
+}
+.stadium-card-slot.active-stadium-present {
+  background: linear-gradient(135deg, rgba(30, 27, 75, 0.9), rgba(15, 23, 42, 0.95));
+  border: 1.5px solid #fbbf24;
+  color: #fbbf24;
+  box-shadow: 0 0 25px rgba(251, 191, 36, 0.5);
+  animation: stadiumGlowPulse 2s infinite alternate ease-in-out;
+}
+@keyframes stadiumGlowPulse {
+  0% { box-shadow: 0 0 15px rgba(251, 191, 36, 0.4); }
+  100% { box-shadow: 0 0 30px rgba(251, 191, 36, 0.85); }
+}

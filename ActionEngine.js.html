@@ -342,6 +342,48 @@
           }
         });
       },
+      getStadium(ctx) {
+        return ctx?.game?.activeStadium || null;
+      },
+      setStadium(ctx, card) {
+        if (!ctx || !ctx.game) return null;
+        const oldStadium = ctx.game.activeStadium;
+        if (oldStadium && oldStadium.owner) {
+          const ownerPlayer = (ctx.game.players || []).find(p => p && p.id === oldStadium.owner);
+          if (ownerPlayer && Array.isArray(ownerPlayer.discard)) {
+            ownerPlayer.discard.push(oldStadium);
+          }
+        }
+        ctx.game.activeStadium = card;
+        if (card && ctx.self) {
+          card.owner = ctx.self.id;
+        }
+        if (window.BattleSystem && typeof window.BattleSystem.updateStadiumUI === 'function') {
+          window.BattleSystem.updateStadiumUI();
+        }
+        return card;
+      },
+      discardStadium(ctx) {
+        if (!ctx || !ctx.game || !ctx.game.activeStadium) return null;
+        const s = ctx.game.activeStadium;
+        if (s && s.owner) {
+          const ownerPlayer = (ctx.game.players || []).find(p => p && p.id === s.owner);
+          if (ownerPlayer && Array.isArray(ownerPlayer.discard)) {
+            ownerPlayer.discard.push(s);
+          }
+        }
+        ctx.game.activeStadium = null;
+        if (window.BattleSystem && typeof window.BattleSystem.updateStadiumUI === 'function') {
+          window.BattleSystem.updateStadiumUI();
+        }
+        return s;
+      },
+      hasStadium(ctx, name) {
+        const active = this.getStadium(ctx);
+        if (!active) return false;
+        if (!name) return true;
+        return String(active.name || '').includes(name);
+      },
       cancelDamage(ctx, event) {
         const e = event && typeof event === 'object' ? event : ctx?.currentEvent;
         if (e) {
@@ -2187,6 +2229,10 @@
         hasEnergy: (t, n) => api.hasEnergy(ctx, t, n),
         addEnergy: (t, n) => api.addEnergy(ctx, t, n),
         removeEnergy: (t, n) => api.removeEnergy(ctx, t, n),
+        getStadium: () => api.getStadium(ctx),
+        setStadium: (c) => api.setStadium(ctx, c),
+        discardStadium: () => api.discardStadium(ctx),
+        hasStadium: (n) => api.hasStadium(ctx, n),
         nextTurnDamage: (n, t) => api.nextTurnDamage(ctx, n, t),
         boostDamageNextTurn: (n, t) => api.boostDamageNextTurn(ctx, n, t),
         increaseDamageNextTurn: (n, t) => api.increaseDamageNextTurn(ctx, n, t),
@@ -2378,6 +2424,7 @@
         'isFirstTurn', 'isFirstPlayerFirstTurn', 'isJustPlayed',
         'getPreEvolution', 'getNextEvolutions', 'isEvolutionOf',
         'rareCandy',
+        'getStadium', 'setStadium', 'discardStadium', 'hasStadium',
         '{\n' + asyncCode + '\n}'
       );
       try {
@@ -2403,7 +2450,8 @@
           ctx.useLimit, ctx.limitPerTurn, ctx.timesPerTurn,
           ctx.isFirstTurn, ctx.isFirstPlayerFirstTurn, ctx.isJustPlayed,
           ctx.getPreEvolution, ctx.getNextEvolutions, ctx.isEvolutionOf,
-          ctx.rareCandy
+          ctx.rareCandy,
+          ctx.getStadium, ctx.setStadium, ctx.discardStadium, ctx.hasStadium
         );
       } catch (e) {
         if (e && e.isEffectAbort) {

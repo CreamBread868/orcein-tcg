@@ -106,6 +106,78 @@ var EffectEditor;
       targets: ['trainer', 'attack1', 'ability']
     },
     {
+      keyword: 'bowlTown',
+      label: 'ボウルタウン (スタジアム)',
+      category: 'func',
+      badge: 'スタジアム',
+      desc: '【ボウルタウン】1ターンに1回、自分の山札から「たねポケモン」を1枚選びベンチに出す',
+      snippet: 'useLimit(1);\nconst target = choiceCard(self.deck, { category: "たね" }, 1, "山札から「たねポケモン」をベンチに出す");\nif (target) {\n  toBench(self, target);\n  shuffleDeck(self);\n}',
+      targets: ['trainer', 'ability']
+    },
+    {
+      keyword: 'pokestop',
+      label: 'ポケストップ (スタジアム)',
+      category: 'func',
+      badge: 'スタジアム',
+      desc: '【ポケストップ】1ターンに1回、山札の上から3枚をトラッシュしグッズをすべて手札へ',
+      snippet: 'useLimit(1);\nconst top = self.deck.slice(0, 3);\nself.deck.splice(0, top.length);\ntop.forEach(c => {\n  const cat = String(c.category || "");\n  if (cat.includes("グッズ") || cat.includes("item")) toHand(self, c);\n  else toDiscard(self, c);\n});',
+      targets: ['trainer', 'ability']
+    },
+    {
+      keyword: 'jetEnergy',
+      label: 'ジェットエネルギー (特殊エネ)',
+      category: 'func',
+      badge: '特殊エネ',
+      desc: '【ジェットエネルギー】ベンチポケモンに装着した時、そのポケモンをバトル場と入れ替える',
+      snippet: 'event.on("onAttach", (card, pokemon) => {\n  if (pokemon.isBench) switchActive(self, pokemon);\n});',
+      targets: ['trainer', 'ability']
+    },
+    {
+      keyword: 'doubleTurboEnergy',
+      label: 'ダブルターボエネルギー (特殊エネ)',
+      category: 'func',
+      badge: '特殊エネ',
+      desc: '【ダブルターボエネルギー】無色2個分としてはたらき、与えるワザのダメージが-20される',
+      snippet: 'event.on("onAttach", (card, pokemon) => {\n  reduceDamage(pokemon, 20);\n});',
+      targets: ['trainer', 'ability']
+    },
+    {
+      keyword: 'getStadium',
+      label: 'getStadium()',
+      category: 'func',
+      badge: 'スタジアムAPI',
+      desc: '現在バトル場に展開されているスタジアムカードを取得します',
+      snippet: 'const stadium = getStadium();',
+      targets: ['trainer', 'attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'setStadium',
+      label: 'setStadium(card)',
+      category: 'func',
+      badge: 'スタジアムAPI',
+      desc: '指定したカードを現在のバトルスタジアムとして展開します',
+      snippet: 'setStadium(card);',
+      targets: ['trainer', 'attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'discardStadium',
+      label: 'discardStadium()',
+      category: 'func',
+      badge: 'スタジアムAPI',
+      desc: '現在展開されているバトルスタジアムをトラッシュします',
+      snippet: 'discardStadium();',
+      targets: ['trainer', 'attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'hasStadium',
+      label: 'hasStadium(name)',
+      category: 'func',
+      badge: 'スタジアムAPI',
+      desc: '指定した名前のスタジアム（省略時は任意のスタジアム）が展開されているか判定',
+      snippet: 'hasStadium("ボウルタウン")',
+      targets: ['trainer', 'attack1', 'attack2', 'ability']
+    },
+    {
       keyword: 'isFirstTurn',
       label: 'self.isFirstTurn',
       category: 'prop',
