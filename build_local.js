@@ -37,7 +37,7 @@ for (const [key, file] of Object.entries(includes)) {
       const regex = /<style>[\s\S]*?<\/style>/;
       if (regex.test(indexHtml)) {
         console.log('Replacing inlined CSS.html block');
-        indexHtml = indexHtml.replace(regex, () => content);
+        indexHtml = indexHtml.replace(regex, () => '<style>\n' + content + '\n</style>');
       }
     } else if (file === 'BattleSystem.js.html') {
       const regex = /<script>(?:(?!<\/script>)[\s\S])*?console\.log\('\[ORBITAL\] BattleSystem\.js\.html started execution'\);[\s\S]*?console\.log\('\[ORBITAL\] BattleSystem\.js\.html finished execution[\s\S]*?<\/script>/;

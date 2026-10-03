@@ -1,4 +1,3 @@
-<style>
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 :root {
@@ -1324,9 +1323,9 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   .detail-layout { grid-template-columns:1fr; }
   .detail-art { width:220px; margin:auto; }
 }
-</style>
 
-<style>
+
+
 .effect-editor-open { margin-top:10px; }
 .effect-summary-text { font-size:11px; margin-top:6px; line-height:1.4; color:var(--accent2); }
 .effect-summary-text:empty { display:none; }
@@ -2072,10 +2071,10 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   .api-help-grid { grid-template-columns:1fr 1fr; }
   .effect-code-editor { height:150px; }
 }
-</style>
+
 
 <!-- Phase 4: Deck Building System Styles -->
-<style>
+
 /* デッキギャラリー */
 .deck-gallery-grid {
   display: grid;
@@ -5045,8 +5044,22 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
 }
 
 @keyframes evoBurst {
-  0% { filter: brightness(1) drop-shadow(0 0 0 max); }
-  30% { filter: b/* ===================================================
+  0% { filter: brightness(1) drop-shadow(0 0 0 rgba(255,221,102,0)); }
+  30% { filter: brightness(2.5) drop-shadow(0 0 30px #ffdd66); transform: scale(1.15); }
+  100% { filter: brightness(1); transform: scale(1); }
+}
+
+.ko-burst-anim {
+  animation: koBurst 0.6s ease-in forwards !important;
+}
+
+@keyframes koBurst {
+  0% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.2) rotate(5deg); filter: brightness(3) drop-shadow(0 0 40px #ff3366); opacity: 0.9; }
+  100% { transform: scale(0); opacity: 0; }
+}
+
+/* ===================================================
    NMT 通貨 & 毎日ログインボーナス & パック開封 スタイル (豪華一新)
    =================================================== */
 
@@ -5682,119 +5695,3 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   35% { opacity: 1; transform: scale(1.1); }
   100% { opacity: 0; transform: scale(1.35); }
 }
--index: 10;
-  animation: tearPulse 1.2s infinite alternate;
-}
-@keyframes tearPulse {
-  0% { opacity: 0.6; }
-  100% { opacity: 1; filter: drop-shadow(0 0 8px #ffd700); }
-}
-.pokepoke-tear-handle {
-  position: absolute;
-  top: 32px;
-  right: -15px;
-  background: #ffd700;
-  color: #000;
-  font-weight: 900;
-  font-size: 12px;
-  padding: 4px 10px;
-  border-radius: 12px;
-  box-shadow: 0 0 12px rgba(255,215,0,0.8);
-  cursor: pointer;
-  z-index: 12;
-  animation: handleBounce 1s infinite alternate ease-in-out;
-}
-@keyframes handleBounce {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-6px); }
-}
-.pokepoke-cards-fan {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 15px;
-  perspective: 1000px;
-  margin-top: 20px;
-  min-height: 380px;
-}
-.pokepoke-card-item {
-  width: 175px;
-  height: 255px;
-  position: relative;
-  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  cursor: pointer;
-}
-.pokepoke-card-item:hover {
-  transform: translateY(-12px) scale(1.05) !important;
-  z-index: 50 !important;
-}
-.pokepoke-card-inner {
-  width: 100%;
-  height: 100%;
-  transform-style: preserve-3d;
-  transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  border-radius: 14px;
-}
-.pokepoke-card-inner.flipped {
-  transform: rotateY(180deg);
-}
-.pokepoke-card-back {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  backface-visibility: hidden;
-  border-radius: 14px;
-  background: linear-gradient(145deg, #0f172a, #1e1b4b);
-  border: 2px solid rgba(255, 215, 0, 0.7);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.7);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-.pokepoke-card-back::before {
-  content: '✦';
-  font-size: 54px;
-  color: #ffd700;
-  text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
-  animation: pokepokePulse 2s infinite ease-in-out;
-}
-@keyframes pokepokePulse {
-  0%, 100% { transform: scale(1); opacity: 0.8; }
-  50% { transform: scale(1.15); opacity: 1; }
-}
-.pokepoke-card-front {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  backface-visibility: hidden;
-  transform: rotateY(180deg);
-  border-radius: 14px;
-  background: #090c14;
-  border: 2px solid rgba(0, 229, 255, 0.8);
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.8);
-  padding: 10px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  overflow: hidden;
-}
-
-/* ポケポケ風 レアカード演出用ゴージャス後光 */
-.ur-glow-effect {
-  position: fixed;
-  top: 0; left: 0; width: 100vw; height: 100vh;
-  background: radial-gradient(circle, rgba(255,215,0,0.3) 0%, rgba(255,0,128,0.2) 40%, transparent 70%);
-  pointer-events: none;
-  z-index: 999;
-  animation: urScreenFlash 1.5s ease-out forwards;
-}
-@keyframes urScreenFlash {
-  0% { opacity: 0; transform: scale(0.8); }
-  30% { opacity: 1; transform: scale(1.1); }
-  100% { opacity: 0; transform: scale(1.3); }
-}
-</style>
-
-
