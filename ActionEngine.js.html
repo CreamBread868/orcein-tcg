@@ -1823,10 +1823,17 @@
 
         let chosen = [];
         const humanPlayer = window.BattleSystem?.state?.player;
-        const isHuman = ctx?.self === humanPlayer && window.BattleSystem && typeof window.BattleSystem.showChoiceModalPromise === 'function';
+        const turnPlayer = window.BattleSystem?.state?.turnPlayer;
+        const isHuman = (turnPlayer === 'player' || ctx?.self === humanPlayer || (ctx?.self && ctx?.self?.id === 'player')) && window.BattleSystem && typeof window.BattleSystem.showChoiceModalPromise === 'function';
 
         if (matched.length === 0) {
           chosen = [];
+          if (isHuman) {
+            const msg = customMessage || (typeof filter === 'string' ? filter : (filter?.category || filter?.name || '対象カード'));
+            if (window.App && typeof window.App.toast === 'function') {
+              window.App.toast('⚠️ 選択可能な【' + msg + '】が指定場所にありませんでした。', true);
+            }
+          }
         } else if (!isHuman || (options && options.autoPick)) {
           chosen = matched.slice(0, count);
         } else {
@@ -1837,6 +1844,7 @@
               category: c.category,
               type: c.type,
               hp: c.hp,
+              image: c.image || c.imageUrl,
               _raw: c
             }));
             const stepTitle = options?.title || (customMessage ? 'カード選択' : (count > 1 ? 'カードを選択 (' + (step + 1) + '/' + (count) + '枚目)' : 'カードを選択'));

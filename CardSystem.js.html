@@ -170,6 +170,14 @@ var CardSystem;
             matchCat = card.category === '進化' || card.category === '1進化' || card.category === '2進化';
           } else if (category === 'ex') {
             matchCat = card.category === 'ex' || card.category === 'たねex' || card.category === '1進化ex' || card.category === '2進化ex' || !!card.isEx;
+          } else if (category === 'トレーナー') {
+            matchCat = card.category === 'トレーナー' || card.category === 'グッズ' || card.category === 'サポート' || card.category === 'スタジアム';
+          } else if (category === 'エネルギー') {
+            matchCat = card.category === 'エネルギー' || card.category === '基本エネルギー' || card.category === '特殊エネルギー';
+          } else if (category === '基本エネルギー') {
+            matchCat = card.category === '基本エネルギー' || (card.category === 'エネルギー' && !String(card.name || '').includes('特殊') && !String(card.category || '').includes('特殊'));
+          } else if (category === '特殊エネルギー') {
+            matchCat = card.category === '特殊エネルギー' || (card.category === 'エネルギー' && (String(card.name || '').includes('特殊') || String(card.category || '').includes('特殊')));
           } else {
             matchCat = card.category === category;
           }
@@ -489,7 +497,7 @@ var CardSystem;
         if (!c || !c.name) return false;
         if (currentCardId && String(c.id) === String(currentCardId)) return false;
         const cat = String(c.category || '');
-        return cat !== 'グッズ' && cat !== 'サポート' && cat !== 'トレーナー' && cat !== 'エネルギー' && cat !== '基本エネルギー';
+        return cat !== 'グッズ' && cat !== 'サポート' && cat !== 'トレーナー' && cat !== 'スタジアム' && cat !== 'エネルギー' && cat !== '基本エネルギー' && cat !== '特殊エネルギー';
       });
 
       const groups = {
@@ -540,8 +548,8 @@ var CardSystem;
       const combatSec = document.getElementById('pokemonCombatSection');
       const trainerSec = document.getElementById('trainerEffectSection');
 
-      const isTrainer = cat === 'グッズ' || cat === 'サポート' || cat === 'トレーナー';
-      const isEnergy = cat === 'エネルギー' || cat === '基本エネルギー';
+      const isTrainer = cat === 'グッズ' || cat === 'サポート' || cat === 'トレーナー' || cat === 'スタジアム';
+      const isEnergy = cat === 'エネルギー' || cat === '基本エネルギー' || cat === '特殊エネルギー';
       const isPokemon = !isTrainer && !isEnergy;
       const isEvo = isPokemon && (cat.includes('進化') || cat.toLowerCase().includes('stage') || cat.toLowerCase().includes('evolution'));
 
@@ -559,7 +567,7 @@ var CardSystem;
       if (abilitiesSec) abilitiesSec.style.display = isPokemon ? 'block' : 'none';
       if (attacksSec) attacksSec.style.display = isPokemon ? 'block' : 'none';
       if (combatSec) combatSec.style.display = isPokemon ? 'block' : 'none';
-      if (trainerSec) trainerSec.style.display = isTrainer ? 'block' : 'none';
+      if (trainerSec) trainerSec.style.display = (isTrainer || cat === '特殊エネルギー') ? 'block' : 'none';
     },
 
     getFormCard() {
@@ -568,8 +576,8 @@ var CardSystem;
         return el ? el.value : '';
       };
       const cat = val('category') || 'たね';
-      const isTrainer = cat === 'グッズ' || cat === 'サポート' || cat === 'トレーナー';
-      const isEnergy = cat === 'エネルギー' || cat === '基本エネルギー';
+      const isTrainer = cat === 'グッズ' || cat === 'サポート' || cat === 'トレーナー' || cat === 'スタジアム';
+      const isEnergy = cat === 'エネルギー' || cat === '基本エネルギー' || cat === '特殊エネルギー';
 
       const imageScale = val('imageScale') !== '' ? Number(val('imageScale')) : 100;
       const imageFit = val('imageFit') || 'cover';
