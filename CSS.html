@@ -5046,251 +5046,447 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
 
 @keyframes evoBurst {
   0% { filter: brightness(1) drop-shadow(0 0 0 max); }
-  30% { filter: brightness(2.5) drop-shadow(0 0 30px #ffdd66); transform: scale(1.15); }
-  100% { filter: brightness(1); transform: scale(1); }
-}
-
-.ko-burst-anim {
-  animation: koBurst 0.6s ease-in forwards !important;
-}
-
-@keyframes koBurst {
-  0% { transform: scale(1); filter: brightness(1); }
-  50% { transform: scale(1.2) rotate(5deg); filter: brightness(3) drop-shadow(0 0 40px #ff3366); opacity: 0.9; }
-  /* ===================================================
-   起動時 GitHub データローダー (Startup Loading Overlay)
+  30% { filter: b/* ===================================================
+   NMT 通貨 & 毎日ログインボーナス & パック開封 スタイル (豪華一新)
    =================================================== */
-.startup-loading-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 999999;
-  background: radial-gradient(circle at 50% 40%, #0f172a 0%, #020617 100%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: #f8fafc;
-  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.6s ease;
-}
-.startup-loading-overlay.hidden {
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-}
-.startup-brand-mark {
-  width: 76px;
-  height: 76px;
-  border-radius: 22px;
-  background: linear-gradient(135deg, #6366f1, #38bdf8);
-  display: grid;
-  place-items: center;
-  font-size: 38px;
-  font-weight: 900;
-  box-shadow: 0 0 50px rgba(99, 102, 241, 0.7);
-  animation: startupPulse 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
-  margin-bottom: 20px;
-}
-@keyframes startupPulse {
-  0%, 100% { transform: scale(1); box-shadow: 0 0 40px rgba(99, 102, 241, 0.7); }
-  50% { transform: scale(1.08); box-shadow: 0 0 60px rgba(56, 189, 248, 0.9); }
-}
-.startup-title {
-  font-size: 28px;
-  font-weight: 900;
-  letter-spacing: 0.14em;
-  background: linear-gradient(135deg, #ffffff 30%, #a5b4fc 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  margin-bottom: 24px;
-}
-.startup-progress-bar-wrap {
-  width: 340px;
-  max-width: 85vw;
-  height: 10px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 10px;
-  overflow: hidden;
-  position: relative;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-}
-.startup-progress-bar {
-  height: 100%;
-  width: 0%;
-  background: linear-gradient(90deg, #6366f1, #38bdf8, #818cf8);
-  border-radius: 10px;
-  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 0 16px rgba(56, 189, 248, 0.8);
-}
-.startup-status-text {
-  margin-top: 18px;
-  font-size: 13px;
-  color: #94a3b8;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-}
 
-/* ===================================================
-   NMT 通貨 & 毎日ログインボーナス & パック開封 スタイル
-   =================================================== */
+/* NMT 通貨バッジ */
 .nmt-balance-badge {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: linear-gradient(135deg, rgba(251, 191, 36, 0.18), rgba(217, 119, 6, 0.28));
-  border: 1px solid rgba(251, 191, 36, 0.45);
-  border-radius: 20px;
-  padding: 6px 14px;
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.22), rgba(217, 119, 6, 0.35));
+  border: 1.5px solid rgba(251, 191, 36, 0.6);
+  border-radius: 24px;
+  padding: 6px 16px;
   font-weight: 900;
-  color: #fef08a;
-  box-shadow: 0 4px 16px rgba(217, 119, 6, 0.25);
+  color: #fffbeb;
+  box-shadow: 0 4px 18px rgba(245, 158, 11, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.3);
   cursor: pointer;
-  transition: all 0.25s ease;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 .nmt-balance-badge:hover {
-  transform: translateY(-2px) scale(1.03);
-  box-shadow: 0 8px 24px rgba(251, 191, 36, 0.45);
+  transform: translateY(-3px) scale(1.04);
+  box-shadow: 0 8px 28px rgba(251, 191, 36, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.5);
   border-color: #fef08a;
 }
 .nmt-icon {
   font-size: 18px;
-  filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.8));
+  filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.9));
+  animation: nmtSparkle 2.4s infinite ease-in-out;
 }
-.claim-bonus-mini-btn {
+@keyframes nmtSparkle {
+  0%, 100% { transform: rotate(0deg) scale(1); filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.8)); }
+  50% { transform: rotate(18deg) scale(1.22); filter: drop-shadow(0 0 16px rgba(251, 191, 36, 1)); }
+}
+.nmt-val {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 900;
+  color: #ffd700;
+  font-size: 15px;
+  letter-spacing: 0.6px;
+  text-shadow: 0 0 12px rgba(255, 215, 0, 0.8);
+}
+.claim-bonus-mini-btn, .daily-bonus-claim-btn {
   background: linear-gradient(135deg, #f59e0b, #d97706);
-  color: #000;
+  color: #0b0f19;
   border: 1px solid #fef08a;
   font-weight: 900;
-  font-size: 10.5px;
-  padding: 3px 9px;
-  border-radius: 12px;
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 14px;
   margin-left: 4px;
-  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.5);
-  transition: transform 0.15s ease;
+  box-shadow: 0 2px 10px rgba(245, 158, 11, 0.5);
+  transition: transform 0.2s ease, filter 0.2s ease;
+  cursor: pointer;
 }
-.claim-bonus-mini-btn:hover {
+.claim-bonus-mini-btn:hover, .daily-bonus-claim-btn:hover {
   transform: scale(1.08);
+  filter: brightness(1.15);
 }
 
-/* パックショップ ヒーロー */
+/* パックショップ ヒーローエリア */
 .pack-shop-hero {
-  background: radial-gradient(circle at 80% 20%, rgba(251, 191, 36, 0.25), transparent 45%),
-              linear-gradient(135deg, rgba(30, 27, 75, 0.95), rgba(15, 23, 42, 0.95));
-  border: 1px solid rgba(251, 191, 36, 0.35);
+  background: radial-gradient(circle at 85% 20%, rgba(251, 191, 36, 0.22), transparent 50%),
+              radial-gradient(circle at 15% 80%, rgba(147, 51, 234, 0.2), transparent 50%),
+              linear-gradient(135deg, rgba(20, 24, 48, 0.95), rgba(10, 14, 28, 0.98));
+  border: 1.5px solid rgba(251, 191, 36, 0.4);
   border-radius: 28px;
   padding: 36px 42px;
-  margin-bottom: 30px;
+  margin-bottom: 32px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+  position: relative;
+  overflow: hidden;
+}
+.pack-shop-hero::before {
+  content: '';
+  position: absolute;
+  top: -50%; right: -20%;
+  width: 300px; height: 300px;
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.15), transparent 70%);
+  pointer-events: none;
+  animation: heroPulse 4s infinite alternate ease-in-out;
+}
+@keyframes heroPulse {
+  0% { transform: scale(1) translateY(0); opacity: 0.6; }
+  100% { transform: scale(1.2) translateY(-15px); opacity: 1; }
 }
 .pack-shop-title h1 {
-  font-size: 36px;
+  font-size: 38px;
   font-weight: 900;
   margin: 6px 0 10px;
-  background: linear-gradient(135deg, #ffffff 30%, #fef08a 100%);
+  background: linear-gradient(135deg, #ffffff 20%, #fef08a 60%, #fbbf24 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 10px rgba(251, 191, 36, 0.3));
 }
 .pack-shop-title p {
-  color: #94a3b8;
-  font-size: 14px;
+  color: #a0aec0;
+  font-size: 14.5px;
   margin: 0;
+  line-height: 1.5;
 }
 
 /* パックカード グリッド */
 .pack-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 28px;
+  margin-top: 24px;
 }
-.booster-pack-card {
-  background: linear-gradient(160deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95));
-  border: 1.5px solid rgba(129, 140, 248, 0.3);
+.pack-card, .booster-pack-card {
+  background: linear-gradient(160deg, rgba(26, 35, 56, 0.85), rgba(12, 17, 31, 0.96));
+  border: 1.5px solid rgba(129, 140, 248, 0.35);
   border-radius: 24px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  position: relative;
-}
-.booster-pack-card:hover {
-  transform: translateY(-8px) scale(1.02);
-  border-color: var(--accent2);
-  box-shadow: 0 24px 60px rgba(56, 189, 248, 0.35);
-}
-.pack-foil-cover {
-  width: 100%;
-  aspect-ratio: 4 / 3;
-  position: relative;
-  overflow: hidden;
-  background: linear-gradient(135deg, #1e1b4b, #0f172a);
-}
-.pack-cover-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.5s ease;
-}
-.booster-pack-card:hover .pack-cover-img {
-  transform: scale(1.08);
-}
-.pack-cover-placeholder {
-  width: 100%;
-  height: 100%;
+  padding: 22px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  font-size: 54px;
-  background: radial-gradient(circle, rgba(99, 102, 241, 0.4), transparent);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
-.pack-price-tag {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  background: rgba(15, 23, 42, 0.88);
-  backdrop-filter: blur(10px);
-  border: 1px solid #fef08a;
-  border-radius: 12px;
-  padding: 4px 12px;
-  font-weight: 900;
-  font-size: 13px;
-  color: #fef08a;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+.pack-card:hover, .booster-pack-card:hover {
+  transform: translateY(-8px) scale(1.025);
+  border-color: rgba(251, 191, 36, 0.8);
+  box-shadow: 0 22px 55px rgba(251, 191, 36, 0.25), 0 0 25px rgba(129, 140, 248, 0.3);
 }
-.pack-body {
-  padding: 20px;
+
+.pack-cover-wrapper {
+  width: 180px;
+  height: 255px;
+  border-radius: 16px;
+  background: linear-gradient(145deg, #1e3a8a 0%, #4f46e5 45%, #9333ea 80%, #ec4899 100%);
   display: flex;
   flex-direction: column;
-  flex: 1;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  position: relative;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.75), inset 0 1px 2px rgba(255, 255, 255, 0.4);
+  border: 2px solid rgba(251, 191, 36, 0.7);
+  overflow: hidden;
+  margin-bottom: 18px;
+  transition: transform 0.3s ease;
 }
+.pack-card:hover .pack-cover-wrapper {
+  transform: scale(1.04);
+}
+.pack-cover-wrapper::before {
+  content: '';
+  position: absolute;
+  top: -60%;
+  left: -60%;
+  width: 220%;
+  height: 220%;
+  background: linear-gradient(45deg, transparent 35%, rgba(255, 255, 255, 0.35) 50%, transparent 65%);
+  transform: rotate(30deg);
+  animation: foilShineCyber 3.5s infinite linear;
+  pointer-events: none;
+}
+@keyframes foilShineCyber {
+  0% { transform: translateX(-120%) rotate(30deg); }
+  100% { transform: translateX(120%) rotate(30deg); }
+}
+
 .pack-title {
-  font-size: 20px;
+  font-size: 19px;
   font-weight: 900;
-  margin: 0 0 8px;
-  color: #fff;
+  color: #ffffff;
+  text-align: center;
+  margin-bottom: 6px;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.9);
+  letter-spacing: 0.3px;
 }
 .pack-desc {
   font-size: 12.5px;
   color: #94a3b8;
-  line-height: 1.5;
-  margin-bottom: 16px;
+  text-align: center;
+  margin-bottom: 18px;
+  line-height: 1.45;
+  min-height: 36px;
   flex: 1;
 }
-.pack-meta {
-  display: flex;
-  justify-content: space-between;
+.pack-price-tag {
+  display: inline-flex;
   align-items: center;
-  font-size: 12px;
-  color: #cbd5e1;
-  font-weight: 700;
+  gap: 6px;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 900;
+  font-size: 19px;
+  color: #ffd700;
   margin-bottom: 16px;
+  text-shadow: 0 0 12px rgba(255, 215, 0, 0.6);
+  background: rgba(15, 23, 42, 0.8);
+  padding: 4px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(251, 191, 36, 0.4);
+}
+.pack-buy-btn {
+  width: 100%;
+  padding: 13px;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
+  color: #0b0f19;
+  font-weight: 900;
+  font-size: 15.5px;
+  letter-spacing: 0.5px;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.45);
+  transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.4);
+}
+.pack-buy-btn:hover {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 10px 28px rgba(251, 191, 36, 0.7);
+  background: linear-gradient(135deg, #fef08a 0%, #fbbf24 50%, #f59e0b 100%);
 }
 
-/* 3D パック開封オーバーレイ */
+/* 大型デイリーログインボーナス モーダル (一新) */
+.daily-bonus-modal-card {
+  max-width: 680px !important;
+  width: 92% !important;
+  background: linear-gradient(165deg, #1e1b4b 0%, #0f172a 60%, #090d16 100%) !important;
+  border: 2px solid rgba(251, 191, 36, 0.7) !important;
+  border-radius: 28px !important;
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.95), 0 0 50px rgba(251, 191, 36, 0.35) !important;
+  text-align: center;
+  padding: 34px 28px !important;
+  position: relative;
+  overflow: hidden;
+}
+.daily-bonus-modal-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.18) 0%, rgba(147, 51, 234, 0.1) 40%, transparent 70%);
+  pointer-events: none;
+  animation: pulseBonusGlow 4s infinite ease-in-out;
+}
+@keyframes pulseBonusGlow {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.12); opacity: 1; }
+}
+
+.daily-bonus-hero-icon {
+  font-size: 76px;
+  margin: 12px 0 8px;
+  text-shadow: 0 0 35px rgba(251, 191, 36, 0.9), 0 0 70px rgba(245, 158, 11, 0.5);
+  animation: coinFloat 2.8s infinite ease-in-out;
+  display: inline-block;
+}
+@keyframes coinFloat {
+  0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
+  50% { transform: translateY(-12px) rotate(6deg) scale(1.1); }
+}
+
+.daily-bonus-amount-badge {
+  font-family: 'Outfit', sans-serif;
+  font-size: 40px;
+  font-weight: 900;
+  background: linear-gradient(135deg, #ffffff 20%, #fef08a 60%, #fbbf24 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 16px rgba(251, 191, 36, 0.8));
+  margin-bottom: 6px;
+}
+
+/* 7日間連続ログイン ストリーク グリッド */
+.daily-bonus-streak-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 10px;
+  margin: 24px 0;
+}
+@media (max-width: 680px) {
+  .daily-bonus-streak-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.streak-day-card {
+  width: 100%;
+  min-height: 140px;
+  background: linear-gradient(160deg, #1e293b, #0f172a);
+  border: 1.5px solid rgba(251, 191, 36, 0.35);
+  border-radius: 16px;
+  padding: 10px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 8px 22px rgba(0,0,0,0.65);
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.streak-day-card::before {
+  content: '';
+  position: absolute;
+  top: -50%; left: -50%; width: 200%; height: 200%;
+  background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transform: rotate(30deg);
+  pointer-events: none;
+}
+
+.streak-day-card.claimed {
+  opacity: 0.65;
+  border-color: rgba(16, 185, 129, 0.6);
+  background: linear-gradient(160deg, #064e3b, #0f172a);
+  filter: grayscale(0.15);
+}
+.streak-day-card.active-today {
+  transform: translateY(-8px) scale(1.08);
+  border: 2px solid #ffd700;
+  background: linear-gradient(160deg, #3b0764, #1e1b4b);
+  box-shadow: 0 14px 35px rgba(251, 191, 36, 0.6), 0 0 25px rgba(251, 191, 36, 0.8);
+  animation: todayCardGlow 2s infinite alternate ease-in-out;
+  z-index: 5;
+}
+@keyframes todayCardGlow {
+  0% { border-color: #ffd700; box-shadow: 0 0 18px rgba(255, 215, 0, 0.7); }
+  100% { border-color: #f59e0b; box-shadow: 0 0 35px rgba(245, 158, 11, 0.95); }
+}
+.streak-day-card.special-day {
+  border-color: rgba(236, 72, 153, 0.9);
+  background: linear-gradient(160deg, #831843, #0f172a);
+  box-shadow: 0 10px 25px rgba(236, 72, 153, 0.4);
+}
+
+.streak-day-top-tag {
+  font-size: 10.5px;
+  font-weight: 900;
+  color: #ffd700;
+  letter-spacing: 0.8px;
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.7);
+}
+.streak-day-card.special-day .streak-day-top-tag {
+  color: #f472b6;
+  text-shadow: 0 0 8px rgba(244, 114, 182, 0.8);
+}
+
+.streak-day-graphic-box {
+  width: 100%;
+  height: 62px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+.streak-day-graphic-box.coin-box {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.22), rgba(217, 119, 6, 0.12));
+  border-color: rgba(251, 191, 36, 0.55);
+}
+.streak-day-graphic-box.pack-box {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(236, 72, 153, 0.35));
+  border-color: rgba(56, 189, 248, 0.7);
+}
+
+.graphic-icon-emblem {
+  font-size: 28px;
+  text-shadow: 0 0 14px rgba(255, 215, 0, 0.85);
+}
+.graphic-amount-text {
+  font-family: 'Outfit', sans-serif;
+  font-size: 11.5px;
+  font-weight: 900;
+  color: #ffd700;
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.8);
+  margin-top: 2px;
+}
+.graphic-pack-text {
+  font-size: 9.5px;
+  font-weight: 900;
+  color: #38bdf8;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 6px rgba(56, 189, 248, 0.8);
+}
+
+.streak-day-status-pill {
+  font-size: 9.5px;
+  font-weight: 900;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
+  margin-top: 4px;
+}
+.streak-day-card.claimed .streak-day-status-pill {
+  background: #10b981;
+  color: #000;
+  font-weight: 900;
+}
+.streak-day-card.active-today .streak-day-status-pill {
+  background: linear-gradient(90deg, #fbbf24, #f59e0b);
+  color: #0b0f19;
+  font-weight: 900;
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.8);
+}
+
+.claim-big-button {
+  width: 100%;
+  padding: 16px;
+  font-size: 19px;
+  font-weight: 900;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 40%, #ec4899 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 16px;
+  cursor: pointer;
+  box-shadow: 0 8px 30px rgba(245, 158, 11, 0.55);
+  transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  text-shadow: 0 2px 6px rgba(0,0,0,0.6);
+  letter-spacing: 0.5px;
+}
+.claim-big-button:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 12px 40px rgba(251, 191, 36, 0.85);
+  background: linear-gradient(135deg, #fef08a 0%, #fbbf24 40%, #f472b6 100%);
+}
+.claim-big-button:disabled {
+  background: rgba(255, 255, 255, 0.15);
+  color: #94a3b8;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+  text-shadow: none;
+}
+
+/* ポケポケ風 3Dパック開封ステージ (一新) */
 #packOpeningOverlay {
   position: fixed;
   inset: 0;
@@ -5303,542 +5499,7 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   padding: 30px;
   backdrop-filter: blur(20px);
 }
-.opening-header {
-  text-align: center;
-  margin-bottom: 30px;
-}
-.opening-header h2 {
-  font-size: 32px;
-  font-weight: 900;
-  margin: 0 0 6px;
-  background: linear-gradient(135deg, #ffffff, #fef08a);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-.opening-cards-grid {
-  display: flex;
-  justify-content: center;
-  gap: 20px;
-  flex-wrap: wrap;
-  max-width: 1300px;
-  margin-bottom: 30px;
-}
-.flip-card-wrapper {
-  width: 190px;
-  aspect-ratio: 5 / 7.2;
-  perspective: 1000px;
-  cursor: pointer;
-}
-.flip-card-inner {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  transform-style: preserve-3d;
-}
-.flip-card-wrapper.is-flipped .flip-card-inner {
-  transform: rotateY(180deg);
-}
-.flip-card-front, .flip-card-back {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-  border-radius: 16px;
-}
-.flip-card-front {
-  background: linear-gradient(145deg, #1e293b, #0f172a);
-  border: 2px solid rgba(129, 140, 248, 0.5);
-  box-shadow: 0 10px 30px rgba(0,0,0,0.6);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  overflow: hidden;
-}
-.flip-card-front::after {
-  content: '✦';
-  font-size: 50px;
-  color: var(--accent2);
-  text-shadow: 0 0 20px var(--accent2-glow);
-  animation: pulseSymbol 2s infinite ease-in-out;
-}
-@keyframes pulseSymbol {
-  0%, 100% { transform: scale(1); opacity: 0.7; }
-  50% { transform: scale(1.2); opacity: 1; }
-}
-.flip-card-back {
-  transform: rotateY(180deg);
-}
 
-/* レアリティ別後光エフェクト */
-.rarity-aura-UR {
-  box-shadow: 0 0 35px rgba(251, 191, 36, 0.9), 0 0 60px rgba(244, 63, 94, 0.7) !important;
-  border-color: #fef08a !important;
-  animation: auraGlow 1.5s infinite alternate ease-in-out;
-}
-.rarity-aura-SR {
-  box-shadow: 0 0 30px rgba(251, 191, 36, 0.8), 0 0 45px rgba(129, 140, 248, 0.6) !important;
-  border-color: #ffd700 !important;
-}
-.rarity-aura-R {
-  box-shadow: 0 0 20px rgba(56, 189, 248, 0.6) !important;
-  border-color: #38bdf8 !important;
-}
-@keyframes auraGlow {
-  0% { filter: brightness(1); }
-  100% { filter: brightness(1.3); }
-}
-
-/* NMT 通貨バッジ & デイリーボーナス */
-.nmt-balance-badge {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 140, 0, 0.25));
-  border: 1px solid rgba(255, 215, 0, 0.5);
-  padding: 4px 12px;
-  border-radius: 20px;
-  cursor: pointer;
-  box-shadow: 0 2px 10px rgba(255, 215, 0, 0.2);
-  transition: all 0.25s ease;
-}
-.nmt-balance-badge:hover {
-  transform: translateY(-2px) scale(1.03);
-  box-shadow: 0 4px 16px rgba(255, 215, 0, 0.4);
-  border-color: #ffd700;
-}
-.nmt-icon {
-  font-size: 16px;
-  animation: nmtSparkle 2s infinite ease-in-out;
-}
-@keyframes nmtSparkle {
-  0%, 100% { transform: rotate(0deg) scale(1); }
-  50% { transform: rotate(15deg) scale(1.2); }
-}
-.nmt-val {
-  font-family: 'Outfit', sans-serif;
-  font-weight: 900;
-  color: #ffd700;
-  font-size: 14px;
-  letter-spacing: 0.5px;
-  text-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
-}
-.daily-bonus-claim-btn {
-  background: linear-gradient(135deg, #00f5a0, #00d2ff);
-  border: none;
-  color: #000;
-  font-weight: 800;
-  font-size: 11px;
-  padding: 3px 8px;
-  border-radius: 12px;
-  cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0, 245, 160, 0.4);
-}
-.daily-bonus-claim-btn:hover {
-  filter: brightness(1.15);
-}
-
-/* パックショップ グリッド & パックカード */
-.pack-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 25px;
-  margin-top: 20px;
-}
-.pack-card {
-  background: linear-gradient(160deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.95));
-  border: 1px solid rgba(129, 140, 248, 0.3);
-  border-radius: 16px;
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.pack-card:hover {
-  transform: translateY(-6px) scale(1.02);
-  border-color: rgba(255, 215, 0, 0.7);
-  box-shadow: 0 15px 35px rgba(255, 215, 0, 0.25);
-}
-.pack-cover-wrapper {
-  width: 170px;
-  height: 240px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  padding: 15px;
-  position: relative;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
-  border: 2px solid rgba(255, 255, 255, 0.4);
-  overflow: hidden;
-  margin-bottom: 15px;
-}
-.pack-cover-wrapper::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.25), transparent);
-  transform: rotate(30deg);
-  animation: foilShine 3s infinite linear;
-}
-@keyframes foilShine {
-  0% { transform: translateX(-100%) rotate(30deg); }
-  100% { transform: translateX(100%) rotate(30deg); }
-}
-.pack-title {
-  font-size: 18px;
-  font-weight: 900;
-  color: #fff;
-  text-align: center;
-  margin-bottom: 6px;
-  text-shadow: 0 2px 8px rgba(0,0,0,0.8);
-}
-.pack-desc {
-  font-size: 12px;
-  color: #94a3b8;
-  text-align: center;
-  margin-bottom: 15px;
-  line-height: 1.4;
-  min-height: 34px;
-}
-.pack-price-tag {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-family: 'Outfit', sans-serif;
-  font-weight: 900;
-  font-size: 18px;
-  color: #ffd700;
-  margin-bottom: 15px;
-  text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
-}
-.pack-buy-btn {
-  width: 100%;
-  padding: 12px;
-  background: linear-gradient(135deg, #ffd700, #ff8c00);
-  color: #000;
-  font-weight: 900;
-  font-size: 15px;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
-  transition: all 0.2s ease;
-}
-.pack-buy-btn:hover {
-  transform: scale(1.03);
-  box-shadow: 0 6px 20px rgba(255, 215, 0, 0.6);
-}
-
-/* 3D パック開封ステージ */
-.pack-opening-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 80vh;
-  width: 100%;
-  position: relative;
-}
-.pack-stage-visual {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  perspective: 1000px;
-  margin-top: 40px;
-}
-.pack-3d-wrapper {
-  width: 220px;
-  height: 320px;
-  cursor: pointer;
-  position: relative;
-  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-.pack-3d-wrapper:hover {
-  transform: scale(1.08) rotateY(10deg);
-}
-.pack-foil-cover {
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(145deg, #2563eb, #7c3aed, #db2777);
-  border-radius: 16px;
-  border: 3px solid rgba(255, 215, 0, 0.8);
-  box-shadow: 0 20px 50px rgba(0,0,0,0.8), 0 0 30px rgba(124, 58, 237, 0.6);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  padding: 20px;
-  position: relative;
-  overflow: hidden;
-}
-.pack-foil-header {
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 2px;
-  color: #ffd700;
-}
-.pack-foil-art {
-  font-size: 64px;
-  color: #fff;
-  text-shadow: 0 0 20px rgba(255,255,255,0.8);
-}
-.pack-foil-title {
-  font-size: 20px;
-  font-weight: 900;
-  color: #fff;
-  text-align: center;
-}
-.pack-foil-sub {
-  font-size: 10px;
-  color: rgba(255,255,255,0.8);
-  letter-spacing: 1.5px;
-}
-.pack-tear-hint {
-  font-size: 12px;
-  font-weight: 800;
-  background: rgba(0,0,0,0.6);
-  color: #ffd700;
-  padding: 6px 14px;
-  border-radius: 20px;
-  border: 1px solid #ffd700;
-  animation: pulseHint 1.5s infinite ease-in-out;
-}
-@keyframes pulseHint {
-  0%, 100% { transform: scale(1); opacity: 0.8; }
-  50% { transform: scale(1.08); opacity: 1; }
-}
-
-/* 開封後カード表示グリッド */
-.revealed-cards-grid {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 20px;
-  margin-top: 30px;
-  max-width: 1100px;
-}
-
-/* 大型デイリーログインボーナス モーダル */
-.daily-bonus-modal-card {
-  max-width: 540px !important;
-  width: 90% !important;
-  background: linear-gradient(160deg, #1e1b4b, #0f172a, #090d16) !important;
-  border: 2px solid rgba(255, 215, 0, 0.6) !important;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9), 0 0 40px rgba(255, 215, 0, 0.3) !important;
-  text-align: center;
-  padding: 30px 25px !important;
-  position: relative;
-  overflow: hidden;
-}
-.daily-bonus-modal-card::before {
-  content: '';
-  position: absolute;
-  top: -40%;
-  left: -40%;
-  width: 180%;
-  height: 180%;
-  background: radial-gradient(circle, rgba(255, 215, 0, 0.15) 0%, transparent 60%);
-  pointer-events: none;
-  animation: pulseGlow 3s infinite ease-in-out;
-}
-.daily-bonus-hero-icon {
-  font-size: 72px;
-  margin: 10px 0;
-  text-shadow: 0 0 30px rgba(255, 215, 0, 0.8);
-  animation: coinFloat 2.5s infinite ease-in-out;
-}
-@keyframes coinFloat {
-  0%, 100% { transform: translateY(0) scale(1); }
-  50% { transform: translateY(-10px) scale(1.08); }
-}
-.daily-bonus-amount-badge {
-  font-family: 'Outfit', sans-serif;
-  font-size: 38px;
-  font-weight: 900;
-  color: #ffd700;
-  text-shadow: 0 0 15px rgba(255, 215, 0, 0.8);
-  margin-bottom: 8px;
-}
-.daily-bonus-streak-container {
-  margin: 22px 0;
-}
-
-.daily-bonus-streak-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 8px;
-  margin: 20px 0;
-}
-@media (max-width: 640px) {
-  .daily-bonus-streak-grid {
-    grid-template-columns: repeat(4, 1fr);
-  }
-}
-
-/* 大型 7日間グラフィック報酬カード枠 */
-.daily-bonus-streak-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 10px;
-  margin: 22px 0;
-}
-@media (max-width: 680px) {
-  .daily-bonus-streak-grid {
-    grid-template-columns: repeat(4, 1fr);
-  }
-}
-
-.streak-day-card {
-  width: 100%;
-  min-height: 135px;
-  background: linear-gradient(160deg, #1e293b, #0f172a);
-  border: 2px solid rgba(255, 215, 0, 0.3);
-  border-radius: 14px;
-  padding: 8px 5px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.6);
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-.streak-day-card::before {
-  content: '';
-  position: absolute;
-  top: -50%; left: -50%; width: 200%; height: 200%;
-  background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.08), transparent);
-  transform: rotate(30deg);
-  pointer-events: none;
-}
-
-.streak-day-card.claimed {
-  opacity: 0.65;
-  border-color: rgba(0, 245, 160, 0.6);
-  filter: grayscale(0.2);
-}
-.streak-day-card.active-today {
-  transform: translateY(-6px) scale(1.06);
-  border-color: #ffd700;
-  background: linear-gradient(160deg, #2e1065, #0f172a);
-  box-shadow: 0 12px 30px rgba(255, 215, 0, 0.5), 0 0 20px rgba(255, 215, 0, 0.7);
-  animation: todayCardGlow 2s infinite alternate ease-in-out;
-}
-@keyframes todayCardGlow {
-  0% { border-color: #ffd700; box-shadow: 0 0 15px rgba(255, 215, 0, 0.6); }
-  100% { border-color: #ff8c00; box-shadow: 0 0 30px rgba(255, 140, 0, 0.9); }
-}
-.streak-day-card.special-day {
-  border-color: rgba(255, 0, 128, 0.9);
-  background: linear-gradient(160deg, #4c0519, #0f172a);
-}
-
-.streak-day-top-tag {
-  font-size: 10px;
-  font-weight: 900;
-  color: #ffd700;
-  letter-spacing: 0.8px;
-  text-shadow: 0 0 6px rgba(255, 215, 0, 0.6);
-}
-.streak-day-card.special-day .streak-day-top-tag {
-  color: #ff3399;
-}
-
-/* ミニカード枠内の視覚グラフィック */
-.streak-day-graphic-box {
-  width: 100%;
-  height: 60px;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  overflow: hidden;
-}
-.streak-day-graphic-box.coin-box {
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 140, 0, 0.1));
-  border-color: rgba(255, 215, 0, 0.5);
-}
-.streak-day-graphic-box.pack-box {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(219, 39, 119, 0.3));
-  border-color: rgba(0, 229, 255, 0.6);
-}
-
-.graphic-icon-emblem {
-  font-size: 28px;
-  text-shadow: 0 0 12px rgba(255, 215, 0, 0.8);
-}
-.graphic-amount-text {
-  font-family: 'Outfit', sans-serif;
-  font-size: 11px;
-  font-weight: 900;
-  color: #ffd700;
-  text-shadow: 0 0 6px rgba(255, 215, 0, 0.8);
-  margin-top: 2px;
-}
-.graphic-pack-text {
-  font-size: 9.5px;
-  font-weight: 900;
-  color: #00e5ff;
-  letter-spacing: 0.5px;
-}
-
-.streak-day-status-pill {
-  font-size: 9px;
-  font-weight: 900;
-  padding: 2px 8px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.1);
-  color: #94a3b8;
-  margin-top: 4px;
-}
-.streak-day-card.claimed .streak-day-status-pill {
-  background: #00f5a0;
-  color: #000;
-}
-.streak-day-card.active-today .streak-day-status-pill {
-  background: linear-gradient(90deg, #ffd700, #ff8c00);
-  color: #000;
-  box-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
-}
-.claim-big-button {
-  width: 100%;
-  padding: 16px;
-  font-size: 18px;
-  font-weight: 900;
-  background: linear-gradient(135deg, #ffd700, #ff8c00, #ff0055);
-  color: #fff;
-  border: none;
-  border-radius: 14px;
-  cursor: pointer;
-  box-shadow: 0 6px 25px rgba(255, 215, 0, 0.5);
-  transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-}
-.claim-big-button:hover {
-  transform: translateY(-3px) scale(1.02);
-  box-shadow: 0 10px 35px rgba(255, 215, 0, 0.8);
-}
-
-/* ポケポケ風 パック開封エフェクト & ポケポケ専用カードスロット */
 .pokepoke-pack-stage {
   display: flex;
   flex-direction: column;
@@ -5847,39 +5508,181 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   position: relative;
 }
 .pokepoke-pack-wrapper {
-  width: 240px;
-  height: 350px;
+  width: 250px;
+  height: 360px;
   position: relative;
   perspective: 1200px;
   cursor: pointer;
+  transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.pokepoke-pack-wrapper:hover {
+  transform: scale(1.06) rotateY(8deg) rotateX(4deg);
 }
 .pokepoke-pack-body {
   width: 100%;
   height: 100%;
-  background: linear-gradient(160deg, #1e3a8a 0%, #3b82f6 40%, #9333ea 80%, #db2777 100%);
-  border-radius: 18px;
-  border: 3px solid rgba(255, 215, 0, 0.9);
-  box-shadow: 0 25px 60px rgba(0,0,0,0.9), 0 0 40px rgba(59, 130, 246, 0.6);
+  background: linear-gradient(160deg, #1e3a8a 0%, #3b82f6 35%, #8b5cf6 70%, #ec4899 100%);
+  border-radius: 20px;
+  border: 3px solid rgba(251, 191, 36, 0.95);
+  box-shadow: 0 30px 70px rgba(0,0,0,0.95), 0 0 50px rgba(59, 130, 246, 0.7);
   position: relative;
   overflow: hidden;
-  transition: transform 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px;
 }
 .pokepoke-pack-body::after {
   content: '';
   position: absolute;
   top: 0; left: 0; width: 100%; height: 100%;
-  background: linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 50%, rgba(255,255,255,0.1) 100%);
+  background: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, transparent 50%, rgba(255,255,255,0.15) 100%);
   pointer-events: none;
 }
 .pokepoke-tear-line {
   position: absolute;
-  top: 45px;
+  top: 48px;
   left: 0;
   width: 100%;
-  height: 2px;
+  height: 3px;
   background: repeating-linear-gradient(90deg, #ffd700 0, #ffd700 8px, transparent 8px, transparent 14px);
-  box-shadow: 0 0 10px #ffd700;
+  box-shadow: 0 0 12px #ffd700;
   z-index: 10;
+  animation: tearPulse 1.2s infinite alternate ease-in-out;
+}
+@keyframes tearPulse {
+  0% { opacity: 0.6; filter: drop-shadow(0 0 4px #ffd700); }
+  100% { opacity: 1; filter: drop-shadow(0 0 14px #ffd700); }
+}
+.pokepoke-tear-handle {
+  position: absolute;
+  top: 34px;
+  right: -15px;
+  background: linear-gradient(135deg, #ffd700, #ff8c00);
+  color: #000;
+  font-weight: 900;
+  font-size: 12.5px;
+  padding: 5px 12px;
+  border-radius: 14px;
+  box-shadow: 0 0 16px rgba(255,215,0,0.9);
+  cursor: pointer;
+  z-index: 12;
+  animation: handleBounce 1s infinite alternate ease-in-out;
+}
+@keyframes handleBounce {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-8px); }
+}
+
+/* ポケポケ風 3Dカードファン演出 */
+.pokepoke-cards-fan {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  perspective: 1200px;
+  margin-top: 24px;
+  min-height: 400px;
+}
+.pokepoke-card-item {
+  width: 185px;
+  height: 270px;
+  position: relative;
+  transition: all 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  cursor: pointer;
+}
+.pokepoke-card-item:hover {
+  transform: translateY(-16px) scale(1.08) !important;
+  z-index: 60 !important;
+}
+.pokepoke-card-inner {
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.85s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  border-radius: 16px;
+}
+.pokepoke-card-inner.flipped {
+  transform: rotateY(180deg);
+}
+.pokepoke-card-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  border-radius: 16px;
+  background: linear-gradient(145deg, #0f172a, #1e1b4b, #2e1065);
+  border: 2.5px solid rgba(251, 191, 36, 0.8);
+  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.pokepoke-card-back::before {
+  content: '✦';
+  font-size: 58px;
+  color: #ffd700;
+  text-shadow: 0 0 25px rgba(255, 215, 0, 0.9);
+  animation: pokepokePulse 2s infinite ease-in-out;
+}
+@keyframes pokepokePulse {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.18); opacity: 1; }
+}
+.pokepoke-card-front {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  transform: rotateY(180deg);
+  border-radius: 16px;
+  background: #090c14;
+  border: 2px solid rgba(56, 189, 248, 0.85);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.85);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+}
+
+/* レアリティ別後光エフェクト */
+.rarity-aura-UR {
+  box-shadow: 0 0 40px rgba(251, 191, 36, 1), 0 0 70px rgba(236, 72, 153, 0.8) !important;
+  border-color: #fef08a !important;
+  animation: auraGlowUR 1.4s infinite alternate ease-in-out;
+}
+@keyframes auraGlowUR {
+  0% { filter: brightness(1) drop-shadow(0 0 10px #ffd700); }
+  100% { filter: brightness(1.35) drop-shadow(0 0 25px #ec4899); }
+}
+.rarity-aura-SR {
+  box-shadow: 0 0 35px rgba(251, 191, 36, 0.85), 0 0 50px rgba(129, 140, 248, 0.7) !important;
+  border-color: #ffd700 !important;
+}
+.rarity-aura-R {
+  box-shadow: 0 0 22px rgba(56, 189, 248, 0.75) !important;
+  border-color: #38bdf8 !important;
+}
+
+/* ポケポケ風 レアカード演出用ゴージャスフラッシュ */
+.ur-glow-effect {
+  position: fixed;
+  top: 0; left: 0; width: 100vw; height: 100vh;
+  background: radial-gradient(circle, rgba(251,191,36,0.35) 0%, rgba(236,72,153,0.25) 45%, transparent 75%);
+  pointer-events: none;
+  z-index: 999999;
+  animation: urScreenFlash 1.5s ease-out forwards;
+}
+@keyframes urScreenFlash {
+  0% { opacity: 0; transform: scale(0.8); }
+  35% { opacity: 1; transform: scale(1.1); }
+  100% { opacity: 0; transform: scale(1.35); }
+}
+-index: 10;
   animation: tearPulse 1.2s infinite alternate;
 }
 @keyframes tearPulse {
