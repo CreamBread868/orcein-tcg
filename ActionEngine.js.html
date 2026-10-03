@@ -2229,6 +2229,7 @@
         lookAtDeckTop: (p, n) => api.lookAtDeckTop(ctx, p, n),
         choiceCard: (...args) => api.choiceCard(ctx, ...args),
         choiceCards: (...args) => api.choiceCards(ctx, ...args),
+        choicePokemon: (player, filter, msg) => api.choiceCard(ctx, player || ctx.self, "場", filter || {}, 1, msg || "ポケモンを選択してください"),
         getCards: (t, f) => api.getCards(ctx, t, f),
         kill: (t, a) => api.kill(ctx, t, a),
         attach: (c, t) => api.attach(ctx, c, t),

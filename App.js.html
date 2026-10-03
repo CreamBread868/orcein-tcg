@@ -176,6 +176,9 @@
         CardSystem.syncCategoryForm();
         CardSystem.updatePreview();
       }
+      if (page === 'collection' && window.CardSystem && typeof CardSystem.renderCollectionPage === 'function') {
+        CardSystem.renderCollectionPage();
+      }
       if (page === 'pack') {
         this.loadPacks();
       }
@@ -208,7 +211,7 @@
     bindHome() {
       const onEl = (id, fn) => {const el = this.el(id);if (el) el.addEventListener('click', fn);};
       onEl('heroCreateButton', () => {if (!this.requireAdmin()) return;CardSystem.resetEditor();this.showPage('create');});
-      onEl('heroCardsButton', () => this.showPage('cards'));
+      onEl('heroCardsButton', () => this.showPage('collection'));
       onEl('homeRefreshButton', () => this.loadCards());
       onEl('homeGitHubSyncButton', () => this.promptGitHubSync());
       onEl('newCardButton', () => {if (!this.requireAdmin()) return;CardSystem.resetEditor();this.showPage('create');});
@@ -289,6 +292,12 @@
         if (!el) return;
         el.addEventListener('input', () => CardSystem.renderList());
         el.addEventListener('change', () => CardSystem.renderList());
+      });
+      ['collectionSearchInput', 'collectionCategoryFilter', 'collectionRarityFilter', 'collectionOwnedFilter'].forEach((id) => {
+        const el = this.el(id);
+        if (!el) return;
+        el.addEventListener('input', () => CardSystem.renderCollectionPage());
+        el.addEventListener('change', () => CardSystem.renderCollectionPage());
       });
     },
 
@@ -683,12 +692,16 @@
           description = '';
         }
 
+        const category = String(c.category || 'たね');
+        const isTrainerCategory = category === 'グッズ' || category === 'サポート' || category === 'トレーナー' || category === 'スタジアム';
+        const cardType = isTrainerCategory ? '' : String(c.type || '無');
+
         return {
           ...c,
           id: String(c.id || 'card_' + (i + 1)),
           name: String(c.name || 'カード'),
-          type: String(c.type || '無'),
-          category: String(c.category || 'たね'),
+          type: cardType,
+          category: category,
           rarity: String(c.rarity || 'C'),
           hp: c.hp !== '' && c.hp != null ? Number(c.hp) : '',
           image: image,

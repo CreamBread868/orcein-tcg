@@ -6394,11 +6394,12 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
     <div class="layout">
       <aside id="sidebar" class="sidebar">
         <button class="nav-button active" data-page="home">⌂ <span>ホーム</span></button>
-        <button class="nav-button" data-page="cards">▣ <span>カード</span></button>
+        <button class="nav-button" data-page="collection">🎴 <span>コレクション</span></button>
         <button class="nav-button" data-page="deck">◆ <span>デッキ</span></button>
-        <button class="nav-button admin-only-ui hidden" data-page="create">＋ <span>カード作成</span></button>
         <button class="nav-button" data-page="battle">⚔ <span>バトル</span></button>
         <button class="nav-button" data-page="pack">🎁 <span>パック開封</span></button>
+        <button class="nav-button admin-only-ui hidden" data-page="cards">▣ <span>カード管理</span></button>
+        <button class="nav-button admin-only-ui hidden" data-page="create">＋ <span>カード作成</span></button>
         <button class="nav-button admin-only-ui hidden" id="adminPackNavBtn" data-page="admin-pack" onclick="App.openAdminPackModal()">⚙️ <span>パック管理</span></button>
       </aside>
 
@@ -6416,7 +6417,7 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
               <p>歴史・科学・文学など、あらゆる存在を自由なカードとして設計できるオリジナルTCG。</p>
               <div class="hero-actions">
                 <button class="primary-button admin-only-ui hidden" id="heroCreateButton">カードを作る</button>
-                <button class="secondary-button" id="heroCardsButton">カードを見る</button>
+                <button class="secondary-button" id="heroCardsButton">コレクションを見る</button>
               </div>
             </div>
             <div class="hero-card-wrap">
@@ -6440,11 +6441,58 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
           <div id="recentCards" class="card-grid compact"></div>
         </section>
 
+        <!-- プレイヤー用: 所持カード・パックコレクションアルバム -->
+        <section id="page-collection" class="page">
+          <div class="page-heading">
+            <div>
+              <div class="eyebrow">CARD ALBUM & COLLECTION</div>
+              <h1>🎴 コレクション</h1>
+            </div>
+            <div class="heading-actions">
+              <span id="collectionStatsBadge" class="eyebrow" style="font-size: 14px; font-weight: 800; color: #38bdf8;">読み込み中...</span>
+            </div>
+          </div>
+
+          <div class="filter-panel">
+            <input id="collectionSearchInput" class="input" placeholder="コレクション内を検索…">
+            <select id="collectionCategoryFilter" class="input">
+              <option value="">全カテゴリ</option>
+              <option value="たね">たね</option>
+              <option value="1進化">1進化</option>
+              <option value="2進化">2進化</option>
+              <option value="進化">進化</option>
+              <option value="ex">ex (すべて)</option>
+              <option value="たねex">たねex</option>
+              <option value="1進化ex">1進化ex</option>
+              <option value="2進化ex">2進化ex</option>
+              <option value="トレーナー">トレーナー (すべて)</option>
+              <option value="グッズ">グッズ</option>
+              <option value="サポート">サポート</option>
+              <option value="スタジアム">スタジアム</option>
+              <option value="エネルギー">エネルギー (すべて)</option>
+              <option value="基本エネルギー">基本エネルギー</option>
+              <option value="特殊エネルギー">特殊エネルギー</option>
+            </select>
+            <select id="collectionRarityFilter" class="input">
+              <option value="">全レアリティ</option>
+              <option value="N">N</option><option value="R">R</option>
+              <option value="SR">SR</option><option value="UR">UR</option>
+            </select>
+            <select id="collectionOwnedFilter" class="input">
+              <option value="">すべてのカード</option>
+              <option value="owned">所持カードのみ</option>
+              <option value="unowned">未所持カードのみ</option>
+            </select>
+          </div>
+
+          <div id="collectionCardGrid" class="card-grid"></div>
+        </section>
+
         <section id="page-cards" class="page">
           <div class="page-heading">
             <div>
-              <div class="eyebrow">DATABASE</div>
-              <h1>カード</h1>
+              <div class="eyebrow">ADMIN DATABASE</div>
+              <h1>カード管理</h1>
             </div>
             <button class="primary-button admin-only-ui hidden" id="newCardButton">＋ 新規カード</button>
           </div>

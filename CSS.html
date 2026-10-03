@@ -5845,3 +5845,19 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   border-radius: 8px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
 }
+
+/* ============================================================
+   コレクションアルバム (未所持カード表示・スタイリング)
+   ============================================================ */
+.collection-item {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.collection-item.card-unowned {
+  filter: grayscale(0.85) contrast(0.8) opacity(0.55);
+}
+
+.collection-item.card-unowned:hover {
+  filter: grayscale(0.2) contrast(0.95) opacity(0.95);
+  transform: translateY(-4px) scale(1.02);
+}

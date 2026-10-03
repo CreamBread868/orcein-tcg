@@ -115,6 +115,15 @@ var EffectEditor;
       targets: ['trainer', 'ability']
     },
     {
+      keyword: 'moonlightArena',
+      label: '月光の陣 (スタジアム: 超回復＆手札1枚トラッシュ)',
+      category: 'func',
+      badge: 'スタジアム',
+      desc: '【月光の陣】自分の番に1回、自分の場の超タイプポケモン1匹のHPを「30」回復し、手札を1枚トラッシュする',
+      snippet: 'useLimit(1);\nconst targets = choiceCard(self, "場", { type: "超" }, 1, "HPを30回復する超タイプポケモンを選んでください");\nif (targets && targets.length > 0) {\n  heal(targets[0], 30);\n  const discard = choiceCard(self, "手札", {}, 1, "トラッシュする手札を1枚選んでください");\n  if (discard && discard.length > 0) {\n    toDiscard(self, discard[0]);\n  }\n}',
+      targets: ['trainer', 'ability']
+    },
+    {
       keyword: 'pokestop',
       label: 'ポケストップ (スタジアム)',
       category: 'func',

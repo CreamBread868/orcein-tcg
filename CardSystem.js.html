@@ -203,6 +203,120 @@ var CardSystem;
       });
     },
 
+    getUserCollection() {
+      try {
+        const raw = localStorage.getItem('ORBITAL_USER_COLLECTION');
+        if (raw) return JSON.parse(raw);
+      } catch (e) {}
+      return {};
+    },
+
+    saveUserCollection(map) {
+      try {
+        localStorage.setItem('ORBITAL_USER_COLLECTION', JSON.stringify(map));
+      } catch (e) {}
+    },
+
+    addCardsToCollection(drawnCards) {
+      if (!Array.isArray(drawnCards) || !drawnCards.length) return;
+      const col = this.getUserCollection();
+      drawnCards.forEach((c) => {
+        if (!c) return;
+        const key = String(c.id || c.name);
+        col[key] = (col[key] || 0) + 1;
+      });
+      this.saveUserCollection(col);
+      if (window.App && window.App.state && window.App.state.page === 'collection') {
+        this.renderCollectionPage();
+      }
+    },
+
+    renderCollectionPage() {
+      const root = document.getElementById('collectionCardGrid');
+      if (!root) return;
+
+      const searchEl = document.getElementById('collectionSearchInput');
+      const categoryEl = document.getElementById('collectionCategoryFilter');
+      const rarityEl = document.getElementById('collectionRarityFilter');
+      const ownedEl = document.getElementById('collectionOwnedFilter');
+
+      const search = searchEl ? searchEl.value.trim().toLowerCase() : '';
+      const category = categoryEl ? categoryEl.value : '';
+      const rarity = rarityEl ? rarityEl.value : '';
+      const ownedFilter = ownedEl ? ownedEl.value : '';
+
+      const allCards = (window.App && window.App.state && Array.isArray(window.App.state.cards)) ? window.App.state.cards : [];
+      const colMap = this.getUserCollection();
+
+      let ownedTypeCount = 0;
+      allCards.forEach((c) => {
+        const key = String(c.id || c.name);
+        if ((colMap[key] || 0) > 0) ownedTypeCount++;
+      });
+      const totalCards = allCards.length;
+      const percentage = totalCards > 0 ? Math.floor((ownedTypeCount / totalCards) * 100) : 0;
+
+      const statsBadge = document.getElementById('collectionStatsBadge');
+      if (statsBadge) {
+        statsBadge.textContent = '全 ' + totalCards + ' 種類中 ' + ownedTypeCount + ' 種類 獲得済み (' + percentage + '%)';
+      }
+
+      const filtered = allCards.filter((card) => {
+        const key = String(card.id || card.name);
+        const count = colMap[key] || 0;
+
+        if (ownedFilter === 'owned' && count <= 0) return false;
+        if (ownedFilter === 'unowned' && count > 0) return false;
+
+        let matchCat = !category;
+        if (category) {
+          if (category === '進化') {
+            matchCat = card.category === '進化' || card.category === '1進化' || card.category === '2進化';
+          } else if (category === 'ex') {
+            matchCat = card.category === 'ex' || card.category === 'たねex' || card.category === '1進化ex' || card.category === '2進化ex' || !!card.isEx;
+          } else if (category === 'トレーナー') {
+            matchCat = card.category === 'トレーナー' || card.category === 'グッズ' || card.category === 'サポート' || card.category === 'スタジアム';
+          } else if (category === 'エネルギー') {
+            matchCat = card.category === 'エネルギー' || card.category === '基本エネルギー' || card.category === '特殊エネルギー';
+          } else if (category === '基本エネルギー') {
+            matchCat = card.category === '基本エネルギー' || (card.category === 'エネルギー' && !String(card.name || '').includes('特殊') && !String(card.category || '').includes('特殊'));
+          } else if (category === '特殊エネルギー') {
+            matchCat = card.category === '特殊エネルギー' || (card.category === 'エネルギー' && (String(card.name || '').includes('特殊') || String(card.category || '').includes('特殊')));
+          } else {
+            matchCat = card.category === category;
+          }
+        }
+
+        return (!search || String(card.name).toLowerCase().includes(search)) &&
+          matchCat &&
+          (!rarity || card.rarity === rarity);
+      });
+
+      if (!filtered.length) {
+        root.innerHTML = '<div class="empty-page"><div><h2>対象のカードがありません</h2><p>条件を変更するか、パックを開封してカードを獲得しましょう！</p></div></div>';
+        return;
+      }
+
+      root.innerHTML = filtered.map((card) => {
+        const key = String(card.id || card.name);
+        const count = colMap[key] || 0;
+        const isUnowned = count <= 0;
+        const countHtml = '<div class="pool-in-deck-badge" style="top: 8px; right: 8px; z-index: 10; background: ' + (isUnowned ? 'rgba(100,116,139,0.85)' : 'linear-gradient(135deg, #6366f1, #38bdf8)') + ';">' + (isUnowned ? '未所持' : '所持: ' + count + '枚') + '</div>';
+        const cardHtml = this.createCardHtml(card, { size: 'normal' });
+        return '<div class="collection-item ' + (isUnowned ? 'card-unowned' : '') + '" style="position: relative;">' +
+          countHtml +
+          cardHtml +
+          '</div>';
+      }).join('');
+
+      root.querySelectorAll('[data-card-id]').forEach((tile) => {
+        tile.addEventListener('click', () => {
+          const card = (window.App?.state?.cards || []).find((c) => String(c.id) === String(tile.dataset.cardId));
+          if (card) this.showDetail(card);
+        });
+      });
+    },
+
     renderRecent() {
       const root = document.getElementById('recentCards');
       const cards = App.state.cards.slice(0, 6);
@@ -356,8 +470,8 @@ var CardSystem;
 
       const inDeckBadge = inDeckCount > 0 ? ('<div class="pool-in-deck-badge">' + inDeckCount + (isUnlimitedEnergy ? '枚' : '/4') + '</div>') : '';
 
-      const isPokemon = card.category !== 'グッズ' && card.category !== 'サポート' && card.category !== 'トレーナー' && !isEnergy;
-      const isTrainer = card.category === 'グッズ' || card.category === 'サポート' || card.category === 'トレーナー';
+      const isTrainer = card.category === 'グッズ' || card.category === 'サポート' || card.category === 'トレーナー' || card.category === 'スタジアム';
+      const isPokemon = !isTrainer && !isEnergy;
       const hpBadgeHtml = isPokemon && card.hp != null && card.hp !== '' && Number(card.hp) > 0 ? '<span class="card-hp-badge">HP <strong>' + this.escape(card.hp) + '</strong></span>' : '';
       const rarityBadgeHtml = card.rarity ? '<span class="card-rarity-badge">' + this.escape(card.rarity) + '</span>' : '';
 
@@ -399,9 +513,9 @@ var CardSystem;
       }
 
       let footerStatsHtml = '';
-      if (card.category === 'グッズ' || card.category === 'サポート' || card.category === 'トレーナー') {
-        footerStatsHtml = '<span>カテゴリ: <strong>' + this.escape(card.category) + '</strong></span><span>TRAINER CARD</span>';
-      } else if (card.category === 'エネルギー' || card.category === '基本エネルギー') {
+      if (card.category === 'グッズ' || card.category === 'サポート' || card.category === 'トレーナー' || card.category === 'スタジアム') {
+        footerStatsHtml = '<span>カテゴリ: <strong>' + this.escape(card.category) + '</strong></span><span>' + (card.category === 'スタジアム' ? 'STADIUM CARD' : 'TRAINER CARD') + '</span>';
+      } else if (card.category === 'エネルギー' || card.category === '基本エネルギー' || card.category === '特殊エネルギー') {
         footerStatsHtml = '<span>種類: <strong>' + this.escape(card.category) + '</strong></span><span>ENERGY CARD</span>';
       } else {
         const retreatNum = card.retreat !== '' && card.retreat != null ? Number(card.retreat) : null;

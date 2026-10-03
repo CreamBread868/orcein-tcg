@@ -2759,6 +2759,10 @@
         c._abilityUsedThisTurn = false;
         c._abilityUseCount = 0;
       });
+      if (this.state.activeStadium) {
+        this.state.activeStadium._abilityUsedThisTurn = false;
+        this.state.activeStadium._abilityUseCount = 0;
+      }
 
       this.updateLocksOnTurnChange(turnWho);
 
@@ -5048,6 +5052,56 @@
       root.innerHTML = '<span class="muted" style="font-size:11px;">カードをタップして行動</span>';
     },
 
+    showCardActionModal(card) {
+      this.openCardActionModal(card);
+    },
+
+    async activateActiveStadiumEffect(stadiumCard = null) {
+      const active = stadiumCard || this.state.activeStadium;
+      if (!active) {
+        if (window.App && typeof window.App.toast === 'function') {
+          window.App.toast('現在、場にスタジアムカードはありません。', true);
+        }
+        return;
+      }
+      const isMyTurn = this.state.turnPlayer === 'player';
+      if (!isMyTurn) {
+        if (window.App && typeof window.App.toast === 'function') {
+          window.App.toast('相手の番です。自分の番にスタジアム効果を使用できます。', true);
+        }
+        return;
+      }
+
+      const code = active.attack1Code || active.abilityCode;
+      if (!code || !code.trim()) {
+        if (window.App && typeof window.App.toast === 'function') {
+          window.App.toast('このスタジアムには起動する効果が登録されていません。');
+        }
+        return;
+      }
+
+      const maxUses = this.getAbilityMaxUses(active);
+      const remaining = this.getAbilityRemainingUses(active);
+      if (remaining <= 0) {
+        if (window.App && typeof window.App.toast === 'function') {
+          window.App.toast('このスタジアムの効果は自分の番に1回までしか使えません。', true);
+        }
+        return;
+      }
+
+      active._abilityUseCount = (active._abilityUseCount || 0) + 1;
+      this.log('🏟️ スタジアム「' + active.name + '」の効果を発動します！');
+
+      if (window.executeCardEffectCode) {
+        try {
+          await window.executeCardEffectCode(code, this.state, this.state.player, active);
+          this.render();
+        } catch(e) {
+          console.error('Active stadium effect execution error:', e);
+        }
+      }
+    },
+
     openCardActionModal(card, isBench = false, benchIdx = null) {
       if (!card) return;
       this._currentActionCard = card;
@@ -5057,29 +5111,64 @@
       const modal = document.getElementById('battleCardActionModal');
       if (!modal) return;
 
-      const symbol = window.CardSystem && window.CardSystem.typeSymbols && window.CardSystem.typeSymbols[card.type] || '✦';
+      const listEl = document.getElementById('cardActionList');
+      if (!listEl) return;
+
+      const p = this.state.player;
+      const isMyTurn = this.state.turnPlayer === 'player' && this.state.phase === 'battle';
+
+      const isStadiumCard = card.category === 'スタジアム' || (this.state.activeStadium && this.state.activeStadium.name === card.name);
       const symEl = document.getElementById('cardActionTypeSymbol');
+      const nameEl = document.getElementById('cardActionName');
+      const catEl = document.getElementById('cardActionCategory');
+      const metaEl = document.getElementById('cardActionMeta');
+
+      if (isStadiumCard) {
+        if (symEl) {
+          symEl.textContent = '🏟️';
+          symEl.className = "card-action-type-symbol type-無";
+        }
+        if (nameEl) nameEl.textContent = card.name;
+        if (catEl) catEl.textContent = 'スタジアム';
+        if (metaEl) metaEl.textContent = '【バトルフィールド・スタジアム】';
+
+        const code = card.attack1Code || card.abilityCode;
+        const maxUses = this.getAbilityMaxUses(card);
+        const remaining = this.getAbilityRemainingUses(card);
+        const canUseStadium = isMyTurn && remaining > 0 && !!code;
+
+        let btnLabel = '✨ スタジアム効果を発動する';
+        if (!code) btnLabel = '起動効果なし';
+        else if (!isMyTurn) btnLabel = '相手の番です';
+        else if (remaining <= 0) btnLabel = '使用済み (1ターン1回)';
+
+        const itemsHtml = '\n          <div class="card-act-item is-stadium">\n            <div class="act-item-content">\n              <div class="act-item-header">\n                <span class="act-badge ability" style="background:#818cf8;">スタジアム効果</span>\n                <span class="act-item-name">' + this.escape(card.name) + '</span>\n              </div>\n              <div class="act-item-text">' + this.escape(card.attack1Text || card.abilityText || card.description || '効果テキストなし') + '</div>\n            </div>\n            <button type="button" class="primary-button card-act-btn stadium-btn" data-action="stadium_effect" ' + (canUseStadium ? '' : 'disabled') + '>\n              ' + btnLabel + '\n            </button>\n          </div>\n        ';
+        listEl.innerHTML = itemsHtml;
+        listEl.querySelectorAll('[data-action="stadium_effect"]').forEach((btn) => {
+          btn.onclick = () => {
+            this.closeCardActionModal();
+            this.activateActiveStadiumEffect(card);
+          };
+        });
+        modal.classList.remove('hidden');
+        modal.style.display = 'flex';
+        return;
+      }
+
+      const symbol = window.CardSystem && window.CardSystem.typeSymbols && window.CardSystem.typeSymbols[card.type] || '✦';
       if (symEl) {
         symEl.textContent = symbol;
         symEl.className = "card-action-type-symbol type-" + this.escape(card.type || '無');
       }
-      const nameEl = document.getElementById('cardActionName');
       if (nameEl) nameEl.textContent = card.name;
-      const catEl = document.getElementById('cardActionCategory');
       if (catEl) catEl.textContent = card.category || (isBench ? 'ベンチ' : 'バトル場');
 
-      const p = this.state.player;
-      const isMyTurn = this.state.turnPlayer === 'player' && this.state.phase === 'battle';
       const isFirstTurnFirstPlayer = this.isFirstPlayerFirstTurn('player');
       const energyCount = card.energy || 0;
 
-      const metaEl = document.getElementById('cardActionMeta');
       if (metaEl) {
         metaEl.textContent = "HP " + card.hp + "/" + card.maxHp + " • エネルギー: " + energyCount + "個 【" + (isBench ? 'ベンチ' : 'バトル場') + "】";
       }
-
-      const listEl = document.getElementById('cardActionList');
-      if (!listEl) return;
 
       let itemsHtml = '';
 

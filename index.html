@@ -5853,6 +5853,22 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   border-radius: 8px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
 }
+
+/* ============================================================
+   コレクションアルバム (未所持カード表示・スタイリング)
+   ============================================================ */
+.collection-item {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.collection-item.card-unowned {
+  filter: grayscale(0.85) contrast(0.8) opacity(0.55);
+}
+
+.collection-item.card-unowned:hover {
+  filter: grayscale(0.2) contrast(0.95) opacity(0.95);
+  transform: translateY(-4px) scale(1.02);
+}
 </style>
 
   <script>
@@ -6544,11 +6560,12 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
     <div class="layout">
       <aside id="sidebar" class="sidebar">
         <button class="nav-button active" data-page="home">⌂ <span>ホーム</span></button>
-        <button class="nav-button" data-page="cards">▣ <span>カード</span></button>
+        <button class="nav-button" data-page="collection">🎴 <span>コレクション</span></button>
         <button class="nav-button" data-page="deck">◆ <span>デッキ</span></button>
-        <button class="nav-button admin-only-ui hidden" data-page="create">＋ <span>カード作成</span></button>
         <button class="nav-button" data-page="battle">⚔ <span>バトル</span></button>
         <button class="nav-button" data-page="pack">🎁 <span>パック開封</span></button>
+        <button class="nav-button admin-only-ui hidden" data-page="cards">▣ <span>カード管理</span></button>
+        <button class="nav-button admin-only-ui hidden" data-page="create">＋ <span>カード作成</span></button>
         <button class="nav-button admin-only-ui hidden" id="adminPackNavBtn" data-page="admin-pack" onclick="App.openAdminPackModal()">⚙️ <span>パック管理</span></button>
       </aside>
 
@@ -6566,7 +6583,7 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
               <p>歴史・科学・文学など、あらゆる存在を自由なカードとして設計できるオリジナルTCG。</p>
               <div class="hero-actions">
                 <button class="primary-button admin-only-ui hidden" id="heroCreateButton">カードを作る</button>
-                <button class="secondary-button" id="heroCardsButton">カードを見る</button>
+                <button class="secondary-button" id="heroCardsButton">コレクションを見る</button>
               </div>
             </div>
             <div class="hero-card-wrap">
@@ -6590,11 +6607,58 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
           <div id="recentCards" class="card-grid compact"></div>
         </section>
 
+        <!-- プレイヤー用: 所持カード・パックコレクションアルバム -->
+        <section id="page-collection" class="page">
+          <div class="page-heading">
+            <div>
+              <div class="eyebrow">CARD ALBUM & COLLECTION</div>
+              <h1>🎴 コレクション</h1>
+            </div>
+            <div class="heading-actions">
+              <span id="collectionStatsBadge" class="eyebrow" style="font-size: 14px; font-weight: 800; color: #38bdf8;">読み込み中...</span>
+            </div>
+          </div>
+
+          <div class="filter-panel">
+            <input id="collectionSearchInput" class="input" placeholder="コレクション内を検索…">
+            <select id="collectionCategoryFilter" class="input">
+              <option value="">全カテゴリ</option>
+              <option value="たね">たね</option>
+              <option value="1進化">1進化</option>
+              <option value="2進化">2進化</option>
+              <option value="進化">進化</option>
+              <option value="ex">ex (すべて)</option>
+              <option value="たねex">たねex</option>
+              <option value="1進化ex">1進化ex</option>
+              <option value="2進化ex">2進化ex</option>
+              <option value="トレーナー">トレーナー (すべて)</option>
+              <option value="グッズ">グッズ</option>
+              <option value="サポート">サポート</option>
+              <option value="スタジアム">スタジアム</option>
+              <option value="エネルギー">エネルギー (すべて)</option>
+              <option value="基本エネルギー">基本エネルギー</option>
+              <option value="特殊エネルギー">特殊エネルギー</option>
+            </select>
+            <select id="collectionRarityFilter" class="input">
+              <option value="">全レアリティ</option>
+              <option value="N">N</option><option value="R">R</option>
+              <option value="SR">SR</option><option value="UR">UR</option>
+            </select>
+            <select id="collectionOwnedFilter" class="input">
+              <option value="">すべてのカード</option>
+              <option value="owned">所持カードのみ</option>
+              <option value="unowned">未所持カードのみ</option>
+            </select>
+          </div>
+
+          <div id="collectionCardGrid" class="card-grid"></div>
+        </section>
+
         <section id="page-cards" class="page">
           <div class="page-heading">
             <div>
-              <div class="eyebrow">DATABASE</div>
-              <h1>カード</h1>
+              <div class="eyebrow">ADMIN DATABASE</div>
+              <h1>カード管理</h1>
             </div>
             <button class="primary-button admin-only-ui hidden" id="newCardButton">＋ 新規カード</button>
           </div>
@@ -9984,6 +10048,15 @@ var EffectEditor;
       targets: ['trainer', 'ability']
     },
     {
+      keyword: 'moonlightArena',
+      label: '月光の陣 (スタジアム: 超回復＆手札1枚トラッシュ)',
+      category: 'func',
+      badge: 'スタジアム',
+      desc: '【月光の陣】自分の番に1回、自分の場の超タイプポケモン1匹のHPを「30」回復し、手札を1枚トラッシュする',
+      snippet: 'useLimit(1);\nconst targets = choiceCard(self, "場", { type: "超" }, 1, "HPを30回復する超タイプポケモンを選んでください");\nif (targets && targets.length > 0) {\n  heal(targets[0], 30);\n  const discard = choiceCard(self, "手札", {}, 1, "トラッシュする手札を1枚選んでください");\n  if (discard && discard.length > 0) {\n    toDiscard(self, discard[0]);\n  }\n}',
+      targets: ['trainer', 'ability']
+    },
+    {
       keyword: 'pokestop',
       label: 'ポケストップ (スタジアム)',
       category: 'func',
@@ -13363,6 +13436,120 @@ var CardSystem;
       });
     },
 
+    getUserCollection() {
+      try {
+        const raw = localStorage.getItem('ORBITAL_USER_COLLECTION');
+        if (raw) return JSON.parse(raw);
+      } catch (e) {}
+      return {};
+    },
+
+    saveUserCollection(map) {
+      try {
+        localStorage.setItem('ORBITAL_USER_COLLECTION', JSON.stringify(map));
+      } catch (e) {}
+    },
+
+    addCardsToCollection(drawnCards) {
+      if (!Array.isArray(drawnCards) || !drawnCards.length) return;
+      const col = this.getUserCollection();
+      drawnCards.forEach((c) => {
+        if (!c) return;
+        const key = String(c.id || c.name);
+        col[key] = (col[key] || 0) + 1;
+      });
+      this.saveUserCollection(col);
+      if (window.App && window.App.state && window.App.state.page === 'collection') {
+        this.renderCollectionPage();
+      }
+    },
+
+    renderCollectionPage() {
+      const root = document.getElementById('collectionCardGrid');
+      if (!root) return;
+
+      const searchEl = document.getElementById('collectionSearchInput');
+      const categoryEl = document.getElementById('collectionCategoryFilter');
+      const rarityEl = document.getElementById('collectionRarityFilter');
+      const ownedEl = document.getElementById('collectionOwnedFilter');
+
+      const search = searchEl ? searchEl.value.trim().toLowerCase() : '';
+      const category = categoryEl ? categoryEl.value : '';
+      const rarity = rarityEl ? rarityEl.value : '';
+      const ownedFilter = ownedEl ? ownedEl.value : '';
+
+      const allCards = (window.App && window.App.state && Array.isArray(window.App.state.cards)) ? window.App.state.cards : [];
+      const colMap = this.getUserCollection();
+
+      let ownedTypeCount = 0;
+      allCards.forEach((c) => {
+        const key = String(c.id || c.name);
+        if ((colMap[key] || 0) > 0) ownedTypeCount++;
+      });
+      const totalCards = allCards.length;
+      const percentage = totalCards > 0 ? Math.floor((ownedTypeCount / totalCards) * 100) : 0;
+
+      const statsBadge = document.getElementById('collectionStatsBadge');
+      if (statsBadge) {
+        statsBadge.textContent = '全 ' + totalCards + ' 種類中 ' + ownedTypeCount + ' 種類 獲得済み (' + percentage + '%)';
+      }
+
+      const filtered = allCards.filter((card) => {
+        const key = String(card.id || card.name);
+        const count = colMap[key] || 0;
+
+        if (ownedFilter === 'owned' && count <= 0) return false;
+        if (ownedFilter === 'unowned' && count > 0) return false;
+
+        let matchCat = !category;
+        if (category) {
+          if (category === '進化') {
+            matchCat = card.category === '進化' || card.category === '1進化' || card.category === '2進化';
+          } else if (category === 'ex') {
+            matchCat = card.category === 'ex' || card.category === 'たねex' || card.category === '1進化ex' || card.category === '2進化ex' || !!card.isEx;
+          } else if (category === 'トレーナー') {
+            matchCat = card.category === 'トレーナー' || card.category === 'グッズ' || card.category === 'サポート' || card.category === 'スタジアム';
+          } else if (category === 'エネルギー') {
+            matchCat = card.category === 'エネルギー' || card.category === '基本エネルギー' || card.category === '特殊エネルギー';
+          } else if (category === '基本エネルギー') {
+            matchCat = card.category === '基本エネルギー' || (card.category === 'エネルギー' && !String(card.name || '').includes('特殊') && !String(card.category || '').includes('特殊'));
+          } else if (category === '特殊エネルギー') {
+            matchCat = card.category === '特殊エネルギー' || (card.category === 'エネルギー' && (String(card.name || '').includes('特殊') || String(card.category || '').includes('特殊')));
+          } else {
+            matchCat = card.category === category;
+          }
+        }
+
+        return (!search || String(card.name).toLowerCase().includes(search)) &&
+          matchCat &&
+          (!rarity || card.rarity === rarity);
+      });
+
+      if (!filtered.length) {
+        root.innerHTML = '<div class="empty-page"><div><h2>対象のカードがありません</h2><p>条件を変更するか、パックを開封してカードを獲得しましょう！</p></div></div>';
+        return;
+      }
+
+      root.innerHTML = filtered.map((card) => {
+        const key = String(card.id || card.name);
+        const count = colMap[key] || 0;
+        const isUnowned = count <= 0;
+        const countHtml = '<div class="pool-in-deck-badge" style="top: 8px; right: 8px; z-index: 10; background: ' + (isUnowned ? 'rgba(100,116,139,0.85)' : 'linear-gradient(135deg, #6366f1, #38bdf8)') + ';">' + (isUnowned ? '未所持' : '所持: ' + count + '枚') + '</div>';
+        const cardHtml = this.createCardHtml(card, { size: 'normal' });
+        return '<div class="collection-item ' + (isUnowned ? 'card-unowned' : '') + '" style="position: relative;">' +
+          countHtml +
+          cardHtml +
+          '</div>';
+      }).join('');
+
+      root.querySelectorAll('[data-card-id]').forEach((tile) => {
+        tile.addEventListener('click', () => {
+          const card = (window.App?.state?.cards || []).find((c) => String(c.id) === String(tile.dataset.cardId));
+          if (card) this.showDetail(card);
+        });
+      });
+    },
+
     renderRecent() {
       const root = document.getElementById('recentCards');
       const cards = App.state.cards.slice(0, 6);
@@ -13516,8 +13703,8 @@ var CardSystem;
 
       const inDeckBadge = inDeckCount > 0 ? ('<div class="pool-in-deck-badge">' + inDeckCount + (isUnlimitedEnergy ? '枚' : '/4') + '</div>') : '';
 
-      const isPokemon = card.category !== 'グッズ' && card.category !== 'サポート' && card.category !== 'トレーナー' && !isEnergy;
-      const isTrainer = card.category === 'グッズ' || card.category === 'サポート' || card.category === 'トレーナー';
+      const isTrainer = card.category === 'グッズ' || card.category === 'サポート' || card.category === 'トレーナー' || card.category === 'スタジアム';
+      const isPokemon = !isTrainer && !isEnergy;
       const hpBadgeHtml = isPokemon && card.hp != null && card.hp !== '' && Number(card.hp) > 0 ? '<span class="card-hp-badge">HP <strong>' + this.escape(card.hp) + '</strong></span>' : '';
       const rarityBadgeHtml = card.rarity ? '<span class="card-rarity-badge">' + this.escape(card.rarity) + '</span>' : '';
 
@@ -13559,9 +13746,9 @@ var CardSystem;
       }
 
       let footerStatsHtml = '';
-      if (card.category === 'グッズ' || card.category === 'サポート' || card.category === 'トレーナー') {
-        footerStatsHtml = '<span>カテゴリ: <strong>' + this.escape(card.category) + '</strong></span><span>TRAINER CARD</span>';
-      } else if (card.category === 'エネルギー' || card.category === '基本エネルギー') {
+      if (card.category === 'グッズ' || card.category === 'サポート' || card.category === 'トレーナー' || card.category === 'スタジアム') {
+        footerStatsHtml = '<span>カテゴリ: <strong>' + this.escape(card.category) + '</strong></span><span>' + (card.category === 'スタジアム' ? 'STADIUM CARD' : 'TRAINER CARD') + '</span>';
+      } else if (card.category === 'エネルギー' || card.category === '基本エネルギー' || card.category === '特殊エネルギー') {
         footerStatsHtml = '<span>種類: <strong>' + this.escape(card.category) + '</strong></span><span>ENERGY CARD</span>';
       } else {
         const retreatNum = card.retreat !== '' && card.retreat != null ? Number(card.retreat) : null;
@@ -17994,6 +18181,10 @@ window.DeckSystem = function () {
         c._abilityUsedThisTurn = false;
         c._abilityUseCount = 0;
       });
+      if (this.state.activeStadium) {
+        this.state.activeStadium._abilityUsedThisTurn = false;
+        this.state.activeStadium._abilityUseCount = 0;
+      }
 
       this.updateLocksOnTurnChange(turnWho);
 
@@ -20283,6 +20474,56 @@ window.DeckSystem = function () {
       root.innerHTML = '<span class="muted" style="font-size:11px;">カードをタップして行動</span>';
     },
 
+    showCardActionModal(card) {
+      this.openCardActionModal(card);
+    },
+
+    async activateActiveStadiumEffect(stadiumCard = null) {
+      const active = stadiumCard || this.state.activeStadium;
+      if (!active) {
+        if (window.App && typeof window.App.toast === 'function') {
+          window.App.toast('現在、場にスタジアムカードはありません。', true);
+        }
+        return;
+      }
+      const isMyTurn = this.state.turnPlayer === 'player';
+      if (!isMyTurn) {
+        if (window.App && typeof window.App.toast === 'function') {
+          window.App.toast('相手の番です。自分の番にスタジアム効果を使用できます。', true);
+        }
+        return;
+      }
+
+      const code = active.attack1Code || active.abilityCode;
+      if (!code || !code.trim()) {
+        if (window.App && typeof window.App.toast === 'function') {
+          window.App.toast('このスタジアムには起動する効果が登録されていません。');
+        }
+        return;
+      }
+
+      const maxUses = this.getAbilityMaxUses(active);
+      const remaining = this.getAbilityRemainingUses(active);
+      if (remaining <= 0) {
+        if (window.App && typeof window.App.toast === 'function') {
+          window.App.toast('このスタジアムの効果は自分の番に1回までしか使えません。', true);
+        }
+        return;
+      }
+
+      active._abilityUseCount = (active._abilityUseCount || 0) + 1;
+      this.log('🏟️ スタジアム「' + active.name + '」の効果を発動します！');
+
+      if (window.executeCardEffectCode) {
+        try {
+          await window.executeCardEffectCode(code, this.state, this.state.player, active);
+          this.render();
+        } catch(e) {
+          console.error('Active stadium effect execution error:', e);
+        }
+      }
+    },
+
     openCardActionModal(card, isBench = false, benchIdx = null) {
       if (!card) return;
       this._currentActionCard = card;
@@ -20292,29 +20533,64 @@ window.DeckSystem = function () {
       const modal = document.getElementById('battleCardActionModal');
       if (!modal) return;
 
-      const symbol = window.CardSystem && window.CardSystem.typeSymbols && window.CardSystem.typeSymbols[card.type] || '✦';
+      const listEl = document.getElementById('cardActionList');
+      if (!listEl) return;
+
+      const p = this.state.player;
+      const isMyTurn = this.state.turnPlayer === 'player' && this.state.phase === 'battle';
+
+      const isStadiumCard = card.category === 'スタジアム' || (this.state.activeStadium && this.state.activeStadium.name === card.name);
       const symEl = document.getElementById('cardActionTypeSymbol');
+      const nameEl = document.getElementById('cardActionName');
+      const catEl = document.getElementById('cardActionCategory');
+      const metaEl = document.getElementById('cardActionMeta');
+
+      if (isStadiumCard) {
+        if (symEl) {
+          symEl.textContent = '🏟️';
+          symEl.className = "card-action-type-symbol type-無";
+        }
+        if (nameEl) nameEl.textContent = card.name;
+        if (catEl) catEl.textContent = 'スタジアム';
+        if (metaEl) metaEl.textContent = '【バトルフィールド・スタジアム】';
+
+        const code = card.attack1Code || card.abilityCode;
+        const maxUses = this.getAbilityMaxUses(card);
+        const remaining = this.getAbilityRemainingUses(card);
+        const canUseStadium = isMyTurn && remaining > 0 && !!code;
+
+        let btnLabel = '✨ スタジアム効果を発動する';
+        if (!code) btnLabel = '起動効果なし';
+        else if (!isMyTurn) btnLabel = '相手の番です';
+        else if (remaining <= 0) btnLabel = '使用済み (1ターン1回)';
+
+        const itemsHtml = '\n          <div class="card-act-item is-stadium">\n            <div class="act-item-content">\n              <div class="act-item-header">\n                <span class="act-badge ability" style="background:#818cf8;">スタジアム効果</span>\n                <span class="act-item-name">' + this.escape(card.name) + '</span>\n              </div>\n              <div class="act-item-text">' + this.escape(card.attack1Text || card.abilityText || card.description || '効果テキストなし') + '</div>\n            </div>\n            <button type="button" class="primary-button card-act-btn stadium-btn" data-action="stadium_effect" ' + (canUseStadium ? '' : 'disabled') + '>\n              ' + btnLabel + '\n            </button>\n          </div>\n        ';
+        listEl.innerHTML = itemsHtml;
+        listEl.querySelectorAll('[data-action="stadium_effect"]').forEach((btn) => {
+          btn.onclick = () => {
+            this.closeCardActionModal();
+            this.activateActiveStadiumEffect(card);
+          };
+        });
+        modal.classList.remove('hidden');
+        modal.style.display = 'flex';
+        return;
+      }
+
+      const symbol = window.CardSystem && window.CardSystem.typeSymbols && window.CardSystem.typeSymbols[card.type] || '✦';
       if (symEl) {
         symEl.textContent = symbol;
         symEl.className = "card-action-type-symbol type-" + this.escape(card.type || '無');
       }
-      const nameEl = document.getElementById('cardActionName');
       if (nameEl) nameEl.textContent = card.name;
-      const catEl = document.getElementById('cardActionCategory');
       if (catEl) catEl.textContent = card.category || (isBench ? 'ベンチ' : 'バトル場');
 
-      const p = this.state.player;
-      const isMyTurn = this.state.turnPlayer === 'player' && this.state.phase === 'battle';
       const isFirstTurnFirstPlayer = this.isFirstPlayerFirstTurn('player');
       const energyCount = card.energy || 0;
 
-      const metaEl = document.getElementById('cardActionMeta');
       if (metaEl) {
         metaEl.textContent = "HP " + card.hp + "/" + card.maxHp + " • エネルギー: " + energyCount + "個 【" + (isBench ? 'ベンチ' : 'バトル場') + "】";
       }
-
-      const listEl = document.getElementById('cardActionList');
-      if (!listEl) return;
 
       let itemsHtml = '';
 
