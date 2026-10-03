@@ -1,13 +1,15 @@
 const fs = require('fs');
-const html = fs.readFileSync('c:/Projects/orbital_tcg/index_local.html', 'utf8');
+const html = fs.readFileSync('index.html', 'utf8');
 
-// Quick check if findCardImage and handleStartClick are correctly built into index_local.html
-console.log('findCardImage exists:', html.includes('findCardImage(name, id)'));
-console.log('online check in handleStartClick exists:', html.includes("if (this.state.mode === 'online')"));
+const hasHiddenRule = html.includes('#packOpeningOverlay.hidden');
+const overlayMatch = html.match(/id="packOpeningOverlay"[^>]*class="([^"]+)"/);
 
-// Create mock environment to test runtime card image resolution
-const jsCode = html.substring(html.indexOf('<script>'), html.lastIndexOf('</script>'));
-// Extract CardSystem and BattleSystem code from index_local
-const globalScope = {};
+console.log('--- BUILD VERIFICATION ---');
+console.log('CSS includes #packOpeningOverlay.hidden:', hasHiddenRule);
+console.log('packOpeningOverlay class list:', overlayMatch ? overlayMatch[1] : 'NOT FOUND');
 
-console.log('Build verification completed successfully.');
+const dailyBonusMatch = html.match(/id="dailyBonusModal"[^>]*class="([^"]+)"/);
+console.log('dailyBonusModal class list:', dailyBonusMatch ? dailyBonusMatch[1] : 'NOT FOUND');
+
+const pages = html.match(/id="page-[^"]+"/g);
+console.log('Found page elements:', pages);
