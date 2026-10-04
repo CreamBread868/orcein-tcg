@@ -7338,7 +7338,7 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
               <p>毎日ログインで <strong>1,000 NMT</strong> を獲得！リアルな3Dパック開封でレアカードをゲットしよう！</p>
             </div>
             <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:flex-end; align-items:center;">
-              <button class="secondary-button admin-only-ui hidden" id="adminAddPackBtn" onclick="App.openAdminPackModal()">＋ 管理者: パック追加/編集</button>
+              <button class="secondary-button" id="adminAddPackBtn" onclick="App.openAdminPackModal()" title="パックの作成・価格・カードプール編集">⚙️ パック管理</button>
               <button class="primary-button" style="padding:12px 24px; font-size:15px; font-weight:900; background:linear-gradient(135deg, #fbbf24, #f59e0b); color:#0b0f19; border-radius:14px; box-shadow:0 6px 20px rgba(245,158,11,0.4);" onclick="App.openDailyBonusModal()">🎁 ログインボーナス取得 (+1,000 NMT)</button>
             </div>
           </div>
@@ -19331,6 +19331,7 @@ window.DeckSystem = function () {
 </script>
 
   <script>
+console.log('[ORBITAL] App.js.html started execution');
 
 (() => {
   'use strict';
@@ -20222,6 +20223,7 @@ window.DeckSystem = function () {
 
   window.App = App;
   // 初期化は Index.html 末尾の inline script から行います
+  console.log('[ORBITAL] App.js.html finished execution. window.App =', typeof window.App);
 })();
 </script>
 

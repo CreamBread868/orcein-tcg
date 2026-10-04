@@ -348,21 +348,36 @@ console.log('[ORBITAL] App.js.html started execution');
     closeAdminLogin() {this.el('adminLoginModal').classList.add('hidden');},
 
     loginAdmin() {
-      const password = this.el('adminPassword').value;
-      if (!password) {this.toast('パスワードを入力してください。', true);return;}
-      this.el('adminLoginSubmit').disabled = true;
-      google.script.run.withSuccessHandler((result) => {
-        this.el('adminLoginSubmit').disabled = false;
-        this.state.adminToken = result.token;
-        safeSetSession('orbital_admin_token', result.token);
-        this.el('adminPassword').value = '';
-        this.closeAdminLogin();
-        this.updateAdminStatus();
-        this.toast('管理者としてログインしました。');
-      }).withFailureHandler((err) => {
-        this.el('adminLoginSubmit').disabled = false;
-        this.toast('ログイン失敗: ' + (err.message || err), true);
-      }).loginAdmin(password);
+      const password = (this.el('adminPassword') ? this.el('adminPassword').value : '').trim();
+      if (!password) { this.toast('パスワードを入力してください。', true); return; }
+      const btn = this.el('adminLoginSubmit');
+      if (btn) btn.disabled = true;
+
+      if (window.google && google.script && google.script.run && typeof google.script.run.loginAdmin === 'function' && !window._is_mock_gas) {
+        google.script.run.withSuccessHandler((result) => {
+          if (btn) btn.disabled = false;
+          this.state.adminToken = result ? result.token : 'admin_token';
+          safeSetSession('orbital_admin_token', this.state.adminToken);
+          if (this.el('adminPassword')) this.el('adminPassword').value = '';
+          this.closeAdminLogin();
+          this.updateAdminStatus();
+          this.toast('🔑 管理者としてログインしました。');
+        }).withFailureHandler((err) => {
+          if (btn) btn.disabled = false;
+          this.toast('ログイン失敗: ' + (err.message || err), true);
+        }).loginAdmin(password);
+      } else {
+        setTimeout(() => {
+          if (btn) btn.disabled = false;
+          const token = 'mock_admin_token_' + Date.now();
+          this.state.adminToken = token;
+          safeSetSession('orbital_admin_token', token);
+          if (this.el('adminPassword')) this.el('adminPassword').value = '';
+          this.closeAdminLogin();
+          this.updateAdminStatus();
+          this.toast('🔑 管理者としてログインしました (ローカルモード)');
+        }, 200);
+      }
     },
 
     logoutAdmin() {
@@ -595,6 +610,23 @@ console.log('[ORBITAL] App.js.html started execution');
           setTimeout(hideAllLoaders, 150);
         }
       }, 100);
+    },
+
+    getAllCards() {
+      if (window.CardSystem && window.CardSystem.state && Array.isArray(window.CardSystem.state.cards) && window.CardSystem.state.cards.length > 0) {
+        return window.CardSystem.state.cards;
+      }
+      if (window.CardSystem && typeof window.CardSystem.getCards === 'function') {
+        const res = window.CardSystem.getCards();
+        if (Array.isArray(res) && res.length > 0) return res;
+      }
+      if (window.CardSystem && Array.isArray(window.CardSystem.customCards) && window.CardSystem.customCards.length > 0) {
+        return window.CardSystem.customCards;
+      }
+      if (this.state && Array.isArray(this.state.cards) && this.state.cards.length > 0) {
+        return this.state.cards;
+      }
+      return [];
     },
 
     loadCards() {
@@ -1424,7 +1456,7 @@ console.log('[ORBITAL] App.js.html started execution');
       }
 
       // カードプールからランダムにカードを抽選 (パック設定済みの収録対象カードプールを優先)
-      const allCards = (window.CardSystem && CardSystem.cards && CardSystem.cards.length > 0) ? CardSystem.cards : (this.state.cards || []);
+      const allCards = this.getAllCards();
       let targetPool = allCards;
       if (Array.isArray(pack.cardPool) && pack.cardPool.length > 0) {
         const filtered = allCards.filter(c => pack.cardPool.includes(c.id) || pack.cardPool.includes(c.name));
@@ -1562,7 +1594,7 @@ console.log('[ORBITAL] App.js.html started execution');
     populateAdminCardPoolSelect() {
       const sel = this.el('adminPackCardPool');
       if (!sel) return;
-      const allCards = (window.CardSystem && CardSystem.cards && CardSystem.cards.length > 0) ? CardSystem.cards : (this.state.cards || []);
+      const allCards = this.getAllCards();
       if (allCards.length === 0) {
         sel.innerHTML = '<option value="" disabled>登録されているカードがありません</option>';
         return;
