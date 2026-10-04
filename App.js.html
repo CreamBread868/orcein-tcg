@@ -1382,7 +1382,8 @@ console.log('[ORBITAL] App.js.html started execution');
         setTimeout(() => {
           this.closeDailyBonusModal();
           const packToOpen = (this.state.packs && this.state.packs.length > 0) ? this.state.packs[0].id : 'pack_standard';
-          this.buyAndOpenPack(packToOpen, true); // freeFlag = true
+          this.addFreePackTickets(curReward.pack);
+          this.showPage('pack');
         }, 1500);
       } else {
         this.toast('🎉 Day ' + streakDay + ' ボーナス (+' + curReward.nmt + ' NMT) を獲得しました！');
@@ -1452,6 +1453,47 @@ console.log('[ORBITAL] App.js.html started execution');
       }
     },
 
+    getUserFreePackTickets() {
+      if (this.state.freePackTickets != null) return Number(this.state.freePackTickets);
+      try {
+        const stored = localStorage.getItem('ORBITAL_FREE_PACK_TICKETS');
+        if (stored != null) {
+          const val = Number(stored);
+          this.state.freePackTickets = val;
+          return val;
+        }
+      } catch(e) {}
+      this.state.freePackTickets = 1;
+      return 1;
+    },
+
+    setUserFreePackTickets(val) {
+      val = Math.max(0, Number(val) || 0);
+      this.state.freePackTickets = val;
+      try { localStorage.setItem('ORBITAL_FREE_PACK_TICKETS', String(val)); } catch(e) {}
+      const logboBadge = this.el('packShopLogboTicketVal');
+      if (logboBadge) logboBadge.textContent = 'ログボパック: ' + val + '個';
+    },
+
+    addFreePackTickets(count = 1) {
+      const current = this.getUserFreePackTickets();
+      this.setUserFreePackTickets(current + count);
+    },
+
+    openLogboPack() {
+      const tickets = this.getUserFreePackTickets();
+      if (tickets <= 0) {
+        this.toast('ログボパックの所持チケットがありません。ログインボーナスで獲得してください！', true);
+        this.openDailyBonusModal();
+        return;
+      }
+      this.setUserFreePackTickets(tickets - 1);
+      const targetPackId = (this.state.packs && this.state.packs.length > 0) ? this.state.packs[0].id : 'pack_standard';
+      this.toast('🎁 ログインボーナス特別パックを開封します！');
+      this.buyAndOpenPack(targetPackId, true);
+      this.renderPackGrid();
+    },
+
     renderPackGrid() {
       const grid = this.el('packListGrid');
       if (!grid) return;
@@ -1461,10 +1503,36 @@ console.log('[ORBITAL] App.js.html started execution');
         return;
       }
 
-      grid.innerHTML = packs.map(p => {
+      const freeTickets = this.getUserFreePackTickets();
+      const logboBadge = this.el('packShopLogboTicketVal');
+      if (logboBadge) logboBadge.textContent = 'ログボパック: ' + freeTickets + '個';
+
+      const logboCardHtml =
+        '<div class="pack-card" style="border: 2px solid #fbbf24; background: linear-gradient(135deg, rgba(251,191,36,0.18), rgba(217,70,239,0.18)); box-shadow: 0 0 25px rgba(251,191,36,0.35); position:relative;">' +
+          '<div class="single-shop-tag" style="background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #000; font-weight:900;">🎁 ログボ特典</div>' +
+          '<div class="pack-cover-wrapper" style="border-color: rgba(251,191,36,0.6);">' +
+            '<div class="pack-foil-art" style="color:#fbbf24; filter:drop-shadow(0 0 10px rgba(251,191,36,0.8));">🌟</div>' +
+            '<div class="pack-foil-header" style="color:#fbbf24;">ログインボーナス</div>' +
+          '</div>' +
+          '<div class="pack-title" style="color:#fbbf24; font-weight:900;">🎁 ログインボーナス特別パック</div>' +
+          '<div class="pack-desc">ログインボーナスで獲得した特別無料パック！激レアカードをゲットしよう！</div>' +
+          '<div class="pack-price-tag" style="color:#fbbf24;">✨ 所持チケット: <strong>' + freeTickets + '</strong> 個</div>' +
+          (freeTickets > 0 ? (
+            '<button class="pack-buy-btn" type="button" style="background: linear-gradient(135deg, #fbbf24, #f59e0b); color:#0b0f19; font-weight:900; box-shadow:0 6px 20px rgba(251,191,36,0.5);" onclick="App.openLogboPack()">' +
+              '✨ 無料でパック開封！ (残り ' + freeTickets + '個)' +
+            '</button>'
+          ) : (
+            '<button class="pack-buy-btn" type="button" style="opacity: 0.7; cursor: pointer; background: rgba(255,255,255,0.12);" onclick="App.openDailyBonusModal()">' +
+              '🔒 チケットなし (ログボでGET)' +
+            '</button>'
+          )) +
+        '</div>';
+
+      const customPacksHtml = packs.map(p => {
       const coverArt = p.image ? ('<img src="' + this.escapeHtml(p.image) + '" style="width:100%; height:100%; object-fit:cover; border-radius:8px;">') : ('<div class="pack-foil-art">✦</div><div class="pack-foil-header">' + this.escapeHtml(p.title) + '</div>');
         return '\n          <div class="pack-card">\n            <div class="pack-cover-wrapper">\n              ' + (coverArt) + '\n            </div>\n            <div class="pack-title">' + (this.escapeHtml(p.title)) + '</div>\n            <div class="pack-desc">' + (this.escapeHtml(p.description || '5枚のカードを収録')) + '</div>\n            <div class="pack-price-tag">✨ ' + (p.price || 100) + ' NMT</div>\n            <button class="pack-buy-btn" type="button" onclick="App.buyAndOpenPack(\'' + (p.id) + '\')">🎁 ' + (p.price || 100) + ' NMT で開封</button>\n          </div>\n        ';
       }).join('');
+      grid.innerHTML = logboCardHtml + customPacksHtml;
     },
 
     getCardTypeEmblem(type) {
@@ -2084,10 +2152,14 @@ console.log('[ORBITAL] App.js.html started execution');
       this.state.singleShopItems = items;
       try { localStorage.setItem('ORBITAL_SINGLE_SHOP_ITEMS', JSON.stringify(items)); } catch(err) {}
 
-      if (window.google && google.script && google.script.run && !window._is_mock_gas) {
-        google.script.run.withSuccessHandler(() => {
-          App.toast('✅ ショップ商品をGASスプレッドシートに保存しました');
-        }).saveShopItem(newItem, this.state.adminToken);
+      if (window.google && google.script && google.script.run && !window._is_mock_gas && typeof google.script.run.saveShopItem === 'function') {
+        try {
+          google.script.run.withSuccessHandler(() => {
+            App.toast('✅ ショップ商品をGASスプレッドシートに保存しました');
+          }).saveShopItem(newItem, this.state.adminToken);
+        } catch(err) {
+          console.warn('saveShopItem call error:', err);
+        }
       }
 
       this.toast('🛍️ ショップにカードを出品しました！');
@@ -2102,8 +2174,12 @@ console.log('[ORBITAL] App.js.html started execution');
       this.state.singleShopItems = items;
       try { localStorage.setItem('ORBITAL_SINGLE_SHOP_ITEMS', JSON.stringify(items)); } catch(err) {}
 
-      if (window.google && google.script && google.script.run && !window._is_mock_gas) {
-        google.script.run.deleteShopItem(itemId, this.state.adminToken);
+      if (window.google && google.script && google.script.run && !window._is_mock_gas && typeof google.script.run.deleteShopItem === 'function') {
+        try {
+          google.script.run.deleteShopItem(itemId, this.state.adminToken);
+        } catch(err) {
+          console.warn('deleteShopItem call error:', err);
+        }
       }
 
       this.toast('🗑️ 商品を削除しました');
