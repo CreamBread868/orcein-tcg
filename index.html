@@ -6974,7 +6974,7 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
     <div class="camou-nav">
       <div class="camou-nav-brand">🧪 日本生物教育学会 学術デジタルアーカイブ</div>
       <div>
-        <button type="button" class="camou-login-btn" onclick="App.unlockCamouflageAndLogin()">🔬 システムログイン / 研究者認証</button>
+        <button type="button" class="camou-login-btn" onclick="App.openCamouflageLoginModal()">ログイン</button>
       </div>
     </div>
     
@@ -7071,8 +7071,34 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
 
         <div class="camou-secret-footer">
           <p>※ 本レポートは日本生物教育学会データベースに保管されています。</p>
-          <button type="button" class="camou-secret-trigger" onclick="App.unlockCamouflageAndLogin()">[特別アクセス / ログインシステムを起動]</button>
+          <button type="button" class="camou-secret-trigger" onclick="App.openCamouflageLoginModal()">[ログイン]</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 偽装Webサイト 初回ログインモーダル -->
+  <div id="camouLoginModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="App.closeCamouflageLoginModal()"></div>
+    <div class="modal-card" style="max-width: 420px; padding: 28px; text-align: center;">
+      <h2 style="margin-top: 0; font-size: 20px; font-weight: 800; color: var(--accent2);">🔑 システムログイン & アカウント設定</h2>
+      <p style="color: var(--muted); font-size: 13px; margin-bottom: 20px;">初回アクセスのため、Gmailアドレスとパスワードを設定してください。</p>
+      
+      <div style="display: flex; flex-direction: column; gap: 14px; text-align: left; margin-bottom: 22px;">
+        <div>
+          <label style="display: block; font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 6px;">Gmail アドレス</label>
+          <input type="email" id="camouEmailInput" placeholder="example@gmail.com" style="width: 100%; padding: 12px 14px; border-radius: 12px; background: rgba(0,0,0,0.4); border: 1px solid var(--line); color: var(--text); font-size: 14px;" onkeydown="if(event.key==='Enter') App.submitCamouflageLogin();">
+        </div>
+        <div>
+          <label style="display: block; font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 6px;">パスワード設定</label>
+          <input type="password" id="camouPasswordInput" placeholder="パスワードを入力" style="width: 100%; padding: 12px 14px; border-radius: 12px; background: rgba(0,0,0,0.4); border: 1px solid var(--line); color: var(--text); font-size: 14px;" onkeydown="if(event.key==='Enter') App.submitCamouflageLogin();">
+        </div>
+        <div id="camouPasswordError" style="color: #f43f5e; font-size: 12px; font-weight: 700; display: none;"></div>
+      </div>
+      
+      <div style="display: flex; gap: 10px; justify-content: flex-end;">
+        <button type="button" class="secondary-button" onclick="App.closeCamouflageLoginModal()">キャンセル</button>
+        <button type="button" class="primary-button" onclick="App.submitCamouflageLogin()">ログイン・設定完了</button>
       </div>
     </div>
   </div>
@@ -22266,18 +22292,64 @@ console.log('[ORBITAL] App.js.html started execution');
       }
     },
 
-    unlockCamouflageAndLogin() {
-      try {
-        localStorage.setItem('ORBITAL_HAS_LOGGED_IN', 'true');
-        const camouPage = document.getElementById('camouflagePage');
-        const appContainer = document.getElementById('app');
-        if (camouPage) camouPage.classList.add('hidden');
-        if (appContainer) appContainer.classList.remove('hidden');
-        this.toast('🔬 認証完了: 酢酸オルセイン TCG へようこそ！');
-        this.openAccountProfileModal();
-      } catch (e) {
-        console.error('unlockCamouflageAndLogin error:', e);
+    openCamouflageLoginModal() {
+      const modal = document.getElementById('camouLoginModal');
+      const input = document.getElementById('camouPasswordInput');
+      const err = document.getElementById('camouPasswordError');
+      if (err) err.style.display = 'none';
+      if (input) input.value = '';
+      if (modal) modal.classList.remove('hidden');
+      if (input) setTimeout(() => input.focus(), 100);
+    },
+
+    closeCamouflageLoginModal() {
+      const modal = document.getElementById('camouLoginModal');
+      if (modal) modal.classList.add('hidden');
+    },
+
+        submitCamouflageLogin() {
+      const emailInput = document.getElementById('camouEmailInput');
+      const passInput = document.getElementById('camouPasswordInput');
+      const err = document.getElementById('camouPasswordError');
+
+      const email = (emailInput ? emailInput.value : '').trim().toLowerCase();
+      const pass = (passInput ? passInput.value : '').trim();
+
+      if (!email || !email.includes('@')) {
+        if (err) { err.textContent = '有効なGmailアドレスを入力してください。'; err.style.display = 'block'; }
+        return;
       }
+      if (!pass) {
+        if (err) { err.textContent = 'パスワードを入力してください。'; err.style.display = 'block'; }
+        return;
+      }
+
+      try {
+        localStorage.setItem('orbital_mock_user_email', email);
+        localStorage.setItem('orbital_mock_user_password', pass);
+        localStorage.setItem('ORBITAL_HAS_LOGGED_IN', 'true');
+      } catch(e) {}
+
+      const displayName = email.split('@')[0];
+      const userProfile = { email, displayName, avatar: '👤', isLoggedIn: true };
+      this.state.userProfile = userProfile;
+      if (window.DeckSystem && window.DeckSystem.state) {
+        window.DeckSystem.state.currentUser = userProfile;
+        if (typeof window.DeckSystem.updateUserBadge === 'function') window.DeckSystem.updateUserBadge();
+        if (typeof window.DeckSystem.loadDecks === 'function') window.DeckSystem.loadDecks();
+      }
+
+      this.closeCamouflageLoginModal();
+      const camouPage = document.getElementById('camouflagePage');
+      const appContainer = document.getElementById('app');
+      if (camouPage) camouPage.classList.add('hidden');
+      if (appContainer) appContainer.classList.remove('hidden');
+
+      this.toast('🔑 ログイン成功: 酢酸オルセイン TCG へようこそ！');
+    },
+
+    unlockCamouflageAndLogin() {
+      this.openCamouflageLoginModal();
     },
 
     initFontSize() {
@@ -23174,7 +23246,7 @@ console.log('[ORBITAL] App.js.html started execution');
       }
     },
 
-    openAccountProfileModal() {
+        openAccountProfileModal() {
       const modal = this.el('accountProfileModal');
       if (!modal) return;
       modal.classList.remove('hidden');
@@ -23184,10 +23256,16 @@ console.log('[ORBITAL] App.js.html started execution');
       if (saveBtn) saveBtn.disabled = false;
 
       const curUser = (window.DeckSystem && window.DeckSystem.state && window.DeckSystem.state.currentUser) || { email: 'player@gmail.com' };
+      const savedEmail = (function() { try { return localStorage.getItem('orbital_mock_user_email') || curUser.email || 'player@gmail.com'; } catch(e) { return 'player@gmail.com'; } })();
+      const savedPass = (function() { try { return localStorage.getItem('orbital_mock_user_password') || ''; } catch(e) { return ''; } })();
+
       const emailInput = this.el('accEmailInput');
+      const passInput = this.el('accPasswordInput');
       const nameInput = this.el('accDisplayNameInput');
-      if (emailInput) emailInput.value = curUser.email || 'player@gmail.com';
-      if (nameInput) nameInput.value = curUser.displayName || (curUser.email ? curUser.email.split('@')[0] : 'プレイヤー');
+
+      if (emailInput) emailInput.value = savedEmail;
+      if (passInput) passInput.value = savedPass;
+      if (nameInput) nameInput.value = curUser.displayName || (savedEmail ? savedEmail.split('@')[0] : 'プレイヤー');
 
       const curAvatar = curUser.avatar || '👤';
       const grid = this.el('avatarSelectorGrid');
@@ -23197,8 +23275,6 @@ console.log('[ORBITAL] App.js.html started execution');
           btn.classList.toggle('active', av === curAvatar);
         });
       }
-
-      this.renderAccountSwitchList();
     },
 
     closeAccountProfileModal() {
@@ -23209,8 +23285,9 @@ console.log('[ORBITAL] App.js.html started execution');
       }
     },
 
-    saveAccountProfile() {
+        saveAccountProfile() {
       const email = (this.el('accEmailInput')?.value || '').trim().toLowerCase();
+      const password = (this.el('accPasswordInput')?.value || '').trim();
       const displayName = (this.el('accDisplayNameInput')?.value || '').trim();
       const activeAvatarBtn = this.el('avatarSelectorGrid')?.querySelector('.avatar-opt.active');
       const avatar = activeAvatarBtn ? (activeAvatarBtn.dataset.avatar || activeAvatarBtn.getAttribute('data-avatar') || activeAvatarBtn.textContent.trim() || '👤') : '👤';
@@ -23227,15 +23304,18 @@ console.log('[ORBITAL] App.js.html started execution');
       const saveBtn = this.el('saveAccountProfileBtn');
       if (saveBtn) saveBtn.disabled = true;
 
-      const profileObj = { email: email, displayName: displayName, avatar: avatar };
-
       try {
         localStorage.setItem('orbital_mock_user_email', email);
+        if (password) localStorage.setItem('orbital_mock_user_password', password);
+        localStorage.setItem('ORBITAL_HAS_LOGGED_IN', 'true');
       } catch (e) {}
+
+      const profileObj = { email, displayName, avatar, password };
 
       const self = this;
       const applyProfile = (prof) => {
         if (saveBtn) saveBtn.disabled = false;
+        self.state.userProfile = prof;
         if (window.DeckSystem && window.DeckSystem.state) {
           window.DeckSystem.state.currentUser = prof;
           if (typeof window.DeckSystem.updateUserBadge === 'function') {
@@ -23245,44 +23325,25 @@ console.log('[ORBITAL] App.js.html started execution');
             window.DeckSystem.loadDecks();
           }
         }
-        self.toast('プロフィールを保存しました！ (' + (prof.displayName || displayName) + ')');
+        self.toast('アカウント情報を更新・ログインしました！ (' + (prof.displayName || displayName) + ')');
         self.closeAccountProfileModal();
       };
 
-      if (window.google && google.script && google.script.run) {
+      if (window.google && google.script && google.script.run && !window._is_mock_gas && typeof google.script.run.saveUserProfile === 'function') {
         google.script.run
           .withSuccessHandler((res) => {
             if (res && res.ok && res.profile) {
               applyProfile(res.profile);
             } else {
-              if (saveBtn) saveBtn.disabled = false;
-              self.toast((res && res.message) || 'プロフィールの保存に失敗しました。', true);
+              applyProfile(profileObj);
             }
           })
           .withFailureHandler((err) => {
-            if (saveBtn) saveBtn.disabled = false;
-            console.error('saveUserProfile error:', err);
-            self.toast('エラー: ' + (err.message || err), true);
+            applyProfile(profileObj);
           })
           .saveUserProfile(profileObj);
       } else {
-        try {
-          var rawUsers = localStorage.getItem('orbital_mock_users');
-          var users = rawUsers ? JSON.parse(rawUsers) : [];
-          var idx = users.findIndex(u => String(u.email).toLowerCase() === email);
-          if (idx >= 0) {
-            users[idx].displayName = displayName;
-            users[idx].avatar = avatar;
-            users[idx].updatedAt = new Date().toISOString();
-          } else {
-            users.push({ email: email, displayName: displayName, avatar: avatar, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
-          }
-          localStorage.setItem('orbital_mock_users', JSON.stringify(users));
-          applyProfile({ email: email, displayName: displayName, avatar: avatar, isLoggedIn: true });
-        } catch (e) {
-          if (saveBtn) saveBtn.disabled = false;
-          self.toast('ローカル保存失敗: ' + e.message, true);
-        }
+        applyProfile(profileObj);
       }
     },
 
@@ -24856,74 +24917,52 @@ console.log('[ORBITAL] App.js.html started execution');
     })();
   </script>
   <!-- アカウント管理・切替モーダル -->
+  <!-- アカウント設定モーダル -->
   <div id="accountProfileModal" class="modal hidden" style="display: none;">
-    <div class="modal-backdrop"></div>
-    <div class="modal-card account-modal-card">
-      <div class="modal-header">
+    <div class="modal-backdrop" onclick="App.closeAccountProfileModal()"></div>
+    <div class="modal-card" style="max-width: 480px; padding: 28px;">
+      <div class="modal-header" style="margin-bottom: 20px;">
         <div>
           <div class="eyebrow">USER ACCOUNT & PROFILE</div>
-          <h2 class="modal-title">👤 ユーザーアカウント管理</h2>
+          <h2 class="modal-title" style="margin: 4px 0 0;">👤 Gmail & パスワード設定</h2>
         </div>
         <button id="closeAccountModalBtn" type="button" class="close-button" onclick="App.closeAccountProfileModal()">&times;</button>
       </div>
       <div class="modal-body">
-        <div class="account-modal-grid">
-          <!-- 左側: 現在のアカウント編集 -->
-          <div class="account-section-card">
-            <h3><i class="fas fa-id-card"></i> 現在のアカウント編集</h3>
-            <form id="accountProfileForm" onsubmit="App.saveAccountProfile(); return false;">
-              <div class="form-group">
-                <label class="form-label">Gmailアドレス (アカウントID)</label>
-                <input id="accEmailInput" type="email" class="input" placeholder="example@gmail.com" required>
-              </div>
-              <div class="form-group">
-                <label class="form-label">アカウント表示名 (ユーザー名)</label>
-                <input id="accDisplayNameInput" type="text" class="input" placeholder="例: サトシ" maxlength="20" required>
-              </div>
-              <div class="form-group">
-                <label class="form-label">アバターアイコン</label>
-                <div class="avatar-selector-grid" id="avatarSelectorGrid">
-                  <button type="button" class="avatar-opt active" data-avatar="👤">👤</button>
-                  <button type="button" class="avatar-opt" data-avatar="⚡">⚡</button>
-                  <button type="button" class="avatar-opt" data-avatar="🔥">🔥</button>
-                  <button type="button" class="avatar-opt" data-avatar="💧">💧</button>
-                  <button type="button" class="avatar-opt" data-avatar="🍃">🍃</button>
-                  <button type="button" class="avatar-opt" data-avatar="🔮">🔮</button>
-                  <button type="button" class="avatar-opt" data-avatar="👑">👑</button>
-                  <button type="button" class="avatar-opt" data-avatar="🎮">🎮</button>
-                  <button type="button" class="avatar-opt" data-avatar="⚔️">⚔️</button>
-                  <button type="button" class="avatar-opt" data-avatar="🛡️">🛡️</button>
-                  <button type="button" class="avatar-opt" data-avatar="🐉">🐉</button>
-                  <button type="button" class="avatar-opt" data-avatar="🦅">🦅</button>
-                </div>
-              </div>
-              <button id="saveAccountProfileBtn" type="button" class="primary-button full-width" onclick="App.saveAccountProfile()">
-                <i class="fas fa-save"></i> プロフィールを保存
-              </button>
-            </form>
+        <form id="accountProfileForm" onsubmit="App.saveAccountProfile(); return false;" style="display:flex; flex-direction:column; gap:16px;">
+          <div class="form-group">
+            <label class="form-label">Gmail アドレス (アカウントID)</label>
+            <input id="accEmailInput" type="email" class="input" placeholder="example@gmail.com" required>
           </div>
-
-          <!-- 右側: アカウント切替 ＆ 新規作成 -->
-          <div class="account-section-card">
-            <h3><i class="fas fa-users-cog"></i> アカウント切替・新規追加</h3>
-            <div class="account-switch-container">
-              <label class="form-label">登録済みアカウント一覧</label>
-              <div id="accountSwitchList" class="account-switch-list">
-                <!-- JavaScriptで動的描画 -->
-              </div>
-            </div>
-
-            <div class="add-account-box" style="margin-top: 16px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 12px;">
-              <label class="form-label">＋ 新しいGmailアカウントを追加・切替</label>
-              <div style="display:flex; gap:8px;">
-                <input id="newAccountEmailInput" type="email" class="input" placeholder="example@gmail.com">
-                <button id="createOrSwitchAccountBtn" type="button" class="secondary-button" style="white-space:nowrap;" onclick="App.createOrSwitchAccount()">
-                  作成/切替
-                </button>
-              </div>
+          <div class="form-group">
+            <label class="form-label">パスワード (設定・変更)</label>
+            <input id="accPasswordInput" type="password" class="input" placeholder="新しいパスワードを入力">
+          </div>
+          <div class="form-group">
+            <label class="form-label">表示名 (ユーザー名)</label>
+            <input id="accDisplayNameInput" type="text" class="input" placeholder="例: サトシ" maxlength="20" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">アバターアイコン</label>
+            <div class="avatar-selector-grid" id="avatarSelectorGrid">
+              <button type="button" class="avatar-opt active" data-avatar="👤">👤</button>
+              <button type="button" class="avatar-opt" data-avatar="⚡">⚡</button>
+              <button type="button" class="avatar-opt" data-avatar="🔥">🔥</button>
+              <button type="button" class="avatar-opt" data-avatar="💧">💧</button>
+              <button type="button" class="avatar-opt" data-avatar="🍃">🍃</button>
+              <button type="button" class="avatar-opt" data-avatar="🔮">🔮</button>
+              <button type="button" class="avatar-opt" data-avatar="👑">👑</button>
+              <button type="button" class="avatar-opt" data-avatar="🎮">🎮</button>
+              <button type="button" class="avatar-opt" data-avatar="⚔️">⚔️</button>
+              <button type="button" class="avatar-opt" data-avatar="🛡️">🛡️</button>
+              <button type="button" class="avatar-opt" data-avatar="🐉">🐉</button>
+              <button type="button" class="avatar-opt" data-avatar="🦅">🦅</button>
             </div>
           </div>
-        </div>
+          <button id="saveAccountProfileBtn" type="button" class="primary-button full-width" onclick="App.saveAccountProfile()">
+            💾 保存 / ログイン設定を更新
+          </button>
+        </form>
       </div>
     </div>
   </div>

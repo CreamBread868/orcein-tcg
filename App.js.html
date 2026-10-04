@@ -125,18 +125,64 @@ console.log('[ORBITAL] App.js.html started execution');
       }
     },
 
-    unlockCamouflageAndLogin() {
-      try {
-        localStorage.setItem('ORBITAL_HAS_LOGGED_IN', 'true');
-        const camouPage = document.getElementById('camouflagePage');
-        const appContainer = document.getElementById('app');
-        if (camouPage) camouPage.classList.add('hidden');
-        if (appContainer) appContainer.classList.remove('hidden');
-        this.toast('🔬 認証完了: 酢酸オルセイン TCG へようこそ！');
-        this.openAccountProfileModal();
-      } catch (e) {
-        console.error('unlockCamouflageAndLogin error:', e);
+    openCamouflageLoginModal() {
+      const modal = document.getElementById('camouLoginModal');
+      const input = document.getElementById('camouPasswordInput');
+      const err = document.getElementById('camouPasswordError');
+      if (err) err.style.display = 'none';
+      if (input) input.value = '';
+      if (modal) modal.classList.remove('hidden');
+      if (input) setTimeout(() => input.focus(), 100);
+    },
+
+    closeCamouflageLoginModal() {
+      const modal = document.getElementById('camouLoginModal');
+      if (modal) modal.classList.add('hidden');
+    },
+
+        submitCamouflageLogin() {
+      const emailInput = document.getElementById('camouEmailInput');
+      const passInput = document.getElementById('camouPasswordInput');
+      const err = document.getElementById('camouPasswordError');
+
+      const email = (emailInput ? emailInput.value : '').trim().toLowerCase();
+      const pass = (passInput ? passInput.value : '').trim();
+
+      if (!email || !email.includes('@')) {
+        if (err) { err.textContent = '有効なGmailアドレスを入力してください。'; err.style.display = 'block'; }
+        return;
       }
+      if (!pass) {
+        if (err) { err.textContent = 'パスワードを入力してください。'; err.style.display = 'block'; }
+        return;
+      }
+
+      try {
+        localStorage.setItem('orbital_mock_user_email', email);
+        localStorage.setItem('orbital_mock_user_password', pass);
+        localStorage.setItem('ORBITAL_HAS_LOGGED_IN', 'true');
+      } catch(e) {}
+
+      const displayName = email.split('@')[0];
+      const userProfile = { email, displayName, avatar: '👤', isLoggedIn: true };
+      this.state.userProfile = userProfile;
+      if (window.DeckSystem && window.DeckSystem.state) {
+        window.DeckSystem.state.currentUser = userProfile;
+        if (typeof window.DeckSystem.updateUserBadge === 'function') window.DeckSystem.updateUserBadge();
+        if (typeof window.DeckSystem.loadDecks === 'function') window.DeckSystem.loadDecks();
+      }
+
+      this.closeCamouflageLoginModal();
+      const camouPage = document.getElementById('camouflagePage');
+      const appContainer = document.getElementById('app');
+      if (camouPage) camouPage.classList.add('hidden');
+      if (appContainer) appContainer.classList.remove('hidden');
+
+      this.toast('🔑 ログイン成功: 酢酸オルセイン TCG へようこそ！');
+    },
+
+    unlockCamouflageAndLogin() {
+      this.openCamouflageLoginModal();
     },
 
     initFontSize() {
@@ -1033,7 +1079,7 @@ console.log('[ORBITAL] App.js.html started execution');
       }
     },
 
-    openAccountProfileModal() {
+        openAccountProfileModal() {
       const modal = this.el('accountProfileModal');
       if (!modal) return;
       modal.classList.remove('hidden');
@@ -1043,10 +1089,16 @@ console.log('[ORBITAL] App.js.html started execution');
       if (saveBtn) saveBtn.disabled = false;
 
       const curUser = (window.DeckSystem && window.DeckSystem.state && window.DeckSystem.state.currentUser) || { email: 'player@gmail.com' };
+      const savedEmail = (function() { try { return localStorage.getItem('orbital_mock_user_email') || curUser.email || 'player@gmail.com'; } catch(e) { return 'player@gmail.com'; } })();
+      const savedPass = (function() { try { return localStorage.getItem('orbital_mock_user_password') || ''; } catch(e) { return ''; } })();
+
       const emailInput = this.el('accEmailInput');
+      const passInput = this.el('accPasswordInput');
       const nameInput = this.el('accDisplayNameInput');
-      if (emailInput) emailInput.value = curUser.email || 'player@gmail.com';
-      if (nameInput) nameInput.value = curUser.displayName || (curUser.email ? curUser.email.split('@')[0] : 'プレイヤー');
+
+      if (emailInput) emailInput.value = savedEmail;
+      if (passInput) passInput.value = savedPass;
+      if (nameInput) nameInput.value = curUser.displayName || (savedEmail ? savedEmail.split('@')[0] : 'プレイヤー');
 
       const curAvatar = curUser.avatar || '👤';
       const grid = this.el('avatarSelectorGrid');
@@ -1056,8 +1108,6 @@ console.log('[ORBITAL] App.js.html started execution');
           btn.classList.toggle('active', av === curAvatar);
         });
       }
-
-      this.renderAccountSwitchList();
     },
 
     closeAccountProfileModal() {
@@ -1068,8 +1118,9 @@ console.log('[ORBITAL] App.js.html started execution');
       }
     },
 
-    saveAccountProfile() {
+        saveAccountProfile() {
       const email = (this.el('accEmailInput')?.value || '').trim().toLowerCase();
+      const password = (this.el('accPasswordInput')?.value || '').trim();
       const displayName = (this.el('accDisplayNameInput')?.value || '').trim();
       const activeAvatarBtn = this.el('avatarSelectorGrid')?.querySelector('.avatar-opt.active');
       const avatar = activeAvatarBtn ? (activeAvatarBtn.dataset.avatar || activeAvatarBtn.getAttribute('data-avatar') || activeAvatarBtn.textContent.trim() || '👤') : '👤';
@@ -1086,15 +1137,18 @@ console.log('[ORBITAL] App.js.html started execution');
       const saveBtn = this.el('saveAccountProfileBtn');
       if (saveBtn) saveBtn.disabled = true;
 
-      const profileObj = { email: email, displayName: displayName, avatar: avatar };
-
       try {
         localStorage.setItem('orbital_mock_user_email', email);
+        if (password) localStorage.setItem('orbital_mock_user_password', password);
+        localStorage.setItem('ORBITAL_HAS_LOGGED_IN', 'true');
       } catch (e) {}
+
+      const profileObj = { email, displayName, avatar, password };
 
       const self = this;
       const applyProfile = (prof) => {
         if (saveBtn) saveBtn.disabled = false;
+        self.state.userProfile = prof;
         if (window.DeckSystem && window.DeckSystem.state) {
           window.DeckSystem.state.currentUser = prof;
           if (typeof window.DeckSystem.updateUserBadge === 'function') {
@@ -1104,44 +1158,25 @@ console.log('[ORBITAL] App.js.html started execution');
             window.DeckSystem.loadDecks();
           }
         }
-        self.toast('プロフィールを保存しました！ (' + (prof.displayName || displayName) + ')');
+        self.toast('アカウント情報を更新・ログインしました！ (' + (prof.displayName || displayName) + ')');
         self.closeAccountProfileModal();
       };
 
-      if (window.google && google.script && google.script.run) {
+      if (window.google && google.script && google.script.run && !window._is_mock_gas && typeof google.script.run.saveUserProfile === 'function') {
         google.script.run
           .withSuccessHandler((res) => {
             if (res && res.ok && res.profile) {
               applyProfile(res.profile);
             } else {
-              if (saveBtn) saveBtn.disabled = false;
-              self.toast((res && res.message) || 'プロフィールの保存に失敗しました。', true);
+              applyProfile(profileObj);
             }
           })
           .withFailureHandler((err) => {
-            if (saveBtn) saveBtn.disabled = false;
-            console.error('saveUserProfile error:', err);
-            self.toast('エラー: ' + (err.message || err), true);
+            applyProfile(profileObj);
           })
           .saveUserProfile(profileObj);
       } else {
-        try {
-          var rawUsers = localStorage.getItem('orbital_mock_users');
-          var users = rawUsers ? JSON.parse(rawUsers) : [];
-          var idx = users.findIndex(u => String(u.email).toLowerCase() === email);
-          if (idx >= 0) {
-            users[idx].displayName = displayName;
-            users[idx].avatar = avatar;
-            users[idx].updatedAt = new Date().toISOString();
-          } else {
-            users.push({ email: email, displayName: displayName, avatar: avatar, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
-          }
-          localStorage.setItem('orbital_mock_users', JSON.stringify(users));
-          applyProfile({ email: email, displayName: displayName, avatar: avatar, isLoggedIn: true });
-        } catch (e) {
-          if (saveBtn) saveBtn.disabled = false;
-          self.toast('ローカル保存失敗: ' + e.message, true);
-        }
+        applyProfile(profileObj);
       }
     },
 

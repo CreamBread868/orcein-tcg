@@ -6558,7 +6558,7 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
     <div class="camou-nav">
       <div class="camou-nav-brand">🧪 日本生物教育学会 学術デジタルアーカイブ</div>
       <div>
-        <button type="button" class="camou-login-btn" onclick="App.unlockCamouflageAndLogin()">🔬 システムログイン / 研究者認証</button>
+        <button type="button" class="camou-login-btn" onclick="App.openCamouflageLoginModal()">ログイン</button>
       </div>
     </div>
     
@@ -6655,8 +6655,34 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
 
         <div class="camou-secret-footer">
           <p>※ 本レポートは日本生物教育学会データベースに保管されています。</p>
-          <button type="button" class="camou-secret-trigger" onclick="App.unlockCamouflageAndLogin()">[特別アクセス / ログインシステムを起動]</button>
+          <button type="button" class="camou-secret-trigger" onclick="App.openCamouflageLoginModal()">[ログイン]</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 偽装Webサイト 初回ログインモーダル -->
+  <div id="camouLoginModal" class="modal hidden">
+    <div class="modal-backdrop" onclick="App.closeCamouflageLoginModal()"></div>
+    <div class="modal-card" style="max-width: 420px; padding: 28px; text-align: center;">
+      <h2 style="margin-top: 0; font-size: 20px; font-weight: 800; color: var(--accent2);">🔑 システムログイン & アカウント設定</h2>
+      <p style="color: var(--muted); font-size: 13px; margin-bottom: 20px;">初回アクセスのため、Gmailアドレスとパスワードを設定してください。</p>
+      
+      <div style="display: flex; flex-direction: column; gap: 14px; text-align: left; margin-bottom: 22px;">
+        <div>
+          <label style="display: block; font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 6px;">Gmail アドレス</label>
+          <input type="email" id="camouEmailInput" placeholder="example@gmail.com" style="width: 100%; padding: 12px 14px; border-radius: 12px; background: rgba(0,0,0,0.4); border: 1px solid var(--line); color: var(--text); font-size: 14px;" onkeydown="if(event.key==='Enter') App.submitCamouflageLogin();">
+        </div>
+        <div>
+          <label style="display: block; font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 6px;">パスワード設定</label>
+          <input type="password" id="camouPasswordInput" placeholder="パスワードを入力" style="width: 100%; padding: 12px 14px; border-radius: 12px; background: rgba(0,0,0,0.4); border: 1px solid var(--line); color: var(--text); font-size: 14px;" onkeydown="if(event.key==='Enter') App.submitCamouflageLogin();">
+        </div>
+        <div id="camouPasswordError" style="color: #f43f5e; font-size: 12px; font-weight: 700; display: none;"></div>
+      </div>
+      
+      <div style="display: flex; gap: 10px; justify-content: flex-end;">
+        <button type="button" class="secondary-button" onclick="App.closeCamouflageLoginModal()">キャンセル</button>
+        <button type="button" class="primary-button" onclick="App.submitCamouflageLogin()">ログイン・設定完了</button>
       </div>
     </div>
   </div>
@@ -23297,74 +23323,52 @@ console.log('[ORBITAL] App.js.html started execution');
     })();
   </script>
   <!-- アカウント管理・切替モーダル -->
+  <!-- アカウント設定モーダル -->
   <div id="accountProfileModal" class="modal hidden" style="display: none;">
-    <div class="modal-backdrop"></div>
-    <div class="modal-card account-modal-card">
-      <div class="modal-header">
+    <div class="modal-backdrop" onclick="App.closeAccountProfileModal()"></div>
+    <div class="modal-card" style="max-width: 480px; padding: 28px;">
+      <div class="modal-header" style="margin-bottom: 20px;">
         <div>
           <div class="eyebrow">USER ACCOUNT & PROFILE</div>
-          <h2 class="modal-title">👤 ユーザーアカウント管理</h2>
+          <h2 class="modal-title" style="margin: 4px 0 0;">👤 Gmail & パスワード設定</h2>
         </div>
         <button id="closeAccountModalBtn" type="button" class="close-button" onclick="App.closeAccountProfileModal()">&times;</button>
       </div>
       <div class="modal-body">
-        <div class="account-modal-grid">
-          <!-- 左側: 現在のアカウント編集 -->
-          <div class="account-section-card">
-            <h3><i class="fas fa-id-card"></i> 現在のアカウント編集</h3>
-            <form id="accountProfileForm" onsubmit="App.saveAccountProfile(); return false;">
-              <div class="form-group">
-                <label class="form-label">Gmailアドレス (アカウントID)</label>
-                <input id="accEmailInput" type="email" class="input" placeholder="example@gmail.com" required>
-              </div>
-              <div class="form-group">
-                <label class="form-label">アカウント表示名 (ユーザー名)</label>
-                <input id="accDisplayNameInput" type="text" class="input" placeholder="例: サトシ" maxlength="20" required>
-              </div>
-              <div class="form-group">
-                <label class="form-label">アバターアイコン</label>
-                <div class="avatar-selector-grid" id="avatarSelectorGrid">
-                  <button type="button" class="avatar-opt active" data-avatar="👤">👤</button>
-                  <button type="button" class="avatar-opt" data-avatar="⚡">⚡</button>
-                  <button type="button" class="avatar-opt" data-avatar="🔥">🔥</button>
-                  <button type="button" class="avatar-opt" data-avatar="💧">💧</button>
-                  <button type="button" class="avatar-opt" data-avatar="🍃">🍃</button>
-                  <button type="button" class="avatar-opt" data-avatar="🔮">🔮</button>
-                  <button type="button" class="avatar-opt" data-avatar="👑">👑</button>
-                  <button type="button" class="avatar-opt" data-avatar="🎮">🎮</button>
-                  <button type="button" class="avatar-opt" data-avatar="⚔️">⚔️</button>
-                  <button type="button" class="avatar-opt" data-avatar="🛡️">🛡️</button>
-                  <button type="button" class="avatar-opt" data-avatar="🐉">🐉</button>
-                  <button type="button" class="avatar-opt" data-avatar="🦅">🦅</button>
-                </div>
-              </div>
-              <button id="saveAccountProfileBtn" type="button" class="primary-button full-width" onclick="App.saveAccountProfile()">
-                <i class="fas fa-save"></i> プロフィールを保存
-              </button>
-            </form>
+        <form id="accountProfileForm" onsubmit="App.saveAccountProfile(); return false;" style="display:flex; flex-direction:column; gap:16px;">
+          <div class="form-group">
+            <label class="form-label">Gmail アドレス (アカウントID)</label>
+            <input id="accEmailInput" type="email" class="input" placeholder="example@gmail.com" required>
           </div>
-
-          <!-- 右側: アカウント切替 ＆ 新規作成 -->
-          <div class="account-section-card">
-            <h3><i class="fas fa-users-cog"></i> アカウント切替・新規追加</h3>
-            <div class="account-switch-container">
-              <label class="form-label">登録済みアカウント一覧</label>
-              <div id="accountSwitchList" class="account-switch-list">
-                <!-- JavaScriptで動的描画 -->
-              </div>
-            </div>
-
-            <div class="add-account-box" style="margin-top: 16px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 12px;">
-              <label class="form-label">＋ 新しいGmailアカウントを追加・切替</label>
-              <div style="display:flex; gap:8px;">
-                <input id="newAccountEmailInput" type="email" class="input" placeholder="example@gmail.com">
-                <button id="createOrSwitchAccountBtn" type="button" class="secondary-button" style="white-space:nowrap;" onclick="App.createOrSwitchAccount()">
-                  作成/切替
-                </button>
-              </div>
+          <div class="form-group">
+            <label class="form-label">パスワード (設定・変更)</label>
+            <input id="accPasswordInput" type="password" class="input" placeholder="新しいパスワードを入力">
+          </div>
+          <div class="form-group">
+            <label class="form-label">表示名 (ユーザー名)</label>
+            <input id="accDisplayNameInput" type="text" class="input" placeholder="例: サトシ" maxlength="20" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">アバターアイコン</label>
+            <div class="avatar-selector-grid" id="avatarSelectorGrid">
+              <button type="button" class="avatar-opt active" data-avatar="👤">👤</button>
+              <button type="button" class="avatar-opt" data-avatar="⚡">⚡</button>
+              <button type="button" class="avatar-opt" data-avatar="🔥">🔥</button>
+              <button type="button" class="avatar-opt" data-avatar="💧">💧</button>
+              <button type="button" class="avatar-opt" data-avatar="🍃">🍃</button>
+              <button type="button" class="avatar-opt" data-avatar="🔮">🔮</button>
+              <button type="button" class="avatar-opt" data-avatar="👑">👑</button>
+              <button type="button" class="avatar-opt" data-avatar="🎮">🎮</button>
+              <button type="button" class="avatar-opt" data-avatar="⚔️">⚔️</button>
+              <button type="button" class="avatar-opt" data-avatar="🛡️">🛡️</button>
+              <button type="button" class="avatar-opt" data-avatar="🐉">🐉</button>
+              <button type="button" class="avatar-opt" data-avatar="🦅">🦅</button>
             </div>
           </div>
-        </div>
+          <button id="saveAccountProfileBtn" type="button" class="primary-button full-width" onclick="App.saveAccountProfile()">
+            💾 保存 / ログイン設定を更新
+          </button>
+        </form>
       </div>
     </div>
   </div>
