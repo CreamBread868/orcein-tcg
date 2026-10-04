@@ -2112,6 +2112,13 @@ console.log('[ORBITAL] App.js.html started execution');
       this.state.nmt = val;
       try { localStorage.setItem('ORBITAL_NMT_BALANCE', String(val)); } catch(e) {}
       this.updateNmtDisplays();
+
+      if (window.google && google.script && google.script.run && !window._is_mock_gas) {
+        try {
+          const email = (this.state.userProfile && this.state.userProfile.email) ? this.state.userProfile.email : (localStorage.getItem('orbital_mock_user_email') || 'player@gmail.com');
+          google.script.run.saveUserNmtBalance(email, val);
+        } catch(e) {}
+      }
     },
 
     updateNmtDisplays() {
@@ -2130,7 +2137,10 @@ console.log('[ORBITAL] App.js.html started execution');
       try { localStorage.setItem('ORBITAL_USER_COLLECTION', JSON.stringify(col)); } catch(e) {}
 
       if (window.google && google.script && google.script.run && !window._is_mock_gas) {
-        google.script.run.saveUserCollection(col, this.state.userProfile ? this.state.userProfile.email : '');
+        try {
+          const email = (this.state.userProfile && this.state.userProfile.email) ? this.state.userProfile.email : (localStorage.getItem('orbital_mock_user_email') || 'player@gmail.com');
+          google.script.run.saveUserCollection(col, email);
+        } catch(e) {}
       }
     },
 
