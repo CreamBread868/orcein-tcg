@@ -67,6 +67,7 @@ console.log('[ORBITAL] App.js.html started execution');
       safe('bindAccountProfileModal', () => this.bindAccountProfileModal());
       safe('loadCards', () => this.loadCards());
       safe('checkForUpdates', () => this.checkForUpdates());
+      safe('checkCamouflageAccess', () => this.checkCamouflageAccess());
       safe('CardSystem.init', () => {
         if (window.CardSystem && window.CardSystem.init) CardSystem.init();
       });
@@ -101,6 +102,41 @@ console.log('[ORBITAL] App.js.html started execution');
           if (startupOverlay.parentNode) startupOverlay.parentNode.removeChild(startupOverlay);
         }
       } catch (e) {}
+    },
+
+    checkCamouflageAccess() {
+      try {
+        const hasLoggedIn = localStorage.getItem('ORBITAL_HAS_LOGGED_IN');
+        const camouPage = document.getElementById('camouflagePage');
+        const appContainer = document.getElementById('app');
+
+        if (!hasLoggedIn || hasLoggedIn !== 'true') {
+          if (camouPage) camouPage.classList.remove('hidden');
+          if (appContainer) appContainer.classList.add('hidden');
+          return false;
+        } else {
+          if (camouPage) camouPage.classList.add('hidden');
+          if (appContainer) appContainer.classList.remove('hidden');
+          return true;
+        }
+      } catch (e) {
+        console.error('checkCamouflageAccess error:', e);
+        return true;
+      }
+    },
+
+    unlockCamouflageAndLogin() {
+      try {
+        localStorage.setItem('ORBITAL_HAS_LOGGED_IN', 'true');
+        const camouPage = document.getElementById('camouflagePage');
+        const appContainer = document.getElementById('app');
+        if (camouPage) camouPage.classList.add('hidden');
+        if (appContainer) appContainer.classList.remove('hidden');
+        this.toast('🔬 認証完了: 酢酸オルセイン TCG へようこそ！');
+        this.openAccountProfileModal();
+      } catch (e) {
+        console.error('unlockCamouflageAndLogin error:', e);
+      }
     },
 
     initFontSize() {

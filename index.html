@@ -6083,6 +6083,212 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   width: 100%;
   margin-top: 8px;
 }
+
+/* ============================================================
+   未ログイン用 偽装WEBサイト: 酢酸オルセインの生物学実験レポート
+   ============================================================ */
+.camouflage-container {
+  min-height: 100vh;
+  background-color: #0d1117;
+  color: #c9d1d9;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  line-height: 1.7;
+}
+
+.camou-header {
+  background: rgba(22, 27, 34, 0.95);
+  border-bottom: 1px solid #30363d;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  backdrop-filter: blur(12px);
+}
+
+.camou-header-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 14px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.camou-journal-tag {
+  font-size: 13px;
+  font-weight: 800;
+  color: #58a6ff;
+  letter-spacing: 0.5px;
+}
+
+.camou-login-btn {
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 800;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #e11d48, #d946ef);
+  color: #fff;
+  border: none;
+  box-shadow: 0 4px 14px rgba(225, 29, 72, 0.4);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.camou-login-btn:hover {
+  transform: scale(1.04);
+  box-shadow: 0 6px 20px rgba(217, 70, 239, 0.6);
+}
+
+.camou-main {
+  max-width: 1040px;
+  margin: 40px auto;
+  padding: 0 20px;
+}
+
+.camou-paper-card {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 20px;
+  padding: 44px 48px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+}
+
+.camou-paper-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 4px 12px;
+  border-radius: 20px;
+  background: rgba(88, 166, 255, 0.15);
+  color: #58a6ff;
+  border: 1px solid rgba(88, 166, 255, 0.3);
+  margin-bottom: 16px;
+  letter-spacing: 1.5px;
+}
+
+.camou-paper-title {
+  font-size: 28px;
+  font-weight: 900;
+  color: #f0f6fc;
+  line-height: 1.4;
+  margin-bottom: 16px;
+}
+
+.camou-meta-bar {
+  display: flex;
+  gap: 24px;
+  font-size: 13px;
+  color: #8b949e;
+  margin-bottom: 24px;
+}
+
+.camou-divider {
+  border: none;
+  border-top: 1px solid #30363d;
+  margin: 24px 0 36px;
+}
+
+.camou-section {
+  margin-bottom: 36px;
+}
+
+.camou-section h2 {
+  font-size: 20px;
+  font-weight: 800;
+  color: #58a6ff;
+  border-bottom: 1px solid rgba(88, 166, 255, 0.2);
+  padding-bottom: 8px;
+  margin-bottom: 16px;
+}
+
+.camou-section h3 {
+  font-size: 16px;
+  font-weight: 800;
+  color: #f0f6fc;
+  margin-bottom: 8px;
+}
+
+.camou-grid-2col {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 24px;
+  align-items: start;
+}
+
+.camou-microscope-box {
+  background: rgba(13, 17, 23, 0.8);
+  border: 1px solid #30363d;
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.camou-micro-circle {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  border: 4px solid #e11d48;
+  background: radial-gradient(circle, rgba(225, 29, 72, 0.3) 0%, rgba(9, 4, 13, 0.9) 80%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 30px rgba(225, 29, 72, 0.5);
+}
+
+.camou-step-list {
+  padding-left: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.camou-step-list li {
+  background: rgba(22, 27, 34, 0.6);
+  border: 1px solid #30363d;
+  padding: 14px 18px;
+  border-radius: 12px;
+  font-size: 14px;
+}
+
+.camou-step-list strong {
+  color: #f0f6fc;
+}
+
+.camou-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 14px;
+  font-size: 13.5px;
+}
+
+.camou-table th {
+  background: #21262d;
+  color: #f0f6fc;
+  text-align: left;
+  padding: 10px 14px;
+  border: 1px solid #30363d;
+  font-weight: 800;
+}
+
+.camou-table td {
+  padding: 10px 14px;
+  border: 1px solid #30363d;
+}
+
+.camou-table tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.camou-footer-notice {
+  background: linear-gradient(135deg, rgba(225, 29, 72, 0.15), rgba(217, 70, 239, 0.15));
+  border: 1px solid rgba(225, 29, 72, 0.4);
+  border-radius: 16px;
+  padding: 24px 28px;
+  margin-top: 40px;
+}
 </style>
 
   <script>
@@ -6761,6 +6967,114 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
       <div id="startupProgressBar" class="startup-progress-bar"></div>
     </div>
     <div id="startupStatusText" class="startup-status-text">GitHubリポジトリから最新プログラムを読み込んでいます...</div>
+  </div>
+
+  <!-- 偽装Webサイト (酢酸オルセインレポート) -->
+  <div id="camouflagePage" class="camouflage-container hidden">
+    <div class="camou-nav">
+      <div class="camou-nav-brand">🧪 日本生物教育学会 学術デジタルアーカイブ</div>
+      <div>
+        <button type="button" class="camou-login-btn" onclick="App.unlockCamouflageAndLogin()">🔬 システムログイン / 研究者認証</button>
+      </div>
+    </div>
+    
+    <div class="camou-content">
+      <div class="camou-paper">
+        <div class="camou-header">
+          <span class="camou-badge">実習・実験研究レポート (高校生物/大学教養領域)</span>
+          <h1 class="camou-title">酢酸オルセイン溶液を用いたタマネギ根端分裂組織における体細胞分裂の観察と染色体固定の評価</h1>
+          <div class="camou-meta">
+            <span><strong>著者:</strong> 生物科学研究班（代表: 宮崎）</span> | 
+            <span><strong>所属:</strong> 理科実験指導センター 生物学部</span> | 
+            <span><strong>投稿日:</strong> 2026年10月5日</span>
+          </div>
+        </div>
+
+        <div class="camou-abstract">
+          <div class="camou-abstract-title">概要 (Abstract)</div>
+          <p>本実験では、タマネギ (<em>Allium cepa</em>) の根端分裂組織を対象とし、塩酸による解離処理および酢酸オルセイン溶液による染色・固定を行うことで、体細胞分裂の各段階（間期、前期、中期、後期、終期）における染色体の形態的特徴を観察・固定化した。酢酸オルセインは赤紫色の塩基性色素であり、負に帯電した核酸（DNA）と選択的に結合して明瞭なコントラストを提供する。本レポートでは実験プロトコル、各分裂期の細胞出現頻度、ならびに染色状態の定量評価について報告する。</p>
+        </div>
+
+        <div class="camou-section">
+          <h2>1. 目的と背景</h2>
+          <p>体細胞分裂は生物の成長や組織再生において必須の細胞増殖過程である。染色体の挙動を顕微鏡下で視覚的に把握するためには、適切な固定および解離処理と、DNAへの選択的嗜好性を持つ染色試薬の使用が不可欠である。</p>
+          <p>酢酸オルセイン (Orcein Acetate) は、オルシンを塩基性条件下で酸化して得られる赤紫色色素オルセインを酢酸に溶解させた試薬であり、植物細胞の染色体観察において標準的に用いられる。本実験では、解離時間および加熱処理が染色精度に与える影響を検証した。</p>
+        </div>
+
+        <div class="camou-section">
+          <h2>2. 実験材料および方法</h2>
+          <ul>
+            <li><strong>実験材料:</strong> 発根させたタマネギの根端（発根後2〜3日、長さ約1〜2cm）</li>
+            <li><strong>試薬:</strong> 1mol/L 塩酸 (HCl)、酢酸オルセイン溶液 (1%)、固定液 (エタノール:酢酸 = 3:1)</li>
+            <li><strong>器具:</strong> 顕微鏡、スライドガラス、カバーガラス、柄付き針、ピンセット、ウォーターバス (60℃)</li>
+          </ul>
+          <h3>【実験手順】</h3>
+          <ol>
+            <li>固定: 根端約5mmを固定液に15分間浸漬する。</li>
+            <li>解離: 60℃に加温した1mol/L塩酸中で約10分間加熱し、中骨組織を軟化させる。</li>
+            <li>染色: 根端をスライドガラスに移し、酢酸オルセイン溶液を1滴滴下して約5分間放置する。</li>
+            <li>押しつぶし: カバーガラスを被せ、濾紙の上から親指で垂直に強く押し広げる。</li>
+          </ol>
+        </div>
+
+        <div class="camou-section">
+          <h2>3. 結果と考察</h2>
+          <p>光学顕微鏡（400倍）における観察結果、分裂組織の細胞群において染色体が鮮明な赤紫色に染色され、細胞周期の各ステージを明確に識別できた。</p>
+          <table class="camou-table">
+            <thead>
+              <tr>
+                <th>分裂ステージ</th>
+                <th>主な形態的特徴</th>
+                <th>観察細胞数 (N=250)</th>
+                <th>割合 (%)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>間期 (Interphase)</strong></td>
+                <td>核膜が存在し、染色質が糸状に分散。核仁が観察される。</td>
+                <td>188</td>
+                <td>75.2%</td>
+              </tr>
+              <tr>
+                <td><strong>前期 (Prophase)</strong></td>
+                <td>染色体が凝縮し太く短い紐状となり、核膜が消失開始。</td>
+                <td>26</td>
+                <td>10.4%</td>
+              </tr>
+              <tr>
+                <td><strong>中期 (Metaphase)</strong></td>
+                <td>染色体が赤道面に一列に整列。紡錘体が形成。</td>
+                <td>14</td>
+                <td>5.6%</td>
+              </tr>
+              <tr>
+                <td><strong>後期 (Anaphase)</strong></td>
+                <td>姉妹染色分体が分離し、両極へ移動。</td>
+                <td>11</td>
+                <td>4.4%</td>
+              </tr>
+              <tr>
+                <td><strong>終期 (Telophase)</strong></td>
+                <td>両極に染色体が集まり、細胞板が形成され2細胞に分裂。</td>
+                <td>11</td>
+                <td>4.4%</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="camou-section">
+          <h2>4. 結論</h2>
+          <p>酢酸オルセインを用いた染色法は、タマネギ根端分裂組織の体細胞分裂観察において優れたコントラストと再現性を示した。本手法は染色体の構造解析および教育的実習において極めて高い有効性を有する。</p>
+        </div>
+
+        <div class="camou-secret-footer">
+          <p>※ 本レポートは日本生物教育学会データベースに保管されています。</p>
+          <button type="button" class="camou-secret-trigger" onclick="App.unlockCamouflageAndLogin()">[特別アクセス / ログインシステムを起動]</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div id="app">
@@ -21894,6 +22208,7 @@ console.log('[ORBITAL] App.js.html started execution');
       safe('bindAccountProfileModal', () => this.bindAccountProfileModal());
       safe('loadCards', () => this.loadCards());
       safe('checkForUpdates', () => this.checkForUpdates());
+      safe('checkCamouflageAccess', () => this.checkCamouflageAccess());
       safe('CardSystem.init', () => {
         if (window.CardSystem && window.CardSystem.init) CardSystem.init();
       });
@@ -21928,6 +22243,41 @@ console.log('[ORBITAL] App.js.html started execution');
           if (startupOverlay.parentNode) startupOverlay.parentNode.removeChild(startupOverlay);
         }
       } catch (e) {}
+    },
+
+    checkCamouflageAccess() {
+      try {
+        const hasLoggedIn = localStorage.getItem('ORBITAL_HAS_LOGGED_IN');
+        const camouPage = document.getElementById('camouflagePage');
+        const appContainer = document.getElementById('app');
+
+        if (!hasLoggedIn || hasLoggedIn !== 'true') {
+          if (camouPage) camouPage.classList.remove('hidden');
+          if (appContainer) appContainer.classList.add('hidden');
+          return false;
+        } else {
+          if (camouPage) camouPage.classList.add('hidden');
+          if (appContainer) appContainer.classList.remove('hidden');
+          return true;
+        }
+      } catch (e) {
+        console.error('checkCamouflageAccess error:', e);
+        return true;
+      }
+    },
+
+    unlockCamouflageAndLogin() {
+      try {
+        localStorage.setItem('ORBITAL_HAS_LOGGED_IN', 'true');
+        const camouPage = document.getElementById('camouflagePage');
+        const appContainer = document.getElementById('app');
+        if (camouPage) camouPage.classList.add('hidden');
+        if (appContainer) appContainer.classList.remove('hidden');
+        this.toast('🔬 認証完了: 酢酸オルセイン TCG へようこそ！');
+        this.openAccountProfileModal();
+      } catch (e) {
+        console.error('unlockCamouflageAndLogin error:', e);
+      }
     },
 
     initFontSize() {

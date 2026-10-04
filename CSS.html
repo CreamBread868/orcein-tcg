@@ -6075,3 +6075,209 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   width: 100%;
   margin-top: 8px;
 }
+
+/* ============================================================
+   未ログイン用 偽装WEBサイト: 酢酸オルセインの生物学実験レポート
+   ============================================================ */
+.camouflage-container {
+  min-height: 100vh;
+  background-color: #0d1117;
+  color: #c9d1d9;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  line-height: 1.7;
+}
+
+.camou-header {
+  background: rgba(22, 27, 34, 0.95);
+  border-bottom: 1px solid #30363d;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  backdrop-filter: blur(12px);
+}
+
+.camou-header-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 14px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.camou-journal-tag {
+  font-size: 13px;
+  font-weight: 800;
+  color: #58a6ff;
+  letter-spacing: 0.5px;
+}
+
+.camou-login-btn {
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 800;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #e11d48, #d946ef);
+  color: #fff;
+  border: none;
+  box-shadow: 0 4px 14px rgba(225, 29, 72, 0.4);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.camou-login-btn:hover {
+  transform: scale(1.04);
+  box-shadow: 0 6px 20px rgba(217, 70, 239, 0.6);
+}
+
+.camou-main {
+  max-width: 1040px;
+  margin: 40px auto;
+  padding: 0 20px;
+}
+
+.camou-paper-card {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 20px;
+  padding: 44px 48px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+}
+
+.camou-paper-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 4px 12px;
+  border-radius: 20px;
+  background: rgba(88, 166, 255, 0.15);
+  color: #58a6ff;
+  border: 1px solid rgba(88, 166, 255, 0.3);
+  margin-bottom: 16px;
+  letter-spacing: 1.5px;
+}
+
+.camou-paper-title {
+  font-size: 28px;
+  font-weight: 900;
+  color: #f0f6fc;
+  line-height: 1.4;
+  margin-bottom: 16px;
+}
+
+.camou-meta-bar {
+  display: flex;
+  gap: 24px;
+  font-size: 13px;
+  color: #8b949e;
+  margin-bottom: 24px;
+}
+
+.camou-divider {
+  border: none;
+  border-top: 1px solid #30363d;
+  margin: 24px 0 36px;
+}
+
+.camou-section {
+  margin-bottom: 36px;
+}
+
+.camou-section h2 {
+  font-size: 20px;
+  font-weight: 800;
+  color: #58a6ff;
+  border-bottom: 1px solid rgba(88, 166, 255, 0.2);
+  padding-bottom: 8px;
+  margin-bottom: 16px;
+}
+
+.camou-section h3 {
+  font-size: 16px;
+  font-weight: 800;
+  color: #f0f6fc;
+  margin-bottom: 8px;
+}
+
+.camou-grid-2col {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 24px;
+  align-items: start;
+}
+
+.camou-microscope-box {
+  background: rgba(13, 17, 23, 0.8);
+  border: 1px solid #30363d;
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.camou-micro-circle {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  border: 4px solid #e11d48;
+  background: radial-gradient(circle, rgba(225, 29, 72, 0.3) 0%, rgba(9, 4, 13, 0.9) 80%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 30px rgba(225, 29, 72, 0.5);
+}
+
+.camou-step-list {
+  padding-left: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.camou-step-list li {
+  background: rgba(22, 27, 34, 0.6);
+  border: 1px solid #30363d;
+  padding: 14px 18px;
+  border-radius: 12px;
+  font-size: 14px;
+}
+
+.camou-step-list strong {
+  color: #f0f6fc;
+}
+
+.camou-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 14px;
+  font-size: 13.5px;
+}
+
+.camou-table th {
+  background: #21262d;
+  color: #f0f6fc;
+  text-align: left;
+  padding: 10px 14px;
+  border: 1px solid #30363d;
+  font-weight: 800;
+}
+
+.camou-table td {
+  padding: 10px 14px;
+  border: 1px solid #30363d;
+}
+
+.camou-table tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.camou-footer-notice {
+  background: linear-gradient(135deg, rgba(225, 29, 72, 0.15), rgba(217, 70, 239, 0.15));
+  border: 1px solid rgba(225, 29, 72, 0.4);
+  border-radius: 16px;
+  padding: 24px 28px;
+  margin-top: 40px;
+}
