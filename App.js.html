@@ -66,6 +66,7 @@ console.log('[ORBITAL] App.js.html started execution');
       safe('bindAdmin', () => this.bindAdmin());
       safe('bindAccountProfileModal', () => this.bindAccountProfileModal());
       safe('loadCards', () => this.loadCards());
+      safe('loadShopAndTradeItemsFromGas', () => this.loadShopAndTradeItemsFromGas());
       safe('checkForUpdates', () => this.checkForUpdates());
       safe('checkCamouflageAccess', () => this.checkCamouflageAccess());
       safe('CardSystem.init', () => {
@@ -1974,6 +1975,34 @@ console.log('[ORBITAL] App.js.html started execution');
       ];
     },
 
+        loadShopAndTradeItemsFromGas() {
+      if (!window.google || !google.script || !google.script.run || window._is_mock_gas) return;
+      const self = this;
+      try {
+        if (typeof google.script.run.getSingleShopItems === 'function') {
+          google.script.run.withSuccessHandler((items) => {
+            if (Array.isArray(items) && items.length > 0) {
+              self.state.singleShopItems = items;
+              try { localStorage.setItem('ORBITAL_SINGLE_SHOP_ITEMS', JSON.stringify(items)); } catch(e) {}
+              self.renderSingleShopGrid();
+            }
+          }).getSingleShopItems();
+        }
+        if (typeof google.script.run.getPlayerTradeItems === 'function') {
+          google.script.run.withSuccessHandler((items) => {
+            if (Array.isArray(items) && items.length > 0) {
+              self.state.playerTradeItems = items;
+              try { localStorage.setItem('ORBITAL_PLAYER_TRADE_ITEMS', JSON.stringify(items)); } catch(e) {}
+              self.updateTradeCountBadge(items.length);
+              self.renderPlayerTradeGrid();
+            }
+          }).getPlayerTradeItems();
+        }
+      } catch(e) {
+        console.warn('loadShopAndTradeItemsFromGas error:', e);
+      }
+    },
+
     getSingleShopItems() {
       if (Array.isArray(this.state.singleShopItems)) {
         return this.state.singleShopItems;
@@ -2513,6 +2542,9 @@ console.log('[ORBITAL] App.js.html started execution');
       this.state.playerTradeItems = items;
       try { localStorage.setItem('ORBITAL_PLAYER_TRADE_ITEMS', JSON.stringify(items)); } catch(err) {}
 
+      if (window.google && google.script && google.script.run && !window._is_mock_gas && typeof google.script.run.savePlayerTradeItem === 'function') {
+        try { google.script.run.savePlayerTradeItem(newListing); } catch(err) {}
+      }
       this.toast('🚀 カードをトレードマーケットに出品しました！');
       this.closeTradeListingModal();
       this.switchShopMarketMode('trade', document.getElementById('shopModeTabTrade'));
@@ -2545,6 +2577,9 @@ console.log('[ORBITAL] App.js.html started execution');
       this.state.playerTradeItems = updated;
       try { localStorage.setItem('ORBITAL_PLAYER_TRADE_ITEMS', JSON.stringify(updated)); } catch(err) {}
 
+      if (window.google && google.script && google.script.run && !window._is_mock_gas && typeof google.script.run.deletePlayerTradeItem === 'function') {
+        try { google.script.run.deletePlayerTradeItem(tradeId); } catch(err) {}
+      }
       this.toast('✨ 「' + card.name + '」を ' + item.price + ' NMT で買い取りました！');
       this.renderPlayerTradeGrid();
     },
@@ -2564,6 +2599,9 @@ console.log('[ORBITAL] App.js.html started execution');
       this.state.playerTradeItems = updated;
       try { localStorage.setItem('ORBITAL_PLAYER_TRADE_ITEMS', JSON.stringify(updated)); } catch(err) {}
 
+      if (window.google && google.script && google.script.run && !window._is_mock_gas && typeof google.script.run.deletePlayerTradeItem === 'function') {
+        try { google.script.run.deletePlayerTradeItem(tradeId); } catch(err) {}
+      }
       this.toast('↩ 出品を取り消し、カードをコレクションに戻しました');
       this.renderPlayerTradeGrid();
     },
