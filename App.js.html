@@ -1904,14 +1904,14 @@ console.log('[ORBITAL] App.js.html started execution');
     },
 
     getSingleShopItems() {
-      if (this.state.singleShopItems && this.state.singleShopItems.length > 0) {
+      if (Array.isArray(this.state.singleShopItems)) {
         return this.state.singleShopItems;
       }
       try {
         const stored = localStorage.getItem('ORBITAL_SINGLE_SHOP_ITEMS');
-        if (stored) {
+        if (stored !== null) {
           const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed) && parsed.length > 0) {
+          if (Array.isArray(parsed)) {
             this.state.singleShopItems = parsed;
             return parsed;
           }
@@ -1919,6 +1919,7 @@ console.log('[ORBITAL] App.js.html started execution');
       } catch(e) {}
       const defaults = this.getDefaultSingleShopItems();
       this.state.singleShopItems = defaults;
+      try { localStorage.setItem('ORBITAL_SINGLE_SHOP_ITEMS', JSON.stringify(defaults)); } catch(e) {}
       return defaults;
     },
 
