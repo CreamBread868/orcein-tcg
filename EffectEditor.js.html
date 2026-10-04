@@ -1968,6 +1968,73 @@ var EffectEditor;
       if (popup) popup.style.display = 'none';
     },
 
+    applyEffectEditor() {
+      try {
+        const editor = document.getElementById('effectCodeEditor');
+        const descInput = document.getElementById('effectEditorDisplayText');
+        const activeTab = this.effectEditor && this.effectEditor.activeTab ? this.effectEditor.activeTab : 'attack1';
+
+        if (this.effectEditor && this.effectEditor.codes) {
+          if (editor) this.effectEditor.codes[activeTab] = editor.value;
+          if (descInput) this.effectEditor.texts[activeTab] = descInput.value;
+        }
+
+        const setVal = (id, val) => {
+          const el = document.getElementById(id);
+          if (el) el.value = val == null ? '' : val;
+        };
+
+        const updateSummary = (target, text, code) => {
+          const el = document.getElementById(target + "EffectSummary");
+          if (!el) return;
+          const disp = text || this.makeEffectDisplayText(code);
+          el.textContent = disp ? "✦ 設定効果: " + disp : code ? '✦ 設定効果: JavaScript効果設定済み' : '';
+        };
+
+        const abCode = (this.effectEditor && this.effectEditor.codes && this.effectEditor.codes.ability) || '';
+        const abText = (this.effectEditor && this.effectEditor.texts && this.effectEditor.texts.ability) || '';
+        const at1Code = (this.effectEditor && this.effectEditor.codes && this.effectEditor.codes.attack1) || '';
+        const at1Text = (this.effectEditor && this.effectEditor.texts && this.effectEditor.texts.attack1) || '';
+        const at2Code = (this.effectEditor && this.effectEditor.codes && this.effectEditor.codes.attack2) || '';
+        const at2Text = (this.effectEditor && this.effectEditor.texts && this.effectEditor.texts.attack2) || '';
+        const trCode = (this.effectEditor && this.effectEditor.codes && this.effectEditor.codes.trainer) || '';
+        const trText = (this.effectEditor && this.effectEditor.texts && this.effectEditor.texts.trainer) || '';
+
+        setVal('abilityCode', abCode);
+        setVal('abilityText', abText);
+
+        if (activeTab === 'trainer' || (this.effectEditor && this.effectEditor.target === 'trainer')) {
+          setVal('attack1Code', trCode);
+          setVal('attack1Text', trText);
+          const descEl = document.getElementById('description');
+          if (descEl && trText) descEl.value = trText;
+          const trSummary = document.getElementById('trainerEffectSummary');
+          if (trSummary) {
+            const trDisp = trText || this.makeEffectDisplayText(trCode);
+            trSummary.textContent = trDisp ? "✦ 設定効果: " + trDisp : trCode ? '✦ 設定効果: JavaScript効果設定済み' : '';
+          }
+        } else {
+          setVal('attack1Code', at1Code);
+          setVal('attack1Text', at1Text);
+        }
+
+        setVal('attack2Code', at2Code);
+        setVal('attack2Text', at2Text);
+
+        updateSummary('ability', abText, abCode);
+        updateSummary('attack1', at1Text, at1Code);
+        updateSummary('attack2', at2Text, at2Code);
+
+        this.closeEffectEditor();
+
+        if (window.CardSystem && typeof window.CardSystem.updatePreview === 'function') {
+          window.CardSystem.updatePreview();
+        }
+      } catch (err) {
+        console.error('[EffectEditor.applyEffectEditor] Error:', err);
+      }
+    },
+
     switchEffectTab(newTab) {
       const editor = document.getElementById('effectCodeEditor');
       const descInput = document.getElementById('effectEditorDisplayText');

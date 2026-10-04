@@ -11901,6 +11901,73 @@ var EffectEditor;
       if (popup) popup.style.display = 'none';
     },
 
+    applyEffectEditor() {
+      try {
+        const editor = document.getElementById('effectCodeEditor');
+        const descInput = document.getElementById('effectEditorDisplayText');
+        const activeTab = this.effectEditor && this.effectEditor.activeTab ? this.effectEditor.activeTab : 'attack1';
+
+        if (this.effectEditor && this.effectEditor.codes) {
+          if (editor) this.effectEditor.codes[activeTab] = editor.value;
+          if (descInput) this.effectEditor.texts[activeTab] = descInput.value;
+        }
+
+        const setVal = (id, val) => {
+          const el = document.getElementById(id);
+          if (el) el.value = val == null ? '' : val;
+        };
+
+        const updateSummary = (target, text, code) => {
+          const el = document.getElementById(target + "EffectSummary");
+          if (!el) return;
+          const disp = text || this.makeEffectDisplayText(code);
+          el.textContent = disp ? "✦ 設定効果: " + disp : code ? '✦ 設定効果: JavaScript効果設定済み' : '';
+        };
+
+        const abCode = (this.effectEditor && this.effectEditor.codes && this.effectEditor.codes.ability) || '';
+        const abText = (this.effectEditor && this.effectEditor.texts && this.effectEditor.texts.ability) || '';
+        const at1Code = (this.effectEditor && this.effectEditor.codes && this.effectEditor.codes.attack1) || '';
+        const at1Text = (this.effectEditor && this.effectEditor.texts && this.effectEditor.texts.attack1) || '';
+        const at2Code = (this.effectEditor && this.effectEditor.codes && this.effectEditor.codes.attack2) || '';
+        const at2Text = (this.effectEditor && this.effectEditor.texts && this.effectEditor.texts.attack2) || '';
+        const trCode = (this.effectEditor && this.effectEditor.codes && this.effectEditor.codes.trainer) || '';
+        const trText = (this.effectEditor && this.effectEditor.texts && this.effectEditor.texts.trainer) || '';
+
+        setVal('abilityCode', abCode);
+        setVal('abilityText', abText);
+
+        if (activeTab === 'trainer' || (this.effectEditor && this.effectEditor.target === 'trainer')) {
+          setVal('attack1Code', trCode);
+          setVal('attack1Text', trText);
+          const descEl = document.getElementById('description');
+          if (descEl && trText) descEl.value = trText;
+          const trSummary = document.getElementById('trainerEffectSummary');
+          if (trSummary) {
+            const trDisp = trText || this.makeEffectDisplayText(trCode);
+            trSummary.textContent = trDisp ? "✦ 設定効果: " + trDisp : trCode ? '✦ 設定効果: JavaScript効果設定済み' : '';
+          }
+        } else {
+          setVal('attack1Code', at1Code);
+          setVal('attack1Text', at1Text);
+        }
+
+        setVal('attack2Code', at2Code);
+        setVal('attack2Text', at2Text);
+
+        updateSummary('ability', abText, abCode);
+        updateSummary('attack1', at1Text, at1Code);
+        updateSummary('attack2', at2Text, at2Code);
+
+        this.closeEffectEditor();
+
+        if (window.CardSystem && typeof window.CardSystem.updatePreview === 'function') {
+          window.CardSystem.updatePreview();
+        }
+      } catch (err) {
+        console.error('[EffectEditor.applyEffectEditor] Error:', err);
+      }
+    },
+
     switchEffectTab(newTab) {
       const editor = document.getElementById('effectCodeEditor');
       const descInput = document.getElementById('effectEditorDisplayText');
@@ -13341,6 +13408,12 @@ var CardSystem;
     filterCompletionByQuery(q) {
       if (window.EffectEditor) return window.EffectEditor.filterCompletionByQuery(q);
     },
+    makeEffectDisplayText(code) {
+      if (window.EffectEditor && typeof window.EffectEditor.makeEffectDisplayText === 'function') {
+        return window.EffectEditor.makeEffectDisplayText(code);
+      }
+      return '';
+    },
     handleEditorKeydown(e) {
       if (window.EffectEditor) return window.EffectEditor.handleEditorKeydown(e);
     },
@@ -13697,13 +13770,14 @@ var CardSystem;
 
       const exRuleHtml = isEx ? '<div class="card-rule-box ex-rule-box"><span class="ex-rule-tag">exルール</span><span class="ex-rule-text">ポケモンexがきぜつしたとき、相手はサイドを2枚とる。</span></div>' : '';
 
-      const isEnergy = card.category === 'エネルギー' || card.category === '基本エネルギー' || String(card.category || '').includes('エネルギー');
+      const catStr = String(card.category || '').trim();
+      const isTrainer = catStr === 'グッズ' || catStr === 'サポート' || catStr === 'トレーナー' || catStr === 'スタジアム' || catStr.includes('スタジアム') || catStr.includes('トレーナー') || catStr.includes('グッズ') || catStr.includes('サポート') || catStr.includes('stadium') || catStr.includes('trainer');
+      const isEnergy = catStr === 'エネルギー' || catStr === '基本エネルギー' || catStr === '特殊エネルギー' || catStr.includes('エネルギー') || catStr.includes('energy');
       const isSpecialEnergy = String(card.category || '').includes('特殊') || String(card.name || '').includes('特殊');
       const isUnlimitedEnergy = isEnergy && !isSpecialEnergy;
 
       const inDeckBadge = inDeckCount > 0 ? ('<div class="pool-in-deck-badge">' + inDeckCount + (isUnlimitedEnergy ? '枚' : '/4') + '</div>') : '';
 
-      const isTrainer = card.category === 'グッズ' || card.category === 'サポート' || card.category === 'トレーナー' || card.category === 'スタジアム';
       const isPokemon = !isTrainer && !isEnergy;
       const hpBadgeHtml = isPokemon && card.hp != null && card.hp !== '' && Number(card.hp) > 0 ? '<span class="card-hp-badge">HP <strong>' + this.escape(card.hp) + '</strong></span>' : '';
       const rarityBadgeHtml = card.rarity ? '<span class="card-rarity-badge">' + this.escape(card.rarity) + '</span>' : '';
@@ -13746,10 +13820,12 @@ var CardSystem;
       }
 
       let footerStatsHtml = '';
-      if (card.category === 'グッズ' || card.category === 'サポート' || card.category === 'トレーナー' || card.category === 'スタジアム') {
-        footerStatsHtml = '<span>カテゴリ: <strong>' + this.escape(card.category) + '</strong></span><span>' + (card.category === 'スタジアム' ? 'STADIUM CARD' : 'TRAINER CARD') + '</span>';
-      } else if (card.category === 'エネルギー' || card.category === '基本エネルギー' || card.category === '特殊エネルギー') {
-        footerStatsHtml = '<span>種類: <strong>' + this.escape(card.category) + '</strong></span><span>ENERGY CARD</span>';
+      if (isTrainer) {
+        const catLabel = card.category || (catStr.includes('スタジアム') ? 'スタジアム' : 'トレーナー');
+        footerStatsHtml = '<span>カテゴリ: <strong>' + this.escape(catLabel) + '</strong></span><span>' + (catStr.includes('スタジアム') ? 'STADIUM CARD' : 'TRAINER CARD') + '</span>';
+      } else if (isEnergy) {
+        const catLabel = card.category || (catStr.includes('特殊') ? '特殊エネルギー' : '基本エネルギー');
+        footerStatsHtml = '<span>種類: <strong>' + this.escape(catLabel) + '</strong></span><span>ENERGY CARD</span>';
       } else {
         const retreatNum = card.retreat !== '' && card.retreat != null ? Number(card.retreat) : null;
         let retreatDisplay = '<strong>—</strong>';
@@ -13805,14 +13881,15 @@ var CardSystem;
         preEvoName = preCard ? preCard.name : pVal;
       }
 
-      const isTrainer = card.category === 'グッズ' || card.category === 'サポート' || card.category === 'トレーナー';
-      const isEnergy = card.category === 'エネルギー' || card.category === '基本エネルギー';
+      const catDetailStr = String(card.category || '').trim();
+      const isTrainer = catDetailStr === 'グッズ' || catDetailStr === 'サポート' || catDetailStr === 'トレーナー' || catDetailStr === 'スタジアム' || catDetailStr.includes('スタジアム') || catDetailStr.includes('トレーナー') || catDetailStr.includes('グッズ') || catDetailStr.includes('サポート') || catDetailStr.includes('stadium') || catDetailStr.includes('trainer');
+      const isEnergy = catDetailStr === 'エネルギー' || catDetailStr === '基本エネルギー' || catDetailStr === '特殊エネルギー' || catDetailStr.includes('エネルギー') || catDetailStr.includes('energy');
       const typePart = (!isTrainer && card.type) ? " / " + this.escape(card.type) : "";
 
       const statsHtml = isTrainer ?
-        "<div class=\"detail-section\"><h4>カード種別</h4><div>" + this.escape(card.category) + "カード (属性タイプ不要)</div></div>" :
+        "<div class=\"detail-section\"><h4>カード種別</h4><div>" + this.escape(card.category || 'トレーナー') + "カード (属性タイプ・パラメーター不要)</div></div>" :
         (isEnergy ?
-          "<div class=\"detail-section\"><h4>エネルギー種別</h4><div>" + this.escape(card.category) + " [" + this.escape(card.type || '無') + "]</div></div>" :
+          "<div class=\"detail-section\"><h4>エネルギー種別</h4><div>" + this.escape(card.category || 'エネルギー') + " [" + this.escape(card.type || '無') + "]</div></div>" :
           "<div class=\"detail-section\"><h4>基本パラメータ</h4><div>HP: " + this.escape(card.hp || '—') + (preEvoName ? "\u3000進化前: " + this.escape(preEvoName) : "") + "\u3000弱点: " + this.escape(card.weakness || '—') + "\u3000抵抗力: " + this.escape(card.resistance || '—') + "\u3000にげる: " + this.escape(card.retreat || 0) + "</div></div>");
 
       App.openModal("\n        <div class=\"detail-layout\">\n          <div class=\"detail-card-col\">\n            " +
@@ -14175,7 +14252,7 @@ var CardSystem;
       updateSummary('attack1', card.attack1Text, card.attack1Code);
       updateSummary('attack2', card.attack2Text, card.attack2Code);
 
-      const isTrainer = card.category === 'グッズ' || card.category === 'サポート' || card.category === 'トレーナー';
+      const isTrainer = card.category === 'グッズ' || card.category === 'サポート' || card.category === 'トレーナー' || card.category === 'スタジアム' || card.category === '特殊エネルギー';
       if (isTrainer) {
         const trDisp = card.attack1Text || card.description || this.makeEffectDisplayText(card.attack1Code);
         const trSummary = document.getElementById('trainerEffectSummary');
