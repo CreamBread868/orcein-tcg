@@ -6347,6 +6347,29 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
         console.log('[ORBITAL] Localhost Mock for google.script.run active.');
       }
     })();
+
+    (function() {
+      if (!window.App) {
+        window.App = new Proxy({}, {
+          get: function(target, prop) {
+            if (window._realApp && prop in window._realApp) {
+              var val = window._realApp[prop];
+              return typeof val === 'function' ? val.bind(window._realApp) : val;
+            }
+            return function() {
+              console.warn('[App Early Proxy] App.' + String(prop) + ' called before App initialization.');
+              if (window._realApp && typeof window._realApp[prop] === 'function') {
+                return window._realApp[prop].apply(window._realApp, arguments);
+              }
+            };
+          },
+          set: function(target, prop, val) {
+            if (window._realApp) window._realApp[prop] = val;
+            return true;
+          }
+        });
+      }
+    })();
   </script>
 </head>
 <body>

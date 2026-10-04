@@ -1741,6 +1741,7 @@ console.log('[ORBITAL] App.js.html started execution');
     }
   };
 
+  window._realApp = App;
   window.App = App;
   try {
     if (document.readyState === 'complete' || document.readyState === 'interactive') {
