@@ -1929,17 +1929,23 @@ var EffectEditor;
         target = target || 'attack1';
         this.effectEditor.target = target;
         this.effectEditor.activeTab = target;
+        const abCode = document.getElementById('abilityCode')?.value || '';
+        const at1Code = document.getElementById('attack1Code')?.value || '';
+        const at2Code = document.getElementById('attack2Code')?.value || '';
         this.effectEditor.codes = {
-          ability: document.getElementById('abilityCode')?.value || '',
-          attack1: document.getElementById('attack1Code')?.value || '',
-          attack2: document.getElementById('attack2Code')?.value || '',
-          trainer: document.getElementById('attack1Code')?.value || ''
+          ability: abCode,
+          attack1: at1Code,
+          attack2: at2Code,
+          trainer: at1Code || abCode
         };
+        const abText = document.getElementById('abilityText')?.value || '';
+        const at1Text = document.getElementById('attack1Text')?.value || document.getElementById('description')?.value || '';
+        const at2Text = document.getElementById('attack2Text')?.value || '';
         this.effectEditor.texts = {
-          ability: document.getElementById('abilityText')?.value || '',
-          attack1: document.getElementById('attack1Text')?.value || '',
-          attack2: document.getElementById('attack2Text')?.value || '',
-          trainer: document.getElementById('attack1Text')?.value || ''
+          ability: abText,
+          attack1: at1Text,
+          attack2: at2Text,
+          trainer: at1Text
         };
         let title = (target === 'attack1' ? 'ワザ1' : 'ワザ2') + 'の効果エディター';
         if (target === 'ability') title = '特性の効果エディター';
