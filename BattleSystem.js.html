@@ -4706,7 +4706,11 @@
         }
         return;
       }
-      this.showCardActionModal(active, 'stadium');
+      if (window.CardSystem && typeof window.CardSystem.showDetail === 'function') {
+        window.CardSystem.showDetail(active);
+      } else {
+        this.showCardActionModal(active, 'stadium');
+      }
     },
 
     render() {
@@ -4884,13 +4888,25 @@
             }
           };
         } else {
-          activeCardEl.title = card.name + " (HP " + card.hp + "/" + card.maxHp + ") - クリックで詳細カード拡大";
-          activeCardEl.onclick = () => {
-            if (this.draggedHandIndex == null && window.CardSystem && window.CardSystem.showDetail) {
-              CardSystem.showDetail(card);
+          activeCardEl.title = card.name + " (HP " + card.hp + "/" + card.maxHp + ") - クリックで効果・詳細カード拡大";
+          activeCardEl.onclick = (e) => {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
+            if (this.draggedHandIndex == null && window.CardSystem && typeof window.CardSystem.showDetail === 'function') {
+              window.CardSystem.showDetail(card);
             }
           };
         }
+      }
+
+      if (!isPlayer) {
+        root.style.cursor = 'pointer';
+        root.title = card.name + " (HP " + card.hp + "/" + card.maxHp + ") - クリックで効果・詳細カード拡大";
+        root.onclick = (e) => {
+          if (e && e.target && e.target.closest('.active-status-badge')) return;
+          if (this.draggedHandIndex == null && window.CardSystem && typeof window.CardSystem.showDetail === 'function') {
+            window.CardSystem.showDetail(card);
+          }
+        };
       }
 
       // プレイヤーバトル場のドロップ受付 (エネ、進化、たね、トレーナー全て対応)

@@ -4,10 +4,12 @@ const path = require('path');
 // Master template with full HTML structure
 const templatePath = path.join(__dirname, 'index_template.html');
 if (!fs.existsSync(templatePath)) {
-  fs.copyFileSync(path.join(__dirname, 'restored_index.html'), templatePath);
+  if (fs.existsSync(path.join(__dirname, 'index.html'))) {
+    fs.copyFileSync(path.join(__dirname, 'index.html'), templatePath);
+  }
 }
 
-let indexHtml = fs.readFileSync(templatePath, 'utf8');
+let indexHtml = fs.readFileSync(fs.existsSync(templatePath) ? templatePath : path.join(__dirname, 'index.html'), 'utf8');
 
 const includes = {
   'CSS': 'CSS.html',

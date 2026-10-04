@@ -32,12 +32,13 @@ html, body {
   font-family: 'Outfit', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   background-color: var(--bg);
   background-image:
-    radial-gradient(ellipse at 15% 10%, rgba(99, 102, 241, 0.18) 0%, transparent 50%),
-    radial-gradient(ellipse at 85% 85%, rgba(56, 189, 248, 0.14) 0%, transparent 50%),
-    radial-gradient(circle at 50% 50%, rgba(15, 20, 36, 0.8) 0%, #060713 100%),
-    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-  background-size: 100% 100%, 100% 100%, 100% 100%, 36px 36px, 36px 36px;
+    radial-gradient(ellipse at 15% 10%, rgba(225, 29, 72, 0.22) 0%, transparent 50%),
+    radial-gradient(ellipse at 85% 85%, rgba(217, 70, 239, 0.18) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 15%, rgba(168, 85, 247, 0.15) 0%, transparent 60%),
+    radial-gradient(circle at 50% 50%, rgba(24, 10, 36, 0.85) 0%, #09040d 100%),
+    linear-gradient(rgba(244, 114, 182, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(244, 114, 182, 0.025) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 36px 36px, 36px 36px;
   background-attachment: fixed;
   color: var(--text);
   -webkit-font-smoothing: antialiased;
@@ -46,20 +47,24 @@ button, input, select, textarea { font:inherit; }
 button { cursor:pointer; }
 body { overflow-x:hidden; }
 
+.hidden, .modal.hidden, #packOpeningOverlay.hidden, #dailyBonusModal.hidden, .page.hidden, [hidden] {
+  display: none !important;
+}
+
 .topbar {
   height: 72px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 28px;
-  border-bottom: 1px solid rgba(129, 140, 248, 0.22);
-  background: rgba(9, 12, 24, 0.88);
+  border-bottom: 1px solid rgba(244, 114, 182, 0.25);
+  background: rgba(16, 7, 26, 0.92);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   position: sticky;
   top: 0;
   z-index: 20;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 1px 0 rgba(236, 72, 153, 0.2);
 }
 .brand { display:flex; align-items:center; gap:14px; }
 .brand-mark {
@@ -68,25 +73,25 @@ body { overflow-x:hidden; }
   border-radius: 14px;
   display: grid;
   place-items: center;
-  background: linear-gradient(135deg, #6366f1, #38bdf8);
+  background: linear-gradient(135deg, #e11d48, #d946ef, #a855f7);
   color: #fff;
   font-weight: 900;
-  font-size: 20px;
-  box-shadow: 0 0 24px rgba(99, 102, 241, 0.6);
+  font-size: 22px;
+  box-shadow: 0 0 24px rgba(225, 29, 72, 0.6);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 .brand-mark:hover {
   transform: rotate(5deg) scale(1.05);
-  box-shadow: 0 0 32px rgba(56, 189, 248, 0.8);
+  box-shadow: 0 0 32px rgba(217, 70, 239, 0.85);
 }
 .brand-title {
-  font-size: 20px;
+  font-size: 21px;
   font-weight: 900;
-  letter-spacing: .08em;
-  background: linear-gradient(135deg, #ffffff 30%, #a5b4fc 100%);
+  letter-spacing: .06em;
+  background: linear-gradient(135deg, #ffffff 30%, #f472b6 70%, #d946ef 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 2px 10px rgba(99, 102, 241, 0.4));
+  filter: drop-shadow(0 2px 10px rgba(225, 29, 72, 0.5));
 }
 .brand-subtitle { color:var(--muted); font-size:10px; font-weight:700; letter-spacing:.22em; margin-top:2px; }
 .layout { display:flex; min-height:calc(100vh - 72px); }
@@ -94,8 +99,8 @@ body { overflow-x:hidden; }
 .sidebar {
   width: 235px;
   padding: 24px 14px;
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
-  background: linear-gradient(180deg, rgba(12, 16, 28, 0.95), rgba(7, 9, 16, 0.95));
+  border-right: 1px solid rgba(244, 114, 182, 0.15);
+  background: linear-gradient(180deg, rgba(20, 9, 32, 0.96), rgba(12, 5, 20, 0.96));
   backdrop-filter: blur(16px);
   flex: none;
 }
@@ -117,15 +122,15 @@ body { overflow-x:hidden; }
 }
 .nav-button:hover, .nav-button.active {
   color: var(--text);
-  background: rgba(99, 102, 241, 0.14);
-  border-color: rgba(99, 102, 241, 0.35);
-  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.2);
+  background: rgba(225, 29, 72, 0.16);
+  border-color: rgba(236, 72, 153, 0.4);
+  box-shadow: 0 6px 20px rgba(225, 29, 72, 0.25);
   transform: translateX(3px);
 }
 .nav-button.active {
-  background: linear-gradient(90deg, rgba(99, 102, 241, 0.28), rgba(56, 189, 248, 0.15));
+  background: linear-gradient(90deg, rgba(225, 29, 72, 0.3), rgba(217, 70, 239, 0.18));
   border-color: var(--accent);
-  box-shadow: inset 4px 0 var(--accent), 0 6px 24px rgba(99, 102, 241, 0.35);
+  box-shadow: inset 4px 0 var(--accent), 0 6px 24px rgba(225, 29, 72, 0.4);
 }
 .main { width:100%; max-width:1500px; margin:0 auto; padding:34px; }
 .page { display:none; }
@@ -133,7 +138,7 @@ body { overflow-x:hidden; }
 
 .hero {
   min-height: 400px;
-  border: 1px solid rgba(129, 140, 248, 0.35);
+  border: 1px solid rgba(244, 114, 182, 0.35);
   border-radius: 32px;
   padding: 56px;
   display: flex;
@@ -142,16 +147,16 @@ body { overflow-x:hidden; }
   overflow: hidden;
   position: relative;
   background:
-    radial-gradient(circle at 75% 35%, rgba(99, 102, 241, 0.28), transparent 45%),
-    radial-gradient(circle at 90% 90%, rgba(56, 189, 248, 0.2), transparent 40%),
-    linear-gradient(135deg, rgba(20, 26, 46, 0.92), rgba(12, 16, 28, 0.95));
+    radial-gradient(circle at 75% 35%, rgba(225, 29, 72, 0.28), transparent 45%),
+    radial-gradient(circle at 90% 90%, rgba(217, 70, 239, 0.2), transparent 40%),
+    linear-gradient(135deg, rgba(32, 14, 46, 0.94), rgba(16, 7, 26, 0.96));
   backdrop-filter: blur(20px);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.7), inset 0 1px 1px rgba(255, 255, 255, 0.2);
 }
 .eyebrow { color:var(--accent2); font-size:12px; font-weight:900; letter-spacing:.22em; text-shadow: 0 0 14px var(--accent2-glow); }
 .hero h1 { font-size:clamp(36px,5vw,68px); line-height:1.04; margin:14px 0 20px; letter-spacing:-.04em; font-weight:900; }
 .hero h1 span {
-  background: linear-gradient(135deg, #a5b4fc, #38bdf8);
+  background: linear-gradient(135deg, #f472b6, #e11d48, #d946ef);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   filter: drop-shadow(0 0 20px var(--accent-glow));
@@ -174,9 +179,9 @@ body { overflow-x:hidden; }
 }
 .primary-button {
   color: #ffffff;
-  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 50%, #38bdf8 100%);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  box-shadow: 0 6px 24px rgba(99, 102, 241, 0.45);
+  background: linear-gradient(135deg, #e11d48 0%, #be123c 50%, #d946ef 100%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 6px 24px rgba(225, 29, 72, 0.5);
 }
 .primary-button::after {
   content: '';
@@ -194,19 +199,22 @@ body { overflow-x:hidden; }
 }
 .primary-button:hover {
   transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 12px 32px rgba(99, 102, 241, 0.65);
+  box-shadow: 0 12px 32px rgba(225, 29, 72, 0.7);
   filter: brightness(1.1);
 }
 .secondary-button {
   color: var(--text);
-  background: rgba(23, 28, 48, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(32, 16, 44, 0.85);
+  border: 1px solid rgba(244, 114, 182, 0.22);
   backdrop-filter: blur(12px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
 .secondary-button:hover {
   transform: translateY(-2px) scale(1.02);
-  background: rgba(35, 42, 68, 0.95);
+  background: rgba(48, 22, 64, 0.95);
+  border-color: rgba(244, 114, 182, 0.4);
+  box-shadow: 0 8px 24px rgba(225, 29, 72, 0.3);
+}
   border-color: rgba(255, 255, 255, 0.3);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
@@ -1261,8 +1269,9 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
 .empty-icon { font-size:60px; color:var(--accent); margin-bottom:10px; }
 .toast { position:fixed; right:20px; bottom:20px; background:#20263a; border:1px solid var(--line); border-radius:12px; padding:12px 15px; box-shadow:var(--shadow); transform:translateY(20px); opacity:0; pointer-events:none; transition:.2s; z-index:50; }
 .toast.show { opacity:1; transform:translateY(0); }
+.hidden { display: none !important; }
 .modal { position:fixed; inset:0; z-index:60; display:grid; place-items:center; padding:20px; }
-.modal.hidden { display:none; }
+.modal.hidden { display: none !important; }
 .modal-backdrop { position:absolute; inset:0; background:rgba(0,0,0,.7); backdrop-filter:blur(5px); }
 .modal-card { width:min(850px,100%); max-height:90vh; overflow:auto; position:relative; background:var(--panel); border:1px solid var(--line); border-radius:22px; padding:24px; box-shadow:var(--shadow); }
 .modal-close { position:absolute; right:12px; top:10px; border:0; background:transparent; color:var(--muted); font-size:30px; }
@@ -5520,6 +5529,9 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   padding: 30px;
   backdrop-filter: blur(20px);
 }
+#packOpeningOverlay.hidden {
+  display: none !important;
+}
 
 .pokepoke-pack-stage {
   display: flex;
@@ -5702,6 +5714,164 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   0% { opacity: 0; transform: scale(0.8); }
   35% { opacity: 1; transform: scale(1.1); }
   100% { opacity: 0; transform: scale(1.35); }
+}
+
+/* バトルスタジアム カードスロット (対戦画面中央) */
+.stadium-card-slot {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(129, 140, 248, 0.35);
+  border-radius: 20px;
+  color: #94a3b8;
+  font-weight: 800;
+  font-size: 12.5px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  margin-right: 12px;
+}
+.stadium-card-slot:hover {
+  transform: translateY(-2px) scale(1.04);
+  border-color: #fbbf24;
+  color: #ffffff;
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.4);
+}
+.stadium-card-slot.active-stadium-present {
+  background: linear-gradient(135deg, rgba(30, 27, 75, 0.9), rgba(15, 23, 42, 0.95));
+  border: 1.5px solid #fbbf24;
+  color: #fbbf24;
+  box-shadow: 0 0 25px rgba(251, 191, 36, 0.5);
+  animation: stadiumGlowPulse 2s infinite alternate ease-in-out;
+}
+@keyframes stadiumGlowPulse {
+  0% { box-shadow: 0 0 15px rgba(251, 191, 36, 0.4); }
+  100% { box-shadow: 0 0 30px rgba(251, 191, 36, 0.85); }
+}
+
+/* ============================================================
+   バトルカード選択モーダル (choiceCard / choiceCards 専用)
+   ============================================================ */
+#battleChoiceModal {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 99999 !important;
+  display: grid !important;
+  place-items: center !important;
+  background: rgba(5, 7, 15, 0.88) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+}
+
+#battleChoiceModal.hidden {
+  display: none !important;
+}
+
+#battleChoiceModal .battle-choice-card {
+  width: 92%;
+  max-width: 900px;
+  max-height: 88vh;
+  background: linear-gradient(145deg, rgba(20, 26, 46, 0.96), rgba(11, 14, 25, 0.98));
+  border: 1.5px solid rgba(129, 140, 248, 0.4);
+  border-radius: 24px;
+  padding: 28px;
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.85), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  animation: choiceModalPopIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes choiceModalPopIn {
+  0% { opacity: 0; transform: scale(0.92) translateY(12px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+#battleChoiceGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+  gap: 16px;
+  max-height: 55vh;
+  overflow-y: auto;
+  padding: 12px 6px;
+  margin: 16px 0;
+}
+
+.battle-choice-item {
+  background: rgba(15, 23, 42, 0.8);
+  border: 2px solid rgba(129, 140, 248, 0.25);
+  border-radius: 14px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+}
+
+.battle-choice-item:hover {
+  transform: translateY(-4px) scale(1.03);
+  border-color: #6366f1;
+  background: rgba(30, 41, 59, 0.9);
+  box-shadow: 0 10px 25px rgba(99, 102, 241, 0.35);
+}
+
+.battle-choice-item.selected {
+  border-color: #38bdf8 !important;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(99, 102, 241, 0.25)) !important;
+  box-shadow: 0 0 25px rgba(56, 189, 248, 0.6) !important;
+}
+
+.battle-choice-item .card-badge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 20px;
+  background: rgba(99, 102, 241, 0.25);
+  color: #a5b4fc;
+  border: 1px solid rgba(129, 140, 248, 0.4);
+}
+
+.battle-choice-item .card-choice-name {
+  font-size: 13px;
+  font-weight: 800;
+  color: #ffffff;
+  text-align: center;
+  line-height: 1.25;
+  word-break: break-all;
+}
+
+.battle-choice-item .card-choice-img {
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+/* ============================================================
+   コレクションアルバム (未所持カード表示・スタイリング)
+   ============================================================ */
+.collection-item {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.collection-item.card-unowned {
+  filter: grayscale(0.85) contrast(0.8) opacity(0.55);
+}
+
+.collection-item.card-unowned:hover {
+  filter: grayscale(0.2) contrast(0.95) opacity(0.95);
+  transform: translateY(-4px) scale(1.02);
 }
 </style>
 
@@ -6421,6 +6591,7 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
         <button class="nav-button" data-page="deck">◆ <span>デッキ</span></button>
         <button class="nav-button" data-page="battle">⚔ <span>バトル</span></button>
         <button class="nav-button" data-page="pack">🎁 <span>パック開封</span></button>
+        <button class="nav-button" data-page="single-shop">🛍️ <span>ショップ</span></button>
         <button class="nav-button admin-only-ui hidden" data-page="cards">▣ <span>カード管理</span></button>
         <button class="nav-button admin-only-ui hidden" data-page="create">＋ <span>カード作成</span></button>
         <button class="nav-button admin-only-ui hidden" id="adminPackNavBtn" data-page="admin-pack" onclick="App.openAdminPackModal()">⚙️ <span>パック管理</span></button>
@@ -7370,6 +7541,43 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
             <!-- Dynamic pack cards loaded by JS -->
           </div>
         </section>
+
+        <!-- シングルカードショップ ページ -->
+        <section id="page-single-shop" class="page">
+          <div class="single-shop-hero">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+              <div>
+                <div class="eyebrow" style="color:#d946ef; font-size:12px; letter-spacing:3px;">SINGLE CARD MARKETPLACE</div>
+                <h1>🛍️ シングルカードショップ</h1>
+                <p class="muted">獲得したNMT通貨を使って、お気に入りのカードを1枚単位で直接購入・GET！</p>
+              </div>
+              <div style="display:flex; gap:12px; align-items:center;">
+                <div class="nmt-balance-badge" style="cursor:default;" title="現在の所持NMT">
+                  <span class="nmt-icon">✨</span>
+                  <span id="singleShopNmtVal" class="nmt-val">1000 NMT</span>
+                </div>
+                <button class="primary-button admin-only-ui hidden" id="adminAddShopItemBtn" style="background:linear-gradient(135deg, #d946ef, #a855f7); font-weight:800;" onclick="App.openAdminShopItemModal()">➕ シングルカード出品</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- カテゴリフィルターバー -->
+          <div class="card-picker-filter-bar" style="margin-bottom:20px;">
+            <div class="card-picker-tabs">
+              <button type="button" class="card-picker-tab active" data-shop-cat="all" onclick="App.filterSingleShop('all', this)">すべてのカード</button>
+              <button type="button" class="card-picker-tab" data-shop-cat="pokemon" onclick="App.filterSingleShop('pokemon', this)">ポケモン</button>
+              <button type="button" class="card-picker-tab" data-shop-cat="trainer" onclick="App.filterSingleShop('trainer', this)">トレーナー</button>
+              <button type="button" class="card-picker-tab" data-shop-cat="energy" onclick="App.filterSingleShop('energy', this)">エネルギー</button>
+            </div>
+            <div class="card-picker-search-wrap">
+              <input type="text" id="singleShopSearchInput" class="input" placeholder="🔍 カード名で検索..." oninput="App.renderSingleShopGrid()">
+            </div>
+          </div>
+
+          <div id="singleShopGrid" class="single-shop-grid">
+            <!-- Dynamically populated shop items -->
+          </div>
+        </section>
       </main>
     </div>
 
@@ -7463,8 +7671,11 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
             <label>収録カード枚数 (1パックあたり)
               <input id="adminPackCardCount" class="input" type="number" value="5" min="1" max="10">
             </label>
-            <label>収録対象カードプール設定 (Ctrl/Cmd+クリックで複数選択)
-              <select id="adminPackCardPool" class="input" multiple size="3" style="height:60px;">
+            <label>収録対象カードプール設定
+              <button type="button" class="primary-button" style="width:100%; font-weight:800; padding:10px 14px; background:linear-gradient(135deg, #d946ef, #a855f7); border-radius:12px;" onclick="App.openCardPickerForPackPool()">
+                🎴 専用UIでカードプールを選択 (<span id="adminPackPoolCountLabel">全カード対象</span>)
+              </button>
+              <select id="adminPackCardPool" class="input hidden" multiple size="3">
                 <!-- Dynamically filled with card list -->
               </select>
             </label>
@@ -7478,6 +7689,93 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
         <h3>既存パック一覧</h3>
         <div id="adminPackTableContainer" style="max-height:250px; overflow-y:auto; border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:10px;">
           <!-- JS populates existing packs table -->
+        </div>
+      </div>
+    </div>
+
+    <!-- 管理者ショップ出品カード モーダル -->
+    <div id="adminShopItemModal" class="modal hidden" style="z-index:9998;">
+      <div class="modal-backdrop" onclick="App.closeAdminShopItemModal()"></div>
+      <div class="modal-card" style="max-width: 520px; width: 90%;">
+        <button class="modal-close" onclick="App.closeAdminShopItemModal()">×</button>
+        <div class="eyebrow" style="color:#d946ef;">ADMINISTRATOR</div>
+        <h2 id="adminShopItemModalTitle">🛍️ ショップ出品カード管理</h2>
+        <p class="muted">ショップに出品するカードと販売価格 (NMT) を設定します。</p>
+
+        <form id="adminShopItemForm" onsubmit="App.handleSaveShopItem(event)">
+          <input type="hidden" id="adminShopItemId" value="">
+          <input type="hidden" id="adminShopItemCardId" value="">
+
+          <div style="margin-bottom: 16px; text-align: center; padding: 16px; background: rgba(0,0,0,0.3); border-radius: 16px; border: 1px dashed rgba(244,114,182,0.3);">
+            <div id="shopItemCardPreview" style="display: flex; justify-content: center; align-items: center; min-height: 200px;">
+              <div class="muted">カードが選択されていません</div>
+            </div>
+            <button type="button" class="secondary-button" style="margin-top: 12px; width: 100%; font-weight: 800; border-color: var(--accent2); color: var(--accent2);" onclick="App.openCardPickerForShopItem()">
+              🎴 専用UIでカードを選択する
+            </button>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+            <label>販売価格 (NMT)
+              <input type="number" id="adminShopItemPrice" class="input" value="300" min="1" required>
+            </label>
+            <label>販売タグ (任意)
+              <input type="text" id="adminShopItemTag" class="input" placeholder="例: 人気 / 限定">
+            </label>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap: 10px;">
+            <button type="button" class="secondary-button" onclick="App.closeAdminShopItemModal()">キャンセル</button>
+            <button type="submit" class="primary-button">💾 ショップに保存</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- 汎用 専用カードピッカー モーダル (Card Picker UI) -->
+    <div id="cardPickerModal" class="modal hidden" style="z-index: 9999;">
+      <div class="modal-backdrop" onclick="CardSystem.closeCardPicker()"></div>
+      <div class="modal-card card-picker-modal-card" style="max-width: 1080px; width: 95vw; max-height: 90vh; display: flex; flex-direction: column;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(244,114,182,0.2); padding-bottom: 14px; margin-bottom: 14px;">
+          <div>
+            <div class="eyebrow" id="cardPickerEyebrow">CARD SELECTOR</div>
+            <h2 id="cardPickerTitle" style="margin: 0; font-size: 22px;">🎴 カードを選択</h2>
+          </div>
+          <button type="button" class="modal-close" onclick="CardSystem.closeCardPicker()" style="position: static;">×</button>
+        </div>
+
+        <div class="card-picker-filter-bar">
+          <div class="card-picker-search-wrap">
+            <input type="text" id="cardPickerSearchInput" class="input" placeholder="🔍 カード名・効果・IDで検索..." oninput="CardSystem.renderCardPickerGrid()">
+          </div>
+          
+          <div class="card-picker-tabs">
+            <button type="button" class="card-picker-tab active" data-picker-type="all" onclick="CardSystem.setPickerFilter('type', 'all', this)">すべて</button>
+            <button type="button" class="card-picker-tab" data-picker-type="pokemon" onclick="CardSystem.setPickerFilter('type', 'pokemon', this)">ポケモン</button>
+            <button type="button" class="card-picker-tab" data-picker-type="trainer" onclick="CardSystem.setPickerFilter('type', 'trainer', this)">トレーナー</button>
+            <button type="button" class="card-picker-tab" data-picker-type="energy" onclick="CardSystem.setPickerFilter('type', 'energy', this)">エネルギー</button>
+          </div>
+
+          <div class="card-picker-actions" id="cardPickerMultiActions" style="display:flex; gap:6px;">
+            <button type="button" class="secondary-button compact-btn" onclick="CardSystem.selectAllPickerCards()">全選択</button>
+            <button type="button" class="secondary-button compact-btn" onclick="CardSystem.clearPickerSelection()">全解除</button>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin: 10px 0; font-size: 13px; color: var(--muted);">
+          <div><span id="cardPickerCount" style="color:var(--text); font-weight:800;">0</span> 枚のカードが選択されています</div>
+          <div id="cardPickerModeLabel" style="font-weight: 700; color: var(--accent2);">[複数選択モード]</div>
+        </div>
+
+        <div id="cardPickerGrid" class="card-picker-grid" style="flex: 1; overflow-y: auto; padding: 14px; border: 1px solid rgba(244,114,182,0.15); border-radius: 16px; background: rgba(10, 4, 16, 0.6); min-height:300px;">
+          <!-- Card items rendered dynamically -->
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid rgba(244,114,182,0.2); padding-top: 14px; margin-top: 14px;">
+          <button type="button" class="secondary-button" onclick="CardSystem.closeCardPicker()">キャンセル</button>
+          <button type="button" class="primary-button" id="cardPickerConfirmBtn" onclick="CardSystem.confirmCardPicker()">
+            選択を確定する (<span id="cardPickerConfirmCount">0枚</span>)
+          </button>
         </div>
       </div>
     </div>
@@ -9896,6 +10194,87 @@ var EffectEditor;
       targets: ['trainer', 'attack1', 'ability']
     },
     {
+      keyword: 'bowlTown',
+      label: 'ボウルタウン (スタジアム)',
+      category: 'func',
+      badge: 'スタジアム',
+      desc: '【ボウルタウン】1ターンに1回、自分の山札から「たねポケモン」を1枚選びベンチに出す',
+      snippet: 'useLimit(1);\nconst target = choiceCard(self.deck, { category: "たね" }, 1, "山札から「たねポケモン」をベンチに出す");\nif (target) {\n  toBench(self, target);\n  shuffleDeck(self);\n}',
+      targets: ['trainer', 'ability']
+    },
+    {
+      keyword: 'moonlightArena',
+      label: '月光の陣 (スタジアム: 超回復＆手札1枚トラッシュ)',
+      category: 'func',
+      badge: 'スタジアム',
+      desc: '【月光の陣】自分の番に1回、自分の場の超タイプポケモン1匹のHPを「30」回復し、手札を1枚トラッシュする',
+      snippet: 'useLimit(1);\nconst targets = choiceCard(self, "場", { type: "超" }, 1, "HPを30回復する超タイプポケモンを選んでください");\nif (targets && targets.length > 0) {\n  heal(targets[0], 30);\n  const discard = choiceCard(self, "手札", {}, 1, "トラッシュする手札を1枚選んでください");\n  if (discard && discard.length > 0) {\n    toDiscard(self, discard[0]);\n  }\n}',
+      targets: ['trainer', 'ability']
+    },
+    {
+      keyword: 'pokestop',
+      label: 'ポケストップ (スタジアム)',
+      category: 'func',
+      badge: 'スタジアム',
+      desc: '【ポケストップ】1ターンに1回、山札の上から3枚をトラッシュしグッズをすべて手札へ',
+      snippet: 'useLimit(1);\nconst top = self.deck.slice(0, 3);\nself.deck.splice(0, top.length);\ntop.forEach(c => {\n  const cat = String(c.category || "");\n  if (cat.includes("グッズ") || cat.includes("item")) toHand(self, c);\n  else toDiscard(self, c);\n});',
+      targets: ['trainer', 'ability']
+    },
+    {
+      keyword: 'jetEnergy',
+      label: 'ジェットエネルギー (特殊エネ)',
+      category: 'func',
+      badge: '特殊エネ',
+      desc: '【ジェットエネルギー】ベンチポケモンに装着した時、そのポケモンをバトル場と入れ替える',
+      snippet: 'event.on("onAttach", (card, pokemon) => {\n  if (pokemon.isBench) switchActive(self, pokemon);\n});',
+      targets: ['trainer', 'ability']
+    },
+    {
+      keyword: 'doubleTurboEnergy',
+      label: 'ダブルターボエネルギー (特殊エネ)',
+      category: 'func',
+      badge: '特殊エネ',
+      desc: '【ダブルターボエネルギー】無色2個分としてはたらき、与えるワザのダメージが-20される',
+      snippet: 'event.on("onAttach", (card, pokemon) => {\n  reduceDamage(pokemon, 20);\n});',
+      targets: ['trainer', 'ability']
+    },
+    {
+      keyword: 'getStadium',
+      label: 'getStadium()',
+      category: 'func',
+      badge: 'スタジアムAPI',
+      desc: '現在バトル場に展開されているスタジアムカードを取得します',
+      snippet: 'const stadium = getStadium();',
+      targets: ['trainer', 'attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'setStadium',
+      label: 'setStadium(card)',
+      category: 'func',
+      badge: 'スタジアムAPI',
+      desc: '指定したカードを現在のバトルスタジアムとして展開します',
+      snippet: 'setStadium(card);',
+      targets: ['trainer', 'attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'discardStadium',
+      label: 'discardStadium()',
+      category: 'func',
+      badge: 'スタジアムAPI',
+      desc: '現在展開されているバトルスタジアムをトラッシュします',
+      snippet: 'discardStadium();',
+      targets: ['trainer', 'attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'hasStadium',
+      label: 'hasStadium(name)',
+      category: 'func',
+      badge: 'スタジアムAPI',
+      desc: '指定した名前のスタジアム（省略時は任意のスタジアム）が展開されているか判定',
+      snippet: 'hasStadium("ボウルタウン")',
+      targets: ['trainer', 'attack1', 'attack2', 'ability']
+    },
+    {
       keyword: 'isFirstTurn',
       label: 'self.isFirstTurn',
       category: 'prop',
@@ -10513,7 +10892,151 @@ var EffectEditor;
       badge: '次回威力+80',
       desc: '次の自分の番、ワザのダメージを+80する（交代しても継続。第2引数で特定ポケモンや属性の限定も可能）',
       snippet: 'nextTurnDamage(80);',
-      targets: ['attack1', 'attack2', 'ability']
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'nextTurnReduceOpponentAttack',
+      label: 'nextTurnReduceOpponentAttack(20);',
+      category: 'action',
+      badge: '相手攻撃力-20',
+      desc: '次の相手の番、相手のポケモンが使うワザの威力を -20 する（統一形式）',
+      snippet: 'nextTurnReduceOpponentAttack(20);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'reduceOpponentAttackNextTurn',
+      label: 'reduceOpponentAttackNextTurn(20);',
+      category: 'action',
+      badge: '相手攻撃力-20',
+      desc: '次の相手の番、相手のポケモンが使うワザの威力を -20 する（統一エイリアス）',
+      snippet: 'reduceOpponentAttackNextTurn(20);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'nextTurnReduceDamage',
+      label: 'nextTurnReduceDamage(30);',
+      category: 'action',
+      badge: '次ターン被ダメ-30',
+      desc: '次の相手の番、自分が受けるワザのダメージを -30 軽減する（統一形式）',
+      snippet: 'nextTurnReduceDamage(30);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'reduceDamageNextTurn',
+      label: 'reduceDamageNextTurn(30);',
+      category: 'action',
+      badge: '次ターン被ダメ-30',
+      desc: '次の相手の番、自分が受けるワザのダメージを -30 軽減する（統一エイリアス）',
+      snippet: 'reduceDamageNextTurn(30);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'nextTurnCantAttack',
+      label: 'nextTurnCantAttack();',
+      category: 'action',
+      badge: '次回ワザ不可',
+      desc: '次の自分の番、このポケモンはワザを使えない（統一形式）',
+      snippet: 'nextTurnCantAttack();',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'cantAttackNextTurn',
+      label: 'cantAttackNextTurn();',
+      category: 'action',
+      badge: '次回ワザ不可',
+      desc: '次の自分の番、このポケモンはワザを使えない（統一エイリアス）',
+      snippet: 'cantAttackNextTurn();',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'wasAllyKnockedOutLastTurn',
+      label: 'wasAllyKnockedOutLastTurn()',
+      category: 'condition',
+      badge: '味方気絶判定',
+      desc: '【前の番のきぜつ判定】前の相手の番（前の番）に自分のポケモンがきぜつしていたなら true を返す（シロナ・キバナ等の効果）',
+      snippet: 'if (!wasAllyKnockedOutLastTurn()) {\n  cant("前の番に自分のポケモンがきぜつしていません");\n}',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'didAllyKnockoutLastTurn',
+      label: 'didAllyKnockoutLastTurn()',
+      category: 'condition',
+      badge: '味方気絶判定',
+      desc: '【前の番のきぜつ判定】前の相手の番（前の番）に自分のポケモンがきぜつしていたなら true を返す（wasAllyKnockedOutLastTurn の統一形式）',
+      snippet: 'if (!didAllyKnockoutLastTurn()) {\n  cant("前の番に自分のポケモンがきぜつしていません");\n}',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'allyKnockedOutLastTurn',
+      label: 'allyKnockedOutLastTurn()',
+      category: 'condition',
+      badge: '味方気絶判定',
+      desc: '【前の番のきぜつ判定】前の相手の番（前の番）に自分のポケモンがきぜつしていたなら true を返す（wasAllyKnockedOutLastTurn の統一エイリアス）',
+      snippet: 'allyKnockedOutLastTurn()',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'wasKnockedOutLastTurn',
+      label: 'wasKnockedOutLastTurn()',
+      category: 'condition',
+      badge: '味方気絶判定',
+      desc: '【前の番のきぜつ判定】前の相手の番（前の番）に自分のポケモンがきぜつしていたなら true を返す（エイリアス）',
+      snippet: 'if (!wasKnockedOutLastTurn()) {\n  cant("前の番に自分のポケモンがきぜつしていません");\n}',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'wasKnockedOutPreviousTurn',
+      label: 'wasKnockedOutPreviousTurn()',
+      category: 'condition',
+      badge: '味方気絶判定',
+      desc: '【前の番のきぜつ判定】前の相手の番（前の番）に自分のポケモンがきぜつしていたなら true を返す（エイリアス）',
+      snippet: 'if (!wasKnockedOutPreviousTurn()) {\n  cant("前の番に自分のポケモンがきぜつしていません");\n}',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'reduceHp',
+      label: 'reduceHp(opponent.active, 20);',
+      category: 'action',
+      badge: 'HP直接減少',
+      desc: '指定したポケモンのHPを直接減少させる（弱点・抵抗力・軽減無視）',
+      snippet: 'reduceHp(opponent.active, 20);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'reduceOpponentHp',
+      label: 'reduceOpponentHp(20);',
+      category: 'action',
+      badge: '相手HP直接減少',
+      desc: '相手バトル場ポケモンのHPを直接減少させる',
+      snippet: 'reduceOpponentHp(20);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'reduceMaxHp',
+      label: 'reduceMaxHp(opponent.active, 20);',
+      category: 'action',
+      badge: '最大HP減少',
+      desc: '指定したポケモンの最大HPを減少させる（現在HPが最大HPを超える場合は調整）',
+      snippet: 'reduceMaxHp(opponent.active, 20);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'increaseMaxHp',
+      label: 'increaseMaxHp(self.active, 30);',
+      category: 'action',
+      badge: '最大HP増加',
+      desc: '指定したポケモンの最大HPおよび現在HPを増加させる',
+      snippet: 'increaseMaxHp(self.active, 30);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'setHp',
+      label: 'setHp(self.active, 100);',
+      category: 'action',
+      badge: 'HP設定',
+      desc: '指定ポケモンのHPを直接特定の数値に設定する',
+      snippet: 'setHp(self.active, 100);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
     },
     {
       keyword: 'cant',
@@ -10961,6 +11484,126 @@ var EffectEditor;
         snippet: 'nextTurnDamage(80);'
       },
       {
+        name: 'reduceOpponentAttackNextTurn',
+        signature: 'reduceOpponentAttackNextTurn(amount, targetOrFilter?)',
+        category: 'battle',
+        catLabel: 'ダメージ・回復',
+        badge: '相手攻撃力ダウン',
+        returns: 'number',
+        desc: '次の相手の番、相手のポケモンが使うワザのダメージを減少させます。（統一形式: nextTurnReduceOpponentAttack）',
+        params: [
+          { name: 'amount', type: 'number', desc: '減少させるワザの威力数値（例: 20）' },
+          { name: 'targetOrFilter', type: 'object | null', desc: '（省略可）特定の相手ポケモン（opponent.active 等）' }
+        ],
+        example: 'reduceOpponentAttackNextTurn(20);',
+        snippet: 'reduceOpponentAttackNextTurn(20);'
+      },
+      {
+        name: 'nextTurnReduceOpponentAttack',
+        signature: 'nextTurnReduceOpponentAttack(amount, targetOrFilter?)',
+        category: 'battle',
+        catLabel: 'ダメージ・回復',
+        badge: '相手攻撃力ダウン',
+        returns: 'number',
+        desc: '次の相手の番、相手のポケモンが使うワザのダメージを減少させます。（統一名: reduceOpponentAttackNextTurn）',
+        params: [
+          { name: 'amount', type: 'number', desc: '減少させるワザの威力数値（例: 20）' },
+          { name: 'targetOrFilter', type: 'object | null', desc: '（省略可）特定の相手ポケモン（opponent.active 等）' }
+        ],
+        example: 'nextTurnReduceOpponentAttack(20);',
+        snippet: 'nextTurnReduceOpponentAttack(20);'
+      },
+      {
+        name: 'reduceDamageNextTurn',
+        signature: 'reduceDamageNextTurn(amount, target?)',
+        category: 'battle',
+        catLabel: 'ダメージ・回復',
+        badge: '次ターン被ダメ軽減',
+        returns: 'number',
+        desc: '次の相手の番、自分が受けるワザのダメージを軽減します。（統一形式: nextTurnReduceDamage）',
+        params: [
+          { name: 'amount', type: 'number', desc: '軽減するダメージ数値（例: 30）' },
+          { name: 'target', type: 'pokemon | null', desc: '（省略可）対象ポケモン（デフォルト: self.active）' }
+        ],
+        example: 'reduceDamageNextTurn(30);',
+        snippet: 'reduceDamageNextTurn(30);'
+      },
+      {
+        name: 'nextTurnReduceDamage',
+        signature: 'nextTurnReduceDamage(amount, target?)',
+        category: 'battle',
+        catLabel: 'ダメージ・回復',
+        badge: '次ターン被ダメ軽減',
+        returns: 'number',
+        desc: '次の相手の番、自分が受けるワザのダメージを軽減します。（統一名: reduceDamageNextTurn）',
+        params: [
+          { name: 'amount', type: 'number', desc: '軽減するダメージ数値（例: 30）' },
+          { name: 'target', type: 'pokemon | null', desc: '（省略可）対象ポケモン（デフォルト: self.active）' }
+        ],
+        example: 'nextTurnReduceDamage(30);',
+        snippet: 'nextTurnReduceDamage(30);'
+      },
+      {
+        name: 'reduceHp',
+        signature: 'reduceHp(target?, amount)',
+        category: 'battle',
+        catLabel: 'ダメージ・回復',
+        badge: 'HP直接減少',
+        returns: 'number',
+        desc: '指定したポケモンのHPを直接減少させます（弱点・抵抗力・ダメージ軽減を無視してHPを削ります）。',
+        params: [
+          { name: 'target', type: 'pokemon', desc: '（省略時は opponent.active）対象ポケモン' },
+          { name: 'amount', type: 'number', desc: '減少させるHP数値' }
+        ],
+        example: '// 相手バトル場のHPを20減少:\nreduceHp(opponent.active, 20);\n// 数値のみ指定（相手バトル場に20ダメージ相当）:\nreduceHp(20);',
+        snippet: 'reduceHp(opponent.active, 20);'
+      },
+      {
+        name: 'reduceMaxHp',
+        signature: 'reduceMaxHp(target?, amount)',
+        category: 'battle',
+        catLabel: 'ダメージ・回復',
+        badge: '最大HP減少',
+        returns: 'number',
+        desc: '指定したポケモンの最大HPを減少させます。現在HPが減少後の最大HPを上回っている場合、現在HPも自動的に制限されます。',
+        params: [
+          { name: 'target', type: 'pokemon', desc: '（省略時は opponent.active）対象ポケモン' },
+          { name: 'amount', type: 'number', desc: '減少させる最大HP数値' }
+        ],
+        example: 'reduceMaxHp(opponent.active, 20);',
+        snippet: 'reduceMaxHp(opponent.active, 20);'
+      },
+      {
+        name: 'increaseMaxHp',
+        signature: 'increaseMaxHp(target?, amount)',
+        category: 'battle',
+        catLabel: 'ダメージ・回復',
+        badge: '最大HP増加',
+        returns: 'number',
+        desc: '指定したポケモンの最大HPおよび現在HPを増加させます。',
+        params: [
+          { name: 'target', type: 'pokemon', desc: '（省略時は self.active）対象ポケモン' },
+          { name: 'amount', type: 'number', desc: '増加させる最大HP数値' }
+        ],
+        example: 'increaseMaxHp(self.active, 30);',
+        snippet: 'increaseMaxHp(self.active, 30);'
+      },
+      {
+        name: 'setHp',
+        signature: 'setHp(target?, hpValue)',
+        category: 'battle',
+        catLabel: 'ダメージ・回復',
+        badge: 'HP設定',
+        returns: 'number',
+        desc: '指定ポケモンのHPを直接特定の数値に設定します。',
+        params: [
+          { name: 'target', type: 'pokemon', desc: '（省略時は self.active）対象ポケモン' },
+          { name: 'hpValue', type: 'number', desc: '設定するHP数値（例: 100）' }
+        ],
+        example: 'setHp(self.active, 100);',
+        snippet: 'setHp(self.active, 100);'
+      },
+      {
         name: 'cant',
         signature: 'cant(reason?)',
         category: 'battle',
@@ -11274,6 +11917,20 @@ var EffectEditor;
         ],
         example: 'const pokemons = searchCards(self, { category: "Basic" });',
         snippet: 'searchCards(self, { category: "Basic" });'
+      },
+      {
+        name: 'wasAllyKnockedOutLastTurn',
+        signature: 'wasAllyKnockedOutLastTurn(player?)',
+        category: 'battle',
+        catLabel: 'バトル・条件判定',
+        badge: '味方気絶判定',
+        returns: 'boolean',
+        desc: '前の相手の番（前の番）に自分のポケモンがきぜつしていたなら true を返します。キバナ・シロナ等の発動条件に使用します。',
+        params: [
+          { name: 'player', type: 'player', desc: '（省略可）対象プレイヤー（デフォルト: self）' }
+        ],
+        example: '// 前の番に自分のポケモンがきぜつしていないと使えないサポート\nif (!wasAllyKnockedOutLastTurn()) {\n  cant("前の番に自分のポケモンがきぜつしていません");\n}\n\n// トラッシュから基本エネルギーを1枚つけ、山札から好きなカードを1枚探す\nconst card = choiceCard(self, "discard", { category: "Energy" });\nattach(card, self.active);\nconst target = choiceCard(self, "deck");\ntoHand(self, target);\nshuffleDeck(self);',
+        snippet: 'if (!wasAllyKnockedOutLastTurn()) {\n  cant("前の番に自分のポケモンがきぜつしていません");\n}'
       }
     ],
 
@@ -11360,17 +12017,23 @@ var EffectEditor;
         target = target || 'attack1';
         this.effectEditor.target = target;
         this.effectEditor.activeTab = target;
+        const abCode = document.getElementById('abilityCode')?.value || '';
+        const at1Code = document.getElementById('attack1Code')?.value || '';
+        const at2Code = document.getElementById('attack2Code')?.value || '';
         this.effectEditor.codes = {
-          ability: document.getElementById('abilityCode')?.value || '',
-          attack1: document.getElementById('attack1Code')?.value || '',
-          attack2: document.getElementById('attack2Code')?.value || '',
-          trainer: document.getElementById('attack1Code')?.value || ''
+          ability: abCode,
+          attack1: at1Code,
+          attack2: at2Code,
+          trainer: at1Code || abCode
         };
+        const abText = document.getElementById('abilityText')?.value || '';
+        const at1Text = document.getElementById('attack1Text')?.value || document.getElementById('description')?.value || '';
+        const at2Text = document.getElementById('attack2Text')?.value || '';
         this.effectEditor.texts = {
-          ability: document.getElementById('abilityText')?.value || '',
-          attack1: document.getElementById('attack1Text')?.value || '',
-          attack2: document.getElementById('attack2Text')?.value || '',
-          trainer: document.getElementById('attack1Text')?.value || ''
+          ability: abText,
+          attack1: at1Text,
+          attack2: at2Text,
+          trainer: at1Text
         };
         let title = (target === 'attack1' ? 'ワザ1' : 'ワザ2') + 'の効果エディター';
         if (target === 'ability') title = '特性の効果エディター';
@@ -11397,6 +12060,73 @@ var EffectEditor;
       }
       const popup = document.getElementById('effectCompletion');
       if (popup) popup.style.display = 'none';
+    },
+
+    applyEffectEditor() {
+      try {
+        const editor = document.getElementById('effectCodeEditor');
+        const descInput = document.getElementById('effectEditorDisplayText');
+        const activeTab = this.effectEditor && this.effectEditor.activeTab ? this.effectEditor.activeTab : 'attack1';
+
+        if (this.effectEditor && this.effectEditor.codes) {
+          if (editor) this.effectEditor.codes[activeTab] = editor.value;
+          if (descInput) this.effectEditor.texts[activeTab] = descInput.value;
+        }
+
+        const setVal = (id, val) => {
+          const el = document.getElementById(id);
+          if (el) el.value = val == null ? '' : val;
+        };
+
+        const updateSummary = (target, text, code) => {
+          const el = document.getElementById(target + "EffectSummary");
+          if (!el) return;
+          const disp = text || this.makeEffectDisplayText(code);
+          el.textContent = disp ? "✦ 設定効果: " + disp : code ? '✦ 設定効果: JavaScript効果設定済み' : '';
+        };
+
+        const abCode = (this.effectEditor && this.effectEditor.codes && this.effectEditor.codes.ability) || '';
+        const abText = (this.effectEditor && this.effectEditor.texts && this.effectEditor.texts.ability) || '';
+        const at1Code = (this.effectEditor && this.effectEditor.codes && this.effectEditor.codes.attack1) || '';
+        const at1Text = (this.effectEditor && this.effectEditor.texts && this.effectEditor.texts.attack1) || '';
+        const at2Code = (this.effectEditor && this.effectEditor.codes && this.effectEditor.codes.attack2) || '';
+        const at2Text = (this.effectEditor && this.effectEditor.texts && this.effectEditor.texts.attack2) || '';
+        const trCode = (this.effectEditor && this.effectEditor.codes && this.effectEditor.codes.trainer) || '';
+        const trText = (this.effectEditor && this.effectEditor.texts && this.effectEditor.texts.trainer) || '';
+
+        setVal('abilityCode', abCode);
+        setVal('abilityText', abText);
+
+        if (activeTab === 'trainer' || (this.effectEditor && this.effectEditor.target === 'trainer')) {
+          setVal('attack1Code', trCode);
+          setVal('attack1Text', trText);
+          const descEl = document.getElementById('description');
+          if (descEl && trText) descEl.value = trText;
+          const trSummary = document.getElementById('trainerEffectSummary');
+          if (trSummary) {
+            const trDisp = trText || this.makeEffectDisplayText(trCode);
+            trSummary.textContent = trDisp ? "✦ 設定効果: " + trDisp : trCode ? '✦ 設定効果: JavaScript効果設定済み' : '';
+          }
+        } else {
+          setVal('attack1Code', at1Code);
+          setVal('attack1Text', at1Text);
+        }
+
+        setVal('attack2Code', at2Code);
+        setVal('attack2Text', at2Text);
+
+        updateSummary('ability', abText, abCode);
+        updateSummary('attack1', at1Text, at1Code);
+        updateSummary('attack2', at2Text, at2Code);
+
+        this.closeEffectEditor();
+
+        if (window.CardSystem && typeof window.CardSystem.updatePreview === 'function') {
+          window.CardSystem.updatePreview();
+        }
+      } catch (err) {
+        console.error('[EffectEditor.applyEffectEditor] Error:', err);
+      }
     },
 
     switchEffectTab(newTab) {
@@ -11482,11 +12212,17 @@ var EffectEditor;
         { label: 'たね手札サーチ', sub: '山札からたねを手札へ', code: 'const card = choiceCard(self, "deck", { category: "Basic" });\ntoHand(self, card);\nshuffleDeck(self);' },
         { label: 'エネ回収 (トラッシュから)', sub: 'エネ手札回収', code: 'const card = choiceCard(self, "discard", { category: "Energy" });\ntoHand(self, card);' },
         { label: '進化サーチ', sub: '山札から進化を手札へ', code: 'const card = choiceCard(self, "deck", { category: "Evolution" });\ntoHand(self, card);\nshuffleDeck(self);' },
+        { label: '前番味方きぜつ時のみ', sub: 'wasAllyKnockedOutLastTurn()', code: 'if (!wasAllyKnockedOutLastTurn()) {\n  cant("前の番に自分のポケモンがきぜつしていません");\n}' },
         { label: '2枚ドロー', sub: 'draw(self, 2)', code: 'draw(self, 2);' }];
 
       } else {
         buttons = [
         { label: '30ダメージ', sub: 'damage()', code: 'damage(opponent.active, 30);' },
+        { label: '相手次攻撃力-20', sub: 'reduceOpponentAttackNextTurn', code: 'reduceOpponentAttackNextTurn(20);' },
+        { label: '次ターン被ダメ-30', sub: 'reduceDamageNextTurn', code: 'reduceDamageNextTurn(30);' },
+        { label: '相手HP直接-20', sub: 'reduceHp', code: 'reduceHp(opponent.active, 20);' },
+        { label: '相手最大HP-20', sub: 'reduceMaxHp', code: 'reduceMaxHp(opponent.active, 20);' },
+        { label: '自分最大HP+30', sub: 'increaseMaxHp', code: 'increaseMaxHp(self.active, 30);' },
         { label: 'ベンチ狙撃30', sub: 'choiceCard + damage', code: 'const target = choiceCard(opponent.bench);\ndamage(target, 30);' },
         { label: 'エネ数×20ダメ', sub: 'getEnergy() * 20', code: 'const n = getEnergy(self.active);\ndamage(opponent.active, n * 20);' },
         { label: 'エネをつける', sub: 'attach()', code: 'const card = choiceCard(self, "hand", { category: "Energy" });\nattach(card, self.active);' },
@@ -11497,6 +12233,7 @@ var EffectEditor;
         { label: 'コイン表で+20', sub: 'if (coinFlip)', code: 'if (coinFlip() === 1) {\n  damage(opponent.active, 20);\n}' },
         { label: '相手を「どく」', sub: 'applyStatus', code: 'applyStatus(opponent.active, "どく");' },
         { label: '相手手札破棄', sub: 'choiceCard + toDiscard', code: 'const card = choiceCard(opponent, "hand");\ntoDiscard(opponent, card);' },
+        { label: '前番味方きぜつ時のみ', sub: 'wasAllyKnockedOutLastTurn()', code: 'if (!wasAllyKnockedOutLastTurn()) {\n  cant("前の番に自分のポケモンがきぜつしていません");\n}' },
         { label: '山札サーチ', sub: 'choiceCard + toHand', code: 'const card = choiceCard(self, "deck", { category: "Basic" });\ntoHand(self, card);\nshuffleDeck(self);' },
         { label: '相手ベンチ全員10', sub: 'benchDamage', code: 'benchDamage(opponent, 10);' }];
 
@@ -12198,13 +12935,13 @@ var EffectEditor;
       const tab = this.effectEditor && this.effectEditor.activeTab ? this.effectEditor.activeTab : 'attack1';
 
       let candidates = [];
+      const wordLower = (word || '').toLowerCase();
       if (word) {
-        const wordLower = word.toLowerCase();
         candidates = this.effectApiCompletions.filter((x) => {
           return x.keyword.toLowerCase().includes(wordLower) ||
           x.label.toLowerCase().includes(wordLower) ||
-          x.badge && x.badge.toLowerCase().includes(wordLower) ||
-          x.desc && x.desc.toLowerCase().includes(wordLower);
+          (x.badge && x.badge.toLowerCase().includes(wordLower)) ||
+          (x.desc && x.desc.toLowerCase().includes(wordLower));
         });
       } else if (forceOpen) {
         candidates = this.effectApiCompletions.filter((x) => x.targets.includes(tab));
@@ -12217,6 +12954,13 @@ var EffectEditor;
         const aFit = a.targets.includes(tab) ? 1 : 0;
         const bFit = b.targets.includes(tab) ? 1 : 0;
         if (aFit !== bFit) return bFit - aFit;
+
+        if (wordLower) {
+          const aStarts = a.keyword.toLowerCase().startsWith(wordLower) ? 1 : 0;
+          const bStarts = b.keyword.toLowerCase().startsWith(wordLower) ? 1 : 0;
+          if (aStarts !== bStarts) return bStarts - aStarts;
+        }
+
         return a.keyword.localeCompare(b.keyword);
       });
 
@@ -12607,6 +13351,9 @@ var EffectEditor;
       } else if (/if\s*\(\s*(coinFlip|flipCoin)\s*\(/i.test(code)) {
         lines.push('コインを投げ表なら、');
       }
+      if (/wasAllyKnockedOutLastTurn|didAllyKnockoutLastTurn|allyKnockedOutLastTurn/i.test(code)) {
+        lines.push('前の番に自分のポケモンがきぜつしていたなら、');
+      }
       if (/if\s*\([^)]*hp\s*<=/i.test(code)) {
         lines.push('HP条件を満たせば、');
       }
@@ -12615,7 +13362,7 @@ var EffectEditor;
       }
 
       // APIコール解析
-      const re = /(damage|benchDamage|heal|draw|attachEnergy|discardEnergy|applyStatus|clearStatus|switchActive|discardCards|searchCards|reduceDamage|takePrize|toHand|toDiscard|toDeck|toBench)\s*\(([^)]*)\)/g;
+      const re = /(damage|benchDamage|heal|draw|attachEnergy|discardEnergy|applyStatus|clearStatus|switchActive|discardCards|searchCards|reduceDamage|takePrize|toHand|toDiscard|toDeck|toBench|reduceOpponentAttackNextTurn|nextTurnReduceOpponentAttack|reduceDamageNextTurn|nextTurnReduceDamage|nextTurnDamage|boostDamageNextTurn|reduceHp|reduceOpponentHp|reduceSelfHp|subHp|reduceMaxHp|lowerMaxHp|increaseMaxHp|addMaxHp|setHp|cantAttackNextTurn|nextTurnCantAttack)\s*\(([^)]*)\)/g;
       let m;
       while (m = re.exec(code)) {
         const fn = m[1];
@@ -12634,7 +13381,17 @@ var EffectEditor;
         if (fn === 'toDiscard') lines.push(this.codeTarget(args) + "のトラッシュに送る。");else
         if (fn === 'toDeck') lines.push(this.codeTarget(args) + "の山札にもどす。");else
         if (fn === 'toBench') lines.push(this.codeTarget(args) + "のベンチに出す。");else
-        if (fn === 'reduceDamage') lines.push(this.codeTarget(args) + "が受けるダメージを" + this.codeNumber(args) + "軽減する。");
+        if (fn === 'reduceDamage') lines.push(this.codeTarget(args) + "が受けるダメージを" + this.codeNumber(args) + "軽減する。");else
+        if (fn === 'reduceOpponentAttackNextTurn' || fn === 'nextTurnReduceOpponentAttack') lines.push("次の相手の番、相手のワザの威力を-" + (this.codeNumber(args) || 20) + "する。");else
+        if (fn === 'reduceDamageNextTurn' || fn === 'nextTurnReduceDamage') lines.push("次の相手の番、受けるワザのダメージを-" + (this.codeNumber(args) || 30) + "軽減する。");else
+        if (fn === 'nextTurnDamage' || fn === 'boostDamageNextTurn') lines.push("次の自分の番、ワザの威力を+" + (this.codeNumber(args) || 80) + "する。");else
+        if (fn === 'reduceHp' || fn === 'subHp') lines.push(this.codeTarget(args) + "のHPを直接" + (this.codeNumber(args) || 20) + "減少させる。");else
+        if (fn === 'reduceOpponentHp') lines.push("相手バトル場のHPを直接" + (this.codeNumber(args) || 20) + "減少させる。");else
+        if (fn === 'reduceSelfHp') lines.push("自分のHPを直接" + (this.codeNumber(args) || 20) + "減少させる。");else
+        if (fn === 'reduceMaxHp' || fn === 'lowerMaxHp') lines.push(this.codeTarget(args) + "の最大HPを" + (this.codeNumber(args) || 20) + "減少させる。");else
+        if (fn === 'increaseMaxHp' || fn === 'addMaxHp') lines.push(this.codeTarget(args) + "の最大HPを" + (this.codeNumber(args) || 30) + "増加させる。");else
+        if (fn === 'setHp') lines.push(this.codeTarget(args) + "のHPを" + (this.codeNumber(args) || 100) + "に設定する。");else
+        if (fn === 'cantAttackNextTurn' || fn === 'nextTurnCantAttack') lines.push("次の自分の番、このポケモンはワザを使えない。");
       }
 
       // choiceCard / choiceCards の解析
@@ -12685,7 +13442,7 @@ var EffectEditor;
       return { 'self': '自分', 'opponent': '相手', 'self.active': '自分のバトルカード', 'opponent.active': '相手のバトルカード', 'self.bench': '自分のベンチ', 'opponent.bench': '相手のベンチ', 'self.hand': '自分の手札', 'opponent.hand': '相手の手札' }[a] || a;
     },
 
-    codeNumber(args) {const m = args.match(/,\s*(\d+)/);return m ? m[1] : '指定数';},
+    codeNumber(args) { const m = String(args || '').match(/\b(\d+)\b/); return m ? m[1] : ''; },
     escape(v) {return String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');},
 
     open(target) { return this.openEffectEditor(target); },
@@ -12700,6 +13457,7 @@ var EffectEditor;
   if (window.__showDebugMsg) window.__showDebugMsg('EffectEditor準備完了 (' + typeof window.EffectEditor + ')');
 })();
 </script>
+
 
   <script>
 console.log('[ORBITAL] CardSystem.js.html started execution');
@@ -12811,6 +13569,12 @@ var CardSystem;
     filterCompletionByQuery(q) {
       if (window.EffectEditor) return window.EffectEditor.filterCompletionByQuery(q);
     },
+    makeEffectDisplayText(code) {
+      if (window.EffectEditor && typeof window.EffectEditor.makeEffectDisplayText === 'function') {
+        return window.EffectEditor.makeEffectDisplayText(code);
+      }
+      return '';
+    },
     handleEditorKeydown(e) {
       if (window.EffectEditor) return window.EffectEditor.handleEditorKeydown(e);
     },
@@ -12854,18 +13618,33 @@ var CardSystem;
 
     renderList() {
       const root = document.getElementById('cardList');
-      const search = document.getElementById('searchInput').value.trim().toLowerCase();
-      const category = document.getElementById('categoryFilter').value;
-      const type = document.getElementById('typeFilter').value;
-      const rarity = document.getElementById('rarityFilter').value;
+      if (!root) return;
 
-      const cards = App.state.cards.filter((card) => {
+      const searchEl = document.getElementById('searchInput');
+      const categoryEl = document.getElementById('categoryFilter');
+      const typeEl = document.getElementById('typeFilter');
+      const rarityEl = document.getElementById('rarityFilter');
+
+      const search = searchEl ? searchEl.value.trim().toLowerCase() : '';
+      const category = categoryEl ? categoryEl.value : '';
+      const type = typeEl ? typeEl.value : '';
+      const rarity = rarityEl ? rarityEl.value : '';
+
+      const cards = (App.state && Array.isArray(App.state.cards) ? App.state.cards : []).filter((card) => {
         let matchCat = !category;
         if (category) {
           if (category === '進化') {
             matchCat = card.category === '進化' || card.category === '1進化' || card.category === '2進化';
           } else if (category === 'ex') {
             matchCat = card.category === 'ex' || card.category === 'たねex' || card.category === '1進化ex' || card.category === '2進化ex' || !!card.isEx;
+          } else if (category === 'トレーナー') {
+            matchCat = card.category === 'トレーナー' || card.category === 'グッズ' || card.category === 'サポート' || card.category === 'スタジアム';
+          } else if (category === 'エネルギー') {
+            matchCat = card.category === 'エネルギー' || card.category === '基本エネルギー' || card.category === '特殊エネルギー';
+          } else if (category === '基本エネルギー') {
+            matchCat = card.category === '基本エネルギー' || (card.category === 'エネルギー' && !String(card.name || '').includes('特殊') && !String(card.category || '').includes('特殊'));
+          } else if (category === '特殊エネルギー') {
+            matchCat = card.category === '特殊エネルギー' || (card.category === 'エネルギー' && (String(card.name || '').includes('特殊') || String(card.category || '').includes('特殊')));
           } else {
             matchCat = card.category === category;
           }
@@ -12886,6 +13665,120 @@ var CardSystem;
       root.querySelectorAll('[data-card-id]').forEach((tile) => {
         tile.addEventListener('click', () => {
           const card = App.state.cards.find((c) => String(c.id) === String(tile.dataset.cardId));
+          if (card) this.showDetail(card);
+        });
+      });
+    },
+
+    getUserCollection() {
+      try {
+        const raw = localStorage.getItem('ORBITAL_USER_COLLECTION');
+        if (raw) return JSON.parse(raw);
+      } catch (e) {}
+      return {};
+    },
+
+    saveUserCollection(map) {
+      try {
+        localStorage.setItem('ORBITAL_USER_COLLECTION', JSON.stringify(map));
+      } catch (e) {}
+    },
+
+    addCardsToCollection(drawnCards) {
+      if (!Array.isArray(drawnCards) || !drawnCards.length) return;
+      const col = this.getUserCollection();
+      drawnCards.forEach((c) => {
+        if (!c) return;
+        const key = String(c.id || c.name);
+        col[key] = (col[key] || 0) + 1;
+      });
+      this.saveUserCollection(col);
+      if (window.App && window.App.state && window.App.state.page === 'collection') {
+        this.renderCollectionPage();
+      }
+    },
+
+    renderCollectionPage() {
+      const root = document.getElementById('collectionCardGrid');
+      if (!root) return;
+
+      const searchEl = document.getElementById('collectionSearchInput');
+      const categoryEl = document.getElementById('collectionCategoryFilter');
+      const rarityEl = document.getElementById('collectionRarityFilter');
+      const ownedEl = document.getElementById('collectionOwnedFilter');
+
+      const search = searchEl ? searchEl.value.trim().toLowerCase() : '';
+      const category = categoryEl ? categoryEl.value : '';
+      const rarity = rarityEl ? rarityEl.value : '';
+      const ownedFilter = ownedEl ? ownedEl.value : '';
+
+      const allCards = (window.App && window.App.state && Array.isArray(window.App.state.cards)) ? window.App.state.cards : [];
+      const colMap = this.getUserCollection();
+
+      let ownedTypeCount = 0;
+      allCards.forEach((c) => {
+        const key = String(c.id || c.name);
+        if ((colMap[key] || 0) > 0) ownedTypeCount++;
+      });
+      const totalCards = allCards.length;
+      const percentage = totalCards > 0 ? Math.floor((ownedTypeCount / totalCards) * 100) : 0;
+
+      const statsBadge = document.getElementById('collectionStatsBadge');
+      if (statsBadge) {
+        statsBadge.textContent = '全 ' + totalCards + ' 種類中 ' + ownedTypeCount + ' 種類 獲得済み (' + percentage + '%)';
+      }
+
+      const filtered = allCards.filter((card) => {
+        const key = String(card.id || card.name);
+        const count = colMap[key] || 0;
+
+        if (ownedFilter === 'owned' && count <= 0) return false;
+        if (ownedFilter === 'unowned' && count > 0) return false;
+
+        let matchCat = !category;
+        if (category) {
+          if (category === '進化') {
+            matchCat = card.category === '進化' || card.category === '1進化' || card.category === '2進化';
+          } else if (category === 'ex') {
+            matchCat = card.category === 'ex' || card.category === 'たねex' || card.category === '1進化ex' || card.category === '2進化ex' || !!card.isEx;
+          } else if (category === 'トレーナー') {
+            matchCat = card.category === 'トレーナー' || card.category === 'グッズ' || card.category === 'サポート' || card.category === 'スタジアム';
+          } else if (category === 'エネルギー') {
+            matchCat = card.category === 'エネルギー' || card.category === '基本エネルギー' || card.category === '特殊エネルギー';
+          } else if (category === '基本エネルギー') {
+            matchCat = card.category === '基本エネルギー' || (card.category === 'エネルギー' && !String(card.name || '').includes('特殊') && !String(card.category || '').includes('特殊'));
+          } else if (category === '特殊エネルギー') {
+            matchCat = card.category === '特殊エネルギー' || (card.category === 'エネルギー' && (String(card.name || '').includes('特殊') || String(card.category || '').includes('特殊')));
+          } else {
+            matchCat = card.category === category;
+          }
+        }
+
+        return (!search || String(card.name).toLowerCase().includes(search)) &&
+          matchCat &&
+          (!rarity || card.rarity === rarity);
+      });
+
+      if (!filtered.length) {
+        root.innerHTML = '<div class="empty-page"><div><h2>対象のカードがありません</h2><p>条件を変更するか、パックを開封してカードを獲得しましょう！</p></div></div>';
+        return;
+      }
+
+      root.innerHTML = filtered.map((card) => {
+        const key = String(card.id || card.name);
+        const count = colMap[key] || 0;
+        const isUnowned = count <= 0;
+        const countHtml = '<div class="pool-in-deck-badge" style="top: 8px; right: 8px; z-index: 10; background: ' + (isUnowned ? 'rgba(100,116,139,0.85)' : 'linear-gradient(135deg, #6366f1, #38bdf8)') + ';">' + (isUnowned ? '未所持' : '所持: ' + count + '枚') + '</div>';
+        const cardHtml = this.createCardHtml(card, { size: 'normal' });
+        return '<div class="collection-item ' + (isUnowned ? 'card-unowned' : '') + '" style="position: relative;">' +
+          countHtml +
+          cardHtml +
+          '</div>';
+      }).join('');
+
+      root.querySelectorAll('[data-card-id]').forEach((tile) => {
+        tile.addEventListener('click', () => {
+          const card = (window.App?.state?.cards || []).find((c) => String(c.id) === String(tile.dataset.cardId));
           if (card) this.showDetail(card);
         });
       });
@@ -12966,7 +13859,12 @@ var CardSystem;
 
       const imgStyle = "object-fit: " + fit + "; object-position: " + posX + "% " + posY + "%; transform: scale(" + scale / 100 + "); transform-origin: " + posX + "% " + posY + "%;";
 
-      const rawImgUrl = card.image ? String(card.image).trim() : this.findCardImage(card.name, card.id);
+      const rawImgUrl = String(
+        card.image || card.imageUrl || card.image_url ||
+        card['画像'] || card['画像URL'] || card['画像url'] || card['イラスト'] || card['URL'] || card['url'] ||
+        (typeof this.findCardImage === 'function' ? this.findCardImage(card.name, card.id) : '') || ''
+      ).trim();
+
       let imgUrl = rawImgUrl;
       const driveMatch = rawImgUrl.match(/(?:drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?export=view&id=)|lh3\.googleusercontent\.com\/d\/)([a-zA-Z0-9_-]+)/);
       if (driveMatch && driveMatch[1]) {
@@ -12975,7 +13873,7 @@ var CardSystem;
 
       // 画像 / テクスチャアート (真ん中から上)
       const artHtml = imgUrl ? "<img src=\"" +
-      this.escape(imgUrl) + "\" alt=\"" + this.escape(card.name) + "\" class=\"card-texture-img\" draggable=\"false\" style=\"" + imgStyle + "\" referrerpolicy=\"no-referrer\" loading=\"lazy\" onerror=\"this.style.display='none'; this.nextElementSibling.style.display='flex';\"><div class=\"card-texture-placeholder\" style=\"display:none\"><div class=\"texture-watermark\">" + symbol + "</div><div class=\"texture-name\">" + this.escape(card.name || 'CARD') + "</div></div>" : "<div class=\"card-texture-placeholder\"><div class=\"texture-watermark\">" +
+      this.escape(imgUrl) + "\" alt=\"" + this.escape(card.name) + "\" class=\"card-texture-img\" draggable=\"false\" style=\"" + imgStyle + "\" referrerpolicy=\"no-referrer\" loading=\"lazy\" onerror=\"console.warn('Image load error for ' + this.alt + ':', this.src); this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';\"><div class=\"card-texture-placeholder\" style=\"display:none\"><div class=\"texture-watermark\">" + symbol + "</div><div class=\"texture-name\">" + this.escape(card.name || 'CARD') + "</div></div>" : "<div class=\"card-texture-placeholder\"><div class=\"texture-watermark\">" +
       symbol + "</div><div class=\"texture-name\">" + this.escape(card.name || 'CARD') + "</div></div>";
 
       // 特性ブロック
@@ -13033,14 +13931,15 @@ var CardSystem;
 
       const exRuleHtml = isEx ? '<div class="card-rule-box ex-rule-box"><span class="ex-rule-tag">exルール</span><span class="ex-rule-text">ポケモンexがきぜつしたとき、相手はサイドを2枚とる。</span></div>' : '';
 
-      const isEnergy = card.category === 'エネルギー' || card.category === '基本エネルギー' || String(card.category || '').includes('エネルギー');
+      const catStr = String(card.category || '').trim();
+      const isTrainer = catStr === 'グッズ' || catStr === 'サポート' || catStr === 'トレーナー' || catStr === 'スタジアム' || catStr.includes('スタジアム') || catStr.includes('トレーナー') || catStr.includes('グッズ') || catStr.includes('サポート') || catStr.includes('stadium') || catStr.includes('trainer');
+      const isEnergy = catStr === 'エネルギー' || catStr === '基本エネルギー' || catStr === '特殊エネルギー' || catStr.includes('エネルギー') || catStr.includes('energy');
       const isSpecialEnergy = String(card.category || '').includes('特殊') || String(card.name || '').includes('特殊');
       const isUnlimitedEnergy = isEnergy && !isSpecialEnergy;
 
       const inDeckBadge = inDeckCount > 0 ? ('<div class="pool-in-deck-badge">' + inDeckCount + (isUnlimitedEnergy ? '枚' : '/4') + '</div>') : '';
 
-      const isPokemon = card.category !== 'グッズ' && card.category !== 'サポート' && card.category !== 'トレーナー' && !isEnergy;
-      const isTrainer = card.category === 'グッズ' || card.category === 'サポート' || card.category === 'トレーナー';
+      const isPokemon = !isTrainer && !isEnergy;
       const hpBadgeHtml = isPokemon && card.hp != null && card.hp !== '' && Number(card.hp) > 0 ? '<span class="card-hp-badge">HP <strong>' + this.escape(card.hp) + '</strong></span>' : '';
       const rarityBadgeHtml = card.rarity ? '<span class="card-rarity-badge">' + this.escape(card.rarity) + '</span>' : '';
 
@@ -13082,10 +13981,12 @@ var CardSystem;
       }
 
       let footerStatsHtml = '';
-      if (card.category === 'グッズ' || card.category === 'サポート' || card.category === 'トレーナー') {
-        footerStatsHtml = '<span>カテゴリ: <strong>' + this.escape(card.category) + '</strong></span><span>TRAINER CARD</span>';
-      } else if (card.category === 'エネルギー' || card.category === '基本エネルギー') {
-        footerStatsHtml = '<span>種類: <strong>' + this.escape(card.category) + '</strong></span><span>ENERGY CARD</span>';
+      if (isTrainer) {
+        const catLabel = card.category || (catStr.includes('スタジアム') ? 'スタジアム' : 'トレーナー');
+        footerStatsHtml = '<span>カテゴリ: <strong>' + this.escape(catLabel) + '</strong></span><span>' + (catStr.includes('スタジアム') ? 'STADIUM CARD' : 'TRAINER CARD') + '</span>';
+      } else if (isEnergy) {
+        const catLabel = card.category || (catStr.includes('特殊') ? '特殊エネルギー' : '基本エネルギー');
+        footerStatsHtml = '<span>種類: <strong>' + this.escape(catLabel) + '</strong></span><span>ENERGY CARD</span>';
       } else {
         const retreatNum = card.retreat !== '' && card.retreat != null ? Number(card.retreat) : null;
         let retreatDisplay = '<strong>—</strong>';
@@ -13141,14 +14042,15 @@ var CardSystem;
         preEvoName = preCard ? preCard.name : pVal;
       }
 
-      const isTrainer = card.category === 'グッズ' || card.category === 'サポート' || card.category === 'トレーナー';
-      const isEnergy = card.category === 'エネルギー' || card.category === '基本エネルギー';
+      const catDetailStr = String(card.category || '').trim();
+      const isTrainer = catDetailStr === 'グッズ' || catDetailStr === 'サポート' || catDetailStr === 'トレーナー' || catDetailStr === 'スタジアム' || catDetailStr.includes('スタジアム') || catDetailStr.includes('トレーナー') || catDetailStr.includes('グッズ') || catDetailStr.includes('サポート') || catDetailStr.includes('stadium') || catDetailStr.includes('trainer');
+      const isEnergy = catDetailStr === 'エネルギー' || catDetailStr === '基本エネルギー' || catDetailStr === '特殊エネルギー' || catDetailStr.includes('エネルギー') || catDetailStr.includes('energy');
       const typePart = (!isTrainer && card.type) ? " / " + this.escape(card.type) : "";
 
       const statsHtml = isTrainer ?
-        "<div class=\"detail-section\"><h4>カード種別</h4><div>" + this.escape(card.category) + "カード (属性タイプ不要)</div></div>" :
+        "<div class=\"detail-section\"><h4>カード種別</h4><div>" + this.escape(card.category || 'トレーナー') + "カード (属性タイプ・パラメーター不要)</div></div>" :
         (isEnergy ?
-          "<div class=\"detail-section\"><h4>エネルギー種別</h4><div>" + this.escape(card.category) + " [" + this.escape(card.type || '無') + "]</div></div>" :
+          "<div class=\"detail-section\"><h4>エネルギー種別</h4><div>" + this.escape(card.category || 'エネルギー') + " [" + this.escape(card.type || '無') + "]</div></div>" :
           "<div class=\"detail-section\"><h4>基本パラメータ</h4><div>HP: " + this.escape(card.hp || '—') + (preEvoName ? "\u3000進化前: " + this.escape(preEvoName) : "") + "\u3000弱点: " + this.escape(card.weakness || '—') + "\u3000抵抗力: " + this.escape(card.resistance || '—') + "\u3000にげる: " + this.escape(card.retreat || 0) + "</div></div>");
 
       App.openModal("\n        <div class=\"detail-layout\">\n          <div class=\"detail-card-col\">\n            " +
@@ -13180,7 +14082,7 @@ var CardSystem;
         if (!c || !c.name) return false;
         if (currentCardId && String(c.id) === String(currentCardId)) return false;
         const cat = String(c.category || '');
-        return cat !== 'グッズ' && cat !== 'サポート' && cat !== 'トレーナー' && cat !== 'エネルギー' && cat !== '基本エネルギー';
+        return cat !== 'グッズ' && cat !== 'サポート' && cat !== 'トレーナー' && cat !== 'スタジアム' && cat !== 'エネルギー' && cat !== '基本エネルギー' && cat !== '特殊エネルギー';
       });
 
       const groups = {
@@ -13231,8 +14133,8 @@ var CardSystem;
       const combatSec = document.getElementById('pokemonCombatSection');
       const trainerSec = document.getElementById('trainerEffectSection');
 
-      const isTrainer = cat === 'グッズ' || cat === 'サポート' || cat === 'トレーナー';
-      const isEnergy = cat === 'エネルギー' || cat === '基本エネルギー';
+      const isTrainer = cat === 'グッズ' || cat === 'サポート' || cat === 'トレーナー' || cat === 'スタジアム';
+      const isEnergy = cat === 'エネルギー' || cat === '基本エネルギー' || cat === '特殊エネルギー';
       const isPokemon = !isTrainer && !isEnergy;
       const isEvo = isPokemon && (cat.includes('進化') || cat.toLowerCase().includes('stage') || cat.toLowerCase().includes('evolution'));
 
@@ -13250,7 +14152,7 @@ var CardSystem;
       if (abilitiesSec) abilitiesSec.style.display = isPokemon ? 'block' : 'none';
       if (attacksSec) attacksSec.style.display = isPokemon ? 'block' : 'none';
       if (combatSec) combatSec.style.display = isPokemon ? 'block' : 'none';
-      if (trainerSec) trainerSec.style.display = isTrainer ? 'block' : 'none';
+      if (trainerSec) trainerSec.style.display = (isTrainer || cat === '特殊エネルギー') ? 'block' : 'none';
     },
 
     getFormCard() {
@@ -13259,8 +14161,8 @@ var CardSystem;
         return el ? el.value : '';
       };
       const cat = val('category') || 'たね';
-      const isTrainer = cat === 'グッズ' || cat === 'サポート' || cat === 'トレーナー';
-      const isEnergy = cat === 'エネルギー' || cat === '基本エネルギー';
+      const isTrainer = cat === 'グッズ' || cat === 'サポート' || cat === 'トレーナー' || cat === 'スタジアム';
+      const isEnergy = cat === 'エネルギー' || cat === '基本エネルギー' || cat === '特殊エネルギー';
 
       const imageScale = val('imageScale') !== '' ? Number(val('imageScale')) : 100;
       const imageFit = val('imageFit') || 'cover';
@@ -13511,7 +14413,7 @@ var CardSystem;
       updateSummary('attack1', card.attack1Text, card.attack1Code);
       updateSummary('attack2', card.attack2Text, card.attack2Code);
 
-      const isTrainer = card.category === 'グッズ' || card.category === 'サポート' || card.category === 'トレーナー';
+      const isTrainer = card.category === 'グッズ' || card.category === 'サポート' || card.category === 'トレーナー' || card.category === 'スタジアム' || card.category === '特殊エネルギー';
       if (isTrainer) {
         const trDisp = card.attack1Text || card.description || this.makeEffectDisplayText(card.attack1Code);
         const trSummary = document.getElementById('trainerEffectSummary');
@@ -13940,6 +14842,7 @@ var CardSystem;
   }, true);
 })();
 </script>
+
 
   <script>
 
@@ -14818,7 +15721,8 @@ window.DeckSystem = function () {
         supporterUsed: false,
         retreated: false
       },
-      logs: []
+      logs: [],
+      activeStadium: null
     },
 
     // プリセット・フォールバック用AIデッキ
@@ -14834,7 +15738,9 @@ window.DeckSystem = function () {
         { name: 'ボスの指令', category: 'サポート', type: '', hp: '', image: 'https://images.pokemontcg.io/sv2/172_hires.png', attack1Code: 'const target = choiceCard(opponent.bench);\nswitchActive(opponent, target);', attack1Text: '相手のベンチポケモンを1匹選び、バトル場へ入れ替える。', description: '相手のベンチポケモンを1匹選び、バトル場へ入れ替える。', count: 2 },
         { name: 'きずぐすり', category: 'グッズ', type: '', hp: '', image: 'https://images.pokemontcg.io/sv1/182_hires.png', attack1Code: 'heal(self.active, 30);', attack1Text: '自分のバトルポケモンのHPを30回復する。', description: '自分のバトルポケモンのHPを30回復する。', count: 3 },
         { name: 'ポケモンいれかえ', category: 'グッズ', type: '', hp: '', image: 'https://images.pokemontcg.io/sv1/191_hires.png', attack1Code: 'switchActive(self);', attack1Text: '自分のバトルポケモンをベンチと入れ替える。', description: '自分のバトルポケモンをベンチと入れ替える。', count: 2 },
-        { name: '基本雷エネルギー', category: 'エネルギー', type: '雷', hp: '', image: 'https://images.pokemontcg.io/sve/4_hires.png', description: '雷エネルギーを付ける。', count: 12 }]
+        { name: 'ボウルタウン', category: 'スタジアム', type: '', hp: '', image: 'https://images.pokemontcg.io/sv1/185_hires.png', attack1Code: 'useLimit(1);\nconst target = choiceCard(self.deck, { category: "たne" }, 1, "山札から「たねポケモン」をベンチに出す");\nif (target) {\n  toBench(self, target);\n  shuffleDeck(self);\n}', attack1Text: 'お互いのプレイヤーは、自分の番に1回、自分の山札から「たねポケモン」を1枚選び、ベンチに出してよい。', description: 'お互いのプレイヤーは、自分の番に1回、自分の山札から「たねポケモン」を1枚選び、ベンチに出してよい。', count: 2 },
+        { name: 'ダブルターボエネルギー', category: '特殊エネルギー', type: '無', hp: '', image: 'https://images.pokemontcg.io/swsh9/151_hires.png', description: 'このカードは無色エネルギー2個分としてはたらく。このカードをつけているポケモンのワザダメージは-20される。', count: 2 },
+        { name: '基本雷エネルギー', category: 'エネルギー', type: '雷', hp: '', image: 'https://images.pokemontcg.io/sve/4_hires.png', description: '雷エネルギーを付ける。', count: 8 }]
 
       },
       fire: {
@@ -14846,7 +15752,9 @@ window.DeckSystem = function () {
         { name: 'リザードン', category: '2進化', preEvolution: 'ヒトカゲ', type: '炎', hp: 160, image: 'https://images.pokemontcg.io/pgo/10_hires.png', attack1Name: 'かえんほうしゃ', attack1Damage: 90, attack1Energy: '炎,炎,無色', attack1Text: '', attack1Code: 'damage(opponent.active, 90);', attack2Name: 'バーンストライク', attack2Damage: 150, attack2Energy: '炎,炎,炎,無色', attack2Text: '', attack2Code: 'damage(opponent.active, 150);', weakness: '水', resistance: '', retreat: 3, count: 2 },
         { name: '博士の研究', category: 'サポート', type: '', hp: '', image: 'https://images.pokemontcg.io/sv1/189_hires.png', attack1Code: 'discardCards(self.hand, self.hand.length); draw(self, 7);', attack1Text: '自分の手札をすべてトラッシュし、山札を7枚引く。', description: '自分の手札をすべてトラッシュし、山札を7枚引く。', count: 4 },
         { name: 'きずぐすり', category: 'グッズ', type: '', hp: '', image: 'https://images.pokemontcg.io/sv1/182_hires.png', attack1Code: 'heal(self.active, 30);', attack1Text: '自分のバトルポケモンのHPを30回復する。', count: 3 },
-        { name: '基本炎エネルギー', category: 'エネルギー', type: '炎', hp: '', image: 'https://images.pokemontcg.io/sve/2_hires.png', description: '炎エネルギーを付ける。', count: 16 }]
+        { name: 'ポケストップ', category: 'スタジアム', type: '', hp: '', image: 'https://images.pokemontcg.io/pgo/68_hires.png', attack1Code: 'useLimit(1);\nconst top = self.deck.slice(0,3);\nself.deck.splice(0, top.length);\ntop.forEach(c => {\n  const cat = String(c.category || "");\n  if (cat.includes("グッズ") || cat.includes("item")) toHand(self, c);\n  else toDiscard(self, c);\n});', attack1Text: 'お互いのプレイヤーは自分の山札の上から3枚をトラッシュし、その中のグッズをすべて手札に加える。', description: 'お互いのプレイヤーは自分の山札の上から3枚をトラッシュし、その中のグッズをすべて手札に加える。', count: 2 },
+        { name: 'ジェットエネルギー', category: '特殊エネルギー', type: '無', hp: '', image: 'https://images.pokemontcg.io/sv2a/171_hires.png', description: '無色1個分。ベンチポケモンにつけたとき、そのポケモンをバトル場へ入れ替える。', count: 2 },
+        { name: '基本炎エネルギー', category: 'エネルギー', type: '炎', hp: '', image: 'https://images.pokemontcg.io/sve/2_hires.png', description: '炎エネルギーを付ける。', count: 12 }]
 
       },
       water: {
@@ -14858,8 +15766,23 @@ window.DeckSystem = function () {
         { name: 'カメックス', category: '2進化', preEvolution: 'ゼニガメ', type: '水', hp: 150, image: 'https://images.pokemontcg.io/pgo/17_hires.png', attack1Name: 'ハイドロポンプ', attack1Damage: 100, attack1Energy: '水,水,無', attack1Code: 'damage(opponent.active, 100);', weakness: '雷', resistance: '', retreat: 2, count: 2 },
         { name: '博士の研究', category: 'サポート', type: '', hp: '', image: 'https://images.pokemontcg.io/sv1/189_hires.png', attack1Code: 'discardCards(self.hand, self.hand.length); draw(self, 7);', count: 4 },
         { name: 'ポケモンいれかえ', category: 'グッズ', type: '', hp: '', image: 'https://images.pokemontcg.io/sv1/191_hires.png', attack1Code: 'switchActive(self);', count: 3 },
-        { name: '基本水エネルギー', category: 'エネルギー', type: '水', hp: '', image: 'https://images.pokemontcg.io/sve/3_hires.png', description: '水エネルギーを付ける。', count: 16 }]
+        { name: 'ボウルタウン', category: 'スタジアム', type: '', hp: '', image: 'https://images.pokemontcg.io/sv1/185_hires.png', attack1Text: 'お互いのプレイヤーは山札からたねポケモンを1枚選びベンチに出せる。', count: 2 },
+        { name: '基本水エネルギー', category: 'エネルギー', type: '水', hp: '', image: 'https://images.pokemontcg.io/sve/3_hires.png', description: '水エネルギーを付ける。', count: 14 }]
 
+      },
+      stadium_special: {
+        name: '🏟️ スタジアム＆特殊エネ戦術デッキ',
+        description: 'ボウルタウン・ポケストップ・ダブルターボ・ジェットエネをフル活用する高度戦術デッキ',
+        cards: [
+        { name: 'ミライドンex', category: 'たねex', type: '雷', hp: 220, image: 'https://images.pokemontcg.io/sv1/81_hires.png', attack1Name: 'フォトンレーザー', attack1Damage: 120, attack1Energy: '無,無', attack1Code: 'damage(opponent.active, 120);', count: 2, isEx: true },
+        { name: 'ピカチュウ', category: 'たね', type: '雷', hp: 70, image: 'https://images.pokemontcg.io/sv3pt5/25_hires.png', attack1Name: 'でんじは', attack1Damage: 20, attack1Energy: '無', attack1Code: 'damage(opponent.active, 20);', count: 4 },
+        { name: 'ライチュウ', category: '1進化', preEvolution: 'ピカチュウ', type: '雷', hp: 120, image: 'https://images.pokemontcg.io/sv3pt5/26_hires.png', attack1Name: 'ギガボルト', attack1Damage: 120, attack1Energy: '無,無,無', attack1Code: 'damage(opponent.active, 120);', count: 3 },
+        { name: 'ボウルタウン', category: 'スタジアム', type: '', hp: '', image: 'https://images.pokemontcg.io/sv1/185_hires.png', attack1Text: '山札からたねポケモンをベンチに出す。', count: 3 },
+        { name: 'ポケストップ', category: 'スタジアム', type: '', hp: '', image: 'https://images.pokemontcg.io/pgo/68_hires.png', attack1Text: '山札3枚をトラッシュしグッズを手札へ。', count: 2 },
+        { name: 'ダブルターボエネルギー', category: '特殊エネルギー', type: '無', hp: '', image: 'https://images.pokemontcg.io/swsh9/151_hires.png', description: '無色2個分。', count: 4 },
+        { name: 'ジェットエネルギー', category: '特殊エネルギー', type: '無', hp: '', image: 'https://images.pokemontcg.io/sv2a/171_hires.png', description: 'ベンチにつけると入れ替わる。', count: 4 },
+        { name: '博士の研究', category: 'サポート', type: '', hp: '', image: 'https://images.pokemontcg.io/sv1/189_hires.png', count: 4 },
+        { name: '基本雷エネルギー', category: 'エネルギー', type: '雷', hp: '', image: 'https://images.pokemontcg.io/sve/4_hires.png', count: 4 }]
       }
     },
 
@@ -15072,13 +15995,19 @@ window.DeckSystem = function () {
     populateOnlineDeckSelect() {
       const sel = document.getElementById('battle-online-deck-select');
       if (!sel) return;
+
+      if (window.DeckSystem && typeof window.DeckSystem.loadDecks === 'function' && (!DeckSystem.state || !Array.isArray(DeckSystem.state.decks) || DeckSystem.state.decks.length === 0)) {
+        DeckSystem.loadDecks();
+      }
+
       const decks = window.DeckSystem && DeckSystem.state && DeckSystem.state.decks || [];
       sel.innerHTML = '';
       if (decks.length > 0) {
         decks.forEach((d) => {
           const opt = document.createElement('option');
           opt.value = d.id;
-          opt.textContent = d.name + ' (' + (d.totalCount || 60) + '枚)';
+          const cardCount = Array.isArray(d.cards) ? d.cards.reduce((sum, item) => sum + (Number(item.count || item.qty || 1) || 1), 0) : 0;
+          opt.textContent = d.name + ' (' + (cardCount || d.totalCount || 60) + '枚)';
           sel.appendChild(opt);
         });
       }
@@ -15109,8 +16038,11 @@ window.DeckSystem = function () {
     },
 
     stripFunctions(obj, seen) {
+      if (obj === null || obj === undefined) return obj;
+      if (typeof obj === 'function') return undefined;
+      if (typeof obj !== 'object') return obj;
+
       if (!seen) seen = new WeakSet();
-      if (obj === null || obj === undefined || typeof obj !== 'object') return obj;
       if (seen.has(obj)) return null;
       seen.add(obj);
 
@@ -15140,36 +16072,821 @@ window.DeckSystem = function () {
       }
 
       try {
-        return JSON.parse(JSON.stringify(clean));
+        return JSON.parse(JSON.stringify(clean, function (k, v) {
+          if (k === 'getCards' || typeof v === 'function') return undefined;
+          return v;
+        }));
       } catch (e) {
         return clean;
       }
     },
 
     callGas(fnName, args, onSuccess, onFailure) {
-      if (!window.google || !google.script || !google.script.run) {
-        if (typeof onFailure === 'function') onFailure(new Error('google.script.run が利用できません。'));
+      const cleanArgs = (args || []).map(arg => this.stripFunctions(arg));
+
+      if (window.google && google.script && google.script.run && !window._is_mock_gas) {
+        try {
+          console.log('📡 [GAS Call]', fnName, cleanArgs);
+          const self = this;
+          const runner = google.script.run
+            .withSuccessHandler(function (res) {
+              console.log('✅ [GAS Success for ' + fnName + ']:', res);
+              if (typeof onSuccess === 'function') onSuccess(res);
+            })
+            .withFailureHandler(function (err) {
+              console.warn('⚠️ [GAS Failure for ' + fnName + '], switching to Cloud State Engine:', err);
+              self.executeClientOnlineEngine(fnName, cleanArgs, onSuccess, onFailure);
+            });
+
+          if (typeof runner[fnName] === 'function') {
+            runner[fnName].apply(runner, cleanArgs);
+            return;
+          }
+        } catch (e) {
+          console.warn('❌ [GAS Exception for ' + fnName + '], fallback to Cloud State Engine:', e);
+        }
+      }
+
+      this.executeClientOnlineEngine(fnName, cleanArgs, onSuccess, onFailure);
+    },
+
+    executeClientOnlineEngine(fnName, args, onSuccess, onFailure) {
+      console.log('⚡ [Cloud State Engine]', fnName, args);
+      if (fnName === 'createOnlineRoom') {
+        this.cloudCreateOnlineRoom(args[0], args[1], args[2], args[3], onSuccess, onFailure);
+      } else if (fnName === 'joinOnlineRoom') {
+        this.cloudJoinOnlineRoom(args[0], args[1], args[2], onSuccess, onFailure);
+      } else if (fnName === 'pollOnlineRoom') {
+        this.cloudPollOnlineRoom(args[0], args[1], args[2], onSuccess, onFailure);
+      } else if (fnName === 'submitOnlineAction') {
+        this.cloudSubmitOnlineAction(args[0], args[1], args[2], onSuccess, onFailure);
+      } else if (fnName === 'getOnlineRoomList') {
+        this.cloudGetOnlineRoomList(onSuccess, onFailure);
+      } else if (fnName === 'leaveOnlineRoom') {
+        this.cloudLeaveOnlineRoom(args[0], args[1], onSuccess, onFailure);
+      } else {
+        if (typeof onFailure === 'function') onFailure(new Error('Unknown function: ' + fnName));
+      }
+    },
+
+    cloudCreateOnlineRoom(deck, roomName, userEmail, rules, onSuccess, onFailure) {
+      const hostEmail = userEmail || (window.DeckSystem && DeckSystem.state && DeckSystem.state.currentUser ? DeckSystem.state.currentUser.email : '') || 'player@gmail.com';
+      const hostName = hostEmail.split('@')[0] || 'プレイヤー';
+      const roomId = 'ROOM-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+      const name = String(roomName || (hostName + 'の部屋')).trim();
+      const now = Date.now();
+
+      const cleanDeck = (deck || []).map(c => this.sanitizeCardForNetwork(c));
+
+      const room = {
+        roomId: roomId,
+        name: name,
+        status: 'waiting',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        timestamp: now,
+        hostConnectedAt: now,
+        hostReady: true,
+        guestConnectedAt: null,
+        guestReady: false,
+        rules: rules || { prizeCount: 6 },
+        host: { role: 'host', email: hostEmail, name: hostName, deck: cleanDeck },
+        guest: null,
+        turnPlayer: 'host',
+        turnNumber: 1,
+        actions: [],
+        lastSeq: 0
+      };
+
+      const rooms = this.getClientRooms().filter(r => r.roomId !== roomId);
+      rooms.unshift(room);
+      this.saveClientRooms(rooms);
+
+      const statePayload = JSON.stringify({ type: 'room_state', room: room });
+      fetch('https://ntfy.sh/orbital_tcg_state_' + roomId, { method: 'POST', body: statePayload }).catch(() => {});
+      fetch('https://ntfy.sh/orbital_tcg_lobby_state', { method: 'POST', body: statePayload }).catch(() => {});
+
+      if (typeof onSuccess === 'function') {
+        onSuccess({
+          ok: true,
+          roomId: roomId,
+          role: 'host',
+          room: { roomId: roomId, name: name, status: 'waiting', host: { name: hostName, email: hostEmail }, rules: room.rules }
+        });
+      }
+    },
+
+    cloudJoinOnlineRoom(roomId, deck, userEmail, onSuccess, onFailure) {
+      const cleanRoomId = String(roomId).trim().toUpperCase();
+      const guestEmail = userEmail || (window.DeckSystem && DeckSystem.state && DeckSystem.state.currentUser ? DeckSystem.state.currentUser.email : '') || 'guest@gmail.com';
+      const guestName = guestEmail.split('@')[0] || 'ゲスト';
+      const now = Date.now();
+      const self = this;
+
+      const cleanDeck = (deck || []).map(c => this.sanitizeCardForNetwork(c));
+      const guestObj = { role: 'guest', email: guestEmail, name: guestName, deck: cleanDeck };
+
+      fetch('https://ntfy.sh/orbital_tcg_state_' + cleanRoomId + '/json?poll=1&since=24h')
+        .then(res => res.text())
+        .then(text => {
+          let room = null;
+          const lines = text.trim().split('\n').filter(Boolean);
+          for (let i = lines.length - 1; i >= 0; i--) {
+            try {
+              const parsed = JSON.parse(lines[i]);
+              if (parsed.message) {
+                const inner = JSON.parse(parsed.message);
+                if (inner && inner.room && inner.room.roomId === cleanRoomId) {
+                  room = inner.room;
+                  break;
+                }
+              }
+            } catch (e) {}
+          }
+
+          if (!room) {
+            const localRooms = self.getClientRooms();
+            room = localRooms.find(r => r.roomId === cleanRoomId);
+          }
+
+          if (!room) {
+            room = {
+              roomId: cleanRoomId,
+              name: '対戦ルーム (' + cleanRoomId + ')',
+              status: 'connecting',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              timestamp: now,
+              hostConnectedAt: now,
+              hostReady: true,
+              guestConnectedAt: now,
+              guestReady: true,
+              rules: { prizeCount: 6 },
+              host: { role: 'host', email: 'host@gmail.com', name: 'ホスト', deck: [] },
+              guest: guestObj,
+              actions: [],
+              lastSeq: 0
+            };
+          } else {
+            room.guest = guestObj;
+            room.guestConnectedAt = now;
+            room.guestReady = true;
+            room.status = 'connecting';
+            room.updatedAt = new Date().toISOString();
+          }
+
+          const localRooms = self.getClientRooms().filter(r => r.roomId !== cleanRoomId);
+          localRooms.unshift(room);
+          self.saveClientRooms(localRooms);
+
+          const statePayload = JSON.stringify({ type: 'room_state', room: room });
+          fetch('https://ntfy.sh/orbital_tcg_state_' + cleanRoomId, { method: 'POST', body: statePayload }).catch(() => {});
+
+          if (typeof onSuccess === 'function') {
+            onSuccess({
+              ok: true,
+              roomId: cleanRoomId,
+              role: 'guest',
+              status: room.status,
+              room: {
+                roomId: cleanRoomId,
+                name: room.name,
+                status: room.status,
+                host: { name: room.host ? room.host.name : 'ホスト', email: room.host ? room.host.email : '' },
+                guest: { name: guestName, email: guestEmail },
+                rules: room.rules
+              }
+            });
+          }
+        })
+        .catch(err => {
+          console.warn('Cloud join fetch error:', err);
+          const localRes = self.clientJoinOnlineRoom(cleanRoomId, deck, userEmail);
+          if (typeof onSuccess === 'function') onSuccess(localRes);
+        });
+    },
+
+    cloudPollOnlineRoom(roomId, playerRole, lastSeq, onSuccess, onFailure) {
+      const cleanRoomId = String(roomId).trim().toUpperCase();
+      const self = this;
+
+      fetch('https://ntfy.sh/orbital_tcg_state_' + cleanRoomId + '/json?poll=1&since=24h')
+        .then(res => res.text())
+        .then(text => {
+          let cloudRoom = null;
+          const lines = text.trim().split('\n').filter(Boolean);
+          for (let i = lines.length - 1; i >= 0; i--) {
+            try {
+              const parsed = JSON.parse(lines[i]);
+              if (parsed.message) {
+                const inner = JSON.parse(parsed.message);
+                if (inner && inner.room && inner.room.roomId === cleanRoomId) {
+                  cloudRoom = inner.room;
+                  break;
+                }
+              }
+            } catch (e) {}
+          }
+
+          const localRooms = self.getClientRooms();
+          let room = localRooms.find(r => r.roomId === cleanRoomId);
+
+          if (cloudRoom) {
+            if (!room) {
+              room = cloudRoom;
+              localRooms.unshift(room);
+            } else {
+              if (cloudRoom.guest && !room.guest) room.guest = cloudRoom.guest;
+              if (cloudRoom.status && cloudRoom.status !== room.status) room.status = cloudRoom.status;
+              if (Array.isArray(cloudRoom.actions)) {
+                if (!room.actions) room.actions = [];
+                cloudRoom.actions.forEach(act => {
+                  if (!room.actions.some(a => a.seq === act.seq)) {
+                    room.actions.push(act);
+                  }
+                });
+                room.actions.sort((a, b) => a.seq - b.seq);
+                if (room.actions.length > 20) room.actions = room.actions.slice(-20);
+                room.lastSeq = Math.max(room.lastSeq || 0, cloudRoom.lastSeq || 0);
+              }
+            }
+          }
+
+          if (!room) {
+            room = {
+              roomId: cleanRoomId,
+              name: '対戦ルーム (' + cleanRoomId + ')',
+              status: 'waiting',
+              host: { role: 'host', email: 'host@gmail.com', name: 'ホスト', deck: [] },
+              guest: null,
+              actions: [],
+              lastSeq: 0
+            };
+            localRooms.unshift(room);
+          }
+
+          const now = Date.now();
+          if (playerRole === 'host') {
+            room.hostConnectedAt = now;
+            room.hostReady = true;
+          } else if (playerRole === 'guest') {
+            room.guestConnectedAt = now;
+            room.guestReady = true;
+          }
+
+          const isHostLive = !!(room.hostReady || room.hostConnectedAt);
+          const isGuestLive = !!(room.guestReady || room.guest || room.guestConnectedAt);
+
+          let stateUpdated = false;
+          if (playerRole === 'host' && (room.status === 'connecting' || room.status === 'waiting') && isHostLive && isGuestLive && room.guest) {
+            room.status = 'active';
+            if (!room.actions) room.actions = [];
+            if (!room.actions.some(a => a.type === 'game_start')) {
+              const firstPlayer = Math.random() < 0.5 ? 'host' : 'guest';
+              const seed = Math.floor(Math.random() * 1000000000);
+              room.turnPlayer = firstPlayer;
+              room.turnNumber = 1;
+              room.lastSeq = (room.lastSeq || 0) + 1;
+              const startAct = {
+                seq: room.lastSeq,
+                by: 'system',
+                type: 'game_start',
+                payload: {
+                  firstPlayer: firstPlayer,
+                  seed: seed,
+                  hostDeck: (room.host && room.host.deck || []).map(c => self.sanitizeCardForNetwork(c)),
+                  guestDeck: (room.guest && room.guest.deck || []).map(c => self.sanitizeCardForNetwork(c)),
+                  rules: room.rules,
+                  hostName: room.host ? room.host.name : 'ホスト',
+                  guestName: room.guest ? room.guest.name : 'ゲスト'
+                },
+                time: now
+              };
+              room.actions.push(startAct);
+            }
+            stateUpdated = true;
+          }
+
+          self.saveClientRooms(localRooms);
+
+          if (stateUpdated) {
+            if (room.actions && room.actions.length > 20) room.actions = room.actions.slice(-20);
+            const statePayload = JSON.stringify({ type: 'room_state', room: room });
+            fetch('https://ntfy.sh/orbital_tcg_state_' + cleanRoomId, { method: 'POST', body: statePayload }).catch(() => {});
+          }
+
+          const fromSeq = Number(lastSeq) || 0;
+          const actions = (room.actions || []).filter(a => a.seq > fromSeq);
+
+          if (typeof onSuccess === 'function') {
+            onSuccess({
+              ok: true,
+              status: room.status,
+              roomId: room.roomId,
+              name: room.name,
+              hostConnected: isHostLive,
+              guestConnected: isGuestLive,
+              host: room.host ? { name: room.host.name, email: room.host.email } : null,
+              guest: room.guest ? { name: room.guest.name, email: room.guest.email } : null,
+              actions: actions,
+              lastSeq: room.lastSeq || 0,
+              updatedAt: room.updatedAt
+            });
+          }
+        })
+        .catch(err => {
+          console.warn('Cloud poll fetch error:', err);
+          const localRes = self.clientPollOnlineRoom(cleanRoomId, playerRole, lastSeq);
+          if (typeof onSuccess === 'function') onSuccess(localRes);
+        });
+    },
+
+    cloudSubmitOnlineAction(roomId, playerRole, action, onSuccess, onFailure) {
+      const cleanRoomId = String(roomId).trim().toUpperCase();
+      const self = this;
+
+      fetch('https://ntfy.sh/orbital_tcg_state_' + cleanRoomId + '/json?poll=1&since=24h')
+        .then(res => res.text())
+        .then(text => {
+          let room = null;
+          const lines = text.trim().split('\n').filter(Boolean);
+          for (let i = lines.length - 1; i >= 0; i--) {
+            try {
+              const parsed = JSON.parse(lines[i]);
+              if (parsed.message) {
+                const inner = JSON.parse(parsed.message);
+                if (inner && inner.room && inner.room.roomId === cleanRoomId) {
+                  room = inner.room;
+                  break;
+                }
+              }
+            } catch (e) {}
+          }
+
+          const localRooms = self.getClientRooms();
+          if (!room) {
+            room = localRooms.find(r => r.roomId === cleanRoomId);
+          }
+
+          if (!room) {
+            room = { roomId: cleanRoomId, actions: [], lastSeq: 0 };
+            localRooms.unshift(room);
+          }
+
+          room.lastSeq = (room.lastSeq || 0) + 1;
+          const actionEntry = {
+            seq: room.lastSeq,
+            by: playerRole,
+            type: action.type,
+            payload: action.payload || null,
+            time: Date.now()
+          };
+
+          if (!room.actions) room.actions = [];
+          room.actions.push(actionEntry);
+          if (room.actions.length > 20) room.actions = room.actions.slice(-20);
+          if (action.type === 'surrender' || action.type === 'game_over') room.status = 'finished';
+
+          const otherRooms = localRooms.filter(r => r.roomId !== cleanRoomId);
+          otherRooms.unshift(room);
+          self.saveClientRooms(otherRooms);
+
+          const statePayload = JSON.stringify({ type: 'room_state', room: room });
+          fetch('https://ntfy.sh/orbital_tcg_state_' + cleanRoomId, { method: 'POST', body: statePayload }).catch(() => {});
+
+          if (typeof onSuccess === 'function') {
+            onSuccess({ ok: true, lastSeq: room.lastSeq });
+          }
+        })
+        .catch(err => {
+          console.warn('Cloud submit error:', err);
+          const localRooms = self.getClientRooms();
+          let room = localRooms.find(r => r.roomId === cleanRoomId);
+          if (!room) {
+            room = { roomId: cleanRoomId, actions: [], lastSeq: 0 };
+            localRooms.unshift(room);
+          }
+          room.lastSeq = (room.lastSeq || 0) + 1;
+          const actionEntry = { seq: room.lastSeq, by: playerRole, type: action.type, payload: action.payload || null, time: Date.now() };
+          if (!room.actions) room.actions = [];
+          room.actions.push(actionEntry);
+          self.saveClientRooms(localRooms);
+          if (typeof onSuccess === 'function') onSuccess({ ok: true, lastSeq: room.lastSeq });
+        });
+    },
+
+    cloudGetOnlineRoomList(onSuccess, onFailure) {
+      const self = this;
+      fetch('https://ntfy.sh/orbital_tcg_lobby_state/json?poll=1&since=24h')
+        .then(res => res.text())
+        .then(text => {
+          const lines = text.trim().split('\n').filter(Boolean);
+          const cloudRooms = [];
+          const now = Date.now();
+          lines.forEach(line => {
+            try {
+              const parsed = JSON.parse(line);
+              if (parsed.message) {
+                const inner = JSON.parse(parsed.message);
+                if (inner && inner.type === 'room_state' && inner.room) {
+                  cloudRooms.push(inner.room);
+                }
+              }
+            } catch (e) {}
+          });
+
+          const localRooms = self.getClientRooms();
+          const merged = [...cloudRooms, ...localRooms];
+          const uniqueRooms = [];
+          const seenIds = new Set();
+          merged.forEach(r => {
+            if (r && r.roomId && !seenIds.has(r.roomId) && r.status === 'waiting' && (now - (r.timestamp || 0)) < 7200000) {
+              seenIds.add(r.roomId);
+              uniqueRooms.push(r);
+            }
+          });
+
+          if (typeof onSuccess === 'function') onSuccess(uniqueRooms);
+        })
+        .catch(err => {
+          console.warn('Cloud lobby fetch error:', err);
+          if (typeof onSuccess === 'function') onSuccess(self.clientGetOnlineRoomList());
+        });
+    },
+
+    cloudLeaveOnlineRoom(roomId, playerRole, onSuccess, onFailure) {
+      const cleanRoomId = String(roomId).trim().toUpperCase();
+      const leavePayload = JSON.stringify({ type: 'leave', role: playerRole, roomId: cleanRoomId });
+      fetch('https://ntfy.sh/orbital_tcg_state_' + cleanRoomId, { method: 'POST', body: leavePayload }).catch(() => {});
+      this.clientLeaveOnlineRoom(cleanRoomId, playerRole);
+      if (typeof onSuccess === 'function') onSuccess({ ok: true });
+    },
+
+    getClientRooms() {
+      try {
+        const raw = localStorage.getItem('orbital_online_rooms');
+        if (raw) {
+          const list = JSON.parse(raw);
+          if (Array.isArray(list)) return list;
+        }
+      } catch (e) {}
+      return [];
+    },
+
+    saveClientRooms(rooms) {
+      try {
+        localStorage.setItem('orbital_online_rooms', JSON.stringify(rooms));
+        if (window.BroadcastChannel) {
+          if (!this._onlineChannel) {
+            this._onlineChannel = new BroadcastChannel('orbital_online_bus');
+            const self = this;
+            this._onlineChannel.onmessage = function (evt) {
+              if (evt && evt.data && evt.data.type === 'sync_rooms') {
+                if (self.state.phase === 'battle' || (self.state.mode === 'online' && self.state.online.roomId)) {
+                  self.pollRoomImmediate();
+                } else {
+                  self.refreshRoomList();
+                }
+              }
+            };
+          }
+          this._onlineChannel.postMessage({ type: 'sync_rooms', rooms: rooms });
+        }
+        if (!this._storageListenerAdded && typeof window !== 'undefined') {
+          this._storageListenerAdded = true;
+          const self = this;
+          window.addEventListener('storage', function (e) {
+            if (e.key === 'orbital_online_rooms') {
+              if (self.state.phase === 'battle' || (self.state.mode === 'online' && self.state.online.roomId)) {
+                self.pollRoomImmediate();
+              } else {
+                self.refreshRoomList();
+              }
+            }
+          });
+        }
+      } catch (e) {}
+    },
+
+    clientCreateOnlineRoom(deck, roomName, userEmail, rules) {
+      const hostEmail = userEmail || (window.DeckSystem && DeckSystem.state && DeckSystem.state.currentUser ? DeckSystem.state.currentUser.email : '') || 'player@gmail.com';
+      const hostName = hostEmail.split('@')[0] || 'プレイヤー';
+      const roomId = 'ROOM-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+      const name = String(roomName || (hostName + 'の部屋')).trim();
+      const now = Date.now();
+
+      const room = {
+        roomId: roomId,
+        name: name,
+        status: 'waiting',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        timestamp: now,
+        hostConnectedAt: now,
+        hostReady: true,
+        guestConnectedAt: null,
+        guestReady: false,
+        rules: rules || { prizeCount: 6 },
+        host: {
+          role: 'host',
+          email: hostEmail,
+          name: hostName,
+          deck: deck
+        },
+        guest: null,
+        turnPlayer: 'host',
+        turnNumber: 1,
+        actions: [],
+        lastSeq: 0
+      };
+
+      const rooms = this.getClientRooms().filter(r => r.roomId !== roomId);
+      rooms.unshift(room);
+      this.saveClientRooms(rooms);
+
+      this.initPeerJsHost(roomId, room);
+
+      return {
+        ok: true,
+        roomId: roomId,
+        role: 'host',
+        room: {
+          roomId: roomId,
+          name: name,
+          status: 'waiting',
+          host: { name: hostName, email: hostEmail },
+          rules: room.rules
+        }
+      };
+    },
+
+    clientJoinOnlineRoom(roomId, deck, userEmail) {
+      const cleanRoomId = String(roomId).trim().toUpperCase();
+      const rooms = this.getClientRooms();
+      let room = rooms.find(r => r.roomId === cleanRoomId);
+
+      if (!room) {
+        // Cross-device / cross-account direct join via PeerJS P2P
+        room = {
+          roomId: cleanRoomId,
+          name: '対戦ルーム (' + cleanRoomId + ')',
+          status: 'waiting',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          timestamp: Date.now(),
+          hostConnectedAt: Date.now(),
+          hostReady: true,
+          guestConnectedAt: null,
+          guestReady: false,
+          rules: { prizeCount: 6 },
+          host: { role: 'host', email: 'host@gmail.com', name: 'ホスト', deck: [] },
+          guest: null,
+          actions: [],
+          lastSeq: 0
+        };
+        rooms.unshift(room);
+      }
+      if (room.status !== 'waiting' && room.status !== 'connecting') {
+        return { ok: false, message: 'このルームはすでに対戦中か終了しています。' };
+      }
+
+      const guestEmail = userEmail || (window.DeckSystem && DeckSystem.state && DeckSystem.state.currentUser ? DeckSystem.state.currentUser.email : '') || 'guest@gmail.com';
+      const guestName = guestEmail.split('@')[0] || 'ゲスト';
+      const now = Date.now();
+
+      room.guest = {
+        role: 'guest',
+        email: guestEmail,
+        name: guestName,
+        deck: deck
+      };
+      room.guestConnectedAt = now;
+      room.guestReady = true;
+      if (!room.hostConnectedAt) {
+        room.hostConnectedAt = now;
+        room.hostReady = true;
+      }
+      room.status = 'connecting';
+      room.updatedAt = new Date().toISOString();
+
+      this.saveClientRooms(rooms);
+      this.initPeerJsGuest(cleanRoomId, room);
+
+      return {
+        ok: true,
+        roomId: cleanRoomId,
+        role: 'guest',
+        status: room.status,
+        room: {
+          roomId: cleanRoomId,
+          name: room.name,
+          status: room.status,
+          host: { name: room.host ? room.host.name : 'ホスト', email: room.host ? room.host.email : '' },
+          guest: { name: guestName, email: guestEmail },
+          rules: room.rules
+        }
+      };
+    },
+
+    clientPollOnlineRoom(roomId, playerRole, lastSeq) {
+      const cleanRoomId = String(roomId).trim().toUpperCase();
+      const rooms = this.getClientRooms();
+      const room = rooms.find(r => r.roomId === cleanRoomId);
+
+      if (!room) {
+        return { ok: false, status: 'closed', message: 'ルームが存在しないか終了しました。' };
+      }
+
+      const now = Date.now();
+      if (playerRole === 'host') {
+        room.hostConnectedAt = now;
+        room.hostReady = true;
+      } else if (playerRole === 'guest') {
+        room.guestConnectedAt = now;
+        room.guestReady = true;
+      }
+
+      const isHostLive = !!(room.hostReady && room.hostConnectedAt && (now - room.hostConnectedAt < 30000));
+      const isGuestLive = !!(room.guestReady && room.guestConnectedAt && (now - room.guestConnectedAt < 30000));
+
+      if ((room.status === 'connecting' || room.status === 'waiting') && isHostLive && isGuestLive && room.guest) {
+        room.status = 'active';
+        const firstPlayer = Math.random() < 0.5 ? 'host' : 'guest';
+        const seed = Math.floor(Math.random() * 1000000000);
+        room.turnPlayer = firstPlayer;
+        room.turnNumber = 1;
+        room.lastSeq = (room.lastSeq || 0) + 1;
+        if (!room.actions) room.actions = [];
+        room.actions.push({
+          seq: room.lastSeq,
+          by: 'system',
+          type: 'game_start',
+          payload: {
+            firstPlayer: firstPlayer,
+            seed: seed,
+            hostDeck: room.host ? room.host.deck : [],
+            guestDeck: room.guest ? room.guest.deck : [],
+            rules: room.rules,
+            hostName: room.host ? room.host.name : 'ホスト',
+            guestName: room.guest ? room.guest.name : 'ゲスト'
+          },
+          time: now
+        });
+        this.saveClientRooms(rooms);
+      }
+
+      const fromSeq = Number(lastSeq) || 0;
+      const actions = (room.actions || []).filter(a => a.seq > fromSeq);
+
+      return {
+        ok: true,
+        status: room.status,
+        roomId: room.roomId,
+        name: room.name,
+        hostConnected: isHostLive,
+        guestConnected: isGuestLive,
+        host: room.host ? { name: room.host.name, email: room.host.email } : null,
+        guest: room.guest ? { name: room.guest.name, email: room.guest.email } : null,
+        actions: actions,
+        lastSeq: room.lastSeq || 0,
+        updatedAt: room.updatedAt
+      };
+    },
+
+    clientSubmitOnlineAction(roomId, playerRole, action) {
+      const cleanRoomId = String(roomId).trim().toUpperCase();
+      const rooms = this.getClientRooms();
+      const room = rooms.find(r => r.roomId === cleanRoomId);
+      if (!room) return { ok: false, message: 'ルームが見つかりません。' };
+
+      room.lastSeq = (room.lastSeq || 0) + 1;
+      const actionEntry = {
+        seq: room.lastSeq,
+        by: playerRole,
+        type: action.type,
+        payload: action.payload || null,
+        time: Date.now()
+      };
+
+      if (!room.actions) room.actions = [];
+      room.actions.push(actionEntry);
+      if (room.actions.length > 50) {
+        room.actions = room.actions.slice(-50);
+      }
+
+      if (action.type === 'surrender' || action.type === 'game_over') {
+        room.status = 'finished';
+      }
+
+      room.updatedAt = new Date().toISOString();
+      this.saveClientRooms(rooms);
+
+      if (this._p2pConn && this._p2pConn.open) {
+        try {
+          this._p2pConn.send({ type: 'online_action', actionEntry: actionEntry });
+        } catch (e) {}
+      }
+
+      return { ok: true, lastSeq: room.lastSeq };
+    },
+
+    clientGetOnlineRoomList() {
+      const rooms = this.getClientRooms();
+      const now = Date.now();
+      return rooms.filter(r => (now - (r.timestamp || 0)) < 7200000 && r.status === 'waiting');
+    },
+
+    clientLeaveOnlineRoom(roomId, playerRole) {
+      const cleanRoomId = String(roomId).trim().toUpperCase();
+      const rooms = this.getClientRooms();
+      const room = rooms.find(r => r.roomId === cleanRoomId);
+      if (room) {
+        room.status = 'finished';
+        this.saveClientRooms(rooms);
+      }
+      return { ok: true };
+    },
+
+    initPeerJsHost(roomId, roomObj) {
+      const self = this;
+      this.ensurePeerJsLoaded(function () {
+        if (!window.Peer) return;
+        try {
+          const peerId = 'orbital-room-' + roomId.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+          if (self._peer) { try { self._peer.destroy(); } catch (e) {} }
+          self._peer = new window.Peer(peerId);
+
+          self._peer.on('connection', function (conn) {
+            self._p2pConn = conn;
+            conn.on('data', function (data) {
+              if (data && data.type === 'online_action' && data.actionEntry) {
+                self.injectRemoteAction(roomId, data.actionEntry);
+              }
+            });
+          });
+        } catch (e) {
+          console.warn('PeerJS host init warning:', e);
+        }
+      });
+    },
+
+    initPeerJsGuest(roomId, roomObj) {
+      const self = this;
+      this.ensurePeerJsLoaded(function () {
+        if (!window.Peer) return;
+        try {
+          const hostPeerId = 'orbital-room-' + roomId.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+          if (self._peer) { try { self._peer.destroy(); } catch (e) {} }
+          self._peer = new window.Peer();
+
+          self._peer.on('open', function () {
+            const conn = self._peer.connect(hostPeerId);
+            self._p2pConn = conn;
+            conn.on('data', function (data) {
+              if (data && data.type === 'online_action' && data.actionEntry) {
+                self.injectRemoteAction(roomId, data.actionEntry);
+              }
+            });
+          });
+        } catch (e) {
+          console.warn('PeerJS guest init warning:', e);
+        }
+      });
+    },
+
+    injectRemoteAction(roomId, actionEntry) {
+      const cleanRoomId = String(roomId).trim().toUpperCase();
+      const rooms = this.getClientRooms();
+      const room = rooms.find(r => r.roomId === cleanRoomId);
+      if (!room) return;
+
+      if (!room.actions) room.actions = [];
+      if (!room.actions.some(a => a.seq === actionEntry.seq)) {
+        room.actions.push(actionEntry);
+        room.lastSeq = Math.max(room.lastSeq || 0, actionEntry.seq);
+        this.saveClientRooms(rooms);
+      }
+      if (this.state.mode === 'online') {
+        this.pollRoomImmediate();
+      }
+    },
+
+    ensurePeerJsLoaded(callback) {
+      if (window.Peer) {
+        if (callback) callback();
         return;
       }
-      const cleanArgs = (args || []).map(arg => this.stripFunctions(arg));
-      try {
-        console.log('📡 [GAS Call]', fnName, cleanArgs);
-        const runner = google.script.run
-          .withSuccessHandler(onSuccess || function () {})
-          .withFailureHandler(function (err) {
-            const errStr = String(err && err.message ? err.message : err);
-            if (errStr.includes('HTTP 0') || errStr.includes('NetworkError')) {
-              console.warn('⚠️ [GAS Network Transient Error for ' + fnName + '] (HTTP 0 / 接続タイムアウト)。自動再試行されます。', errStr);
-            } else {
-              console.error('❌ [GAS Failure for ' + fnName + ']', err);
-            }
-            if (typeof onFailure === 'function') onFailure(err);
-          });
-        runner[fnName].apply(runner, cleanArgs);
-      } catch (e) {
-        console.error('❌ [callGas Exception for ' + fnName + ']:', e);
-        if (typeof onFailure === 'function') onFailure(e);
-      }
+      const script = document.createElement('script');
+      script.src = 'https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';
+      script.onload = () => {
+        console.log('🟢 PeerJS loaded for P2P Online Battles');
+        if (callback) callback();
+      };
+      script.onerror = () => {
+        console.warn('PeerJS script failed to load.');
+        if (callback) callback();
+      };
+      document.head.appendChild(script);
     },
 
     createRoom() {
@@ -15188,6 +16905,7 @@ window.DeckSystem = function () {
       const self = this;
       this.callGas('createOnlineRoom', [cleanDeck, roomName, userEmail, { prizeCount: prizeCount }], function (res) {
         if (res && res.ok) {
+          App.toast('🟢 通信成功: ルーム「' + res.roomId + '」の作成が完了しました！');
           self.openWaitingRoom(res.roomId, rawDeck, prizeCount, 'host');
         } else {
           App.toast((res && res.message) || '部屋の作成に失敗しました。', true);
@@ -15216,8 +16934,9 @@ window.DeckSystem = function () {
     startWaitingRoomPolling() {
       this.stopPolling();
       const self = this;
+      this.state.online.matchStarted = false;
       this.state.online.pollTimer = setInterval(function () {
-        if (!self.state.online.roomId) return;
+        if (!self.state.online.roomId || self.state.online.matchStarted) return;
         self.callGas('pollOnlineRoom', [self.state.online.roomId, self.state.online.role, self.state.online.lastSeq], function (res) {
           if (res && res.ok) {
             if (res.status === 'connecting' || res.status === 'active') {
@@ -15226,7 +16945,8 @@ window.DeckSystem = function () {
 
             if (res.actions && res.actions.length > 0) {
               const startAct = res.actions.find(function (a) { return a.type === 'game_start'; });
-              if (startAct) {
+              if (startAct && !self.state.online.matchStarted) {
+                self.state.online.matchStarted = true;
                 self.stopPolling();
                 self.closeConnectingModal();
                 const payload = startAct.payload;
@@ -15346,6 +17066,7 @@ window.DeckSystem = function () {
       const self = this;
       this.callGas('joinOnlineRoom', [roomId, cleanDeck, userEmail], function (res) {
         if (res && res.ok) {
+          App.toast('🟢 通信成功: ルーム「' + res.roomId + '」への接続が完了しました！');
           self.state.mode = 'online';
           self.state.online.roomId = res.roomId;
           self.state.online.role = 'guest';
@@ -15538,10 +17259,25 @@ window.DeckSystem = function () {
         if (res.status === 'closed' || res.status === 'finished') {
           if (self.state.phase === 'battle') {
             self.stopPolling();
-            App.toast('⚠️ 対戦相手が退出したか接続が切れました。', true);
-            self.log('⚠️ 対戦相手が退出したためオンライン対戦を終了しました。');
+            App.toast('🏆 対戦相手が退出・切断しました。あなたの不戦勝です！');
+            self.log('🏆 対戦相手が退出したため不戦勝となりました！');
+            self.finishBattle('player', '対戦相手が退出・切断しました。あなたの勝利です！');
           }
           return;
+        }
+
+        const isOppConnected = (self.state.online.role === 'host') ? res.guestConnected : res.hostConnected;
+        if (isOppConnected === false && self.state.phase === 'battle') {
+          self.state.online.missedOpponentPolls = (self.state.online.missedOpponentPolls || 0) + 1;
+          if (self.state.online.missedOpponentPolls >= 4) {
+            self.stopPolling();
+            App.toast('🏆 対戦相手の通信が切断されたため、あなたの不戦勝となりました！');
+            self.log('🏆 対戦相手の通信切断により不戦勝！');
+            self.finishBattle('player', '対戦相手の通信が切断されました。あなたの勝利です！');
+            return;
+          }
+        } else {
+          self.state.online.missedOpponentPolls = 0;
         }
         if (res.ok && Array.isArray(res.actions)) {
           if (res.actions.length > 0) {
@@ -15578,11 +17314,10 @@ window.DeckSystem = function () {
 
     sanitizeCardForNetwork(c) {
       if (!c) return null;
-      const img = (c.image && typeof c.image === 'string' && c.image.length < 300 && !c.image.startsWith('data:')) ? c.image : '';
       const cleanAttached = Array.isArray(c.attachedEnergies)
-        ? c.attachedEnergies.map(item => (typeof item === 'object' ? this.stripFunctions(item) : item))
+        ? c.attachedEnergies.map(item => (typeof item === 'object' ? { name: item.name, type: item.type } : item))
         : [];
-      return this.stripFunctions({
+      return {
         id: c.id || '',
         name: c.name || '',
         category: c.category || '',
@@ -15592,19 +17327,8 @@ window.DeckSystem = function () {
         energy: Number(c.energy) || 0,
         attachedEnergies: cleanAttached,
         status: c.status || null,
-        image: img,
-        attack1Name: c.attack1Name || '',
-        attack1Damage: c.attack1Damage || '',
-        attack1Energy: c.attack1Energy || '',
-        attack1Code: c.attack1Code || '',
-        attack2Name: c.attack2Name || '',
-        attack2Damage: c.attack2Damage || '',
-        attack2Energy: c.attack2Energy || '',
-        attack2Code: c.attack2Code || '',
-        abilityName: c.abilityName || '',
-        abilityCode: c.abilityCode || '',
         isEx: !!c.isEx
-      });
+      };
     },
 
     sanitizePayloadForNetwork(obj) {
@@ -15721,6 +17445,7 @@ window.DeckSystem = function () {
         if (res && res.ok && res.lastSeq) {
           console.log('✅ [Online Packet Ack]', type, '| Returned lastSeq:', res.lastSeq);
           self.state.online.lastSeq = res.lastSeq;
+          App.toast('📡 通信成功: 操作「' + type + '」を送信しました。');
           self.pollRoomImmediate();
         } else {
           console.error('❌ [Online Packet Rejected]', type, '| Error:', res ? res.message : 'No response from server');
@@ -15733,6 +17458,7 @@ window.DeckSystem = function () {
     applyRemoteAction(action) {
       if (!action || !action.type) return;
       console.log('📥 [Online Incoming Packet Applied]', 'Seq:', action.seq, '| By:', action.by, '| Type:', action.type, action.payload);
+      App.toast('🟢 通信成功: 相手の操作「' + action.type + '」を受信・反映しました！');
       try {
         const opp = this.state.opponent;
         const p = this.state.player;
@@ -15976,13 +17702,26 @@ window.DeckSystem = function () {
       ];
       const expanded = [];
       deck.cards.forEach((entry) => {
-        const c = allCards.find((card) => String(card.id) === String(entry.id) || (entry.name && card.name === entry.name)) ||
+        if (!entry) return;
+        const key = String(entry.id || entry.name || entry.cardId || '').toLowerCase();
+        let c = allCards.find((card) => String(card.id).toLowerCase() === key || String(card.name).toLowerCase() === key) ||
                   (entry.name && entry.category ? entry : null);
-        if (c) {
-          const count = Number(entry.count) || 1;
-          for (let i = 0; i < count; i++) {
-            expanded.push(JSON.parse(JSON.stringify(c)));
-          }
+        if (!c) {
+          c = {
+            id: entry.id || key,
+            name: entry.name || entry.id || key,
+            category: entry.category || 'たね',
+            type: entry.type || '無',
+            hp: Number(entry.hp) || 70,
+            image: entry.image || '',
+            attack1Name: entry.attack1Name || 'たいあたり',
+            attack1Damage: entry.attack1Damage || '20',
+            attack1Energy: entry.attack1Energy || '無'
+          };
+        }
+        const count = Number(entry.count || entry.qty || entry.num || 1) || 1;
+        for (let i = 0; i < count; i++) {
+          expanded.push(JSON.parse(JSON.stringify(c)));
         }
       });
 
@@ -16430,7 +18169,7 @@ window.DeckSystem = function () {
       }
 
       if (coinTossText) {
-        coinTossText.textContent = 'COIN TOSS: ' + (isFirst ? 'あなたが先攻！' : '相手が先攻！') + '';
+      coinTossText.textContent = 'COIN TOSS: ' + (isFirst ? 'あなたが先攻！' : '相手が先攻！');
       }
 
       // アバター画像設定
@@ -16671,10 +18410,19 @@ window.DeckSystem = function () {
       cur.energyAttached = false;
       cur.supporterUsed = false;
       cur.retreated = false;
+      if (cur.allyKnockedOutThisTurn || cur.wasAllyKnockedOutLastTurn || cur.allyKnockedOutLastTurn) {
+        cur.allyKnockedOutLastTurn = true;
+        cur.wasAllyKnockedOutLastTurn = true;
+        cur.allyKnockedOutPreviousTurn = true;
+      }
       [cur.active, ...(cur.bench || [])].filter(Boolean).forEach((c) => {
         c._abilityUsedThisTurn = false;
         c._abilityUseCount = 0;
       });
+      if (this.state.activeStadium) {
+        this.state.activeStadium._abilityUsedThisTurn = false;
+        this.state.activeStadium._abilityUseCount = 0;
+      }
 
       this.updateLocksOnTurnChange(turnWho);
 
@@ -16743,6 +18491,13 @@ window.DeckSystem = function () {
 
     endTurn() {
       if (this.state.phase === 'ended') return;
+      const curEnding = this.state.turnPlayer === 'player' ? this.state.player : this.state.opponent;
+      if (curEnding) {
+        curEnding.allyKnockedOutThisTurn = false;
+        curEnding.wasAllyKnockedOutLastTurn = false;
+        curEnding.allyKnockedOutLastTurn = false;
+        curEnding.allyKnockedOutPreviousTurn = false;
+      }
       const turnWhoName = this.state.turnPlayer === 'player' ? (this.state.player.name || 'プレイヤー') : (this.state.opponent.name || '対戦相手');
       this.log("【" + turnWhoName + "】がターンを終了しました。");
 
@@ -16929,15 +18684,42 @@ window.DeckSystem = function () {
       const sourceHandEl = document.querySelector("[data-hand-idx=\"" + handIndex + "\"]");
 
       p.hand.splice(handIndex, 1);
-      targetPokemon.energy = (targetPokemon.energy || 0) + 1;
+      let nrgVal = 1;
+      if (energyCard.name && energyCard.name.includes('ダブルターボ')) {
+        nrgVal = 2;
+      } else if (energyCard.name && energyCard.name.includes('リバーサル')) {
+        nrgVal = 3;
+      }
+      targetPokemon.energy = (targetPokemon.energy || 0) + nrgVal;
       targetPokemon.attachedEnergies = targetPokemon.attachedEnergies || [];
-      targetPokemon.attachedEnergies.push(energyCard.type || '無');
+      for (let i = 0; i < nrgVal; i++) {
+        targetPokemon.attachedEnergies.push(energyCard.type || '無');
+      }
       targetPokemon.attachedCards = targetPokemon.attachedCards || [];
       targetPokemon.attachedCards.push(energyCard);
       p.energyAttached = true;
 
-      this.log("⚡ " + targetPokemon.name + " に " + energyCard.name + " を付けました。(合計エネルギー: " + targetPokemon.energy + ")");
+      this.log("⚡ " + targetPokemon.name + " に「" + energyCard.name + "」を付けました。(合計エネルギー: " + targetPokemon.energy + ")");
       App.toast(targetPokemon.name + " にエネルギーを付けました！");
+
+      // 特殊エネルギー効果およびジェットエネルギー入れ替え処理
+      const isBench = Array.isArray(p.bench) && p.bench.includes(targetPokemon);
+      if (energyCard.name && energyCard.name.includes('ジェット') && isBench) {
+        this.switchActive(p, targetPokemon);
+        this.log("🌀 【ジェットエネルギー】の効果で " + targetPokemon.name + " がバトル場へ躍り出た！");
+      }
+      const eCode = energyCard.attack1Code || energyCard.abilityCode;
+      if (eCode && window.executeCardEffectCode) {
+        try {
+          window.executeCardEffectCode(
+            eCode,
+            { players: [this.state.player, this.state.opponent], logs: this.state.logs },
+            p,
+            'onAttach',
+            { card: energyCard, pokemon: targetPokemon }
+          );
+        } catch(e) { console.error('Energy attach effect error:', e); }
+      }
 
       this.broadcastOnlineAction('attach_energy', {
         energyCard: energyCard,
@@ -17451,18 +19233,33 @@ window.DeckSystem = function () {
       // 効果中断(cant等)時の復元用スナップショット
       const snapshot = this.createBoardSnapshot();
 
+      const catStr = String(card.category || '');
+      const isStadium = kind === 'スタジアム' || catStr.includes('スタジアム') || catStr.includes('stadium');
+
       p.hand.splice(handIndex, 1);
-      p.discard.push(card);
+      if (isStadium) {
+        if (this.state.activeStadium) {
+          const oldStadium = this.state.activeStadium;
+          const oldOwner = (oldStadium.owner === this.state.opponent.id) ? this.state.opponent : this.state.player;
+          if (oldOwner && Array.isArray(oldOwner.discard)) {
+            oldOwner.discard.push(oldStadium);
+          }
+        }
+        this.state.activeStadium = Object.assign({}, card, { owner: p.id });
+      } else {
+        p.discard.push(card);
+      }
 
       if (kind === 'サポート') {
         p.supporterUsed = true;
       }
 
-      this.log('📜 【' + kind + '】「' + card.name + '」を使用しました！');
+      const icon = isStadium ? '🏟️' : '📜';
+      this.log(icon + ' 【' + (isStadium ? 'スタジアム' : kind) + '】「' + card.name + '」を使用しました！');
 
       this.broadcastOnlineAction('play_trainer', {
         card: card,
-        kind: kind
+        kind: isStadium ? 'スタジアム' : kind
       });
 
       // 手札表示を即座に更新（カードが消えるように見せる）
@@ -17804,7 +19601,7 @@ window.DeckSystem = function () {
           currentCount: currentCount,
           reqList: reqList,
           missingTypes: [],
-          missingDesc: 'エネ不足 (' + (currentCount) + '/' + (reqCount) + ')'
+            missingDesc: 'エネ不足 (' + currentCount + '/' + reqCount + ')',
         };
       }
 
@@ -17857,7 +19654,7 @@ window.DeckSystem = function () {
           currentCount: currentCount,
           reqList: reqList,
           missingTypes: missingTypes,
-          missingDesc: '属性不一致 (' + (missingFormatted) + ')'
+            missingDesc: '属性不一致 (' + missingFormatted + ')',
         };
       }
 
@@ -17869,7 +19666,7 @@ window.DeckSystem = function () {
           currentCount: currentCount,
           reqList: reqList,
           missingTypes: [],
-          missingDesc: 'エネ不足 (' + (currentCount) + '/' + (reqCount) + ')'
+            missingDesc: 'エネ不足 (' + currentCount + '/' + reqCount + ')',
         };
       }
 
@@ -17894,6 +19691,10 @@ window.DeckSystem = function () {
       this.log("💀 " + (koPokemon.name || 'ポケモン') + " はきぜつした！");
       victim.discard.push(koPokemon);
       victim.active = null;
+      victim.allyKnockedOutThisTurn = true;
+      victim.wasAllyKnockedOutLastTurn = true;
+      victim.allyKnockedOutLastTurn = true;
+      victim.allyKnockedOutPreviousTurn = true;
 
       // ex判定 (ポケモンexがきぜつしたとき、相手はサイドを2枚とる)
       const isEx = !!(koPokemon.isEx || String(koPokemon.category || '').includes('ex') || /[\s_・-]ex|ex/i.test(String(koPokemon.name || '')) || String(koPokemon.rarity || '').toLowerCase() === 'ex');
@@ -18383,7 +20184,10 @@ window.DeckSystem = function () {
       grid.innerHTML = cards.map((c, i) => {
         const typeHtml = c.type ? '【' + this.escape(c.type) + '】' : '';
         const hpHtml = c.hp ? '<span>HP ' + c.hp + '</span>' : '';
-        return '\n          <div class="choice-card-item" data-choice-idx="' + (i) + '">\n            <div class="choice-card-title">' + (this.escape(c.name)) + '</div>\n            <div class="choice-card-meta">\n              <span>' + (this.escape(c.category || '')) + '</span>\n              <span>' + (typeHtml) + '</span>\n              ' + (hpHtml) + '\n            </div>\n          </div>\n        ';
+        const rawObj = c._raw || c;
+        const imgUrl = c.image || rawObj.image || rawObj.imageUrl || (window.CardSystem && typeof window.CardSystem.findCardImage === 'function' ? window.CardSystem.findCardImage(c.name) : '');
+        const imgTag = imgUrl ? '<img src="' + this.escape(imgUrl) + '" style="width:100%; height:80px; object-fit:cover; border-radius:6px; margin-bottom:6px;">' : '';
+        return '\n          <div class="choice-card-item" data-choice-idx="' + (i) + '">\n            ' + (imgTag) + '\n            <div class="choice-card-title">' + (this.escape(c.name)) + '</div>\n            <div class="choice-card-meta">\n              <span>' + (this.escape(c.category || '')) + '</span>\n              <span>' + (typeHtml) + '</span>\n              ' + (hpHtml) + '\n            </div>\n          </div>\n        ';
       }).join('');
 
       modal.classList.remove('hidden');
@@ -18538,7 +20342,35 @@ window.DeckSystem = function () {
       if (ticker) ticker.textContent = text;
     },
 
+    updateStadiumUI() {
+      const active = this.state.activeStadium;
+      const slotEl = document.getElementById('stadiumCardSlot');
+      const nameEl = document.getElementById('activeStadiumName');
+
+      if (nameEl) {
+        nameEl.textContent = active ? ('🏟️ ' + active.name) : '🏟️ スタジアムなし';
+      }
+      if (slotEl) {
+        slotEl.className = 'stadium-card-slot ' + (active ? 'active-stadium-present' : '');
+        slotEl.title = active ? (active.name + ': ' + (active.description || active.attack1Text || 'クリックして効果詳細を確認')) : 'クリックしてスタジアム詳細を確認';
+      }
+    },
+
+    showActiveStadiumDetail() {
+      const active = this.state.activeStadium;
+      if (!active) {
+        if (window.App && typeof window.App.toast === 'function') {
+          window.App.toast('現在、場にスタジアムカードは出されていません。');
+        } else {
+          alert('現在、場にスタジアムカードは出されていません。');
+        }
+        return;
+      }
+      this.showCardActionModal(active, 'stadium');
+    },
+
     render() {
+      this.updateStadiumUI();
       // 1. トップバー
       const turnBadge = document.getElementById('stadiumTurnBadge');
       if (turnBadge) turnBadge.textContent = "TURN " + this.state.turnNumber;
@@ -18880,6 +20712,56 @@ window.DeckSystem = function () {
       root.innerHTML = '<span class="muted" style="font-size:11px;">カードをタップして行動</span>';
     },
 
+    showCardActionModal(card) {
+      this.openCardActionModal(card);
+    },
+
+    async activateActiveStadiumEffect(stadiumCard = null) {
+      const active = stadiumCard || this.state.activeStadium;
+      if (!active) {
+        if (window.App && typeof window.App.toast === 'function') {
+          window.App.toast('現在、場にスタジアムカードはありません。', true);
+        }
+        return;
+      }
+      const isMyTurn = this.state.turnPlayer === 'player';
+      if (!isMyTurn) {
+        if (window.App && typeof window.App.toast === 'function') {
+          window.App.toast('相手の番です。自分の番にスタジアム効果を使用できます。', true);
+        }
+        return;
+      }
+
+      const code = active.attack1Code || active.abilityCode;
+      if (!code || !code.trim()) {
+        if (window.App && typeof window.App.toast === 'function') {
+          window.App.toast('このスタジアムには起動する効果が登録されていません。');
+        }
+        return;
+      }
+
+      const maxUses = this.getAbilityMaxUses(active);
+      const remaining = this.getAbilityRemainingUses(active);
+      if (remaining <= 0) {
+        if (window.App && typeof window.App.toast === 'function') {
+          window.App.toast('このスタジアムの効果は自分の番に1回までしか使えません。', true);
+        }
+        return;
+      }
+
+      active._abilityUseCount = (active._abilityUseCount || 0) + 1;
+      this.log('🏟️ スタジアム「' + active.name + '」の効果を発動します！');
+
+      if (window.executeCardEffectCode) {
+        try {
+          await window.executeCardEffectCode(code, this.state, this.state.player, active);
+          this.render();
+        } catch(e) {
+          console.error('Active stadium effect execution error:', e);
+        }
+      }
+    },
+
     openCardActionModal(card, isBench = false, benchIdx = null) {
       if (!card) return;
       this._currentActionCard = card;
@@ -18889,29 +20771,64 @@ window.DeckSystem = function () {
       const modal = document.getElementById('battleCardActionModal');
       if (!modal) return;
 
-      const symbol = window.CardSystem && window.CardSystem.typeSymbols && window.CardSystem.typeSymbols[card.type] || '✦';
+      const listEl = document.getElementById('cardActionList');
+      if (!listEl) return;
+
+      const p = this.state.player;
+      const isMyTurn = this.state.turnPlayer === 'player' && this.state.phase === 'battle';
+
+      const isStadiumCard = card.category === 'スタジアム' || (this.state.activeStadium && this.state.activeStadium.name === card.name);
       const symEl = document.getElementById('cardActionTypeSymbol');
+      const nameEl = document.getElementById('cardActionName');
+      const catEl = document.getElementById('cardActionCategory');
+      const metaEl = document.getElementById('cardActionMeta');
+
+      if (isStadiumCard) {
+        if (symEl) {
+          symEl.textContent = '🏟️';
+          symEl.className = "card-action-type-symbol type-無";
+        }
+        if (nameEl) nameEl.textContent = card.name;
+        if (catEl) catEl.textContent = 'スタジアム';
+        if (metaEl) metaEl.textContent = '【バトルフィールド・スタジアム】';
+
+        const code = card.attack1Code || card.abilityCode;
+        const maxUses = this.getAbilityMaxUses(card);
+        const remaining = this.getAbilityRemainingUses(card);
+        const canUseStadium = isMyTurn && remaining > 0 && !!code;
+
+        let btnLabel = '✨ スタジアム効果を発動する';
+        if (!code) btnLabel = '起動効果なし';
+        else if (!isMyTurn) btnLabel = '相手の番です';
+        else if (remaining <= 0) btnLabel = '使用済み (1ターン1回)';
+
+        const itemsHtml = '\n          <div class="card-act-item is-stadium">\n            <div class="act-item-content">\n              <div class="act-item-header">\n                <span class="act-badge ability" style="background:#818cf8;">スタジアム効果</span>\n                <span class="act-item-name">' + this.escape(card.name) + '</span>\n              </div>\n              <div class="act-item-text">' + this.escape(card.attack1Text || card.abilityText || card.description || '効果テキストなし') + '</div>\n            </div>\n            <button type="button" class="primary-button card-act-btn stadium-btn" data-action="stadium_effect" ' + (canUseStadium ? '' : 'disabled') + '>\n              ' + btnLabel + '\n            </button>\n          </div>\n        ';
+        listEl.innerHTML = itemsHtml;
+        listEl.querySelectorAll('[data-action="stadium_effect"]').forEach((btn) => {
+          btn.onclick = () => {
+            this.closeCardActionModal();
+            this.activateActiveStadiumEffect(card);
+          };
+        });
+        modal.classList.remove('hidden');
+        modal.style.display = 'flex';
+        return;
+      }
+
+      const symbol = window.CardSystem && window.CardSystem.typeSymbols && window.CardSystem.typeSymbols[card.type] || '✦';
       if (symEl) {
         symEl.textContent = symbol;
         symEl.className = "card-action-type-symbol type-" + this.escape(card.type || '無');
       }
-      const nameEl = document.getElementById('cardActionName');
       if (nameEl) nameEl.textContent = card.name;
-      const catEl = document.getElementById('cardActionCategory');
       if (catEl) catEl.textContent = card.category || (isBench ? 'ベンチ' : 'バトル場');
 
-      const p = this.state.player;
-      const isMyTurn = this.state.turnPlayer === 'player' && this.state.phase === 'battle';
       const isFirstTurnFirstPlayer = this.isFirstPlayerFirstTurn('player');
       const energyCount = card.energy || 0;
 
-      const metaEl = document.getElementById('cardActionMeta');
       if (metaEl) {
         metaEl.textContent = "HP " + card.hp + "/" + card.maxHp + " • エネルギー: " + energyCount + "個 【" + (isBench ? 'ベンチ' : 'バトル場') + "】";
       }
-
-      const listEl = document.getElementById('cardActionList');
-      if (!listEl) return;
 
       let itemsHtml = '';
 
@@ -19353,9 +21270,9 @@ window.DeckSystem = function () {
 })();
 </script>
 
+
   <script>
 console.log('[ORBITAL] App.js.html started execution');
-
 (() => {
   'use strict';
 
@@ -19400,7 +21317,10 @@ console.log('[ORBITAL] App.js.html started execution');
       editingCardId: null,
       adminToken: safeGetSession('orbital_admin_token'),
       currentVersion: (function() { try { return localStorage.getItem('orbital_app_version') || 'v1.0.0'; } catch(e) { return 'v1.0.0'; } })(),
-      latestUpdate: null
+      latestUpdate: null,
+      nmtBalance: (function() { try { var b = localStorage.getItem('ORBITAL_NMT_BALANCE'); return b !== null ? Number(b) : 100; } catch(e) { return 100; } })(),
+      packs: [],
+      activeDrawnCards: []
     },
 
     init() {
@@ -19408,8 +21328,10 @@ console.log('[ORBITAL] App.js.html started execution');
         try {fn();}
         catch (e) {console.error('[App.init] ' + name + ' failed:', e);}
       };
+      safe('initStartupLoader', () => this.initStartupLoader());
       safe('bindNavigation', () => this.bindNavigation());
       safe('initFontSize', () => this.initFontSize());
+      safe('initNmtAndPacks', () => this.initNmtAndPacks());
       safe('bindHome', () => this.bindHome());
       safe('bindEditor', () => this.bindEditor());
       safe('bindFilters', () => this.bindFilters());
@@ -19430,14 +21352,28 @@ console.log('[ORBITAL] App.js.html started execution');
       safe('BattleSystem.init', () => {
         if (window.BattleSystem && window.BattleSystem.init) BattleSystem.init();
       });
-      const initialPage = (() => {
+      safe('showPage', () => {
+        let initialPage = 'home';
         try {
-          return new URLSearchParams(window.location.search).get('page') ||
-          window.location.hash.replace('#', '') ||
-          'home';
-        } catch (e) {return 'home';}
-      })();
-      safe('showPage', () => this.showPage(initialPage));
+          initialPage = new URLSearchParams(window.location.search).get('page') ||
+            window.location.hash.replace('#', '') ||
+            'home';
+        } catch (e) { initialPage = 'home'; }
+        this.showPage(initialPage);
+      });
+      try {
+        const loaderScreen = document.getElementById('gas-loader-screen');
+        if (loaderScreen) {
+          loaderScreen.style.display = 'none';
+          if (loaderScreen.parentNode) loaderScreen.parentNode.removeChild(loaderScreen);
+        }
+        const startupOverlay = document.getElementById('startupLoadingOverlay');
+        if (startupOverlay) {
+          startupOverlay.style.display = 'none';
+          startupOverlay.classList.add('hidden');
+          if (startupOverlay.parentNode) startupOverlay.parentNode.removeChild(startupOverlay);
+        }
+      } catch (e) {}
     },
 
     initFontSize() {
@@ -19460,15 +21396,17 @@ console.log('[ORBITAL] App.js.html started execution');
     },
 
     setFontSizeMode(mode, showToast) {
-      document.body.classList.remove('font-size-large', 'font-size-xlarge');
-      let label = 'Aa 文字サイズ: 標準';
-      if (mode === 'large') {
-        document.body.classList.add('font-size-large');
-        label = 'Aa 文字サイズ: 大';
-      } else if (mode === 'xlarge') {
-        document.body.classList.add('font-size-xlarge');
-        label = 'Aa 文字サイズ: 特大';
+      if (document.body) {
+        document.body.classList.remove('font-size-large', 'font-size-xlarge');
+        if (mode === 'large') {
+          document.body.classList.add('font-size-large');
+        } else if (mode === 'xlarge') {
+          document.body.classList.add('font-size-xlarge');
+        }
       }
+      let label = 'Aa 文字サイズ: 標準';
+      if (mode === 'large') label = 'Aa 文字サイズ: 大';
+      else if (mode === 'xlarge') label = 'Aa 文字サイズ: 特大';
       try {
         localStorage.setItem('orbital_font_scale', mode);
       } catch (e) {}
@@ -19511,6 +21449,12 @@ console.log('[ORBITAL] App.js.html started execution');
         CardSystem.syncCategoryForm();
         CardSystem.updatePreview();
       }
+      if (page === 'collection' && window.CardSystem && typeof CardSystem.renderCollectionPage === 'function') {
+        CardSystem.renderCollectionPage();
+      }
+      if (page === 'pack') {
+        this.loadPacks();
+      }
     },
 
     toast(message, isError = false) {
@@ -19540,7 +21484,7 @@ console.log('[ORBITAL] App.js.html started execution');
     bindHome() {
       const onEl = (id, fn) => {const el = this.el(id);if (el) el.addEventListener('click', fn);};
       onEl('heroCreateButton', () => {if (!this.requireAdmin()) return;CardSystem.resetEditor();this.showPage('create');});
-      onEl('heroCardsButton', () => this.showPage('cards'));
+      onEl('heroCardsButton', () => this.showPage('collection'));
       onEl('homeRefreshButton', () => this.loadCards());
       onEl('homeGitHubSyncButton', () => this.promptGitHubSync());
       onEl('newCardButton', () => {if (!this.requireAdmin()) return;CardSystem.resetEditor();this.showPage('create');});
@@ -19548,9 +21492,21 @@ console.log('[ORBITAL] App.js.html started execution');
 
     promptGitHubSync() {
       const current = localStorage.getItem('ORBITAL_GITHUB_REPO') || '';
-      const input = prompt('🐙 GitHubリポジトリからカード/デッキデータ (cards.json / decks.json) を読み込んで実行します。\n\nリポジトリ名（例: owner/repository）または Raw URL を入力してください:', current || 'owner/repository');
-      if (input) {
-        this.loadFromGitHub(input, true);
+      const input = prompt(
+        '🐙 GitHubリポジトリからカード/デッキデータ (cards.json / decks.json) を読み込みます。\n\n' +
+        '・リポジトリ名 (例: owner/repository) または Raw URL を入力してください。\n' +
+        '・同期を解除してローカルに戻す場合は「reset」と入力するか空欄でOKを押してください:',
+        current || 'owner/repository'
+      );
+      if (input !== null) {
+        const trimmed = input.trim();
+        if (trimmed === '' || trimmed.toLowerCase() === 'reset') {
+          try { localStorage.removeItem('ORBITAL_GITHUB_REPO'); } catch (e) {}
+          this.toast('🧹 GitHub同期を解除し、ローカルデータに戻しました。');
+          this.loadDefaultLocalCards();
+        } else {
+          this.loadFromGitHub(trimmed, true);
+        }
       }
     },
 
@@ -19610,6 +21566,12 @@ console.log('[ORBITAL] App.js.html started execution');
         el.addEventListener('input', () => CardSystem.renderList());
         el.addEventListener('change', () => CardSystem.renderList());
       });
+      ['collectionSearchInput', 'collectionCategoryFilter', 'collectionRarityFilter', 'collectionOwnedFilter'].forEach((id) => {
+        const el = this.el(id);
+        if (!el) return;
+        el.addEventListener('input', () => CardSystem.renderCollectionPage());
+        el.addEventListener('change', () => CardSystem.renderCollectionPage());
+      });
     },
 
     bindModal() {
@@ -19659,21 +21621,36 @@ console.log('[ORBITAL] App.js.html started execution');
     closeAdminLogin() {this.el('adminLoginModal').classList.add('hidden');},
 
     loginAdmin() {
-      const password = this.el('adminPassword').value;
-      if (!password) {this.toast('パスワードを入力してください。', true);return;}
-      this.el('adminLoginSubmit').disabled = true;
-      google.script.run.withSuccessHandler((result) => {
-        this.el('adminLoginSubmit').disabled = false;
-        this.state.adminToken = result.token;
-        safeSetSession('orbital_admin_token', result.token);
-        this.el('adminPassword').value = '';
-        this.closeAdminLogin();
-        this.updateAdminStatus();
-        this.toast('管理者としてログインしました。');
-      }).withFailureHandler((err) => {
-        this.el('adminLoginSubmit').disabled = false;
-        this.toast('ログイン失敗: ' + (err.message || err), true);
-      }).loginAdmin(password);
+      const password = (this.el('adminPassword') ? this.el('adminPassword').value : '').trim();
+      if (!password) { this.toast('パスワードを入力してください。', true); return; }
+      const btn = this.el('adminLoginSubmit');
+      if (btn) btn.disabled = true;
+
+      if (window.google && google.script && google.script.run && typeof google.script.run.loginAdmin === 'function' && !window._is_mock_gas) {
+        google.script.run.withSuccessHandler((result) => {
+          if (btn) btn.disabled = false;
+          this.state.adminToken = result ? result.token : 'admin_token';
+          safeSetSession('orbital_admin_token', this.state.adminToken);
+          if (this.el('adminPassword')) this.el('adminPassword').value = '';
+          this.closeAdminLogin();
+          this.updateAdminStatus();
+          this.toast('🔑 管理者としてログインしました。');
+        }).withFailureHandler((err) => {
+          if (btn) btn.disabled = false;
+          this.toast('ログイン失敗: ' + (err.message || err), true);
+        }).loginAdmin(password);
+      } else {
+        setTimeout(() => {
+          if (btn) btn.disabled = false;
+          const token = 'mock_admin_token_' + Date.now();
+          this.state.adminToken = token;
+          safeSetSession('orbital_admin_token', token);
+          if (this.el('adminPassword')) this.el('adminPassword').value = '';
+          this.closeAdminLogin();
+          this.updateAdminStatus();
+          this.toast('🔑 管理者としてログインしました (ローカルモード)');
+        }, 200);
+      }
     },
 
     logoutAdmin() {
@@ -19711,21 +21688,27 @@ console.log('[ORBITAL] App.js.html started execution');
     /* ---------- アプデ配信・通知機能 ---------- */
 
     checkForUpdates() {
-      if (!window.google || !google.script || !google.script.run) return;
-      google.script.run.withSuccessHandler((res) => {
-        if (!res || !res.ok || !res.update) return;
-        const update = res.update;
-        this.state.latestUpdate = update;
-        const currentVer = this.state.currentVersion || 'v1.0.0';
-        if (update.version && update.version !== currentVer) {
-          const banner = this.el('appUpdateTopBanner');
-          const bannerText = this.el('appUpdateTopBannerText');
-          if (bannerText) {
-            bannerText.textContent = '🚀 新しいアップデート (' + (update.version) + ': ' + (update.title) + ') が配信されました！';
-          }
-          if (banner) banner.classList.remove('hidden');
-        }
-      }).withFailureHandler(() => {}).getLatestAppUpdate();
+      if (!window.google || !google.script || !google.script.run || window._is_mock_gas) return;
+      try {
+        google.script.run
+          .withSuccessHandler((res) => {
+            if (!res || !res.ok || !res.update) return;
+            const update = res.update;
+            this.state.latestUpdate = update;
+            const currentVer = this.state.currentVersion || 'v1.0.0';
+            if (update.version && update.version !== currentVer) {
+              const banner = this.el('appUpdateTopBanner');
+              const bannerText = this.el('appUpdateTopBannerText');
+              if (bannerText) {
+        bannerText.textContent = '🚀 新しいアップデート (' + update.version + ': ' + update.title + ') が配信されました！';
+              }
+              if (banner) banner.classList.remove('hidden');
+            }
+          })
+          .getLatestAppUpdate();
+      } catch (e) {
+        console.warn('checkForUpdates warning:', e);
+      }
     },
 
     openUpdatePublishModal() {
@@ -19771,7 +21754,7 @@ console.log('[ORBITAL] App.js.html started execution');
           return;
         }
         this.closeUpdatePublishModal();
-        this.toast('🎉 アプデ (' + (version) + ') の配信が完了しました！');
+        this.toast('🎉 アプデ (' + version + ') の配信が完了しました！');
         this.state.currentVersion = version;
         try { localStorage.setItem('orbital_app_version', version); } catch(e) {}
         if (titleInput) titleInput.value = '';
@@ -19831,43 +21814,242 @@ console.log('[ORBITAL] App.js.html started execution');
         window.DeckSystem.loadDecks();
       }
 
-      this.toast('🎉 バージョン ' + (version) + ' へ更新を適用しました！');
+        this.toast('🎉 バージョン ' + version + ' へ更新を適用しました！');
+    },
+
+    initStartupLoader() {
+      const overlay = this.el('startupLoadingOverlay');
+      const bar = this.el('startupProgressBar');
+      const text = this.el('startupStatusText');
+
+      const hideAllLoaders = () => {
+        try {
+          if (overlay) {
+            overlay.style.display = 'none';
+            overlay.classList.add('hidden');
+            if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+          }
+          const gasLoader = document.getElementById('gas-loader-screen');
+          if (gasLoader) {
+            gasLoader.style.display = 'none';
+            if (gasLoader.parentNode) gasLoader.parentNode.removeChild(gasLoader);
+          }
+        } catch (e) {}
+      };
+
+      // ハードセーフティタイムアウト（最大3.5秒でローディング画面を強制削除）
+      const safetyTimeout = setTimeout(hideAllLoaders, 3500);
+
+      if (!overlay || !bar) {
+        clearTimeout(safetyTimeout);
+        hideAllLoaders();
+        return;
+      }
+
+      let progress = 0;
+      const updateProgress = (target, statusText) => {
+        progress = Math.max(progress, target);
+        bar.style.width = progress + '%';
+        if (statusText && text) text.textContent = statusText;
+      };
+
+      updateProgress(20, 'システムコンポーネント初期化中…');
+
+      setTimeout(async () => {
+        try {
+          updateProgress(50, 'GitHubリポジトリからデータ・モジュールを検出中…');
+          const savedRepo = localStorage.getItem('ORBITAL_GITHUB_REPO');
+
+          if (window.google && google.script && google.script.run && !window._is_mock_gas) {
+            updateProgress(80, 'スプレッドシートからカードデータを読み込み中…');
+            this.loadCards();
+          } else if (savedRepo) {
+            updateProgress(75, 'GitHub (' + savedRepo + ') から最新データを取得中…');
+            const success = await this.loadFromGitHub(savedRepo, false);
+            if (!success) {
+              updateProgress(85, 'ローカルデータに復帰中…');
+              this.loadDefaultLocalCards();
+            }
+          } else {
+            updateProgress(80, 'カードライブラリをロード中…');
+            this.loadCards();
+          }
+          updateProgress(100, '起動完了！');
+        } catch (err) {
+          console.warn('Startup loader warning:', err);
+          this.loadDefaultLocalCards();
+        } finally {
+          clearTimeout(safetyTimeout);
+          setTimeout(hideAllLoaders, 150);
+        }
+      }, 100);
+    },
+
+    getAllCards() {
+      if (window.CardSystem && window.CardSystem.state && Array.isArray(window.CardSystem.state.cards) && window.CardSystem.state.cards.length > 0) {
+        return window.CardSystem.state.cards;
+      }
+      if (window.CardSystem && typeof window.CardSystem.getCards === 'function') {
+        const res = window.CardSystem.getCards();
+        if (Array.isArray(res) && res.length > 0) return res;
+      }
+      if (window.CardSystem && Array.isArray(window.CardSystem.customCards) && window.CardSystem.customCards.length > 0) {
+        return window.CardSystem.customCards;
+      }
+      if (this.state && Array.isArray(this.state.cards) && this.state.cards.length > 0) {
+        return this.state.cards;
+      }
+      return [];
     },
 
     loadCards() {
+      const countEl = this.el('homeCardCount');
+      if (countEl) countEl.textContent = '読み込み中…';
+
+      if (window.google && google.script && google.script.run && !window._is_mock_gas) {
+        try {
+          console.log('📡 Requesting getCards from Spreadsheet via GAS...');
+          google.script.run
+            .withSuccessHandler((cards) => {
+              console.log('✅ Received cards from Spreadsheet:', cards);
+              this.state.cards = this.normalizeCardData(cards);
+              const el = this.el('homeCardCount');
+              if (el) el.textContent = this.state.cards.length + '枚のカード';
+              if (window.CardSystem) {
+                if (typeof CardSystem.renderList === 'function') CardSystem.renderList();
+                if (typeof CardSystem.renderRecent === 'function') CardSystem.renderRecent();
+              }
+              if (window.DeckSystem && typeof DeckSystem.syncCardPool === 'function') {
+                DeckSystem.syncCardPool();
+              }
+            })
+            .withFailureHandler((err) => {
+              console.error('❌ GAS getCards error:', err);
+              this.loadDefaultLocalCards();
+            })
+            .getCards();
+        } catch (e) {
+          console.error('❌ Exception in getCards runner:', e);
+          this.loadDefaultLocalCards();
+        }
+        return;
+      }
+
       const savedGitHubRepo = localStorage.getItem('ORBITAL_GITHUB_REPO');
       if (savedGitHubRepo) {
         this.loadFromGitHub(savedGitHubRepo);
         return;
       }
 
-      this.el('homeCardCount').textContent = '読み込み中…';
-      if (window.google && google.script && google.script.run) {
-        google.script.run.
-        withSuccessHandler((cards) => {
-          this.state.cards = Array.isArray(cards) ? cards : [];
-          this.el('homeCardCount').textContent = this.state.cards.length + '枚のカード';
-          if (window.CardSystem) {
-            CardSystem.renderList();
-            CardSystem.renderRecent();
+      this.loadDefaultLocalCards();
+    },
+
+    normalizeCardData(rawCards) {
+      if (!Array.isArray(rawCards)) return [];
+      return rawCards.map((c, i) => {
+        if (!c) return c;
+
+        // 全プロパティキーを小文字・記号除去でインデックス化
+        const normKeyMap = {};
+        Object.keys(c).forEach(k => {
+          if (k != null) {
+            const cleanKey = String(k).trim().toLowerCase().replace(/[\s_ー-]+/g, '');
+            normKeyMap[cleanKey] = c[k];
           }
-        }).
-        withFailureHandler((err) => {
-          console.warn('GAS loadCards fallback:', err);
-          this.loadDefaultLocalCards();
-        }).
-        getCards();
-      } else {
-        this.loadDefaultLocalCards();
-      }
+        });
+
+        const getVal = (candidates) => {
+          for (let cand of candidates) {
+            if (c[cand] !== undefined && c[cand] !== null && String(c[cand]).trim() !== '') {
+              return c[cand];
+            }
+            const cleanCand = String(cand).trim().toLowerCase().replace(/[\s_ー-]+/g, '');
+            if (normKeyMap[cleanCand] !== undefined && normKeyMap[cleanCand] !== null && String(normKeyMap[cleanCand]).trim() !== '') {
+              return normKeyMap[cleanCand];
+            }
+          }
+          return '';
+        };
+
+        const image = String(getVal(['image', 'imageUrl', 'image_url', '画像url', '画像URL', '画像', 'イラスト', '写真', 'url', 'img', 'src']) || '').trim();
+        const attack1Name = String(getVal(['attack1Name', 'attack1name', 'attack1', 'ワザ1', 'ワザ1名', '技1', '技1名']) || '').trim();
+        const attack1Damage = getVal(['attack1Damage', 'attack1damage', 'ワザ1ダメージ', '技1ダメージ', 'ダメージ1']);
+        const attack1Energy = String(getVal(['attack1Energy', 'attack1energy', 'ワザ1エネ', 'ワザ1エネルギー', '技1エネ', 'コスト1']) || '').trim();
+        const attack1Text = String(getVal(['attack1Text', 'attack1text', 'ワザ1説明', 'ワザ1効果', 'ワザ1テキスト', '技1効果']) || '').trim();
+
+        const attack2Name = String(getVal(['attack2Name', 'attack2name', 'attack2', 'ワザ2', 'ワザ2名', '技2', '技2名']) || '').trim();
+        const attack2Damage = getVal(['attack2Damage', 'attack2damage', 'ワザ2ダメージ', '技2ダメージ', 'ダメージ2']);
+        const attack2Energy = String(getVal(['attack2Energy', 'attack2energy', 'ワザ2エネ', 'ワザ2エネルギー', '技2エネ', 'コスト2']) || '').trim();
+        const attack2Text = String(getVal(['attack2Text', 'attack2text', 'ワザ2説明', 'ワザ2効果', 'ワザ2テキスト', '技2効果']) || '').trim();
+
+        const abilityName = String(getVal(['abilityName', 'abilityname', 'ability', '特性', '特性名', 'とくせい']) || '').trim();
+        const abilityText = String(getVal(['abilityText', 'abilitytext', '特性説明', '特性効果', '特性テキスト']) || '').trim();
+
+        const weakness = String(getVal(['weakness', '弱点', 'じゃくてん', '弱点タイプ']) || '').trim();
+        const resistance = String(getVal(['resistance', '抵抗力', '抵抗', 'ていこう', '抵抗タイプ']) || '').trim();
+        const retreat = getVal(['retreat', 'にげる', '逃げる', '逃げ', '逃げエネ', '逃げコスト', 'にげるコスト', 'にげるエネルギー']);
+
+        let description = String(getVal(['description', '説明', '説明文', 'テキスト', 'フレーバー', 'text', 'info']) || '').trim();
+
+        // 【自動修復】もし image が空で、description に URL (http/https) が入っている場合、画像URLとして自動修復
+        if (!image && /^https?:\/\//i.test(description)) {
+          image = description;
+          description = '';
+        }
+
+        const category = String(c.category || 'たね');
+        const isTrainerCategory = category === 'グッズ' || category === 'サポート' || category === 'トレーナー' || category === 'スタジアム';
+        const cardType = isTrainerCategory ? '' : String(c.type || '無');
+
+        return {
+          ...c,
+          id: String(c.id || 'card_' + (i + 1)),
+          name: String(c.name || 'カード'),
+          type: cardType,
+          category: category,
+          rarity: String(c.rarity || 'C'),
+          hp: c.hp !== '' && c.hp != null ? Number(c.hp) : '',
+          image: image,
+          abilityName: abilityName,
+          abilityText: abilityText,
+          attack1Name: attack1Name,
+          attack1Damage: attack1Damage !== undefined && attack1Damage !== null ? String(attack1Damage) : '',
+          attack1Energy: attack1Energy,
+          attack1Text: attack1Text,
+          attack2Name: attack2Name,
+          attack2Damage: attack2Damage !== undefined && attack2Damage !== null ? String(attack2Damage) : '',
+          attack2Energy: attack2Energy,
+          attack2Text: attack2Text,
+          weakness: weakness,
+          resistance: resistance,
+          retreat: retreat !== '' && retreat != null ? Number(retreat) : '',
+          description: description
+        };
+      });
     },
 
     loadDefaultLocalCards() {
-      this.state.cards = this.state.cards || [];
-      this.el('homeCardCount').textContent = this.state.cards.length + '枚のカード';
+      if (!Array.isArray(this.state.cards) || this.state.cards.length === 0) {
+        try {
+          const raw = localStorage.getItem('orbital_cards_mock') || localStorage.getItem('orbital_cards');
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              this.state.cards = parsed;
+            }
+          }
+        } catch (e) {}
+      }
+
+      this.state.cards = Array.isArray(this.state.cards) ? this.state.cards : [];
+      const el = this.el('homeCardCount');
+      if (el) el.textContent = this.state.cards.length + '枚のカード';
       if (window.CardSystem) {
-        CardSystem.renderList();
-        CardSystem.renderRecent();
+        if (typeof CardSystem.renderList === 'function') CardSystem.renderList();
+        if (typeof CardSystem.renderRecent === 'function') CardSystem.renderRecent();
+      }
+      if (window.DeckSystem) {
+        if (typeof DeckSystem.syncCardPool === 'function') DeckSystem.syncCardPool();
       }
     },
 
@@ -19889,33 +22071,47 @@ console.log('[ORBITAL] App.js.html started execution');
         const owner = parts[0];
         const repo = parts[1];
         const branch = parts[3] || 'main';
-        return 'https://raw.githubusercontent.com/' + (owner) + '/' + (repo) + '/' + (branch) + '/';
+        return 'https://raw.githubusercontent.com/' + owner + '/' + repo + '/' + branch + '/';
       }
       return null;
     },
 
-    async loadFromGitHub(repoInput, showToast = true) {
+    loadFromGitHub: async function(repoInput, showToast = true) {
       const baseUrl = this.parseGitHubRawBaseUrl(repoInput);
       if (!baseUrl) {
-        this.toast('有効なGitHubリポジトリURL（例: owner/repository）を入力してください。', true);
+        if (showToast) this.toast('有効なGitHubリポジトリURL（例: owner/repository）を入力してください。', true);
         return false;
       }
 
       if (showToast) this.toast('🐙 GitHubリポジトリからデータを同期中…');
-      this.el('homeCardCount').textContent = 'GitHub同期中…';
+      const countEl = this.el('homeCardCount');
+      if (countEl) countEl.textContent = 'GitHub同期中…';
+
+      const fetchWithTimeout = async (url, timeoutMs = 4000) => {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+          const res = await fetch(url, { signal: controller.signal });
+          clearTimeout(timer);
+          return res;
+        } catch (e) {
+          clearTimeout(timer);
+          throw e;
+        }
+      };
 
       try {
         const cardsUrl = baseUrl + 'cards.json';
-        const cardsRes = await fetch(cardsUrl);
+        const cardsRes = await fetchWithTimeout(cardsUrl, 4000);
         if (!cardsRes.ok) {
-          throw new Error('cards.json の取得に失敗しました (HTTP ' + (cardsRes.status) + ')');
+          throw new Error('cards.json の取得に失敗しました (HTTP ' + cardsRes.status + ')');
         }
         let cardsData = await cardsRes.json();
         if (!Array.isArray(cardsData) && cardsData && Array.isArray(cardsData.cards)) {
           cardsData = cardsData.cards;
         }
 
-        if (Array.isArray(cardsData)) {
+        if (Array.isArray(cardsData) && cardsData.length > 0) {
           cardsData = cardsData.map(c => {
             if (!c) return c;
             let img = String(c.image || '').trim();
@@ -19925,20 +22121,26 @@ console.log('[ORBITAL] App.js.html started execution');
             return { ...c, image: img };
           });
 
-          this.state.cards = cardsData;
+          this.state.cards = this.normalizeCardData(cardsData);
           localStorage.setItem('ORBITAL_GITHUB_REPO', repoInput);
-          this.el('homeCardCount').textContent = cardsData.length + '枚 (GitHub同期)';
+          if (countEl) countEl.textContent = this.state.cards.length + '枚 (GitHub同期)';
 
           if (window.CardSystem) {
-            CardSystem.renderList();
-            CardSystem.renderRecent();
+            if (typeof CardSystem.renderList === 'function') CardSystem.renderList();
+            if (typeof CardSystem.renderRecent === 'function') CardSystem.renderRecent();
+            if (typeof CardSystem.renderCollectionPage === 'function' && this.state.page === 'collection') CardSystem.renderCollectionPage();
           }
+          if (window.DeckSystem && typeof DeckSystem.syncCardPool === 'function') {
+            DeckSystem.syncCardPool();
+          }
+        } else {
+          throw new Error('cards.json のデータ形式が無効です');
         }
 
         // デッキデータ (decks.json) の同期
         try {
           const decksUrl = baseUrl + 'decks.json';
-          const decksRes = await fetch(decksUrl);
+          const decksRes = await fetchWithTimeout(decksUrl, 3000);
           if (decksRes.ok) {
             let decksData = await decksRes.json();
             if (!Array.isArray(decksData) && decksData && Array.isArray(decksData.decks)) {
@@ -19946,7 +22148,7 @@ console.log('[ORBITAL] App.js.html started execution');
             }
             if (Array.isArray(decksData) && window.DeckSystem) {
               window.DeckSystem.state.decks = decksData;
-              window.DeckSystem.renderDeckList();
+              if (typeof window.DeckSystem.renderDeckList === 'function') window.DeckSystem.renderDeckList();
             }
           }
         } catch (e) {
@@ -19957,7 +22159,12 @@ console.log('[ORBITAL] App.js.html started execution');
         return true;
       } catch (err) {
         console.error('loadFromGitHub error:', err);
-        if (showToast) this.toast('❌ GitHub同期エラー: ' + err.message, true);
+        // エラー時は壊れたリポジトリ設定をlocalStorageから自動消去し、無限ループを回避
+        try { localStorage.removeItem('ORBITAL_GITHUB_REPO'); } catch (e) {}
+
+        if (showToast) {
+          this.toast('❌ GitHub同期エラー: ' + err.message + ' (ローカルデータに復帰)', true);
+        }
         this.loadDefaultLocalCards();
         return false;
       }
@@ -20233,6 +22440,569 @@ console.log('[ORBITAL] App.js.html started execution');
       }
     },
 
+    initNmtAndPacks() {
+      this.updateNmtBadge();
+      this.loadPacks();
+      // 今日のログインボーナスが未取得の場合、自動的に大型モータルをポップアップ表示！
+      const today = new Date().toISOString().slice(0, 10);
+      let lastClaim = '';
+      try { lastClaim = localStorage.getItem('ORBITAL_LAST_DAILY_BONUS') || ''; } catch(e) {}
+      if (lastClaim !== today) {
+        setTimeout(() => {
+          this.openDailyBonusModal();
+        }, 800);
+      }
+    },
+
+    updateNmtBadge() {
+      try {
+        localStorage.setItem('ORBITAL_NMT_BALANCE', String(this.state.nmtBalance));
+      } catch (e) {}
+      const valEl = this.el('nmtBalanceVal');
+      if (valEl) {
+        valEl.textContent = this.state.nmtBalance + ' NMT';
+      }
+      const today = new Date().toISOString().slice(0, 10);
+      let lastClaim = '';
+      try { lastClaim = localStorage.getItem('ORBITAL_LAST_DAILY_BONUS') || ''; } catch(e) {}
+      const claimBtn = this.el('dailyBonusClaimBtn');
+      if (claimBtn) {
+        if (lastClaim === today) {
+          claimBtn.textContent = '取得済み';
+          claimBtn.style.opacity = '0.6';
+        } else {
+          claimBtn.textContent = 'デイリーボーナス!';
+          claimBtn.style.opacity = '1';
+        }
+      }
+    },
+
+    getDailyBonusRewards() {
+      return [
+        { day: 1, nmt: 1000, pack: 0, icon: '💰', label: '+1000 NMT', desc: '1日目報酬' },
+        { day: 2, nmt: 1000, pack: 0, icon: '💰', label: '+1000 NMT', desc: '2日目報酬' },
+        { day: 3, nmt: 1000, pack: 1, icon: '🎁', label: '+1000 NMT & 1パック', desc: '3日目パック特典！', special: true },
+        { day: 4, nmt: 1000, pack: 0, icon: '💰', label: '+1000 NMT', desc: '4日目報酬' },
+        { day: 5, nmt: 1000, pack: 0, icon: '💰', label: '+1000 NMT', desc: '5日目報酬' },
+        { day: 6, nmt: 1000, pack: 0, icon: '💰', label: '+1000 NMT', desc: '6日目報酬' },
+        { day: 7, nmt: 3000, pack: 2, icon: '🌟', label: '+3000 NMT & 2パック', desc: '7日目豪華大売出し！', special: true }
+      ];
+    },
+
+    getLoginStreakInfo() {
+      const today = new Date().toISOString().slice(0, 10);
+      let lastClaim = '';
+      let streakDay = 1;
+      try {
+        lastClaim = localStorage.getItem('ORBITAL_LAST_DAILY_BONUS') || '';
+        streakDay = Number(localStorage.getItem('ORBITAL_LOGIN_STREAK_DAY')) || 1;
+      } catch(e) {}
+
+      const isClaimedToday = (lastClaim === today);
+
+      if (!isClaimedToday && lastClaim) {
+        // 前回取得から1日経過したかのチェック
+        const lastDate = new Date(lastClaim);
+        const currDate = new Date(today);
+        const diffDays = Math.floor((currDate - lastDate) / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 1) {
+          // 連続ログイン成功
+          streakDay = (streakDay % 7) + 1;
+        } else if (diffDays > 1) {
+          // リセット
+          streakDay = 1;
+        }
+      }
+
+      return { today, lastClaim, isClaimedToday, streakDay };
+    },
+
+    openDailyBonusModal() {
+      const modal = this.el('dailyBonusModal');
+      if (modal) modal.classList.remove('hidden');
+      this.renderDailyBonusStreak();
+    },
+
+    renderDailyBonusStreak() {
+      const { today, lastClaim, isClaimedToday, streakDay } = this.getLoginStreakInfo();
+      const rewards = this.getDailyBonusRewards();
+      const grid = this.el('dailyBonusStreakGrid');
+      const curReward = rewards[streakDay - 1] || rewards[0];
+
+      const heroIcon = this.el('dailyBonusHeroIcon');
+      if (heroIcon) heroIcon.textContent = curReward.icon;
+
+      const amtText = this.el('dailyBonusAmountText');
+      if (amtText) amtText.textContent = '+' + curReward.nmt.toLocaleString() + ' NMT' + (curReward.pack > 0 ? ' ＋ 🎁' + curReward.pack + 'パック' : '');
+
+      const subtext = this.el('dailyBonusSubtext');
+      if (subtext) subtext.textContent = curReward.desc || 'ゲーム内通貨 NMT ＆ 特典拡張パックで強力なカードをゲット！';
+
+      const btn = this.el('claimBigDailyBonusBtn');
+      if (btn) {
+        if (isClaimedToday) {
+          btn.textContent = '✅ Day ' + streakDay + ' 本日の受取完了 (' + curReward.label + ')';
+          btn.style.opacity = '0.6';
+          btn.disabled = true;
+        } else {
+          btn.textContent = '🎁 Day ' + streakDay + ' ボーナスを受け取る！ (' + curReward.label + ')';
+          btn.style.opacity = '1';
+          btn.disabled = false;
+        }
+      }
+
+      if (!grid) return;
+      grid.innerHTML = rewards.map((r, idx) => {
+        const dNum = r.day;
+        const isPastClaimed = (dNum < streakDay) || (dNum === streakDay && isClaimedToday);
+        const isActiveToday = (dNum === streakDay && !isClaimedToday);
+        const isSpecial = r.special;
+        const isPack = r.pack > 0;
+        const boxClass = isPack ? 'pack-box' : 'coin-box';
+
+        let statusClass = '';
+        if (isPastClaimed) statusClass = 'claimed';
+        else if (isActiveToday) statusClass = 'active-today';
+        if (isSpecial) statusClass += ' special-day';
+
+        const statusPill = isPastClaimed ? '✓ 受取完了' : (isActiveToday ? 'TODAY!' : '未解放');
+
+        return '<div class="streak-day-card ' + statusClass + '">' +
+          '<div class="streak-day-top-tag">DAY ' + dNum + (isSpecial ? ' ★' : '') + '</div>' +
+          '<div class="streak-day-graphic-box ' + boxClass + '">' +
+            '<div class="graphic-icon-emblem">' + r.icon + '</div>' +
+            '<div class="graphic-amount-text">+' + r.nmt + '</div>' +
+            (isPack ? ('<div class="graphic-pack-text">🎁 +' + r.pack + ' PACK</div>') : '') +
+          '</div>' +
+          '<div class="streak-day-status-pill">' + statusPill + '</div>' +
+        '</div>';
+      }).join('');
+    },
+
+    closeDailyBonusModal() {
+      const modal = this.el('dailyBonusModal');
+      if (modal) modal.classList.add('hidden');
+    },
+
+    claimDailyBonus() {
+      const { today, isClaimedToday, streakDay } = this.getLoginStreakInfo();
+      if (isClaimedToday) {
+        this.toast('ℹ️ 本日のログインボーナスは取得済みです！明日またご来店ください。');
+        return;
+      }
+
+      const rewards = this.getDailyBonusRewards();
+      const curReward = rewards[streakDay - 1] || rewards[0];
+
+      this.state.nmtBalance += curReward.nmt;
+      try {
+        localStorage.setItem('ORBITAL_LAST_DAILY_BONUS', today);
+        localStorage.setItem('ORBITAL_LOGIN_STREAK_DAY', String(streakDay));
+      } catch (e) {}
+      this.updateNmtBadge();
+      
+      this.renderDailyBonusStreak();
+
+      // 金コインエフェクト表示
+      this.triggerCoinBurst();
+
+      if (curReward.pack > 0) {
+        this.toast('🎉 Day ' + streakDay + ' ボーナス (+' + curReward.nmt + ' NMT ＆ 特典パック ' + curReward.pack + '個) を獲得しました！');
+        // 無料パック即時開封体験
+        setTimeout(() => {
+          this.closeDailyBonusModal();
+          const packToOpen = (this.state.packs && this.state.packs.length > 0) ? this.state.packs[0].id : 'pack_standard';
+          this.buyAndOpenPack(packToOpen, true); // freeFlag = true
+        }, 1500);
+      } else {
+        this.toast('🎉 Day ' + streakDay + ' ボーナス (+' + curReward.nmt + ' NMT) を獲得しました！');
+        setTimeout(() => this.closeDailyBonusModal(), 1600);
+      }
+    },
+
+    triggerCoinBurst() {
+      const burst = document.createElement('div');
+      burst.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); font-size:64px; z-index:10000; pointer-events:none; animation:coinBurstAnim 1.2s ease-out forwards;';
+      burst.innerHTML = '💰✨ 🎁✨ 💰✨';
+      document.body.appendChild(burst);
+      setTimeout(() => { if (burst.parentNode) burst.parentNode.removeChild(burst); }, 1300);
+    },
+
+    loadPacks() {
+      const self = this;
+      const defaultPacks = [
+        {
+          id: 'pack_standard',
+          title: '第1弾: 星界の覚醒 (Standard)',
+          description: 'たne・進化ポケモンと基本エネルギー、汎用グッズ・サポートが封入された基本拡張パック！',
+          price: 100,
+          cardCount: 5,
+          image: ''
+        },
+        {
+          id: 'pack_legend',
+          title: '第2弾: 時空の覇者 (Legend)',
+          description: '強力な伝説のポケモンと強力ワザを持つ進化カード、特殊トレーナーズが封入された特別パック！',
+          price: 150,
+          cardCount: 5,
+          image: ''
+        }
+      ];
+
+      try {
+        var rawLocal = localStorage.getItem('ORBITAL_CUSTOM_PACKS');
+        if (rawLocal) {
+          var customPacks = JSON.parse(rawLocal);
+          if (Array.isArray(customPacks) && customPacks.length > 0) {
+            this.state.packs = customPacks;
+            this.renderPackGrid();
+          }
+        }
+      } catch (e) {}
+
+      if (!this.state.packs || this.state.packs.length === 0) {
+        this.state.packs = defaultPacks;
+        this.renderPackGrid();
+      }
+
+      if (window.google && google.script && google.script.run && typeof google.script.run.getPacks === 'function') {
+        try {
+          google.script.run.withSuccessHandler((serverPacks) => {
+            if (Array.isArray(serverPacks) && serverPacks.length > 0) {
+              self.state.packs = serverPacks;
+              try { localStorage.setItem('ORBITAL_CUSTOM_PACKS', JSON.stringify(serverPacks)); } catch(e) {}
+              self.renderPackGrid();
+            }
+          }).withFailureHandler((err) => {
+            console.warn('getPacks from server failed, using local packs:', err);
+          }).getPacks();
+        } catch (e) {
+          console.warn('getPacks call warning:', e);
+        }
+      }
+    },
+
+    renderPackGrid() {
+      const grid = this.el('packListGrid');
+      if (!grid) return;
+      const packs = this.state.packs || [];
+      if (packs.length === 0) {
+        grid.innerHTML = '<div class="muted" style="text-align:center; padding:30px;">パックが登録されていません</div>';
+        return;
+      }
+
+      grid.innerHTML = packs.map(p => {
+      const coverArt = p.image ? ('<img src="' + this.escapeHtml(p.image) + '" style="width:100%; height:100%; object-fit:cover; border-radius:8px;">') : ('<div class="pack-foil-art">✦</div><div class="pack-foil-header">' + this.escapeHtml(p.title) + '</div>');
+        return '\n          <div class="pack-card">\n            <div class="pack-cover-wrapper">\n              ' + (coverArt) + '\n            </div>\n            <div class="pack-title">' + (this.escapeHtml(p.title)) + '</div>\n            <div class="pack-desc">' + (this.escapeHtml(p.description || '5枚のカードを収録')) + '</div>\n            <div class="pack-price-tag">✨ ' + (p.price || 100) + ' NMT</div>\n            <button class="pack-buy-btn" type="button" onclick="App.buyAndOpenPack(\'' + (p.id) + '\')">🎁 ' + (p.price || 100) + ' NMT で開封</button>\n          </div>\n        ';
+      }).join('');
+    },
+
+    getCardTypeEmblem(type) {
+      const t = String(type || '').trim();
+      if (t.includes('雷') || t.includes('電')) return '⚡';
+      if (t.includes('炎') || t.includes('火')) return '🔥';
+      if (t.includes('水')) return '💧';
+      if (t.includes('草') || t.includes('葉')) return '🌿';
+      if (t.includes('超') || t.includes('エスパー')) return '👁️';
+      if (t.includes('闘') || t.includes('格闘')) return '👊';
+      if (t.includes('悪') || t.includes('闇')) return '💀';
+      if (t.includes('鋼') || t.includes('鉄')) return '⚙️';
+      return '◇';
+    },
+
+    buyAndOpenPack(packId, isFree = false) {
+      const pack = (this.state.packs || []).find(p => p.id === packId) || (this.state.packs && this.state.packs[0]);
+      if (!pack) {
+        this.toast('指定されたパックが見つかりません', true);
+        return;
+      }
+
+      if (!isFree) {
+        if (this.state.nmtBalance < pack.price) {
+        this.toast('❌ NMTが足りません！ (必要: ' + pack.price + ' NMT / 所持: ' + this.state.nmtBalance + ' NMT) 毎日ログインボーナスを取得してください。', true);
+          return;
+        }
+
+        this.state.nmtBalance -= pack.price;
+        this.updateNmtBadge();
+      }
+
+      // カードプールからランダムにカードを抽選 (パック設定済みの収録対象カードプールを優先)
+      const allCards = this.getAllCards();
+      let targetPool = allCards;
+      if (Array.isArray(pack.cardPool) && pack.cardPool.length > 0) {
+        const filtered = allCards.filter(c => pack.cardPool.includes(c.id) || pack.cardPool.includes(c.name));
+        if (filtered.length > 0) targetPool = filtered;
+      }
+
+      const count = pack.cardCount || 5;
+      const drawnCards = [];
+
+      if (targetPool.length > 0) {
+        for (let i = 0; i < count; i++) {
+          const randCard = targetPool[Math.floor(Math.random() * targetPool.length)];
+          drawnCards.push(JSON.parse(JSON.stringify(randCard)));
+        }
+      } else {
+        // デフォルトサンプルカード生成
+        for (let i = 0; i < count; i++) {
+          drawnCards.push({
+            id: 'drawn_' + Date.now() + '_' + i,
+            name: 'キラカード ' + (i + 1) + '号',
+            category: 'たね',
+            type: '無色',
+            hp: 80,
+            attack1Name: 'スターバースト',
+            attack1Damage: 40,
+            rarity: (i === 4 ? 'UR' : (i === 3 ? 'SR' : (i === 2 ? 'R' : 'N')))
+          });
+        }
+      }
+
+      this.state.activeDrawnCards = drawnCards;
+
+      // 獲得したカードをCardSystemのカスタムカードに登録し、所持状態にする
+      if (window.CardSystem && typeof CardSystem.addCardsToCollection === 'function') {
+        CardSystem.addCardsToCollection(drawnCards);
+      } else if (window.CardSystem && Array.isArray(CardSystem.customCards)) {
+        drawnCards.forEach(c => {
+          if (!CardSystem.customCards.some(x => x.id === c.id)) {
+            CardSystem.customCards.push(c);
+          }
+        });
+        try { localStorage.setItem('ORBITAL_CUSTOM_CARDS', JSON.stringify(CardSystem.customCards)); } catch(e) {}
+      }
+
+      this.openPackOpeningModal(pack);
+    },
+
+    openPackOpeningModal(pack) {
+      const titleEl = this.el('packFoilTitle');
+      if (titleEl) titleEl.textContent = pack.title || '拡張パック';
+      const stageVis = this.el('packStageVisual');
+      const revealStage = this.el('packRevealStage');
+      if (stageVis) stageVis.style.display = 'flex';
+      if (revealStage) revealStage.classList.add('hidden');
+      const modal = this.el('packOpeningOverlay');
+      if (modal) modal.classList.remove('hidden');
+    },
+
+    triggerPackTear() {
+      const stageVis = this.el('packStageVisual');
+      const revealStage = this.el('packRevealStage');
+      if (stageVis) stageVis.style.display = 'none';
+      if (revealStage) revealStage.classList.remove('hidden');
+
+      const container = this.el('pokepokeCardsFanContainer');
+      if (!container) return;
+
+      const drawn = this.state.activeDrawnCards || [];
+      container.innerHTML = drawn.map((card, idx) => {
+        const rarityClass = card.rarity ? 'rarity-aura-' + (card.rarity) + '' : '';
+        const rot = (idx - 2) * 6; // ファン状の傾き angle (-12deg ~ +12deg)
+        const transY = Math.abs(idx - 2) * 8; // 中央が高くなるアーチ型
+        const emblem = this.getCardTypeEmblem(card.type);
+        const hasImg = !!(card.imageUrl || card.image);
+        const artContent = hasImg ? 
+          '<img src="' + (this.escapeHtml(card.imageUrl || card.image)) + '" style="width:100%; height:100%; object-fit:cover; border-radius:6px;">' :
+          '<div style="width:100%; height:100px; display:flex; flex-direction:column; align-items:center; justify-content:center; background:linear-gradient(135deg, rgba(30,41,59,0.9), rgba(15,23,42,0.95)); border:1px solid rgba(255,215,0,0.3); border-radius:8px; position:relative; overflow:hidden;">\n            <div style="font-size:42px; color:#ffd700; text-shadow:0 0 15px rgba(255,215,0,0.8);">' + (emblem) + '</div>\n            <div style="font-size:9px; color:#94a3b8; font-weight:800; letter-spacing:1px; margin-top:2px;">◇ ORBITAL FOIL ◇</div>\n          </div>';
+
+        return '\n          <div class="pokepoke-card-item ' + (rarityClass) + '" style="transform: rotate(' + (rot) + 'deg) translateY(' + (transY) + 'px); z-index:' + (10 + idx) + ';" onclick="App.flipPokepokeCard(this, ' + (idx) + ')">\n            <div class="pokepoke-card-inner">\n              <div class="pokepoke-card-back">\n                <div style="font-size:36px; color:#ffd700;">◇</div>\n                <div style="font-size:10px; color:#ffd700; font-weight:800; margin-top:6px; letter-spacing:1px;">ORBITAL CARD</div>\n              </div>\n              <div class="pokepoke-card-front">\n                <div style="font-size:10px; color:#00e5ff; font-weight:800; display:flex; justify-content:space-between; margin-bottom:4px;">\n                  <span>' + (this.escapeHtml(card.category || 'カード')) + '</span>\n                  <span>' + (emblem) + ' ' + (this.escapeHtml(card.type || '無色')) + '</span>\n                </div>\n                ' + (artContent) + '\n                <div style="font-size:14px; font-weight:900; color:#fff; text-align:center; margin:6px 0; text-shadow:0 2px 8px rgba(0,0,0,0.8);">' + (this.escapeHtml(card.name)) + '</div>\n                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:auto;">\n                  <span style="font-size:10px; color:#94a3b8;">HP ' + (card.hp || 80) + '</span>\n                  <span style="font-size:11px; color:#ffd700; font-weight:900; background:rgba(255,215,0,0.2); padding:1px 6px; border-radius:4px;">' + (this.escapeHtml(card.rarity || 'R')) + '</span>\n                </div>\n              </div>\n            </div>\n          </div>\n        ';
+      }).join('');
+    },
+
+    flipPokepokeCard(el, idx) {
+      if (!el) return;
+      const inner = el.querySelector('.pokepoke-card-inner');
+      if (!inner || inner.classList.contains('flipped')) return;
+
+      inner.classList.add('flipped');
+      const card = (this.state.activeDrawnCards || [])[idx];
+      if (!card) return;
+
+      // レアリティに応じたポッピン演出
+      if (card.rarity === 'UR' || card.rarity === 'SR') {
+        const glow = document.createElement('div');
+        glow.className = 'ur-glow-effect';
+        document.body.appendChild(glow);
+        setTimeout(() => { if (glow.parentNode) glow.parentNode.removeChild(glow); }, 1500);
+        this.toast('🌟 ULTRA RARE！【' + card.name + '】を引き当てました！');
+      } else if (card.rarity === 'R') {
+        this.toast('✨ RARE！【' + card.name + '】を手に入れました！');
+      }
+    },
+
+    revealAllPackCards() {
+      const container = this.el('pokepokeCardsFanContainer');
+      if (!container) return;
+      const items = container.querySelectorAll('.pokepoke-card-item');
+      items.forEach((item, i) => {
+        setTimeout(() => {
+          this.flipPokepokeCard(item, i);
+        }, i * 150);
+      });
+    },
+
+    closePackOpening() {
+      const modal = this.el('packOpeningOverlay');
+      if (modal) modal.classList.add('hidden');
+      this.toast('🎉 開封したカードはコレクションに保存されました！');
+      if (window.CardSystem && typeof CardSystem.renderCardList === 'function') {
+        CardSystem.renderCardList();
+      }
+    },
+
+    openAdminPackModal() {
+      if (!this.isAdmin()) {
+        this.requireAdmin();
+        return;
+      }
+      this.populateAdminCardPoolSelect();
+      const modal = this.el('adminPackModal');
+      if (modal) modal.classList.remove('hidden');
+      this.renderAdminPackTable();
+    },
+
+    populateAdminCardPoolSelect() {
+      const sel = this.el('adminPackCardPool');
+      if (!sel) return;
+      const allCards = this.getAllCards();
+      if (allCards.length === 0) {
+        sel.innerHTML = '<option value="" disabled>登録されているカードがありません</option>';
+        return;
+      }
+      sel.innerHTML = allCards.map(c =>
+        '<option value="' + this.escapeHtml(c.id) + '">[' + this.escapeHtml(c.category || 'カード') + '] ' + this.escapeHtml(c.name) + ' (' + this.escapeHtml(c.type || '無色') + ')</option>'
+      ).join('');
+    },
+
+    closeAdminPackModal() {
+      const modal = this.el('adminPackModal');
+      if (modal) modal.classList.add('hidden');
+    },
+
+    resetPackForm() {
+      this.el('adminPackId').value = '';
+      this.el('adminPackTitle').value = '';
+      this.el('adminPackPrice').value = '100';
+      this.el('adminPackDesc').value = '';
+      this.el('adminPackImage').value = '';
+      this.el('adminPackCardCount').value = '5';
+      const sel = this.el('adminPackCardPool');
+      if (sel) {
+        Array.from(sel.options).forEach(o => o.selected = false);
+      }
+    },
+
+    handleAdminSavePack(e) {
+      if (e && e.preventDefault) e.preventDefault();
+      const id = this.el('adminPackId').value || ('pack_' + Date.now());
+      const title = this.el('adminPackTitle').value.trim();
+      const price = Number(this.el('adminPackPrice').value) || 100;
+      const description = this.el('adminPackDesc').value.trim();
+      const image = this.el('adminPackImage').value.trim();
+      const cardCount = Number(this.el('adminPackCardCount').value) || 5;
+
+      const sel = this.el('adminPackCardPool');
+      const cardPool = sel ? Array.from(sel.selectedOptions).map(o => o.value) : [];
+
+      if (!title) {
+        this.toast('パックタイトルを入力してください', true);
+        return;
+      }
+
+      const newPack = { id, title, price, description, image, cardCount, cardPool };
+      let packs = this.state.packs || [];
+      const idx = packs.findIndex(p => p.id === id);
+      if (idx >= 0) packs[idx] = newPack;
+      else packs.push(newPack);
+
+      this.state.packs = packs;
+      try { localStorage.setItem('ORBITAL_CUSTOM_PACKS', JSON.stringify(packs)); } catch(err) {}
+
+      if (window.google && google.script && google.script.run && !window._is_mock_gas) {
+        google.script.run.withSuccessHandler(() => {
+          App.toast('✅ パックをスプレッドシートDBに保存しました！');
+        }).savePack(newPack, this.state.adminToken);
+      }
+
+      this.toast('🎁 パックを保存しました！');
+      this.resetPackForm();
+      this.renderAdminPackTable();
+      this.renderPackGrid();
+    },
+
+    deleteAdminPack(packId) {
+      if (!confirm('このパックを削除してもよろしいですか？')) return;
+      this.state.packs = (this.state.packs || []).filter(p => p.id !== packId);
+      try { localStorage.setItem('ORBITAL_CUSTOM_PACKS', JSON.stringify(this.state.packs)); } catch(err) {}
+
+      if (window.google && google.script && google.script.run && !window._is_mock_gas) {
+        google.script.run.deletePack(packId, this.state.adminToken);
+      }
+
+      this.toast('🗑️ パックを削除しました');
+      this.renderAdminPackTable();
+      this.renderPackGrid();
+    },
+
+    renderAdminPackTable() {
+      const container = this.el('adminPackTableContainer');
+      if (!container) return;
+      const packs = this.state.packs || [];
+      if (packs.length === 0) {
+        container.innerHTML = '<div class="muted">パックが存在しません</div>';
+        return;
+      }
+
+      const rows = packs.map(p =>
+        '<tr style="border-bottom:1px solid rgba(255,255,255,0.05);">' +
+          '<td style="padding:6px; font-weight:700;">' + this.escapeHtml(p.title) + '</td>' +
+          '<td style="padding:6px; color:#ffd700;">✨ ' + p.price + '</td>' +
+          '<td style="padding:6px;">' + (p.cardCount || 5) + '枚</td>' +
+          '<td style="padding:6px; font-size:11px; color:#94a3b8;">' + ((p.cardPool && p.cardPool.length > 0) ? (p.cardPool.length + '枚指定') : '全カード対象') + '</td>' +
+          '<td style="padding:6px; text-align:right;">' +
+            '<button type="button" class="secondary-button compact-btn" onclick="App.editAdminPack(\'' + p.id + '\')">編集</button> ' +
+            '<button type="button" class="secondary-button compact-btn danger-btn" onclick="App.deleteAdminPack(\'' + p.id + '\')">削除</button>' +
+          '</td>' +
+        '</tr>'
+      ).join('');
+
+      container.innerHTML =
+        '<table style="width:100%; border-collapse:collapse; font-size:13px;">' +
+          '<thead>' +
+            '<tr style="border-bottom:1px solid rgba(255,255,255,0.2); text-align:left;">' +
+              '<th style="padding:6px;">タイトル</th>' +
+              '<th style="padding:6px;">価格 (NMT)</th>' +
+              '<th style="padding:6px;">枚数</th>' +
+              '<th style="padding:6px;">対象カード</th>' +
+              '<th style="padding:6px; text-align:right;">操作</th>' +
+            '</tr>' +
+          '</thead>' +
+          '<tbody>' + rows + '</tbody>' +
+        '</table>';
+    },
+
+    editAdminPack(packId) {
+      const pack = (this.state.packs || []).find(p => p.id === packId);
+      if (!pack) return;
+      this.el('adminPackId').value = pack.id;
+      this.el('adminPackTitle').value = pack.title || '';
+      this.el('adminPackPrice').value = pack.price || 100;
+      this.el('adminPackDesc').value = pack.description || '';
+      this.el('adminPackImage').value = pack.image || '';
+      this.el('adminPackCardCount').value = pack.cardCount || 5;
+
+      const sel = this.el('adminPackCardPool');
+      if (sel) {
+        const pool = pack.cardPool || [];
+        Array.from(sel.options).forEach(o => {
+          o.selected = pool.includes(o.value);
+        });
+      }
+    },
+
     escapeHtml(str) {
       if (!str) return '';
       return String(str)
@@ -20244,11 +23014,21 @@ console.log('[ORBITAL] App.js.html started execution');
     }
   };
 
+  window._realApp = App;
   window.App = App;
-  // 初期化は Index.html 末尾の inline script から行います
+  try {
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      setTimeout(() => { if (window.App && window.App.init) window.App.init(); }, 0);
+    } else {
+      document.addEventListener('DOMContentLoaded', () => { if (window.App && window.App.init) window.App.init(); });
+    }
+  } catch (e) {
+    console.error('App auto-init trigger error:', e);
+  }
   console.log('[ORBITAL] App.js.html finished execution. window.App =', typeof window.App);
 })();
 </script>
+
 
   <script>
     (function() {

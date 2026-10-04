@@ -5672,14 +5672,21 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   backface-visibility: hidden;
   transform: rotateY(180deg);
   border-radius: 16px;
-  background: #090c14;
-  border: 2px solid rgba(56, 189, 248, 0.85);
+  background: transparent;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.85);
-  padding: 12px;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
   overflow: hidden;
+}
+.pokepoke-card-front .t-card,
+.pokepoke-card-front .orbital-card {
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  border-radius: 16px !important;
+  box-sizing: border-box !important;
+  box-shadow: none !important;
 }
 
 /* レアリティ別後光エフェクト */
@@ -5872,6 +5879,209 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
 .collection-item.card-unowned:hover {
   filter: grayscale(0.2) contrast(0.95) opacity(0.95);
   transform: translateY(-4px) scale(1.02);
+}
+
+/* ============================================================
+   専用カードピッカー (Card Picker UI) & シングルカードショップ
+   ============================================================ */
+
+/* Card Picker Modal Layout */
+.card-picker-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: rgba(20, 10, 34, 0.7);
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(244, 114, 182, 0.2);
+}
+
+.card-picker-search-wrap {
+  flex: 1;
+  min-width: 200px;
+}
+
+.card-picker-tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.card-picker-tab {
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.card-picker-tab.active, .card-picker-tab:hover {
+  background: rgba(225, 29, 72, 0.25);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.card-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.card-picker-item {
+  position: relative;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 8px;
+  background: rgba(25, 12, 40, 0.8);
+  cursor: pointer;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.card-picker-item:hover {
+  transform: translateY(-4px) scale(1.03);
+  border-color: var(--accent2);
+  box-shadow: 0 8px 24px rgba(217, 70, 239, 0.35);
+}
+
+.card-picker-item.selected {
+  border-color: #d946ef !important;
+  background: linear-gradient(135deg, rgba(217, 70, 239, 0.25), rgba(225, 29, 72, 0.25)) !important;
+  box-shadow: 0 0 20px rgba(217, 70, 239, 0.6) !important;
+}
+
+.card-picker-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 10;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.7);
+  color: var(--muted);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(4px);
+}
+
+.card-picker-badge.active {
+  background: linear-gradient(135deg, #e11d48, #d946ef);
+  color: #fff;
+  border-color: #fff;
+  box-shadow: 0 2px 10px rgba(225, 29, 72, 0.6);
+}
+
+.card-picker-frame {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.card-picker-name-label {
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #fff;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+/* Single Card Shop Layout */
+.single-shop-hero {
+  background: linear-gradient(135deg, rgba(225, 29, 72, 0.15), rgba(217, 70, 239, 0.15));
+  border: 1px solid rgba(244, 114, 182, 0.3);
+  border-radius: 24px;
+  padding: 28px 32px;
+  margin-bottom: 24px;
+}
+
+.single-shop-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 24px;
+  margin-top: 24px;
+}
+
+.single-shop-card-item {
+  background: rgba(24, 11, 38, 0.85);
+  border: 1px solid rgba(244, 114, 182, 0.25);
+  border-radius: 20px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.single-shop-card-item:hover {
+  transform: translateY(-6px) scale(1.02);
+  border-color: var(--accent2);
+  box-shadow: 0 16px 40px rgba(217, 70, 239, 0.35);
+}
+
+.single-shop-tag {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 5;
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #e11d48, #d946ef);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(225, 29, 72, 0.5);
+}
+
+.single-shop-price-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 18px;
+  font-weight: 900;
+  color: #fbbf24;
+  margin: 14px 0 10px;
+  text-shadow: 0 0 12px rgba(251, 191, 36, 0.4);
+}
+
+.single-shop-buy-btn {
+  width: 100%;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 800;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #e11d48, #d946ef);
+  color: #fff;
+  border: none;
+  box-shadow: 0 6px 20px rgba(225, 29, 72, 0.4);
+  transition: all 0.2s ease;
+}
+
+.single-shop-buy-btn:hover:not(:disabled) {
+  transform: scale(1.03);
+  box-shadow: 0 8px 26px rgba(217, 70, 239, 0.6);
+}
+
+.single-shop-admin-controls {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+  margin-top: 8px;
 }
 </style>
 
@@ -6591,6 +6801,7 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
         <button class="nav-button" data-page="deck">◆ <span>デッキ</span></button>
         <button class="nav-button" data-page="battle">⚔ <span>バトル</span></button>
         <button class="nav-button" data-page="pack">🎁 <span>パック開封</span></button>
+        <button class="nav-button" data-page="single-shop">🛍️ <span>ショップ</span></button>
         <button class="nav-button admin-only-ui hidden" data-page="cards">▣ <span>カード管理</span></button>
         <button class="nav-button admin-only-ui hidden" data-page="create">＋ <span>カード作成</span></button>
         <button class="nav-button admin-only-ui hidden" id="adminPackNavBtn" data-page="admin-pack" onclick="App.openAdminPackModal()">⚙️ <span>パック管理</span></button>
@@ -7540,6 +7751,43 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
             <!-- Dynamic pack cards loaded by JS -->
           </div>
         </section>
+
+        <!-- シングルカードショップ ページ -->
+        <section id="page-single-shop" class="page">
+          <div class="single-shop-hero">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+              <div>
+                <div class="eyebrow" style="color:#d946ef; font-size:12px; letter-spacing:3px;">SINGLE CARD MARKETPLACE</div>
+                <h1>🛍️ シングルカードショップ</h1>
+                <p class="muted">獲得したNMT通貨を使って、お気に入りのカードを1枚単位で直接購入・GET！</p>
+              </div>
+              <div style="display:flex; gap:12px; align-items:center;">
+                <div class="nmt-balance-badge" style="cursor:default;" title="現在の所持NMT">
+                  <span class="nmt-icon">✨</span>
+                  <span id="singleShopNmtVal" class="nmt-val">1000 NMT</span>
+                </div>
+                <button class="primary-button admin-only-ui hidden" id="adminAddShopItemBtn" style="background:linear-gradient(135deg, #d946ef, #a855f7); font-weight:800;" onclick="App.openAdminShopItemModal()">➕ シングルカード出品</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- カテゴリフィルターバー -->
+          <div class="card-picker-filter-bar" style="margin-bottom:20px;">
+            <div class="card-picker-tabs">
+              <button type="button" class="card-picker-tab active" data-shop-cat="all" onclick="App.filterSingleShop('all', this)">すべてのカード</button>
+              <button type="button" class="card-picker-tab" data-shop-cat="pokemon" onclick="App.filterSingleShop('pokemon', this)">ポケモン</button>
+              <button type="button" class="card-picker-tab" data-shop-cat="trainer" onclick="App.filterSingleShop('trainer', this)">トレーナー</button>
+              <button type="button" class="card-picker-tab" data-shop-cat="energy" onclick="App.filterSingleShop('energy', this)">エネルギー</button>
+            </div>
+            <div class="card-picker-search-wrap">
+              <input type="text" id="singleShopSearchInput" class="input" placeholder="🔍 カード名で検索..." oninput="App.renderSingleShopGrid()">
+            </div>
+          </div>
+
+          <div id="singleShopGrid" class="single-shop-grid">
+            <!-- Dynamically populated shop items -->
+          </div>
+        </section>
       </main>
     </div>
 
@@ -7633,8 +7881,11 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
             <label>収録カード枚数 (1パックあたり)
               <input id="adminPackCardCount" class="input" type="number" value="5" min="1" max="10">
             </label>
-            <label>収録対象カードプール設定 (Ctrl/Cmd+クリックで複数選択)
-              <select id="adminPackCardPool" class="input" multiple size="3" style="height:60px;">
+            <label>収録対象カードプール設定
+              <button type="button" class="primary-button" style="width:100%; font-weight:800; padding:10px 14px; background:linear-gradient(135deg, #d946ef, #a855f7); border-radius:12px;" onclick="App.openCardPickerForPackPool()">
+                🎴 専用UIでカードプールを選択 (<span id="adminPackPoolCountLabel">全カード対象</span>)
+              </button>
+              <select id="adminPackCardPool" class="input hidden" multiple size="3">
                 <!-- Dynamically filled with card list -->
               </select>
             </label>
@@ -7648,6 +7899,93 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
         <h3>既存パック一覧</h3>
         <div id="adminPackTableContainer" style="max-height:250px; overflow-y:auto; border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:10px;">
           <!-- JS populates existing packs table -->
+        </div>
+      </div>
+    </div>
+
+    <!-- 管理者ショップ出品カード モーダル -->
+    <div id="adminShopItemModal" class="modal hidden" style="z-index:9998;">
+      <div class="modal-backdrop" onclick="App.closeAdminShopItemModal()"></div>
+      <div class="modal-card" style="max-width: 520px; width: 90%;">
+        <button class="modal-close" onclick="App.closeAdminShopItemModal()">×</button>
+        <div class="eyebrow" style="color:#d946ef;">ADMINISTRATOR</div>
+        <h2 id="adminShopItemModalTitle">🛍️ ショップ出品カード管理</h2>
+        <p class="muted">ショップに出品するカードと販売価格 (NMT) を設定します。</p>
+
+        <form id="adminShopItemForm" onsubmit="App.handleSaveShopItem(event)">
+          <input type="hidden" id="adminShopItemId" value="">
+          <input type="hidden" id="adminShopItemCardId" value="">
+
+          <div style="margin-bottom: 16px; text-align: center; padding: 16px; background: rgba(0,0,0,0.3); border-radius: 16px; border: 1px dashed rgba(244,114,182,0.3);">
+            <div id="shopItemCardPreview" style="display: flex; justify-content: center; align-items: center; min-height: 200px;">
+              <div class="muted">カードが選択されていません</div>
+            </div>
+            <button type="button" class="secondary-button" style="margin-top: 12px; width: 100%; font-weight: 800; border-color: var(--accent2); color: var(--accent2);" onclick="App.openCardPickerForShopItem()">
+              🎴 専用UIでカードを選択する
+            </button>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+            <label>販売価格 (NMT)
+              <input type="number" id="adminShopItemPrice" class="input" value="300" min="1" required>
+            </label>
+            <label>販売タグ (任意)
+              <input type="text" id="adminShopItemTag" class="input" placeholder="例: 人気 / 限定">
+            </label>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap: 10px;">
+            <button type="button" class="secondary-button" onclick="App.closeAdminShopItemModal()">キャンセル</button>
+            <button type="submit" class="primary-button">💾 ショップに保存</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- 汎用 専用カードピッカー モーダル (Card Picker UI) -->
+    <div id="cardPickerModal" class="modal hidden" style="z-index: 9999;">
+      <div class="modal-backdrop" onclick="CardSystem.closeCardPicker()"></div>
+      <div class="modal-card card-picker-modal-card" style="max-width: 1080px; width: 95vw; max-height: 90vh; display: flex; flex-direction: column;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(244,114,182,0.2); padding-bottom: 14px; margin-bottom: 14px;">
+          <div>
+            <div class="eyebrow" id="cardPickerEyebrow">CARD SELECTOR</div>
+            <h2 id="cardPickerTitle" style="margin: 0; font-size: 22px;">🎴 カードを選択</h2>
+          </div>
+          <button type="button" class="modal-close" onclick="CardSystem.closeCardPicker()" style="position: static;">×</button>
+        </div>
+
+        <div class="card-picker-filter-bar">
+          <div class="card-picker-search-wrap">
+            <input type="text" id="cardPickerSearchInput" class="input" placeholder="🔍 カード名・効果・IDで検索..." oninput="CardSystem.renderCardPickerGrid()">
+          </div>
+          
+          <div class="card-picker-tabs">
+            <button type="button" class="card-picker-tab active" data-picker-type="all" onclick="CardSystem.setPickerFilter('type', 'all', this)">すべて</button>
+            <button type="button" class="card-picker-tab" data-picker-type="pokemon" onclick="CardSystem.setPickerFilter('type', 'pokemon', this)">ポケモン</button>
+            <button type="button" class="card-picker-tab" data-picker-type="trainer" onclick="CardSystem.setPickerFilter('type', 'trainer', this)">トレーナー</button>
+            <button type="button" class="card-picker-tab" data-picker-type="energy" onclick="CardSystem.setPickerFilter('type', 'energy', this)">エネルギー</button>
+          </div>
+
+          <div class="card-picker-actions" id="cardPickerMultiActions" style="display:flex; gap:6px;">
+            <button type="button" class="secondary-button compact-btn" onclick="CardSystem.selectAllPickerCards()">全選択</button>
+            <button type="button" class="secondary-button compact-btn" onclick="CardSystem.clearPickerSelection()">全解除</button>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin: 10px 0; font-size: 13px; color: var(--muted);">
+          <div><span id="cardPickerCount" style="color:var(--text); font-weight:800;">0</span> 枚のカードが選択されています</div>
+          <div id="cardPickerModeLabel" style="font-weight: 700; color: var(--accent2);">[複数選択モード]</div>
+        </div>
+
+        <div id="cardPickerGrid" class="card-picker-grid" style="flex: 1; overflow-y: auto; padding: 14px; border: 1px solid rgba(244,114,182,0.15); border-radius: 16px; background: rgba(10, 4, 16, 0.6); min-height:300px;">
+          <!-- Card items rendered dynamically -->
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid rgba(244,114,182,0.2); padding-top: 14px; margin-top: 14px;">
+          <button type="button" class="secondary-button" onclick="CardSystem.closeCardPicker()">キャンセル</button>
+          <button type="button" class="primary-button" id="cardPickerConfirmBtn" onclick="CardSystem.confirmCardPicker()">
+            選択を確定する (<span id="cardPickerConfirmCount">0枚</span>)
+          </button>
         </div>
       </div>
     </div>
@@ -13331,6 +13669,7 @@ var EffectEditor;
 </script>
 
 
+
   <script>
 console.log('[ORBITAL] CardSystem.js.html started execution');
 if (window.__showDebugMsg) window.__showDebugMsg('CardSystem読込開始');
@@ -13488,6 +13827,55 @@ var CardSystem;
         .deleteCard(card.id, App.state.adminToken);
     },
 
+    sortCards(cards, sortKey = 'name') {
+      if (!Array.isArray(cards)) return [];
+
+      const categoryOrder = {
+        'たね': 1, 'たねex': 2, '1進化': 3, '1進化ex': 4, '2進化': 5, '2進化ex': 6,
+        '進化': 7, 'トレーナー': 8, 'グッズ': 9, 'サポート': 10, 'スタジアム': 11,
+        'エネルギー': 12, '基本エネルギー': 13, '特殊エネルギー': 14
+      };
+      const typeOrder = {
+        '無色': 1, '炎': 2, '水': 3, '草': 4, '雷': 5, '超': 6, '闘': 7, '悪': 8, '鋼': 9
+      };
+      const rarityOrder = {
+        'UR': 1, 'SR': 2, 'AR': 3, 'R': 4, 'N': 5
+      };
+
+      return cards.slice().sort((a, b) => {
+        if (sortKey === 'id') {
+          const idA = String(a.id || '');
+          const idB = String(b.id || '');
+          return idA.localeCompare(idB, 'ja', { numeric: true });
+        }
+        if (sortKey === 'category') {
+          const catA = categoryOrder[a.category] || 99;
+          const catB = categoryOrder[b.category] || 99;
+          if (catA !== catB) return catA - catB;
+        }
+        if (sortKey === 'type') {
+          const tA = typeOrder[a.type] || 99;
+          const tB = typeOrder[b.type] || 99;
+          if (tA !== tB) return tA - tB;
+        }
+        if (sortKey === 'hp') {
+          const hpA = Number(a.hp) || 0;
+          const hpB = Number(b.hp) || 0;
+          if (hpA !== hpB) return hpB - hpA;
+        }
+        if (sortKey === 'rarity') {
+          const rA = rarityOrder[a.rarity] || 99;
+          const rB = rarityOrder[b.rarity] || 99;
+          if (rA !== rB) return rA - rB;
+        }
+
+        // デフォルト: 名前順 (あいうえお順 / アルファベット順)
+        const nameA = String(a.name || '');
+        const nameB = String(b.name || '');
+        return nameA.localeCompare(nameB, 'ja');
+      });
+    },
+
     renderList() {
       const root = document.getElementById('cardList');
       if (!root) return;
@@ -13496,13 +13884,15 @@ var CardSystem;
       const categoryEl = document.getElementById('categoryFilter');
       const typeEl = document.getElementById('typeFilter');
       const rarityEl = document.getElementById('rarityFilter');
+      const sortEl = document.getElementById('cardSortSelect');
 
       const search = searchEl ? searchEl.value.trim().toLowerCase() : '';
       const category = categoryEl ? categoryEl.value : '';
       const type = typeEl ? typeEl.value : '';
       const rarity = rarityEl ? rarityEl.value : '';
+      const sortKey = sortEl ? sortEl.value : 'name';
 
-      const cards = (App.state && Array.isArray(App.state.cards) ? App.state.cards : []).filter((card) => {
+      const filtered = (App.state && Array.isArray(App.state.cards) ? App.state.cards : []).filter((card) => {
         let matchCat = !category;
         if (category) {
           if (category === '進化') {
@@ -13526,6 +13916,8 @@ var CardSystem;
           (!type || card.type === type) &&
           (!rarity || card.rarity === rarity);
       });
+
+      const cards = this.sortCards(filtered, sortKey);
 
       if (!cards.length) {
         root.innerHTML = '<div class="empty-page"><div><h2>カードがありません</h2><p>条件を変えるか、新しいカードを作成してください。</p></div></div>';
@@ -13578,11 +13970,13 @@ var CardSystem;
       const categoryEl = document.getElementById('collectionCategoryFilter');
       const rarityEl = document.getElementById('collectionRarityFilter');
       const ownedEl = document.getElementById('collectionOwnedFilter');
+      const sortEl = document.getElementById('collectionSortSelect');
 
       const search = searchEl ? searchEl.value.trim().toLowerCase() : '';
       const category = categoryEl ? categoryEl.value : '';
       const rarity = rarityEl ? rarityEl.value : '';
-      const ownedFilter = ownedEl ? ownedEl.value : '';
+      const ownedFilter = ownedEl ? ownedEl.value : 'owned';
+      const sortKey = sortEl ? sortEl.value : 'name';
 
       const allCards = (window.App && window.App.state && Array.isArray(window.App.state.cards)) ? window.App.state.cards : [];
       const colMap = this.getUserCollection();
@@ -13604,7 +13998,8 @@ var CardSystem;
         const key = String(card.id || card.name);
         const count = colMap[key] || 0;
 
-        if (ownedFilter === 'owned' && count <= 0) return false;
+        // ユーザー要求: コレクションは「入手したカードのみ」表示 (デフォルトは count > 0 のみ)
+        if ((ownedFilter === 'owned' || !ownedFilter) && count <= 0) return false;
         if (ownedFilter === 'unowned' && count > 0) return false;
 
         let matchCat = !category;
@@ -13612,7 +14007,7 @@ var CardSystem;
           if (category === '進化') {
             matchCat = card.category === '進化' || card.category === '1進化' || card.category === '2進化';
           } else if (category === 'ex') {
-            matchCat = card.category === 'ex' || card.category === 'たねex' || card.category === '1進化ex' || card.category === '2進化ex' || !!card.isEx;
+            matchCat = card.category === 'ex' || card.category === 'たneex' || card.category === '1進化ex' || card.category === '2進化ex' || !!card.isEx;
           } else if (category === 'トレーナー') {
             matchCat = card.category === 'トレーナー' || card.category === 'グッズ' || card.category === 'サポート' || card.category === 'スタジアム';
           } else if (category === 'エネルギー') {
@@ -13631,12 +14026,14 @@ var CardSystem;
           (!rarity || card.rarity === rarity);
       });
 
-      if (!filtered.length) {
-        root.innerHTML = '<div class="empty-page"><div><h2>対象のカードがありません</h2><p>条件を変更するか、パックを開封してカードを獲得しましょう！</p></div></div>';
+      const cards = this.sortCards(filtered, sortKey);
+
+      if (!cards.length) {
+        root.innerHTML = '<div class="empty-page"><div><h2>所持しているカードがありません</h2><p>条件を変更するか、パックを開封してカードを獲得しましょう！</p></div></div>';
         return;
       }
 
-      root.innerHTML = filtered.map((card) => {
+      root.innerHTML = cards.map((card) => {
         const key = String(card.id || card.name);
         const count = colMap[key] || 0;
         const isUnowned = count <= 0;
@@ -13705,9 +14102,43 @@ var CardSystem;
       return defaultMap[cleanName] || '';
     },
 
-    createCardHtml(card, options = {}) {
-      if (!card) card = {};
-      const size = options.size || 'normal'; // 'normal' | 'lg' | 'sm'
+    createCardHtml(cardInput, options = {}) {
+      if (!cardInput) cardInput = {};
+      let card = cardInput;
+      const pool = [
+        ...(window.App?.state?.cards || []),
+        ...(window.CardSystem?.state?.cards || []),
+        ...(window.DeckSystem?.state?.cardPool || [])
+      ];
+      if (pool.length > 0) {
+        const master = pool.find(c => c && ((c.id && cardInput.id && String(c.id) === String(cardInput.id)) || (c.name && cardInput.name && String(c.name).trim() === String(cardInput.name).trim())));
+        if (master) {
+          card = Object.assign({}, master, cardInput, {
+            image: cardInput.image || master.image,
+            hp: cardInput.hp != null && cardInput.hp !== '' ? cardInput.hp : master.hp,
+            maxHp: master.hp || cardInput.maxHp || cardInput.hp || 100,
+            abilityName: master.abilityName || cardInput.abilityName,
+            abilityText: master.abilityText || cardInput.abilityText,
+            attack1Name: master.attack1Name || cardInput.attack1Name,
+            attack1Damage: master.attack1Damage != null && master.attack1Damage !== '' ? master.attack1Damage : cardInput.attack1Damage,
+            attack1Text: master.attack1Text || cardInput.attack1Text,
+            attack1Energy: master.attack1Energy || cardInput.attack1Energy,
+            attack2Name: master.attack2Name || cardInput.attack2Name,
+            attack2Damage: master.attack2Damage != null && master.attack2Damage !== '' ? master.attack2Damage : cardInput.attack2Damage,
+            attack2Text: master.attack2Text || cardInput.attack2Text,
+            attack2Energy: master.attack2Energy || cardInput.attack2Energy,
+            description: master.description || cardInput.description,
+            preEvolution: master.preEvolution || cardInput.preEvolution,
+            artLayout: master.artLayout || cardInput.artLayout || 'standard',
+            imageFit: master.imageFit || cardInput.imageFit || 'cover',
+            imageScale: master.imageScale != null ? master.imageScale : cardInput.imageScale,
+            imageX: master.imageX != null ? master.imageX : cardInput.imageX,
+            imageY: master.imageY != null ? master.imageY : cardInput.imageY
+          });
+        }
+      }
+
+      const size = options.size || 'normal'; // 'normal' | 'lg' | 'sm' | 'battle' | 'bench' | 'hand'
       const inDeckCount = Number(options.inDeckCount) || 0;
       const isMax = !!options.isMax;
       const symbol = this.typeSymbols[card.type] || '✦';
@@ -13903,7 +14334,32 @@ var CardSystem;
       return this.createCardHtml(card, { size: 'normal' });
     },
 
-    showDetail(card) {
+    showDetail(cardInput) {
+      if (!cardInput) return;
+
+      let card = cardInput;
+      const allCards = (window.App && window.App.state && Array.isArray(window.App.state.cards)) ? window.App.state.cards : (window.CardSystem && Array.isArray(window.CardSystem.state?.cards) ? window.CardSystem.state.cards : []);
+      if (allCards.length > 0) {
+        const master = allCards.find(c => String(c.id) === String(cardInput.id) || String(c.name) === String(cardInput.name));
+        if (master) {
+          card = Object.assign({}, master, cardInput, {
+            hp: cardInput.hp != null ? cardInput.hp : master.hp,
+            maxHp: master.hp || cardInput.maxHp || cardInput.hp || 100,
+            abilityName: master.abilityName || cardInput.abilityName,
+            abilityText: master.abilityText || cardInput.abilityText || master.description,
+            attack1Name: master.attack1Name || cardInput.attack1Name,
+            attack1Damage: master.attack1Damage != null ? master.attack1Damage : cardInput.attack1Damage,
+            attack1Text: master.attack1Text || cardInput.attack1Text,
+            attack1Energy: master.attack1Energy || cardInput.attack1Energy,
+            attack2Name: master.attack2Name || cardInput.attack2Name,
+            attack2Damage: master.attack2Damage != null ? master.attack2Damage : cardInput.attack2Damage,
+            attack2Text: master.attack2Text || cardInput.attack2Text,
+            attack2Energy: master.attack2Energy || cardInput.attack2Energy,
+            description: master.description || cardInput.description || cardInput.text
+          });
+        }
+      }
+
       const cardHtml = this.createCardHtml(card, { size: 'lg' });
 
       let preCard = null;
@@ -13931,17 +14387,23 @@ var CardSystem;
       this.escape(card.name) + "</h2>\n            " + statsHtml + "\n            " + (
       card.abilityName ? "<div class=\"detail-section\"><h4>特性：" + this.escape(card.abilityName) + "</h4><div>" + this.escape(card.abilityText || '—') + "</div></div>" : '') + "\n            " + (
       card.attack1Name ? "<div class=\"detail-section\"><h4>ワザ1: " + this.escape(card.attack1Name) + " <span style=\"float:right\">" + this.escape(card.attack1Damage || 0) + " ダメージ</span></h4><small>必要エネルギー: " + this.escape(card.attack1Energy || 'なし') + "</small><div>" + this.escape(card.attack1Text || '—') + "</div></div>" : '') + "\n            " + (
-      card.attack2Name ? "<div class=\"detail-section\"><h4>ワザ2: " + this.escape(card.attack2Name) + " <span style=\"float:right\">" + this.escape(card.attack2Damage || 0) + " ダメージ</span></h4><small>必要エネルギー: " + this.escape(card.attack2Energy || 'なし') + "</small><div>" + this.escape(card.attack2Text || '—') + "</div></div>" : '') + "\n            <div class=\"detail-section\"><h4>カード説明・フレーバー</h4><div>" +
-      this.escape(card.description || '—') + "</div></div>\n            <div class=\"detail-section\"><small>ID: " +
+      card.attack2Name ? "<div class=\"detail-section\"><h4>ワザ2: " + this.escape(card.attack2Name) + " <span style=\"float:right\">" + this.escape(card.attack2Damage || 0) + " ダメージ</span></h4><small>必要エネルギー: " + this.escape(card.attack2Energy || 'なし') + "</small><div>" + this.escape(card.attack2Text || '—') + "</div></div>" : '') + "\n            <div class=\"detail-section\"><h4>カード説明・効果</h4><div>" +
+      this.escape(card.description || card.text || '—') + "</div></div>\n            <div class=\"detail-section\"><small>ID: " +
       this.escape(card.id) + "</small></div>\n          </div>\n        </div>\n      "
       );
 
-      document.getElementById('detailEdit').addEventListener('click', () => {
-        App.closeModal();
-        this.edit(card);
-      });
+      const editBtn = document.getElementById('detailEdit');
+      const delBtn = document.getElementById('detailDelete');
+      const inBattle = (window.App && App.state && App.state.page === 'battle');
+      const isAdmin = (window.App && typeof App.isAdmin === 'function' && App.isAdmin());
 
-      document.getElementById('detailDelete').addEventListener('click', () => this.delete(card));
+      if (inBattle || !isAdmin) {
+        if (editBtn) editBtn.style.display = 'none';
+        if (delBtn) delBtn.style.display = 'none';
+      } else {
+        if (editBtn) editBtn.addEventListener('click', () => { App.closeModal(); this.edit(card); });
+        if (delBtn) delBtn.addEventListener('click', () => this.delete(card));
+      }
     },
 
     populatePreEvolutionSelect(selectedVal) {
@@ -14303,12 +14765,22 @@ var CardSystem;
     },
 
     save() {
+      if (this._isSaving) return;
       if (!App.requireAdmin()) return;
       const card = this.getFormCard();
       if (!card.name.trim()) {
         App.toast('カード名を入力してください。', true);
         return;
       }
+
+      // 新規作成時はクライアント側で一意のIDを前もって生成・固定し、重複入力を防止
+      if (!card.id) {
+        card.id = 'card_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+        const cardIdEl = document.getElementById('cardId');
+        if (cardIdEl) cardIdEl.value = card.id;
+      }
+
+      this._isSaving = true;
       const saveBtn = document.getElementById('saveCardButton');
       if (saveBtn) {
         saveBtn.disabled = true;
@@ -14317,6 +14789,7 @@ var CardSystem;
 
       google.script.run.
       withSuccessHandler((res) => {
+        this._isSaving = false;
         if (saveBtn) {
           saveBtn.disabled = false;
           saveBtn.textContent = '保存する';
@@ -14331,6 +14804,7 @@ var CardSystem;
         App.showPage('cards');
       }).
       withFailureHandler((err) => {
+        this._isSaving = false;
         if (saveBtn) {
           saveBtn.disabled = false;
           saveBtn.textContent = '保存する';
@@ -14500,6 +14974,180 @@ var CardSystem;
       if (btn) {
         btn.textContent = isExpanded ? '✕ プレビュー縮小' : '👁 プレビュー拡大';
       }
+    },
+
+    /* ============================================================
+       専用カードピッカー (Card Picker UI)
+       ============================================================ */
+    _pickerOptions: {
+      title: 'カードを選択',
+      mode: 'multi',
+      selectedIds: new Set(),
+      filterType: 'all',
+      onConfirm: null
+    },
+
+    openCardPicker(options = {}) {
+      const opts = Object.assign({
+        title: 'カードを選択',
+        mode: 'multi',
+        selectedIds: [],
+        onConfirm: null
+      }, options);
+
+      this._pickerOptions = {
+        title: opts.title,
+        mode: opts.mode,
+        selectedIds: new Set(opts.selectedIds || []),
+        filterType: 'all',
+        onConfirm: opts.onConfirm
+      };
+
+      const modal = document.getElementById('cardPickerModal');
+      if (!modal) return;
+
+      const titleEl = document.getElementById('cardPickerTitle');
+      if (titleEl) titleEl.textContent = opts.title;
+
+      const multiActions = document.getElementById('cardPickerMultiActions');
+      if (multiActions) multiActions.style.display = opts.mode === 'multi' ? 'flex' : 'none';
+
+      const modeLabel = document.getElementById('cardPickerModeLabel');
+      if (modeLabel) modeLabel.textContent = opts.mode === 'multi' ? '[複数選択モード]' : '[単一選択モード]';
+
+      const searchInput = document.getElementById('cardPickerSearchInput');
+      if (searchInput) searchInput.value = '';
+
+      document.querySelectorAll('.card-picker-tab').forEach(t => {
+        t.classList.toggle('active', t.dataset.pickerType === 'all');
+      });
+
+      modal.classList.remove('hidden');
+      this.renderCardPickerGrid();
+    },
+
+    renderCardPickerGrid() {
+      const container = document.getElementById('cardPickerGrid');
+      if (!container) return;
+
+      const searchInput = document.getElementById('cardPickerSearchInput');
+      const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
+      const filterType = this._pickerOptions.filterType;
+
+      const allCards = typeof App !== 'undefined' && App.getAllCards ? App.getAllCards() : (this.masterCards || []);
+
+      const filtered = allCards.filter(c => {
+        if (filterType !== 'all') {
+          const category = (c.category || '').toLowerCase();
+          if (filterType === 'pokemon' && !category.includes('ポケモン')) return false;
+          if (filterType === 'trainer' && !category.includes('トレーナー') && !category.includes('サポート') && !category.includes('グッズ')) return false;
+          if (filterType === 'energy' && !category.includes('エネルギー')) return false;
+        }
+        if (query) {
+          const nameMatch = (c.name || '').toLowerCase().includes(query);
+          const idMatch = (c.id || '').toLowerCase().includes(query);
+          const typeMatch = (c.type || '').toLowerCase().includes(query);
+          const catMatch = (c.category || '').toLowerCase().includes(query);
+          return nameMatch || idMatch || typeMatch || catMatch;
+        }
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = '<div style="text-align:center; padding:40px; color:var(--muted); grid-column:1/-1;">該当するカードが見つかりません</div>';
+        this.updateCardPickerCounter();
+        return;
+      }
+
+      const selectedSet = this._pickerOptions.selectedIds;
+
+      container.innerHTML = filtered.map(card => {
+        const isSelected = selectedSet.has(card.id);
+        const cardHtml = this.createCardHtml ? this.createCardHtml(card, { size: 'sm' }) : ('<div>' + this.escapeHtml(card.name) + '</div>');
+
+        return '<div class="card-picker-item ' + (isSelected ? 'selected' : '') + '" data-card-id="' + this.escapeHtml(card.id) + '" onclick="CardSystem.togglePickerCard(\'' + this.escapeHtml(card.id) + '\')">' +
+          '<div class="card-picker-badge ' + (isSelected ? 'active' : '') + '">' +
+            (isSelected ? '✓ 選択中' : '選択') +
+          '</div>' +
+          '<div class="card-picker-frame">' +
+            cardHtml +
+          '</div>' +
+          '<div class="card-picker-name-label">' + this.escapeHtml(card.name) + '</div>' +
+        '</div>';
+      }).join('');
+
+      this.updateCardPickerCounter();
+    },
+
+    togglePickerCard(cardId) {
+      const set = this._pickerOptions.selectedIds;
+      if (this._pickerOptions.mode === 'single') {
+        set.clear();
+        set.add(cardId);
+      } else {
+        if (set.has(cardId)) set.delete(cardId);
+        else set.add(cardId);
+      }
+      this.renderCardPickerGrid();
+    },
+
+    selectAllPickerCards() {
+      if (this._pickerOptions.mode !== 'multi') return;
+      const searchInput = document.getElementById('cardPickerSearchInput');
+      const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
+      const filterType = this._pickerOptions.filterType;
+      const allCards = typeof App !== 'undefined' && App.getAllCards ? App.getAllCards() : (this.masterCards || []);
+
+      allCards.forEach(c => {
+        if (filterType !== 'all') {
+          const category = (c.category || '').toLowerCase();
+          if (filterType === 'pokemon' && !category.includes('ポケモン')) return;
+          if (filterType === 'trainer' && !category.includes('トレーナー') && !category.includes('サポート') && !category.includes('グッズ')) return;
+          if (filterType === 'energy' && !category.includes('エネルギー')) return;
+        }
+        if (query) {
+          const nameMatch = (c.name || '').toLowerCase().includes(query);
+          const idMatch = (c.id || '').toLowerCase().includes(query);
+          if (!nameMatch && !idMatch) return;
+        }
+        this._pickerOptions.selectedIds.add(c.id);
+      });
+      this.renderCardPickerGrid();
+    },
+
+    clearPickerSelection() {
+      this._pickerOptions.selectedIds.clear();
+      this.renderCardPickerGrid();
+    },
+
+    setPickerFilter(key, val, el) {
+      if (key === 'type') {
+        this._pickerOptions.filterType = val;
+        document.querySelectorAll('.card-picker-tab').forEach(t => t.classList.remove('active'));
+        if (el) el.classList.add('active');
+        this.renderCardPickerGrid();
+      }
+    },
+
+    updateCardPickerCounter() {
+      const count = this._pickerOptions.selectedIds.size;
+      const countEl = document.getElementById('cardPickerCount');
+      const confirmCountEl = document.getElementById('cardPickerConfirmCount');
+      if (countEl) countEl.textContent = count;
+      if (confirmCountEl) confirmCountEl.textContent = count + '枚';
+    },
+
+    confirmCardPicker() {
+      const selectedArr = Array.from(this._pickerOptions.selectedIds);
+      if (typeof this._pickerOptions.onConfirm === 'function') {
+        this._pickerOptions.onConfirm(selectedArr);
+      }
+      this.closeCardPicker();
+    },
+
+    closeCardPicker() {
+      const modal = document.getElementById('cardPickerModal');
+      if (modal) modal.classList.add('hidden');
     }
   };
 
@@ -14714,6 +15362,7 @@ var CardSystem;
   }, true);
 })();
 </script>
+
 
 
   <script>
@@ -20238,7 +20887,11 @@ window.DeckSystem = function () {
         }
         return;
       }
-      this.showCardActionModal(active, 'stadium');
+      if (window.CardSystem && typeof window.CardSystem.showDetail === 'function') {
+        window.CardSystem.showDetail(active);
+      } else {
+        this.showCardActionModal(active, 'stadium');
+      }
     },
 
     render() {
@@ -20416,13 +21069,25 @@ window.DeckSystem = function () {
             }
           };
         } else {
-          activeCardEl.title = card.name + " (HP " + card.hp + "/" + card.maxHp + ") - クリックで詳細カード拡大";
-          activeCardEl.onclick = () => {
-            if (this.draggedHandIndex == null && window.CardSystem && window.CardSystem.showDetail) {
-              CardSystem.showDetail(card);
+          activeCardEl.title = card.name + " (HP " + card.hp + "/" + card.maxHp + ") - クリックで効果・詳細カード拡大";
+          activeCardEl.onclick = (e) => {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
+            if (this.draggedHandIndex == null && window.CardSystem && typeof window.CardSystem.showDetail === 'function') {
+              window.CardSystem.showDetail(card);
             }
           };
         }
+      }
+
+      if (!isPlayer) {
+        root.style.cursor = 'pointer';
+        root.title = card.name + " (HP " + card.hp + "/" + card.maxHp + ") - クリックで効果・詳細カード拡大";
+        root.onclick = (e) => {
+          if (e && e.target && e.target.closest('.active-status-badge')) return;
+          if (this.draggedHandIndex == null && window.CardSystem && typeof window.CardSystem.showDetail === 'function') {
+            window.CardSystem.showDetail(card);
+          }
+        };
       }
 
       // プレイヤーバトル場のドロップ受付 (エネ、進化、たね、トレーナー全て対応)
@@ -21143,6 +21808,7 @@ window.DeckSystem = function () {
 </script>
 
 
+
   <script>
 console.log('[ORBITAL] App.js.html started execution');
 (() => {
@@ -21327,6 +21993,9 @@ console.log('[ORBITAL] App.js.html started execution');
       if (page === 'pack') {
         this.loadPacks();
       }
+      if (page === 'single-shop') {
+        this.renderSingleShopGrid();
+      }
     },
 
     toast(message, isError = false) {
@@ -21365,7 +22034,7 @@ console.log('[ORBITAL] App.js.html started execution');
     promptGitHubSync() {
       const current = localStorage.getItem('ORBITAL_GITHUB_REPO') || '';
       const input = prompt(
-        '🐙 GitHubリポジトリからカード/デッキデータ (cards.json / decks.json) を読み込みます。\n\n' +
+        '🐙 GitHubリポジトリからシステム全体（最新プログラムコード・カード・デッキ・パック設定）を読み込み・同期します。\n\n' +
         '・リポジトリ名 (例: owner/repository) または Raw URL を入力してください。\n' +
         '・同期を解除してローカルに戻す場合は「reset」と入力するか空欄でOKを押してください:',
         current || 'owner/repository'
@@ -22027,7 +22696,46 @@ console.log('[ORBITAL] App.js.html started execution');
           console.warn('decks.json fetch info:', e);
         }
 
-        if (showToast) this.toast('✅ GitHubからのデータ同期に成功しました！');
+        // パック設定 (packs.json) の同期
+        try {
+          const packsUrl = baseUrl + 'packs.json';
+          const packsRes = await fetchWithTimeout(packsUrl, 3000);
+          if (packsRes.ok) {
+            let packsData = await packsRes.json();
+            if (!Array.isArray(packsData) && packsData && Array.isArray(packsData.packs)) {
+              packsData = packsData.packs;
+            }
+            if (Array.isArray(packsData) && packsData.length > 0) {
+              this.state.packs = packsData;
+              try { localStorage.setItem('ORBITAL_CUSTOM_PACKS', JSON.stringify(packsData)); } catch(e) {}
+              if (typeof this.renderPackGrid === 'function') this.renderPackGrid();
+            }
+          }
+        } catch (e) {
+          console.warn('packs.json fetch info:', e);
+        }
+
+        // 最新システムスタイル (CSS.html) の動的適用
+        try {
+          const cssUrl = baseUrl + 'CSS.html';
+          const cssRes = await fetchWithTimeout(cssUrl, 3000);
+          if (cssRes.ok) {
+            const cssText = await cssRes.text();
+            let styleTag = document.getElementById('github-dynamic-system-css');
+            if (!styleTag) {
+              styleTag = document.createElement('style');
+              styleTag.id = 'github-dynamic-system-css';
+              document.head.appendChild(styleTag);
+            }
+            const cleanCss = cssText.replace(/<\/?script[^>]*>/gi, '').replace(/<\/?style[^>]*>/gi, '');
+            styleTag.textContent = cleanCss;
+            console.log('✅ GitHubからの最新CSSシステムスタイルの動的適用に成功しました');
+          }
+        } catch (e) {
+          console.warn('CSS.html dynamic sync info:', e);
+        }
+
+        if (showToast) this.toast('✅ GitHubからのシステム・データ全体同期に成功しました！');
         return true;
       } catch (err) {
         console.error('loadFromGitHub error:', err);
@@ -22671,29 +23379,45 @@ console.log('[ORBITAL] App.js.html started execution');
 
       const drawn = this.state.activeDrawnCards || [];
       container.innerHTML = drawn.map((card, idx) => {
-        const rarityClass = card.rarity ? 'rarity-aura-' + (card.rarity) + '' : '';
-        const rot = (idx - 2) * 6; // ファン状の傾き angle (-12deg ~ +12deg)
-        const transY = Math.abs(idx - 2) * 8; // 中央が高くなるアーチ型
-        const emblem = this.getCardTypeEmblem(card.type);
-        const hasImg = !!(card.imageUrl || card.image);
-        const artContent = hasImg ? 
-          '<img src="' + (this.escapeHtml(card.imageUrl || card.image)) + '" style="width:100%; height:100%; object-fit:cover; border-radius:6px;">' :
-          '<div style="width:100%; height:100px; display:flex; flex-direction:column; align-items:center; justify-content:center; background:linear-gradient(135deg, rgba(30,41,59,0.9), rgba(15,23,42,0.95)); border:1px solid rgba(255,215,0,0.3); border-radius:8px; position:relative; overflow:hidden;">\n            <div style="font-size:42px; color:#ffd700; text-shadow:0 0 15px rgba(255,215,0,0.8);">' + (emblem) + '</div>\n            <div style="font-size:9px; color:#94a3b8; font-weight:800; letter-spacing:1px; margin-top:2px;">◇ ORBITAL FOIL ◇</div>\n          </div>';
+        const rarityClass = card.rarity ? 'rarity-aura-' + (card.rarity) : '';
+        const rot = (idx - 2) * 6;
+        const transY = Math.abs(idx - 2) * 8;
+        const cardHtml = (window.CardSystem && typeof window.CardSystem.createCardHtml === 'function') ?
+          window.CardSystem.createCardHtml(card, { size: 'normal' }) :
+          ('<div style="padding:10px; color:#fff; text-align:center;">' + this.escapeHtml(card.name) + '</div>');
 
-        return '\n          <div class="pokepoke-card-item ' + (rarityClass) + '" style="transform: rotate(' + (rot) + 'deg) translateY(' + (transY) + 'px); z-index:' + (10 + idx) + ';" onclick="App.flipPokepokeCard(this, ' + (idx) + ')">\n            <div class="pokepoke-card-inner">\n              <div class="pokepoke-card-back">\n                <div style="font-size:36px; color:#ffd700;">◇</div>\n                <div style="font-size:10px; color:#ffd700; font-weight:800; margin-top:6px; letter-spacing:1px;">ORBITAL CARD</div>\n              </div>\n              <div class="pokepoke-card-front">\n                <div style="font-size:10px; color:#00e5ff; font-weight:800; display:flex; justify-content:space-between; margin-bottom:4px;">\n                  <span>' + (this.escapeHtml(card.category || 'カード')) + '</span>\n                  <span>' + (emblem) + ' ' + (this.escapeHtml(card.type || '無色')) + '</span>\n                </div>\n                ' + (artContent) + '\n                <div style="font-size:14px; font-weight:900; color:#fff; text-align:center; margin:6px 0; text-shadow:0 2px 8px rgba(0,0,0,0.8);">' + (this.escapeHtml(card.name)) + '</div>\n                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:auto;">\n                  <span style="font-size:10px; color:#94a3b8;">HP ' + (card.hp || 80) + '</span>\n                  <span style="font-size:11px; color:#ffd700; font-weight:900; background:rgba(255,215,0,0.2); padding:1px 6px; border-radius:4px;">' + (this.escapeHtml(card.rarity || 'R')) + '</span>\n                </div>\n              </div>\n            </div>\n          </div>\n        ';
+        return `
+          <div class="pokepoke-card-item ${rarityClass}" style="transform: rotate(${rot}deg) translateY(${transY}px); z-index:${10 + idx};" onclick="App.flipPokepokeCard(this, ${idx})">
+            <div class="pokepoke-card-inner">
+              <div class="pokepoke-card-back">
+                <div style="font-size:36px; color:#ffd700;">◇</div>
+                <div style="font-size:10px; color:#ffd700; font-weight:800; margin-top:6px; letter-spacing:1px;">ORCEIN CARD</div>
+              </div>
+              <div class="pokepoke-card-front" style="padding:0; border:none; background:transparent;">
+                ${cardHtml}
+              </div>
+            </div>
+          </div>
+        `;
       }).join('');
     },
 
     flipPokepokeCard(el, idx) {
       if (!el) return;
       const inner = el.querySelector('.pokepoke-card-inner');
-      if (!inner || inner.classList.contains('flipped')) return;
+      const card = (this.state.activeDrawnCards || [])[idx];
+      if (!inner) return;
+
+      if (inner.classList.contains('flipped')) {
+        if (card && window.CardSystem && typeof window.CardSystem.showDetail === 'function') {
+          window.CardSystem.showDetail(card);
+        }
+        return;
+      }
 
       inner.classList.add('flipped');
-      const card = (this.state.activeDrawnCards || [])[idx];
       if (!card) return;
 
-      // レアリティに応じたポッピン演出
       if (card.rarity === 'UR' || card.rarity === 'SR') {
         const glow = document.createElement('div');
         glow.className = 'ur-glow-effect';
@@ -22875,6 +23599,328 @@ console.log('[ORBITAL] App.js.html started execution');
       }
     },
 
+    _tempPackCardPool: [],
+
+    openCardPickerForPackPool() {
+      const currentSelected = this._tempPackCardPool || [];
+      if (window.CardSystem && CardSystem.openCardPicker) {
+        CardSystem.openCardPicker({
+          title: '🎁 パック収録カードプール選択',
+          mode: 'multi',
+          selectedIds: currentSelected,
+          onConfirm: (selectedIds) => {
+            App._tempPackCardPool = selectedIds;
+            App.updatePackCardPoolSummary();
+          }
+        });
+      }
+    },
+
+    updatePackCardPoolSummary() {
+      const pool = this._tempPackCardPool || [];
+      const label = this.el('adminPackPoolCountLabel');
+      if (label) {
+        label.textContent = pool.length > 0 ? (pool.length + '枚選択中') : '全カード対象';
+      }
+      const sel = this.el('adminPackCardPool');
+      if (sel) {
+        Array.from(sel.options).forEach(o => {
+          o.selected = pool.includes(o.value);
+        });
+      }
+    },
+
+    /* ============================================================
+       シングルカードショップ (Single Card Shop) Logic
+       ============================================================ */
+    _tempShopItemCardId: null,
+    _shopCatFilter: 'all',
+
+    getDefaultSingleShopItems() {
+      return [
+        { id: 'shop_1', cardId: 'pk_pika_ex', price: 500, tag: '人気EX' },
+        { id: 'shop_2', cardId: 'pk_charizard_ex', price: 1000, tag: '超強力' },
+        { id: 'shop_3', cardId: 'tr_professor_research', price: 200, tag: '定番' },
+        { id: 'shop_4', cardId: 'tr_boss_orders', price: 400, tag: 'おすすめ' },
+        { id: 'shop_5', cardId: 'en_lightning', price: 50, tag: '基本エネルギー' }
+      ];
+    },
+
+    getSingleShopItems() {
+      if (this.state.singleShopItems && this.state.singleShopItems.length > 0) {
+        return this.state.singleShopItems;
+      }
+      try {
+        const stored = localStorage.getItem('ORBITAL_SINGLE_SHOP_ITEMS');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            this.state.singleShopItems = parsed;
+            return parsed;
+          }
+        }
+      } catch(e) {}
+      const defaults = this.getDefaultSingleShopItems();
+      this.state.singleShopItems = defaults;
+      return defaults;
+    },
+
+    filterSingleShop(cat, el) {
+      this._shopCatFilter = cat;
+      document.querySelectorAll('#page-single-shop .card-picker-tab').forEach(t => t.classList.remove('active'));
+      if (el) el.classList.add('active');
+      this.renderSingleShopGrid();
+    },
+
+    renderSingleShopGrid() {
+      const container = this.el('singleShopGrid');
+      if (!container) return;
+
+      const shopItems = this.getSingleShopItems();
+      const allCards = this.getAllCards();
+      const searchInput = this.el('singleShopSearchInput');
+      const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
+      const catFilter = this._shopCatFilter || 'all';
+
+      const nmtVal = this.getUserNmt();
+      const nmtEl = this.el('singleShopNmtVal');
+      if (nmtEl) nmtEl.textContent = nmtVal + ' NMT';
+
+      const filtered = shopItems.filter(item => {
+        const card = allCards.find(c => c.id === item.cardId) || { id: item.cardId, name: item.cardId, category: 'ポケモン' };
+        if (catFilter !== 'all') {
+          const cat = (card.category || '').toLowerCase();
+          if (catFilter === 'pokemon' && !cat.includes('ポケモン')) return false;
+          if (catFilter === 'trainer' && !cat.includes('トレーナー') && !cat.includes('サポート') && !cat.includes('グッズ')) return false;
+          if (catFilter === 'energy' && !cat.includes('エネルギー')) return false;
+        }
+        if (query) {
+          const nameMatch = (card.name || '').toLowerCase().includes(query);
+          const idMatch = (card.id || '').toLowerCase().includes(query);
+          return nameMatch || idMatch;
+        }
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = '<div style="text-align:center; padding:60px; color:var(--muted); grid-column:1/-1;">販売中のカードはありません</div>';
+        return;
+      }
+
+      const isAdmin = this.isAdmin();
+
+      container.innerHTML = filtered.map(item => {
+        const card = allCards.find(c => c.id === item.cardId) || { id: item.cardId, name: item.cardId, category: 'ポケモン', rarity: '★' };
+        const cardHtml = window.CardSystem && CardSystem.createCardHtml ? CardSystem.createCardHtml(card, { size: 'normal' }) : ('<div>' + this.escapeHtml(card.name) + '</div>');
+
+        const canAfford = nmtVal >= item.price;
+        const tagHtml = item.tag ? ('<div class="single-shop-tag">' + this.escapeHtml(item.tag) + '</div>') : '';
+
+        const adminBtns = isAdmin ? (
+          '<div class="single-shop-admin-controls">' +
+            '<button type="button" class="secondary-button compact-btn" style="flex:1;" onclick="App.openAdminShopItemModal(\'' + this.escapeHtml(item.id) + '\')">編集</button>' +
+            '<button type="button" class="secondary-button compact-btn danger-btn" style="flex:1;" onclick="App.deleteShopItem(\'' + this.escapeHtml(item.id) + '\')">削除</button>' +
+          '</div>'
+        ) : '';
+
+        return '<div class="single-shop-card-item">' +
+          tagHtml +
+          '<div style="width:100%; display:flex; justify-content:center; margin-top:8px;">' +
+            cardHtml +
+          '</div>' +
+          '<div class="single-shop-price-badge">' +
+            '<span>✨</span><span>' + item.price + ' NMT</span>' +
+          '</div>' +
+          '<button type="button" class="single-shop-buy-btn" ' + (canAfford ? '' : 'disabled style="opacity:0.5; cursor:not-allowed;"') + ' onclick="App.buySingleCard(\'' + this.escapeHtml(item.id) + '\')">' +
+            (canAfford ? '🛒 NMTで購入' : 'NMT不足 (' + item.price + ' NMT)') +
+          '</button>' +
+          adminBtns +
+        '</div>';
+      }).join('');
+    },
+
+    buySingleCard(itemId) {
+      const shopItems = this.getSingleShopItems();
+      const item = shopItems.find(i => i.id === itemId);
+      if (!item) return;
+
+      const nmtVal = this.getUserNmt();
+      if (nmtVal < item.price) {
+        this.toast('NMTが足りません！ (必要: ' + item.price + ' NMT)', true);
+        return;
+      }
+
+      const allCards = this.getAllCards();
+      const card = allCards.find(c => c.id === item.cardId) || { id: item.cardId, name: item.cardId };
+
+      if (!confirm('「' + card.name + '」を ' + item.price + ' NMT で購入しますか？')) return;
+
+      // Deduct NMT
+      this.setUserNmt(nmtVal - item.price);
+
+      // Add to collection
+      this.addCardToCollection(item.cardId);
+
+      this.toast('✨ 「' + card.name + '」を ' + item.price + ' NMT で購入し、コレクションに追加しました！');
+      this.renderSingleShopGrid();
+      this.updateNmtDisplays();
+    },
+
+    getUserNmt() {
+      if (this.state.userProfile && this.state.userProfile.nmt != null) return Number(this.state.userProfile.nmt);
+      if (this.state.nmt != null) return Number(this.state.nmt);
+      try {
+        const stored = localStorage.getItem('ORBITAL_NMT_BALANCE');
+        if (stored) return Number(stored);
+      } catch(e) {}
+      return 1000;
+    },
+
+    setUserNmt(val) {
+      val = Math.max(0, Number(val) || 0);
+      if (!this.state.userProfile) this.state.userProfile = {};
+      this.state.userProfile.nmt = val;
+      this.state.nmt = val;
+      try { localStorage.setItem('ORBITAL_NMT_BALANCE', String(val)); } catch(e) {}
+      this.updateNmtDisplays();
+    },
+
+    updateNmtDisplays() {
+      const val = this.getUserNmt();
+      const valText = val + ' NMT';
+      ['nmtBalanceVal', 'singleShopNmtVal'].forEach(id => {
+        const el = this.el(id);
+        if (el) el.textContent = valText;
+      });
+    },
+
+    addCardToCollection(cardId) {
+      let col = this.state.userCollection || {};
+      col[cardId] = (col[cardId] || 0) + 1;
+      this.state.userCollection = col;
+      try { localStorage.setItem('ORBITAL_USER_COLLECTION', JSON.stringify(col)); } catch(e) {}
+
+      if (window.google && google.script && google.script.run && !window._is_mock_gas) {
+        google.script.run.saveUserCollection(col, this.state.userProfile ? this.state.userProfile.email : '');
+      }
+    },
+
+    openAdminShopItemModal(itemId = null) {
+      if (!this.isAdmin()) {
+        this.requireAdmin();
+        return;
+      }
+
+      const modal = this.el('adminShopItemModal');
+      if (!modal) return;
+
+      if (itemId) {
+        const items = this.getSingleShopItems();
+        const item = items.find(i => i.id === itemId);
+        if (item) {
+          this.el('adminShopItemId').value = item.id;
+          this.el('adminShopItemCardId').value = item.cardId;
+          this.el('adminShopItemPrice').value = item.price || 300;
+          this.el('adminShopItemTag').value = item.tag || '';
+          this._tempShopItemCardId = item.cardId;
+          this.renderShopItemCardPreview(item.cardId);
+        }
+      } else {
+        this.el('adminShopItemId').value = '';
+        this.el('adminShopItemCardId').value = '';
+        this.el('adminShopItemPrice').value = '300';
+        this.el('adminShopItemTag').value = '';
+        this._tempShopItemCardId = null;
+        this.renderShopItemCardPreview(null);
+      }
+
+      modal.classList.remove('hidden');
+    },
+
+    closeAdminShopItemModal() {
+      const modal = this.el('adminShopItemModal');
+      if (modal) modal.classList.add('hidden');
+    },
+
+    openCardPickerForShopItem() {
+      const currentSelected = this._tempShopItemCardId ? [this._tempShopItemCardId] : [];
+      if (window.CardSystem && CardSystem.openCardPicker) {
+        CardSystem.openCardPicker({
+          title: '🛍️ ショップ出品カード選択',
+          mode: 'single',
+          selectedIds: currentSelected,
+          onConfirm: (selectedIds) => {
+            if (selectedIds.length > 0) {
+              App._tempShopItemCardId = selectedIds[0];
+              App.el('adminShopItemCardId').value = selectedIds[0];
+              App.renderShopItemCardPreview(selectedIds[0]);
+            }
+          }
+        });
+      }
+    },
+
+    renderShopItemCardPreview(cardId) {
+      const container = this.el('shopItemCardPreview');
+      if (!container) return;
+      if (!cardId) {
+        container.innerHTML = '<div class="muted">専用UIでカードを選択してください</div>';
+        return;
+      }
+      const allCards = this.getAllCards();
+      const card = allCards.find(c => c.id === cardId) || { id: cardId, name: cardId, category: 'ポケモン' };
+      const cardHtml = window.CardSystem && CardSystem.createCardHtml ? CardSystem.createCardHtml(card, { size: 'sm' }) : ('<div>' + this.escapeHtml(card.name) + '</div>');
+      container.innerHTML = cardHtml;
+    },
+
+    handleSaveShopItem(e) {
+      if (e && e.preventDefault) e.preventDefault();
+      const id = this.el('adminShopItemId').value || ('shop_' + Date.now());
+      const cardId = this.el('adminShopItemCardId').value || this._tempShopItemCardId;
+      const price = Number(this.el('adminShopItemPrice').value) || 300;
+      const tag = this.el('adminShopItemTag').value.trim();
+
+      if (!cardId) {
+        this.toast('専用UIで販売カードを選択してください', true);
+        return;
+      }
+
+      let items = this.getSingleShopItems();
+      const newItem = { id, cardId, price, tag };
+
+      const idx = items.findIndex(i => i.id === id);
+      if (idx >= 0) items[idx] = newItem;
+      else items.push(newItem);
+
+      this.state.singleShopItems = items;
+      try { localStorage.setItem('ORBITAL_SINGLE_SHOP_ITEMS', JSON.stringify(items)); } catch(err) {}
+
+      if (window.google && google.script && google.script.run && !window._is_mock_gas) {
+        google.script.run.withSuccessHandler(() => {
+          App.toast('✅ ショップ商品をGASスプレッドシートに保存しました');
+        }).saveShopItem(newItem, this.state.adminToken);
+      }
+
+      this.toast('🛍️ ショップにカードを出品しました！');
+      this.closeAdminShopItemModal();
+      this.renderSingleShopGrid();
+    },
+
+    deleteShopItem(itemId) {
+      if (!confirm('この商品をショップから削除しますか？')) return;
+      let items = this.getSingleShopItems();
+      items = items.filter(i => i.id !== itemId);
+      this.state.singleShopItems = items;
+      try { localStorage.setItem('ORBITAL_SINGLE_SHOP_ITEMS', JSON.stringify(items)); } catch(err) {}
+
+      if (window.google && google.script && google.script.run && !window._is_mock_gas) {
+        google.script.run.deleteShopItem(itemId, this.state.adminToken);
+      }
+
+      this.toast('🗑️ 商品を削除しました');
+      this.renderSingleShopGrid();
+    },
+
     escapeHtml(str) {
       if (!str) return '';
       return String(str)
@@ -22900,6 +23946,7 @@ console.log('[ORBITAL] App.js.html started execution');
   console.log('[ORBITAL] App.js.html finished execution. window.App =', typeof window.App);
 })();
 </script>
+
 
 
   <script>

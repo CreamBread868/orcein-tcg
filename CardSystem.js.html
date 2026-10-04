@@ -155,6 +155,55 @@ var CardSystem;
         .deleteCard(card.id, App.state.adminToken);
     },
 
+    sortCards(cards, sortKey = 'name') {
+      if (!Array.isArray(cards)) return [];
+
+      const categoryOrder = {
+        'たね': 1, 'たねex': 2, '1進化': 3, '1進化ex': 4, '2進化': 5, '2進化ex': 6,
+        '進化': 7, 'トレーナー': 8, 'グッズ': 9, 'サポート': 10, 'スタジアム': 11,
+        'エネルギー': 12, '基本エネルギー': 13, '特殊エネルギー': 14
+      };
+      const typeOrder = {
+        '無色': 1, '炎': 2, '水': 3, '草': 4, '雷': 5, '超': 6, '闘': 7, '悪': 8, '鋼': 9
+      };
+      const rarityOrder = {
+        'UR': 1, 'SR': 2, 'AR': 3, 'R': 4, 'N': 5
+      };
+
+      return cards.slice().sort((a, b) => {
+        if (sortKey === 'id') {
+          const idA = String(a.id || '');
+          const idB = String(b.id || '');
+          return idA.localeCompare(idB, 'ja', { numeric: true });
+        }
+        if (sortKey === 'category') {
+          const catA = categoryOrder[a.category] || 99;
+          const catB = categoryOrder[b.category] || 99;
+          if (catA !== catB) return catA - catB;
+        }
+        if (sortKey === 'type') {
+          const tA = typeOrder[a.type] || 99;
+          const tB = typeOrder[b.type] || 99;
+          if (tA !== tB) return tA - tB;
+        }
+        if (sortKey === 'hp') {
+          const hpA = Number(a.hp) || 0;
+          const hpB = Number(b.hp) || 0;
+          if (hpA !== hpB) return hpB - hpA;
+        }
+        if (sortKey === 'rarity') {
+          const rA = rarityOrder[a.rarity] || 99;
+          const rB = rarityOrder[b.rarity] || 99;
+          if (rA !== rB) return rA - rB;
+        }
+
+        // デフォルト: 名前順 (あいうえお順 / アルファベット順)
+        const nameA = String(a.name || '');
+        const nameB = String(b.name || '');
+        return nameA.localeCompare(nameB, 'ja');
+      });
+    },
+
     renderList() {
       const root = document.getElementById('cardList');
       if (!root) return;
@@ -163,13 +212,15 @@ var CardSystem;
       const categoryEl = document.getElementById('categoryFilter');
       const typeEl = document.getElementById('typeFilter');
       const rarityEl = document.getElementById('rarityFilter');
+      const sortEl = document.getElementById('cardSortSelect');
 
       const search = searchEl ? searchEl.value.trim().toLowerCase() : '';
       const category = categoryEl ? categoryEl.value : '';
       const type = typeEl ? typeEl.value : '';
       const rarity = rarityEl ? rarityEl.value : '';
+      const sortKey = sortEl ? sortEl.value : 'name';
 
-      const cards = (App.state && Array.isArray(App.state.cards) ? App.state.cards : []).filter((card) => {
+      const filtered = (App.state && Array.isArray(App.state.cards) ? App.state.cards : []).filter((card) => {
         let matchCat = !category;
         if (category) {
           if (category === '進化') {
@@ -193,6 +244,8 @@ var CardSystem;
           (!type || card.type === type) &&
           (!rarity || card.rarity === rarity);
       });
+
+      const cards = this.sortCards(filtered, sortKey);
 
       if (!cards.length) {
         root.innerHTML = '<div class="empty-page"><div><h2>カードがありません</h2><p>条件を変えるか、新しいカードを作成してください。</p></div></div>';
@@ -245,11 +298,13 @@ var CardSystem;
       const categoryEl = document.getElementById('collectionCategoryFilter');
       const rarityEl = document.getElementById('collectionRarityFilter');
       const ownedEl = document.getElementById('collectionOwnedFilter');
+      const sortEl = document.getElementById('collectionSortSelect');
 
       const search = searchEl ? searchEl.value.trim().toLowerCase() : '';
       const category = categoryEl ? categoryEl.value : '';
       const rarity = rarityEl ? rarityEl.value : '';
-      const ownedFilter = ownedEl ? ownedEl.value : '';
+      const ownedFilter = ownedEl ? ownedEl.value : 'owned';
+      const sortKey = sortEl ? sortEl.value : 'name';
 
       const allCards = (window.App && window.App.state && Array.isArray(window.App.state.cards)) ? window.App.state.cards : [];
       const colMap = this.getUserCollection();
@@ -271,7 +326,8 @@ var CardSystem;
         const key = String(card.id || card.name);
         const count = colMap[key] || 0;
 
-        if (ownedFilter === 'owned' && count <= 0) return false;
+        // ユーザー要求: コレクションは「入手したカードのみ」表示 (デフォルトは count > 0 のみ)
+        if ((ownedFilter === 'owned' || !ownedFilter) && count <= 0) return false;
         if (ownedFilter === 'unowned' && count > 0) return false;
 
         let matchCat = !category;
@@ -279,7 +335,7 @@ var CardSystem;
           if (category === '進化') {
             matchCat = card.category === '進化' || card.category === '1進化' || card.category === '2進化';
           } else if (category === 'ex') {
-            matchCat = card.category === 'ex' || card.category === 'たねex' || card.category === '1進化ex' || card.category === '2進化ex' || !!card.isEx;
+            matchCat = card.category === 'ex' || card.category === 'たneex' || card.category === '1進化ex' || card.category === '2進化ex' || !!card.isEx;
           } else if (category === 'トレーナー') {
             matchCat = card.category === 'トレーナー' || card.category === 'グッズ' || card.category === 'サポート' || card.category === 'スタジアム';
           } else if (category === 'エネルギー') {
@@ -298,12 +354,14 @@ var CardSystem;
           (!rarity || card.rarity === rarity);
       });
 
-      if (!filtered.length) {
-        root.innerHTML = '<div class="empty-page"><div><h2>対象のカードがありません</h2><p>条件を変更するか、パックを開封してカードを獲得しましょう！</p></div></div>';
+      const cards = this.sortCards(filtered, sortKey);
+
+      if (!cards.length) {
+        root.innerHTML = '<div class="empty-page"><div><h2>所持しているカードがありません</h2><p>条件を変更するか、パックを開封してカードを獲得しましょう！</p></div></div>';
         return;
       }
 
-      root.innerHTML = filtered.map((card) => {
+      root.innerHTML = cards.map((card) => {
         const key = String(card.id || card.name);
         const count = colMap[key] || 0;
         const isUnowned = count <= 0;
@@ -372,9 +430,43 @@ var CardSystem;
       return defaultMap[cleanName] || '';
     },
 
-    createCardHtml(card, options = {}) {
-      if (!card) card = {};
-      const size = options.size || 'normal'; // 'normal' | 'lg' | 'sm'
+    createCardHtml(cardInput, options = {}) {
+      if (!cardInput) cardInput = {};
+      let card = cardInput;
+      const pool = [
+        ...(window.App?.state?.cards || []),
+        ...(window.CardSystem?.state?.cards || []),
+        ...(window.DeckSystem?.state?.cardPool || [])
+      ];
+      if (pool.length > 0) {
+        const master = pool.find(c => c && ((c.id && cardInput.id && String(c.id) === String(cardInput.id)) || (c.name && cardInput.name && String(c.name).trim() === String(cardInput.name).trim())));
+        if (master) {
+          card = Object.assign({}, master, cardInput, {
+            image: cardInput.image || master.image,
+            hp: cardInput.hp != null && cardInput.hp !== '' ? cardInput.hp : master.hp,
+            maxHp: master.hp || cardInput.maxHp || cardInput.hp || 100,
+            abilityName: master.abilityName || cardInput.abilityName,
+            abilityText: master.abilityText || cardInput.abilityText,
+            attack1Name: master.attack1Name || cardInput.attack1Name,
+            attack1Damage: master.attack1Damage != null && master.attack1Damage !== '' ? master.attack1Damage : cardInput.attack1Damage,
+            attack1Text: master.attack1Text || cardInput.attack1Text,
+            attack1Energy: master.attack1Energy || cardInput.attack1Energy,
+            attack2Name: master.attack2Name || cardInput.attack2Name,
+            attack2Damage: master.attack2Damage != null && master.attack2Damage !== '' ? master.attack2Damage : cardInput.attack2Damage,
+            attack2Text: master.attack2Text || cardInput.attack2Text,
+            attack2Energy: master.attack2Energy || cardInput.attack2Energy,
+            description: master.description || cardInput.description,
+            preEvolution: master.preEvolution || cardInput.preEvolution,
+            artLayout: master.artLayout || cardInput.artLayout || 'standard',
+            imageFit: master.imageFit || cardInput.imageFit || 'cover',
+            imageScale: master.imageScale != null ? master.imageScale : cardInput.imageScale,
+            imageX: master.imageX != null ? master.imageX : cardInput.imageX,
+            imageY: master.imageY != null ? master.imageY : cardInput.imageY
+          });
+        }
+      }
+
+      const size = options.size || 'normal'; // 'normal' | 'lg' | 'sm' | 'battle' | 'bench' | 'hand'
       const inDeckCount = Number(options.inDeckCount) || 0;
       const isMax = !!options.isMax;
       const symbol = this.typeSymbols[card.type] || '✦';
@@ -570,7 +662,32 @@ var CardSystem;
       return this.createCardHtml(card, { size: 'normal' });
     },
 
-    showDetail(card) {
+    showDetail(cardInput) {
+      if (!cardInput) return;
+
+      let card = cardInput;
+      const allCards = (window.App && window.App.state && Array.isArray(window.App.state.cards)) ? window.App.state.cards : (window.CardSystem && Array.isArray(window.CardSystem.state?.cards) ? window.CardSystem.state.cards : []);
+      if (allCards.length > 0) {
+        const master = allCards.find(c => String(c.id) === String(cardInput.id) || String(c.name) === String(cardInput.name));
+        if (master) {
+          card = Object.assign({}, master, cardInput, {
+            hp: cardInput.hp != null ? cardInput.hp : master.hp,
+            maxHp: master.hp || cardInput.maxHp || cardInput.hp || 100,
+            abilityName: master.abilityName || cardInput.abilityName,
+            abilityText: master.abilityText || cardInput.abilityText || master.description,
+            attack1Name: master.attack1Name || cardInput.attack1Name,
+            attack1Damage: master.attack1Damage != null ? master.attack1Damage : cardInput.attack1Damage,
+            attack1Text: master.attack1Text || cardInput.attack1Text,
+            attack1Energy: master.attack1Energy || cardInput.attack1Energy,
+            attack2Name: master.attack2Name || cardInput.attack2Name,
+            attack2Damage: master.attack2Damage != null ? master.attack2Damage : cardInput.attack2Damage,
+            attack2Text: master.attack2Text || cardInput.attack2Text,
+            attack2Energy: master.attack2Energy || cardInput.attack2Energy,
+            description: master.description || cardInput.description || cardInput.text
+          });
+        }
+      }
+
       const cardHtml = this.createCardHtml(card, { size: 'lg' });
 
       let preCard = null;
@@ -598,17 +715,23 @@ var CardSystem;
       this.escape(card.name) + "</h2>\n            " + statsHtml + "\n            " + (
       card.abilityName ? "<div class=\"detail-section\"><h4>特性：" + this.escape(card.abilityName) + "</h4><div>" + this.escape(card.abilityText || '—') + "</div></div>" : '') + "\n            " + (
       card.attack1Name ? "<div class=\"detail-section\"><h4>ワザ1: " + this.escape(card.attack1Name) + " <span style=\"float:right\">" + this.escape(card.attack1Damage || 0) + " ダメージ</span></h4><small>必要エネルギー: " + this.escape(card.attack1Energy || 'なし') + "</small><div>" + this.escape(card.attack1Text || '—') + "</div></div>" : '') + "\n            " + (
-      card.attack2Name ? "<div class=\"detail-section\"><h4>ワザ2: " + this.escape(card.attack2Name) + " <span style=\"float:right\">" + this.escape(card.attack2Damage || 0) + " ダメージ</span></h4><small>必要エネルギー: " + this.escape(card.attack2Energy || 'なし') + "</small><div>" + this.escape(card.attack2Text || '—') + "</div></div>" : '') + "\n            <div class=\"detail-section\"><h4>カード説明・フレーバー</h4><div>" +
-      this.escape(card.description || '—') + "</div></div>\n            <div class=\"detail-section\"><small>ID: " +
+      card.attack2Name ? "<div class=\"detail-section\"><h4>ワザ2: " + this.escape(card.attack2Name) + " <span style=\"float:right\">" + this.escape(card.attack2Damage || 0) + " ダメージ</span></h4><small>必要エネルギー: " + this.escape(card.attack2Energy || 'なし') + "</small><div>" + this.escape(card.attack2Text || '—') + "</div></div>" : '') + "\n            <div class=\"detail-section\"><h4>カード説明・効果</h4><div>" +
+      this.escape(card.description || card.text || '—') + "</div></div>\n            <div class=\"detail-section\"><small>ID: " +
       this.escape(card.id) + "</small></div>\n          </div>\n        </div>\n      "
       );
 
-      document.getElementById('detailEdit').addEventListener('click', () => {
-        App.closeModal();
-        this.edit(card);
-      });
+      const editBtn = document.getElementById('detailEdit');
+      const delBtn = document.getElementById('detailDelete');
+      const inBattle = (window.App && App.state && App.state.page === 'battle');
+      const isAdmin = (window.App && typeof App.isAdmin === 'function' && App.isAdmin());
 
-      document.getElementById('detailDelete').addEventListener('click', () => this.delete(card));
+      if (inBattle || !isAdmin) {
+        if (editBtn) editBtn.style.display = 'none';
+        if (delBtn) delBtn.style.display = 'none';
+      } else {
+        if (editBtn) editBtn.addEventListener('click', () => { App.closeModal(); this.edit(card); });
+        if (delBtn) delBtn.addEventListener('click', () => this.delete(card));
+      }
     },
 
     populatePreEvolutionSelect(selectedVal) {
@@ -970,12 +1093,22 @@ var CardSystem;
     },
 
     save() {
+      if (this._isSaving) return;
       if (!App.requireAdmin()) return;
       const card = this.getFormCard();
       if (!card.name.trim()) {
         App.toast('カード名を入力してください。', true);
         return;
       }
+
+      // 新規作成時はクライアント側で一意のIDを前もって生成・固定し、重複入力を防止
+      if (!card.id) {
+        card.id = 'card_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+        const cardIdEl = document.getElementById('cardId');
+        if (cardIdEl) cardIdEl.value = card.id;
+      }
+
+      this._isSaving = true;
       const saveBtn = document.getElementById('saveCardButton');
       if (saveBtn) {
         saveBtn.disabled = true;
@@ -984,6 +1117,7 @@ var CardSystem;
 
       google.script.run.
       withSuccessHandler((res) => {
+        this._isSaving = false;
         if (saveBtn) {
           saveBtn.disabled = false;
           saveBtn.textContent = '保存する';
@@ -998,6 +1132,7 @@ var CardSystem;
         App.showPage('cards');
       }).
       withFailureHandler((err) => {
+        this._isSaving = false;
         if (saveBtn) {
           saveBtn.disabled = false;
           saveBtn.textContent = '保存する';
@@ -1167,6 +1302,180 @@ var CardSystem;
       if (btn) {
         btn.textContent = isExpanded ? '✕ プレビュー縮小' : '👁 プレビュー拡大';
       }
+    },
+
+    /* ============================================================
+       専用カードピッカー (Card Picker UI)
+       ============================================================ */
+    _pickerOptions: {
+      title: 'カードを選択',
+      mode: 'multi',
+      selectedIds: new Set(),
+      filterType: 'all',
+      onConfirm: null
+    },
+
+    openCardPicker(options = {}) {
+      const opts = Object.assign({
+        title: 'カードを選択',
+        mode: 'multi',
+        selectedIds: [],
+        onConfirm: null
+      }, options);
+
+      this._pickerOptions = {
+        title: opts.title,
+        mode: opts.mode,
+        selectedIds: new Set(opts.selectedIds || []),
+        filterType: 'all',
+        onConfirm: opts.onConfirm
+      };
+
+      const modal = document.getElementById('cardPickerModal');
+      if (!modal) return;
+
+      const titleEl = document.getElementById('cardPickerTitle');
+      if (titleEl) titleEl.textContent = opts.title;
+
+      const multiActions = document.getElementById('cardPickerMultiActions');
+      if (multiActions) multiActions.style.display = opts.mode === 'multi' ? 'flex' : 'none';
+
+      const modeLabel = document.getElementById('cardPickerModeLabel');
+      if (modeLabel) modeLabel.textContent = opts.mode === 'multi' ? '[複数選択モード]' : '[単一選択モード]';
+
+      const searchInput = document.getElementById('cardPickerSearchInput');
+      if (searchInput) searchInput.value = '';
+
+      document.querySelectorAll('.card-picker-tab').forEach(t => {
+        t.classList.toggle('active', t.dataset.pickerType === 'all');
+      });
+
+      modal.classList.remove('hidden');
+      this.renderCardPickerGrid();
+    },
+
+    renderCardPickerGrid() {
+      const container = document.getElementById('cardPickerGrid');
+      if (!container) return;
+
+      const searchInput = document.getElementById('cardPickerSearchInput');
+      const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
+      const filterType = this._pickerOptions.filterType;
+
+      const allCards = typeof App !== 'undefined' && App.getAllCards ? App.getAllCards() : (this.masterCards || []);
+
+      const filtered = allCards.filter(c => {
+        if (filterType !== 'all') {
+          const category = (c.category || '').toLowerCase();
+          if (filterType === 'pokemon' && !category.includes('ポケモン')) return false;
+          if (filterType === 'trainer' && !category.includes('トレーナー') && !category.includes('サポート') && !category.includes('グッズ')) return false;
+          if (filterType === 'energy' && !category.includes('エネルギー')) return false;
+        }
+        if (query) {
+          const nameMatch = (c.name || '').toLowerCase().includes(query);
+          const idMatch = (c.id || '').toLowerCase().includes(query);
+          const typeMatch = (c.type || '').toLowerCase().includes(query);
+          const catMatch = (c.category || '').toLowerCase().includes(query);
+          return nameMatch || idMatch || typeMatch || catMatch;
+        }
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = '<div style="text-align:center; padding:40px; color:var(--muted); grid-column:1/-1;">該当するカードが見つかりません</div>';
+        this.updateCardPickerCounter();
+        return;
+      }
+
+      const selectedSet = this._pickerOptions.selectedIds;
+
+      container.innerHTML = filtered.map(card => {
+        const isSelected = selectedSet.has(card.id);
+        const cardHtml = this.createCardHtml ? this.createCardHtml(card, { size: 'sm' }) : ('<div>' + this.escapeHtml(card.name) + '</div>');
+
+        return '<div class="card-picker-item ' + (isSelected ? 'selected' : '') + '" data-card-id="' + this.escapeHtml(card.id) + '" onclick="CardSystem.togglePickerCard(\'' + this.escapeHtml(card.id) + '\')">' +
+          '<div class="card-picker-badge ' + (isSelected ? 'active' : '') + '">' +
+            (isSelected ? '✓ 選択中' : '選択') +
+          '</div>' +
+          '<div class="card-picker-frame">' +
+            cardHtml +
+          '</div>' +
+          '<div class="card-picker-name-label">' + this.escapeHtml(card.name) + '</div>' +
+        '</div>';
+      }).join('');
+
+      this.updateCardPickerCounter();
+    },
+
+    togglePickerCard(cardId) {
+      const set = this._pickerOptions.selectedIds;
+      if (this._pickerOptions.mode === 'single') {
+        set.clear();
+        set.add(cardId);
+      } else {
+        if (set.has(cardId)) set.delete(cardId);
+        else set.add(cardId);
+      }
+      this.renderCardPickerGrid();
+    },
+
+    selectAllPickerCards() {
+      if (this._pickerOptions.mode !== 'multi') return;
+      const searchInput = document.getElementById('cardPickerSearchInput');
+      const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
+      const filterType = this._pickerOptions.filterType;
+      const allCards = typeof App !== 'undefined' && App.getAllCards ? App.getAllCards() : (this.masterCards || []);
+
+      allCards.forEach(c => {
+        if (filterType !== 'all') {
+          const category = (c.category || '').toLowerCase();
+          if (filterType === 'pokemon' && !category.includes('ポケモン')) return;
+          if (filterType === 'trainer' && !category.includes('トレーナー') && !category.includes('サポート') && !category.includes('グッズ')) return;
+          if (filterType === 'energy' && !category.includes('エネルギー')) return;
+        }
+        if (query) {
+          const nameMatch = (c.name || '').toLowerCase().includes(query);
+          const idMatch = (c.id || '').toLowerCase().includes(query);
+          if (!nameMatch && !idMatch) return;
+        }
+        this._pickerOptions.selectedIds.add(c.id);
+      });
+      this.renderCardPickerGrid();
+    },
+
+    clearPickerSelection() {
+      this._pickerOptions.selectedIds.clear();
+      this.renderCardPickerGrid();
+    },
+
+    setPickerFilter(key, val, el) {
+      if (key === 'type') {
+        this._pickerOptions.filterType = val;
+        document.querySelectorAll('.card-picker-tab').forEach(t => t.classList.remove('active'));
+        if (el) el.classList.add('active');
+        this.renderCardPickerGrid();
+      }
+    },
+
+    updateCardPickerCounter() {
+      const count = this._pickerOptions.selectedIds.size;
+      const countEl = document.getElementById('cardPickerCount');
+      const confirmCountEl = document.getElementById('cardPickerConfirmCount');
+      if (countEl) countEl.textContent = count;
+      if (confirmCountEl) confirmCountEl.textContent = count + '枚';
+    },
+
+    confirmCardPicker() {
+      const selectedArr = Array.from(this._pickerOptions.selectedIds);
+      if (typeof this._pickerOptions.onConfirm === 'function') {
+        this._pickerOptions.onConfirm(selectedArr);
+      }
+      this.closeCardPicker();
+    },
+
+    closeCardPicker() {
+      const modal = document.getElementById('cardPickerModal');
+      if (modal) modal.classList.add('hidden');
     }
   };
 
