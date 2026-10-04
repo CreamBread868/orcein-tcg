@@ -1,5 +1,5 @@
 <script>
-
+console.log('[ORBITAL] DeckSystem.js.html started execution');
 window.DeckSystem = function () {
   const CardSystem = new Proxy({}, {
     get(target, prop) {
@@ -886,5 +886,6 @@ window.DeckSystem = function () {
     renderGallery: renderGallery,
     renderEditor: renderEditor
   };
+  console.log('[ORBITAL] DeckSystem.js.html finished execution. window.DeckSystem =', typeof window.DeckSystem);
 }();
 </script>

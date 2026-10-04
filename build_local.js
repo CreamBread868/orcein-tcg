@@ -83,4 +83,11 @@ for (const [key, file] of Object.entries(includes)) {
 fs.writeFileSync(path.join(__dirname, 'index.html'), indexHtml, 'utf8');
 fs.writeFileSync(path.join(__dirname, 'index_local.html'), indexHtml, 'utf8');
 
+const gasDir = path.join(__dirname, 'gas');
+if (fs.existsSync(gasDir)) {
+  fs.writeFileSync(path.join(gasDir, 'index.html'), indexHtml, 'utf8');
+  fs.writeFileSync(path.join(gasDir, 'index_local.html'), indexHtml, 'utf8');
+  console.log('Successfully synced index files to gas/ directory!');
+}
+
 console.log('Successfully generated index.html and index_local.html!');
