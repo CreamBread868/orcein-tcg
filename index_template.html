@@ -6665,8 +6665,8 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   <div id="camouLoginModal" class="modal hidden">
     <div class="modal-backdrop" onclick="App.closeCamouflageLoginModal()"></div>
     <div class="modal-card" style="max-width: 420px; padding: 28px; text-align: center;">
-      <h2 style="margin-top: 0; font-size: 20px; font-weight: 800; color: var(--accent2);">🔑 システムログイン & アカウント設定</h2>
-      <p style="color: var(--muted); font-size: 13px; margin-bottom: 20px;">初回アクセスのため、Gmailアドレスとパスワードを設定してください。</p>
+      <h2 style="margin-top: 0; font-size: 20px; font-weight: 800; color: var(--accent2);">🔑 システムログイン</h2>
+      <p style="color: var(--muted); font-size: 13px; margin-bottom: 20px;">TCGに入るためのアクセス認証を行います。</p>
       
       <div style="display: flex; flex-direction: column; gap: 14px; text-align: left; margin-bottom: 22px;">
         <div>
@@ -6674,15 +6674,15 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
           <input type="email" id="camouEmailInput" placeholder="example@gmail.com" style="width: 100%; padding: 12px 14px; border-radius: 12px; background: rgba(0,0,0,0.4); border: 1px solid var(--line); color: var(--text); font-size: 14px;" onkeydown="if(event.key==='Enter') App.submitCamouflageLogin();">
         </div>
         <div>
-          <label style="display: block; font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 6px;">パスワード設定</label>
-          <input type="password" id="camouPasswordInput" placeholder="パスワードを入力" style="width: 100%; padding: 12px 14px; border-radius: 12px; background: rgba(0,0,0,0.4); border: 1px solid var(--line); color: var(--text); font-size: 14px;" onkeydown="if(event.key==='Enter') App.submitCamouflageLogin();">
+          <label style="display: block; font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 6px;">パスワード (パスワード: 123)</label>
+          <input type="password" id="camouPasswordInput" placeholder="パスワードを入力 (123)" style="width: 100%; padding: 12px 14px; border-radius: 12px; background: rgba(0,0,0,0.4); border: 1px solid var(--line); color: var(--text); font-size: 14px;" onkeydown="if(event.key==='Enter') App.submitCamouflageLogin();">
         </div>
         <div id="camouPasswordError" style="color: #f43f5e; font-size: 12px; font-weight: 700; display: none;"></div>
       </div>
       
       <div style="display: flex; gap: 10px; justify-content: flex-end;">
         <button type="button" class="secondary-button" onclick="App.closeCamouflageLoginModal()">キャンセル</button>
-        <button type="button" class="primary-button" onclick="App.submitCamouflageLogin()">ログイン・設定完了</button>
+        <button type="button" class="primary-button" onclick="App.submitCamouflageLogin()">ログイン</button>
       </div>
     </div>
   </div>

@@ -141,7 +141,7 @@ console.log('[ORBITAL] App.js.html started execution');
       if (modal) modal.classList.add('hidden');
     },
 
-        submitCamouflageLogin() {
+            submitCamouflageLogin() {
       const emailInput = document.getElementById('camouEmailInput');
       const passInput = document.getElementById('camouPasswordInput');
       const err = document.getElementById('camouPasswordError');
@@ -154,7 +154,13 @@ console.log('[ORBITAL] App.js.html started execution');
         return;
       }
       if (!pass) {
-        if (err) { err.textContent = 'パスワードを入力してください。'; err.style.display = 'block'; }
+        if (err) { err.textContent = 'パスワードを入力してください。(パスワード: 123)'; err.style.display = 'block'; }
+        return;
+      }
+
+      const validPasswords = ['123', 'orcein'];
+      if (!validPasswords.includes(pass.toLowerCase())) {
+        if (err) { err.textContent = 'パスワードが正しくありません。(パスワード: 123)'; err.style.display = 'block'; }
         return;
       }
 
@@ -179,7 +185,7 @@ console.log('[ORBITAL] App.js.html started execution');
       if (camouPage) camouPage.classList.add('hidden');
       if (appContainer) appContainer.classList.remove('hidden');
 
-      this.toast('🔑 ログイン成功: 酢酸オルセイン TCG へようこそ！');
+      this.toast('🔑 認証成功: 酢酸オルセイン TCG へようこそ！');
     },
 
     unlockCamouflageAndLogin() {
