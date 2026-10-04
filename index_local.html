@@ -14987,10 +14987,21 @@ var CardSystem;
       onConfirm: null
     },
 
+    escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    },
+
     openCardPicker(options = {}) {
       const opts = Object.assign({
         title: 'カードを選択',
         mode: 'multi',
+        filterOwnedOnly: false,
         selectedIds: [],
         onConfirm: null
       }, options);
@@ -14998,6 +15009,7 @@ var CardSystem;
       this._pickerOptions = {
         title: opts.title,
         mode: opts.mode,
+        filterOwnedOnly: opts.filterOwnedOnly,
         selectedIds: new Set(opts.selectedIds || []),
         filterType: 'all',
         onConfirm: opts.onConfirm
@@ -15013,7 +15025,7 @@ var CardSystem;
       if (multiActions) multiActions.style.display = opts.mode === 'multi' ? 'flex' : 'none';
 
       const modeLabel = document.getElementById('cardPickerModeLabel');
-      if (modeLabel) modeLabel.textContent = opts.mode === 'multi' ? '[複数選択モード]' : '[単一選択モード]';
+      if (modeLabel) modeLabel.textContent = opts.mode === 'multi' ? '[複数選択モード]' : (opts.filterOwnedOnly ? '[所持カード選択モード]' : '[単一選択モード]');
 
       const searchInput = document.getElementById('cardPickerSearchInput');
       if (searchInput) searchInput.value = '';
@@ -15033,10 +15045,14 @@ var CardSystem;
       const searchInput = document.getElementById('cardPickerSearchInput');
       const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
       const filterType = this._pickerOptions.filterType;
+      const filterOwnedOnly = this._pickerOptions.filterOwnedOnly;
 
       const allCards = typeof App !== 'undefined' && App.getAllCards ? App.getAllCards() : (this.masterCards || []);
 
       const filtered = allCards.filter(c => {
+        if (filterOwnedOnly && typeof App !== 'undefined' && App.getUserCardCount) {
+          if (App.getUserCardCount(c.id) <= 0) return false;
+        }
         if (filterType !== 'all') {
           const category = (c.category || '').toLowerCase();
           if (filterType === 'pokemon' && !category.includes('ポケモン')) return false;
@@ -23996,6 +24012,311 @@ console.log('[ORBITAL] App.js.html started execution');
 
       this.toast('🗑️ 商品を削除しました');
       this.renderSingleShopGrid();
+    },
+
+    /* ============================================================
+       ユーザートレードマーケット (Player Trade Marketplace) Logic
+       ============================================================ */
+    _currentMarketMode: 'official',
+    _tempTradeListingCardId: null,
+
+    switchShopMarketMode(mode, el) {
+      this._currentMarketMode = mode;
+      document.querySelectorAll('#shopModeTabOfficial, #shopModeTabTrade').forEach(t => t.classList.remove('active'));
+      if (el) el.classList.add('active');
+
+      const officialGrid = this.el('singleShopGrid');
+      const tradeGrid = this.el('playerTradeGrid');
+
+      if (mode === 'official') {
+        if (officialGrid) officialGrid.classList.remove('hidden');
+        if (tradeGrid) tradeGrid.classList.add('hidden');
+        this.renderSingleShopGrid();
+      } else {
+        if (officialGrid) officialGrid.classList.add('hidden');
+        if (tradeGrid) tradeGrid.classList.remove('hidden');
+        this.renderPlayerTradeGrid();
+      }
+    },
+
+    getDefaultPlayerTradeItems() {
+      return [
+        {
+          id: 'trade_sample_1',
+          sellerName: 'トレーナータクミ',
+          sellerEmail: 'takumi@example.com',
+          cardId: 'pk_pika_ex',
+          price: 450,
+          comment: '【人気カード】かみなりの力！即購入OK！',
+          listedAt: new Date().toLocaleDateString()
+        },
+        {
+          id: 'trade_sample_2',
+          sellerName: 'ライバルAI',
+          sellerEmail: 'rival@example.com',
+          cardId: 'tr_boss_orders',
+          price: 350,
+          comment: 'ボスの指令余っているので出品します',
+          listedAt: new Date().toLocaleDateString()
+        },
+        {
+          id: 'trade_sample_3',
+          sellerName: 'サトシ',
+          sellerEmail: 'satoshi@example.com',
+          cardId: 'pk_charizard_ex',
+          price: 950,
+          comment: 'リザードンEX！大切に使ってくれる方に！',
+          listedAt: new Date().toLocaleDateString()
+        }
+      ];
+    },
+
+    getPlayerTradeItems() {
+      if (Array.isArray(this.state.playerTradeItems)) {
+        return this.state.playerTradeItems;
+      }
+      try {
+        const stored = localStorage.getItem('ORBITAL_PLAYER_TRADE_ITEMS');
+        if (stored !== null) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            this.state.playerTradeItems = parsed;
+            this.updateTradeCountBadge(parsed.length);
+            return parsed;
+          }
+        }
+      } catch(e) {}
+      const defaults = this.getDefaultPlayerTradeItems();
+      this.state.playerTradeItems = defaults;
+      try { localStorage.setItem('ORBITAL_PLAYER_TRADE_ITEMS', JSON.stringify(defaults)); } catch(e) {}
+      this.updateTradeCountBadge(defaults.length);
+      return defaults;
+    },
+
+    updateTradeCountBadge(count) {
+      const badge = this.el('userTradeCountBadge');
+      if (badge) badge.textContent = count;
+    },
+
+    renderPlayerTradeGrid() {
+      const container = this.el('playerTradeGrid');
+      if (!container) return;
+
+      const tradeItems = this.getPlayerTradeItems();
+      const allCards = this.getAllCards();
+      const searchInput = this.el('singleShopSearchInput');
+      const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
+      const catFilter = this._shopCatFilter || 'all';
+
+      const nmtVal = this.getUserNmt();
+      const currentUserEmail = (this.state.userProfile && this.state.userProfile.email) ? this.state.userProfile.email : 'guest';
+
+      const filtered = tradeItems.filter(item => {
+        const card = allCards.find(c => c.id === item.cardId) || { id: item.cardId, name: item.cardId, category: 'ポケモン' };
+        if (catFilter !== 'all') {
+          const cat = (card.category || '').toLowerCase();
+          if (catFilter === 'pokemon' && !cat.includes('ポケモン')) return false;
+          if (catFilter === 'trainer' && !cat.includes('トレーナー') && !cat.includes('サポート') && !cat.includes('グッズ')) return false;
+          if (catFilter === 'energy' && !cat.includes('エネルギー')) return false;
+        }
+        if (query) {
+          const nameMatch = (card.name || '').toLowerCase().includes(query);
+          const sellerMatch = (item.sellerName || '').toLowerCase().includes(query);
+          return nameMatch || sellerMatch;
+        }
+        return true;
+      });
+
+      this.updateTradeCountBadge(tradeItems.length);
+
+      if (filtered.length === 0) {
+        container.innerHTML = '<div style="text-align:center; padding:60px; color:var(--muted); grid-column:1/-1;">出品されているトレードカードはありません</div>';
+        return;
+      }
+
+      container.innerHTML = filtered.map(item => {
+        const card = allCards.find(c => c.id === item.cardId) || { id: item.cardId, name: item.cardId, category: 'ポケモン', rarity: '★' };
+        const cardHtml = window.CardSystem && CardSystem.createCardHtml ? CardSystem.createCardHtml(card, { size: 'normal' }) : ('<div>' + this.escapeHtml(card.name) + '</div>');
+
+        const isOwner = (item.sellerEmail === currentUserEmail) || (item.sellerName === (this.state.userProfile ? this.state.userProfile.displayName : ''));
+        const canAfford = nmtVal >= item.price;
+        const commentHtml = item.comment ? ('<div style="font-size:11px; color:#cbd5e1; margin:4px 0; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:6px; width:100%; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + this.escapeHtml(item.comment) + '</div>') : '';
+
+        const actionBtn = isOwner ? (
+          '<button type="button" class="secondary-button compact-btn danger-btn" style="width:100%; font-weight:800;" onclick="App.cancelTradeListing(\'' + this.escapeHtml(item.id) + '\')">↩ 出品取り消し (返却)</button>'
+        ) : (
+          '<button type="button" class="single-shop-buy-btn" style="background:linear-gradient(135deg, #38bdf8, #818cf8);"' + (canAfford ? '' : ' disabled style="opacity:0.5; cursor:not-allowed;"') + ' onclick="App.buyTradeItem(\'' + this.escapeHtml(item.id) + '\')">' +
+            (canAfford ? '🛒 NMTで買い取り' : 'NMT不足 (' + item.price + ' NMT)') +
+          '</button>'
+        );
+
+        return '<div class="single-shop-card-item" style="border-color: rgba(56,189,248,0.35);">' +
+          '<div class="single-shop-tag" style="background:linear-gradient(135deg, #38bdf8, #818cf8); color:#000;">👤 ' + this.escapeHtml(item.sellerName || '出品者') + '</div>' +
+          '<div style="width:100%; display:flex; justify-content:center; margin-top:8px;">' +
+            cardHtml +
+          '</div>' +
+          commentHtml +
+          '<div class="single-shop-price-badge" style="color:#38bdf8;">' +
+            '<span>✨</span><span>' + item.price + ' NMT</span>' +
+          '</div>' +
+          actionBtn +
+        '</div>';
+      }).join('');
+    },
+
+    openTradeListingModal() {
+      const modal = this.el('tradeListingModal');
+      if (!modal) return;
+
+      const userName = (this.state.userProfile && this.state.userProfile.displayName) ? this.state.userProfile.displayName : 'プレイヤー';
+      const nameInput = this.el('tradeListingSellerName');
+      if (nameInput) nameInput.value = userName;
+
+      this.el('tradeListingCardId').value = '';
+      this.el('tradeListingPrice').value = '300';
+      this.el('tradeListingComment').value = '';
+      this._tempTradeListingCardId = null;
+      this.renderTradeItemCardPreview(null);
+
+      modal.classList.remove('hidden');
+    },
+
+    closeTradeListingModal() {
+      const modal = this.el('tradeListingModal');
+      if (modal) modal.classList.add('hidden');
+    },
+
+    openCardPickerForTradeListing() {
+      const currentSelected = this._tempTradeListingCardId ? [this._tempTradeListingCardId] : [];
+      if (window.CardSystem && CardSystem.openCardPicker) {
+        CardSystem.openCardPicker({
+          title: '🔄 出品する所持カードを選択',
+          mode: 'single',
+          filterOwnedOnly: true,
+          selectedIds: currentSelected,
+          onConfirm: (selectedIds) => {
+            if (selectedIds.length > 0) {
+              App._tempTradeListingCardId = selectedIds[0];
+              App.el('tradeListingCardId').value = selectedIds[0];
+              App.renderTradeItemCardPreview(selectedIds[0]);
+            }
+          }
+        });
+      }
+    },
+
+    renderTradeItemCardPreview(cardId) {
+      const container = this.el('tradeItemCardPreview');
+      if (!container) return;
+      if (!cardId) {
+        container.innerHTML = '<div class="muted">専用UIで所持カードを選択してください</div>';
+        return;
+      }
+      const allCards = this.getAllCards();
+      const card = allCards.find(c => c.id === cardId) || { id: cardId, name: cardId, category: 'ポケモン' };
+      const count = this.getUserCardCount(cardId);
+      const cardHtml = window.CardSystem && CardSystem.createCardHtml ? CardSystem.createCardHtml(card, { size: 'sm' }) : ('<div>' + this.escapeHtml(card.name) + '</div>');
+      container.innerHTML = '<div>' + cardHtml + '<div style="margin-top:6px; font-size:12px; font-weight:800; color:var(--accent2);">所持枚数: ' + count + '枚</div></div>';
+    },
+
+    handleSaveTradeListing(e) {
+      if (e && e.preventDefault) e.preventDefault();
+      const cardId = this.el('tradeListingCardId').value || this._tempTradeListingCardId;
+      const price = Number(this.el('tradeListingPrice').value) || 300;
+      const comment = this.el('tradeListingComment').value.trim();
+
+      if (!cardId) {
+        this.toast('出品する所持カードを選択してください', true);
+        return;
+      }
+
+      if (this.getUserCardCount(cardId) <= 0) {
+        this.toast('このカードを所持していないため出品できません', true);
+        return;
+      }
+
+      // Remove 1 copy from seller's collection for listing
+      let col = this.state.userCollection || {};
+      col[cardId] = Math.max(0, (col[cardId] || 1) - 1);
+      this.state.userCollection = col;
+      try { localStorage.setItem('ORBITAL_USER_COLLECTION', JSON.stringify(col)); } catch(err) {}
+
+      const sellerName = (this.state.userProfile && this.state.userProfile.displayName) ? this.state.userProfile.displayName : 'プレイヤー';
+      const sellerEmail = (this.state.userProfile && this.state.userProfile.email) ? this.state.userProfile.email : 'guest';
+
+      const newListing = {
+        id: 'trade_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+        sellerName,
+        sellerEmail,
+        cardId,
+        price,
+        comment,
+        listedAt: new Date().toLocaleDateString()
+      };
+
+      let items = this.getPlayerTradeItems();
+      items.unshift(newListing);
+      this.state.playerTradeItems = items;
+      try { localStorage.setItem('ORBITAL_PLAYER_TRADE_ITEMS', JSON.stringify(items)); } catch(err) {}
+
+      this.toast('🚀 カードをトレードマーケットに出品しました！');
+      this.closeTradeListingModal();
+      this.switchShopMarketMode('trade', document.getElementById('shopModeTabTrade'));
+    },
+
+    buyTradeItem(tradeId) {
+      const tradeItems = this.getPlayerTradeItems();
+      const item = tradeItems.find(i => i.id === tradeId);
+      if (!item) return;
+
+      const nmtVal = this.getUserNmt();
+      if (nmtVal < item.price) {
+        this.toast('NMTが足りません！ (必要: ' + item.price + ' NMT)', true);
+        return;
+      }
+
+      const allCards = this.getAllCards();
+      const card = allCards.find(c => c.id === item.cardId) || { id: item.cardId, name: item.cardId };
+
+      if (!confirm('「' + item.sellerName + '」から「' + card.name + '」を ' + item.price + ' NMT で購入・トレードしますか？')) return;
+
+      // Deduct NMT from buyer
+      this.setUserNmt(nmtVal - item.price);
+
+      // Add card to buyer's collection
+      this.addCardToCollection(item.cardId);
+
+      // Remove item from trade market
+      const updated = tradeItems.filter(i => i.id !== tradeId);
+      this.state.playerTradeItems = updated;
+      try { localStorage.setItem('ORBITAL_PLAYER_TRADE_ITEMS', JSON.stringify(updated)); } catch(err) {}
+
+      this.toast('✨ 「' + card.name + '」を ' + item.price + ' NMT で買い取りました！');
+      this.renderPlayerTradeGrid();
+    },
+
+    cancelTradeListing(tradeId) {
+      const tradeItems = this.getPlayerTradeItems();
+      const item = tradeItems.find(i => i.id === tradeId);
+      if (!item) return;
+
+      if (!confirm('このカードの出品を取り消して、手持ちコレクションに戻しますか？')) return;
+
+      // Refund 1 copy back to collection
+      this.addCardToCollection(item.cardId);
+
+      // Remove item from market
+      const updated = tradeItems.filter(i => i.id !== tradeId);
+      this.state.playerTradeItems = updated;
+      try { localStorage.setItem('ORBITAL_PLAYER_TRADE_ITEMS', JSON.stringify(updated)); } catch(err) {}
+
+      this.toast('↩ 出品を取り消し、カードをコレクションに戻しました');
+      this.renderPlayerTradeGrid();
+    },
+
+    getUserCardCount(cardId) {
+      const col = this.state.userCollection || {};
+      return Number(col[cardId]) || 0;
     },
 
     escapeHtml(str) {

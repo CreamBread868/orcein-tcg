@@ -1315,10 +1315,21 @@ var CardSystem;
       onConfirm: null
     },
 
+    escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    },
+
     openCardPicker(options = {}) {
       const opts = Object.assign({
         title: 'カードを選択',
         mode: 'multi',
+        filterOwnedOnly: false,
         selectedIds: [],
         onConfirm: null
       }, options);
@@ -1326,6 +1337,7 @@ var CardSystem;
       this._pickerOptions = {
         title: opts.title,
         mode: opts.mode,
+        filterOwnedOnly: opts.filterOwnedOnly,
         selectedIds: new Set(opts.selectedIds || []),
         filterType: 'all',
         onConfirm: opts.onConfirm
@@ -1341,7 +1353,7 @@ var CardSystem;
       if (multiActions) multiActions.style.display = opts.mode === 'multi' ? 'flex' : 'none';
 
       const modeLabel = document.getElementById('cardPickerModeLabel');
-      if (modeLabel) modeLabel.textContent = opts.mode === 'multi' ? '[複数選択モード]' : '[単一選択モード]';
+      if (modeLabel) modeLabel.textContent = opts.mode === 'multi' ? '[複数選択モード]' : (opts.filterOwnedOnly ? '[所持カード選択モード]' : '[単一選択モード]');
 
       const searchInput = document.getElementById('cardPickerSearchInput');
       if (searchInput) searchInput.value = '';
@@ -1361,10 +1373,14 @@ var CardSystem;
       const searchInput = document.getElementById('cardPickerSearchInput');
       const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
       const filterType = this._pickerOptions.filterType;
+      const filterOwnedOnly = this._pickerOptions.filterOwnedOnly;
 
       const allCards = typeof App !== 'undefined' && App.getAllCards ? App.getAllCards() : (this.masterCards || []);
 
       const filtered = allCards.filter(c => {
+        if (filterOwnedOnly && typeof App !== 'undefined' && App.getUserCardCount) {
+          if (App.getUserCardCount(c.id) <= 0) return false;
+        }
         if (filterType !== 'all') {
           const category = (c.category || '').toLowerCase();
           if (filterType === 'pokemon' && !category.includes('ポケモン')) return false;
