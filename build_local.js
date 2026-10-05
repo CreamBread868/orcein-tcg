@@ -66,7 +66,7 @@ for (const [key, file] of Object.entries(includes)) {
         indexHtml = indexHtml.replace(regex, () => content);
       }
     } else if (file === 'ActionEngine.js.html') {
-      const regex = /<script>(?:(?!<\/script>)[\s\S])*?console\.log\('\[ORBITAL\] ActionEngine\.js\.html started execution'\);[\s\S]*?console\.log\('\[ORBITAL\] ActionEngine\.js\.html finished execution[\s\S]*?<\/script>/;
+      const regex = /<script>(?:(?!<\/script>)[\s\S])*?ActionEngine\.js\.html started execution[\s\S]*?<\/script>/;
       if (regex.test(indexHtml)) {
         console.log('Replacing inlined ActionEngine.js.html block');
         indexHtml = indexHtml.replace(regex, () => content);

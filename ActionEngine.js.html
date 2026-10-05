@@ -1822,9 +1822,17 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         });
 
         let chosen = [];
-        const humanPlayer = window.BattleSystem?.state?.player;
-        const turnPlayer = window.BattleSystem?.state?.turnPlayer;
-        const isHuman = (turnPlayer === 'player' || ctx?.self === humanPlayer || (ctx?.self && ctx?.self?.id === 'player')) && window.BattleSystem && typeof window.BattleSystem.showChoiceModalPromise === 'function';
+        let isCpu = false;
+        if (ctx?.self) {
+          if (ctx.self.isCpu || ctx.self === window.BattleSystem?.state?.opponent || ctx.self.id === 'opponent' || ctx.self.id === 'cpu') {
+            isCpu = true;
+          }
+        } else if (window.BattleSystem?.state) {
+          if (window.BattleSystem.state.turnPlayer === 'opponent') {
+            isCpu = true;
+          }
+        }
+        const isHuman = !isCpu && window.BattleSystem && typeof window.BattleSystem.showChoiceModalPromise === 'function';
 
         if (matched.length === 0) {
           chosen = [];
