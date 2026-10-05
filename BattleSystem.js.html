@@ -1518,7 +1518,11 @@
       this.state.online.lastSeq = Number(startSeq) || 1;
       this.state.logs = [];
 
-      this.state.firstPlayer = (firstPlayerRole === this.state.online.role) ? 'player' : 'opponent';
+      const myRole = String(this.state.online.role || 'host').toLowerCase();
+      const firstRole = String(firstPlayerRole || 'host').toLowerCase();
+      const isMyTurn = (firstRole === myRole);
+
+      this.state.firstPlayer = isMyTurn ? 'player' : 'opponent';
       this.state.turnPlayer = this.state.firstPlayer;
 
       this.state.player = {
@@ -1578,6 +1582,10 @@
       this.playMatchIntro(this.state.player.name, this.state.opponent.name);
       this.startOnlineBattlePolling();
       this.startTurn(this.state.turnPlayer);
+
+      if (this.state.mode === 'online') {
+        this.broadcastOnlineAction('init_board', {});
+      }
     },
 
     pollRoomImmediate() {
@@ -1993,6 +2001,11 @@
           }, 500);
           break;
         }
+        case 'init_board': {
+          this.log('🟢 相手の初期盤面を同期しました。');
+          this.render();
+          break;
+        }
         case 'end_turn': {
           this.log('相手がターンを終了しました。あなたの番です！');
           const secondPlayer = this.state.firstPlayer === 'player' ? 'opponent' : 'player';
@@ -2081,9 +2094,17 @@
 
     isBasic(c) {
       if (!c) return false;
-      const cat = String(c.category || '');
+      let cat = String(c.category || '');
+      if (!cat && window.CardSystem) {
+        const master = (c.id && window.CardSystem.findCardById ? window.CardSystem.findCardById(c.id) : null) ||
+                       (c.name && window.CardSystem.findCardByName ? window.CardSystem.findCardByName(c.name) : null);
+        if (master && master.category) cat = String(master.category);
+      }
       if (cat.includes('たね') || cat.toLowerCase().includes('basic')) return true;
       if (cat.includes('ポケモン') && !cat.includes('進化')) return true;
+      if ((Number(c.hp) > 0 || c.type) && !this.isEvolution(c) && !this.isTrainer(c) && !this.isEnergy(c)) {
+        return true;
+      }
       return false;
     },
 
@@ -2405,20 +2426,32 @@
 
     createRuntimeCard(card) {
       if (!card) card = {};
-      const hp = Number(card.hp) || (this.isBasic(card) || this.isEvolution(card) ? 70 : 0);
-      let img = card.image ? String(card.image).trim() : '';
+      let master = null;
+      if (window.CardSystem) {
+        if (card.id && typeof window.CardSystem.findCardById === 'function') {
+          master = window.CardSystem.findCardById(card.id);
+        }
+        if (!master && card.name && typeof window.CardSystem.findCardByName === 'function') {
+          master = window.CardSystem.findCardByName(card.name);
+        }
+      }
+      const base = master ? { ...master, ...card } : { ...card };
+      if (!base.category && master && master.category) base.category = master.category;
+
+      const hp = Number(base.hp) || (this.isBasic(base) || this.isEvolution(base) ? 70 : 0);
+      let img = base.image ? String(base.image).trim() : '';
       if (!img && window.CardSystem && typeof window.CardSystem.findCardImage === 'function') {
-        img = window.CardSystem.findCardImage(card.name, card.id);
+        img = window.CardSystem.findCardImage(base.name, base.id);
       }
       return {
-        ...card,
-        image: img || card.image || '',
-        instanceId: 'inst_' + Math.random().toString(36).substring(2, 9),
+        ...base,
+        image: img || base.image || '',
+        instanceId: base.instanceId || ('inst_' + Math.random().toString(36).substring(2, 9)),
         maxHp: hp,
         hp: hp,
-        energy: Number(card.energy) || 0,
-        attachedEnergies: Array.isArray(card.attachedEnergies) ? [...card.attachedEnergies] : [],
-        attachedCards: Array.isArray(card.attachedCards) ? [...card.attachedCards] : [],
+        energy: Number(base.energy) || 0,
+        attachedEnergies: Array.isArray(base.attachedEnergies) ? [...base.attachedEnergies] : [],
+        attachedCards: Array.isArray(base.attachedCards) ? [...base.attachedCards] : [],
         getCards(filter) {
           const cards = this.attachedCards || [];
           if (!filter) return [...cards];
@@ -2427,8 +2460,8 @@
           }
           return [...cards];
         },
-        status: card.status || null,
-        damageReduction: Number(card.damageReduction) || 0
+        status: base.status || null,
+        damageReduction: Number(base.damageReduction) || 0
       };
     },
 
@@ -2831,6 +2864,10 @@
 
     endTurn() {
       if (this.state.phase === 'ended') return;
+      if (this.state.mode === 'online' && this.state.turnPlayer !== 'player') {
+        console.warn('⚠️ [endTurn] スキップされました: 自分のターンではありません。');
+        return;
+      }
       const curEnding = this.state.turnPlayer === 'player' ? this.state.player : this.state.opponent;
       if (curEnding) {
         curEnding.allyKnockedOutThisTurn = false;

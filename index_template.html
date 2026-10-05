@@ -8462,6 +8462,57 @@
           }, 50);
         };
 
+        MockRunner.prototype.pingPresence = function (userEmail) {
+          var self = this;
+          setTimeout(function () {
+            self._success({ ok: true, onlineCount: Math.floor(Math.random() * 3) + 2 });
+          }, 20);
+        };
+
+        MockRunner.prototype.getOnlinePlayerCount = function () {
+          var self = this;
+          setTimeout(function () {
+            self._success({ ok: true, onlineCount: Math.floor(Math.random() * 3) + 2 });
+          }, 20);
+        };
+
+        MockRunner.prototype.submitFeedback = function (feedbackData) {
+          var self = this;
+          setTimeout(function () {
+            try {
+              if (!feedbackData || !feedbackData.message) throw new Error('メッセージ内容を入力してください。');
+              var raw = localStorage.getItem('orbital_mock_feedback_list') || '[]';
+              var list = JSON.parse(raw);
+              var fb = {
+                id: 'fb_mock_' + Date.now(),
+                email: String(feedbackData.email || 'anonymous@gmail.com').trim(),
+                category: String(feedbackData.category || 'その他').trim(),
+                message: String(feedbackData.message).trim(),
+                createdAt: new Date().toISOString(),
+                status: 'new'
+              };
+              list.unshift(fb);
+              localStorage.setItem('orbital_mock_feedback_list', JSON.stringify(list));
+              self._success({ ok: true, message: 'ご意見を受け付けました！ご協力ありがとうございます。', id: fb.id });
+            } catch (e) {
+              self._failure(e);
+            }
+          }, 40);
+        };
+
+        MockRunner.prototype.getFeedbackList = function (adminToken) {
+          var self = this;
+          setTimeout(function () {
+            try {
+              var raw = localStorage.getItem('orbital_mock_feedback_list') || '[]';
+              var list = JSON.parse(raw);
+              self._success({ ok: true, feedbackList: list });
+            } catch (e) {
+              self._success({ ok: true, feedbackList: [] });
+            }
+          }, 30);
+        };
+
         MockRunner.prototype.publishAppUpdate = function (updateData, adminToken) {
           var self = this;
           setTimeout(function () {
@@ -8703,6 +8754,13 @@
           title="GitHubリポジトリからカード・デッキデータを読み込む" onclick="App.promptGitHubSync()">🐙 GitHub同期</button>
         <button id="fontSizeToggleBtn" class="secondary-button small-button" type="button"
           title="文字サイズ変更 (標準 / 大 / 特大)">Aa 文字サイズ: 標準</button>
+        <div class="online-presence-badge" id="onlinePresenceBadge" title="現在オンライン中のプレイヤー数">
+          <span class="presence-pulse-dot"></span>
+          <span class="presence-label">オンライン:</span>
+          <strong id="onlinePlayerCount">1</strong>人
+        </div>
+        <button id="feedbackOpenBtn" class="secondary-button small-button" type="button"
+          title="ご意見・バグ報告・要望を送る" onclick="App.openFeedbackModal()">📮 ご意見箱</button>
         <div class="user-account-badge" id="topbarUserAccount" title="クリックしてアカウント切替・プロフ編集"
           onclick="App.openAccountProfileModal()">
           <span id="userAvatarBadge" class="account-icon">👤</span>
@@ -8714,6 +8772,9 @@
           <button id="publishUpdateBtn" class="secondary-button small-button hidden" type="button"
             style="border-color:var(--accent); color:var(--accent2); font-weight:900;"
             onclick="App.openUpdatePublishModal()">🚀 アプデ配信</button>
+          <button id="adminFeedbackNavBtn" class="secondary-button small-button admin-only-ui hidden" type="button"
+            style="border-color: #38bdf8; color: #38bdf8; font-weight: 700;"
+            onclick="App.openAdminFeedbackModal()">📋 ご意見一覧</button>
           <button id="adminLoginButton" class="secondary-button small-button" type="button">管理者ログイン</button>
         </div>
       </div>
@@ -8728,6 +8789,7 @@
         <button class="nav-button" data-page="battle">⚔ <span>バトル</span></button>
         <button class="nav-button" data-page="pack">🎁 <span>パック開封</span></button>
         <button class="nav-button" data-page="single-shop">🛍️ <span>ショップ</span></button>
+        <button class="nav-button" type="button" onclick="App.openFeedbackModal()">📮 <span>ご意見箱</span></button>
         <button class="nav-button admin-only-ui hidden" data-page="cards">▣ <span>カード管理</span></button>
         <button class="nav-button admin-only-ui hidden" data-page="create">＋ <span>カード作成</span></button>
         <button class="nav-button admin-only-ui hidden" id="adminPackNavBtn" data-page="admin-pack"
@@ -10021,6 +10083,66 @@
               </div>
             </div>
           </div>
+
+        <!-- ご意見箱 (Feedback Box) モーダル -->
+    <div id="feedbackModal" class="modal hidden" style="z-index: 999999;">
+      <div class="modal-backdrop" onclick="App.closeFeedbackModal()"></div>
+      <div class="modal-card" style="max-width: 520px; padding: 28px;">
+        <button class="modal-close" type="button" onclick="App.closeFeedbackModal()">×</button>
+        <div class="eyebrow" style="color: var(--accent2);">FEEDBACK & SUGGESTIONS</div>
+        <h2 style="margin-top: 4px; font-size: 22px; font-weight: 800;">📮 ご意見箱・要望バコ</h2>
+        <p class="muted" style="font-size: 13px; margin-bottom: 18px;">
+          新機能のご要望・不具合報告・カードバランスのご意見等、プレイヤーの皆様の声をお待ちしております！
+        </p>
+
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 8px;">カテゴリを選択</label>
+          <div class="feedback-category-grid" id="feedbackCatGrid">
+            <button type="button" class="feedback-cat-btn active" data-cat="💡 機能要望" onclick="App.selectFeedbackCategory('💡 機能要望')">💡 機能要望</button>
+            <button type="button" class="feedback-cat-btn" data-cat="🐛 不具合報告" onclick="App.selectFeedbackCategory('🐛 不具合報告')">🐛 不具合報告</button>
+            <button type="button" class="feedback-cat-btn" data-cat="🎨 UI・デザイン" onclick="App.selectFeedbackCategory('🎨 UI・デザイン')">🎨 UI・デザイン</button>
+            <button type="button" class="feedback-cat-btn" data-cat="⚔️ バランス調整" onclick="App.selectFeedbackCategory('⚔️ バランス調整')">⚔️ バランス調整</button>
+            <button type="button" class="feedback-cat-btn" data-cat="💭 その他ご意見" onclick="App.selectFeedbackCategory('💭 その他ご意見')">💭 その他ご意見</button>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 6px;">ご送信者Email (任意)</label>
+          <input type="email" id="feedbackEmailInput" class="input" placeholder="player@gmail.com" style="width: 100%; font-size: 13px;">
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <label style="display: block; font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 6px;">ご意見・メッセージ内容 <span style="color:#f43f5e;">*</span></label>
+          <textarea id="feedbackMessageInput" class="input" rows="4" placeholder="ご意見・不具合の詳細・追加してほしい機能などをご自由にご記入ください..." style="width: 100%; line-height: 1.5; resize: vertical; font-size: 14px;"></textarea>
+        </div>
+
+        <div style="display: flex; gap: 12px; justify-content: flex-end;">
+          <button type="button" class="secondary-button" type="button" onclick="App.closeFeedbackModal()">キャンセル</button>
+          <button type="button" class="primary-button" id="submitFeedbackBtn" onclick="App.submitFeedback()">📮 送信する</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 管理者用 ご意見一覧閲覧モーダル -->
+    <div id="adminFeedbackModal" class="modal hidden" style="z-index: 999999;">
+      <div class="modal-backdrop" onclick="App.closeAdminFeedbackModal()"></div>
+      <div class="modal-card" style="max-width: 780px; padding: 28px; width: 92%;">
+        <button class="modal-close" type="button" onclick="App.closeAdminFeedbackModal()">×</button>
+        <div class="eyebrow">ADMINISTRATOR</div>
+        <h2 style="margin-top: 4px; font-size: 22px; font-weight: 800;">📋 寄せられたご意見一覧</h2>
+        <p class="muted" style="font-size: 13px; margin-bottom: 18px;">
+          プレイヤーから送信された意見・要望・不具合報告の一覧です。（スプレッドシート Feedback シートと自動同期）
+        </p>
+
+        <div id="adminFeedbackListGrid" class="feedback-list-container">
+          <div style="text-align: center; color: var(--muted); padding: 30px;">読み込み中...</div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
+          <button type="button" class="secondary-button" type="button" onclick="App.closeAdminFeedbackModal()">閉じる</button>
+        </div>
+      </div>
+    </div>
 
     <div id="adminLoginModal" class="modal hidden">
       <div class="modal-backdrop"></div>

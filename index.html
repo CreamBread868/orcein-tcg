@@ -6290,6 +6290,120 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   padding: 24px 28px;
   margin-top: 40px;
 }
+
+/* ============================================================
+   オンライン接続バッジ & ご意見箱 (Feedback Box) スタイル
+   ============================================================ */
+.online-presence-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #34d399;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.15);
+  transition: all 0.25s ease;
+}
+
+.online-presence-badge:hover {
+  background: rgba(16, 185, 129, 0.22);
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.3);
+}
+
+.presence-pulse-dot {
+  width: 8px;
+  height: 8px;
+  background: #10b981;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #10b981;
+  animation: presencePulse 1.8s infinite ease-in-out;
+}
+
+@keyframes presencePulse {
+  0% { transform: scale(0.95); opacity: 0.8; box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+  70% { transform: scale(1.1); opacity: 1; box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+  100% { transform: scale(0.95); opacity: 0.8; box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+.feedback-category-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.feedback-cat-btn {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1.5px solid rgba(129, 140, 248, 0.25);
+  border-radius: 12px;
+  padding: 10px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.feedback-cat-btn:hover {
+  border-color: #6366f1;
+  color: #ffffff;
+  background: rgba(30, 41, 59, 0.9);
+}
+
+.feedback-cat-btn.active {
+  border-color: #38bdf8 !important;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(99, 102, 241, 0.25)) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 15px rgba(56, 189, 248, 0.3);
+}
+
+.feedback-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 50vh;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.feedback-item-card {
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.feedback-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.feedback-item-category {
+  background: rgba(99, 102, 241, 0.2);
+  color: #a5b4fc;
+  border: 1px solid rgba(129, 140, 248, 0.3);
+  border-radius: 12px;
+  padding: 2px 10px;
+  font-weight: 700;
+}
+
+.feedback-item-body {
+  font-size: 13.5px;
+  color: #f8fafc;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
 </style>
 
   <script>
@@ -6948,6 +7062,57 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
           }, 50);
         };
 
+        MockRunner.prototype.pingPresence = function (userEmail) {
+          var self = this;
+          setTimeout(function () {
+            self._success({ ok: true, onlineCount: Math.floor(Math.random() * 3) + 2 });
+          }, 20);
+        };
+
+        MockRunner.prototype.getOnlinePlayerCount = function () {
+          var self = this;
+          setTimeout(function () {
+            self._success({ ok: true, onlineCount: Math.floor(Math.random() * 3) + 2 });
+          }, 20);
+        };
+
+        MockRunner.prototype.submitFeedback = function (feedbackData) {
+          var self = this;
+          setTimeout(function () {
+            try {
+              if (!feedbackData || !feedbackData.message) throw new Error('メッセージ内容を入力してください。');
+              var raw = localStorage.getItem('orbital_mock_feedback_list') || '[]';
+              var list = JSON.parse(raw);
+              var fb = {
+                id: 'fb_mock_' + Date.now(),
+                email: String(feedbackData.email || 'anonymous@gmail.com').trim(),
+                category: String(feedbackData.category || 'その他').trim(),
+                message: String(feedbackData.message).trim(),
+                createdAt: new Date().toISOString(),
+                status: 'new'
+              };
+              list.unshift(fb);
+              localStorage.setItem('orbital_mock_feedback_list', JSON.stringify(list));
+              self._success({ ok: true, message: 'ご意見を受け付けました！ご協力ありがとうございます。', id: fb.id });
+            } catch (e) {
+              self._failure(e);
+            }
+          }, 40);
+        };
+
+        MockRunner.prototype.getFeedbackList = function (adminToken) {
+          var self = this;
+          setTimeout(function () {
+            try {
+              var raw = localStorage.getItem('orbital_mock_feedback_list') || '[]';
+              var list = JSON.parse(raw);
+              self._success({ ok: true, feedbackList: list });
+            } catch (e) {
+              self._success({ ok: true, feedbackList: [] });
+            }
+          }, 30);
+        };
+
         MockRunner.prototype.publishAppUpdate = function (updateData, adminToken) {
           var self = this;
           setTimeout(function () {
@@ -7189,6 +7354,13 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
           title="GitHubリポジトリからカード・デッキデータを読み込む" onclick="App.promptGitHubSync()">🐙 GitHub同期</button>
         <button id="fontSizeToggleBtn" class="secondary-button small-button" type="button"
           title="文字サイズ変更 (標準 / 大 / 特大)">Aa 文字サイズ: 標準</button>
+        <div class="online-presence-badge" id="onlinePresenceBadge" title="現在オンライン中のプレイヤー数">
+          <span class="presence-pulse-dot"></span>
+          <span class="presence-label">オンライン:</span>
+          <strong id="onlinePlayerCount">1</strong>人
+        </div>
+        <button id="feedbackOpenBtn" class="secondary-button small-button" type="button"
+          title="ご意見・バグ報告・要望を送る" onclick="App.openFeedbackModal()">📮 ご意見箱</button>
         <div class="user-account-badge" id="topbarUserAccount" title="クリックしてアカウント切替・プロフ編集"
           onclick="App.openAccountProfileModal()">
           <span id="userAvatarBadge" class="account-icon">👤</span>
@@ -7200,6 +7372,9 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
           <button id="publishUpdateBtn" class="secondary-button small-button hidden" type="button"
             style="border-color:var(--accent); color:var(--accent2); font-weight:900;"
             onclick="App.openUpdatePublishModal()">🚀 アプデ配信</button>
+          <button id="adminFeedbackNavBtn" class="secondary-button small-button admin-only-ui hidden" type="button"
+            style="border-color: #38bdf8; color: #38bdf8; font-weight: 700;"
+            onclick="App.openAdminFeedbackModal()">📋 ご意見一覧</button>
           <button id="adminLoginButton" class="secondary-button small-button" type="button">管理者ログイン</button>
         </div>
       </div>
@@ -7214,6 +7389,7 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
         <button class="nav-button" data-page="battle">⚔ <span>バトル</span></button>
         <button class="nav-button" data-page="pack">🎁 <span>パック開封</span></button>
         <button class="nav-button" data-page="single-shop">🛍️ <span>ショップ</span></button>
+        <button class="nav-button" type="button" onclick="App.openFeedbackModal()">📮 <span>ご意見箱</span></button>
         <button class="nav-button admin-only-ui hidden" data-page="cards">▣ <span>カード管理</span></button>
         <button class="nav-button admin-only-ui hidden" data-page="create">＋ <span>カード作成</span></button>
         <button class="nav-button admin-only-ui hidden" id="adminPackNavBtn" data-page="admin-pack"
@@ -8507,6 +8683,66 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
               </div>
             </div>
           </div>
+
+        <!-- ご意見箱 (Feedback Box) モーダル -->
+    <div id="feedbackModal" class="modal hidden" style="z-index: 999999;">
+      <div class="modal-backdrop" onclick="App.closeFeedbackModal()"></div>
+      <div class="modal-card" style="max-width: 520px; padding: 28px;">
+        <button class="modal-close" type="button" onclick="App.closeFeedbackModal()">×</button>
+        <div class="eyebrow" style="color: var(--accent2);">FEEDBACK & SUGGESTIONS</div>
+        <h2 style="margin-top: 4px; font-size: 22px; font-weight: 800;">📮 ご意見箱・要望バコ</h2>
+        <p class="muted" style="font-size: 13px; margin-bottom: 18px;">
+          新機能のご要望・不具合報告・カードバランスのご意見等、プレイヤーの皆様の声をお待ちしております！
+        </p>
+
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 8px;">カテゴリを選択</label>
+          <div class="feedback-category-grid" id="feedbackCatGrid">
+            <button type="button" class="feedback-cat-btn active" data-cat="💡 機能要望" onclick="App.selectFeedbackCategory('💡 機能要望')">💡 機能要望</button>
+            <button type="button" class="feedback-cat-btn" data-cat="🐛 不具合報告" onclick="App.selectFeedbackCategory('🐛 不具合報告')">🐛 不具合報告</button>
+            <button type="button" class="feedback-cat-btn" data-cat="🎨 UI・デザイン" onclick="App.selectFeedbackCategory('🎨 UI・デザイン')">🎨 UI・デザイン</button>
+            <button type="button" class="feedback-cat-btn" data-cat="⚔️ バランス調整" onclick="App.selectFeedbackCategory('⚔️ バランス調整')">⚔️ バランス調整</button>
+            <button type="button" class="feedback-cat-btn" data-cat="💭 その他ご意見" onclick="App.selectFeedbackCategory('💭 その他ご意見')">💭 その他ご意見</button>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 6px;">ご送信者Email (任意)</label>
+          <input type="email" id="feedbackEmailInput" class="input" placeholder="player@gmail.com" style="width: 100%; font-size: 13px;">
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <label style="display: block; font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 6px;">ご意見・メッセージ内容 <span style="color:#f43f5e;">*</span></label>
+          <textarea id="feedbackMessageInput" class="input" rows="4" placeholder="ご意見・不具合の詳細・追加してほしい機能などをご自由にご記入ください..." style="width: 100%; line-height: 1.5; resize: vertical; font-size: 14px;"></textarea>
+        </div>
+
+        <div style="display: flex; gap: 12px; justify-content: flex-end;">
+          <button type="button" class="secondary-button" type="button" onclick="App.closeFeedbackModal()">キャンセル</button>
+          <button type="button" class="primary-button" id="submitFeedbackBtn" onclick="App.submitFeedback()">📮 送信する</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 管理者用 ご意見一覧閲覧モーダル -->
+    <div id="adminFeedbackModal" class="modal hidden" style="z-index: 999999;">
+      <div class="modal-backdrop" onclick="App.closeAdminFeedbackModal()"></div>
+      <div class="modal-card" style="max-width: 780px; padding: 28px; width: 92%;">
+        <button class="modal-close" type="button" onclick="App.closeAdminFeedbackModal()">×</button>
+        <div class="eyebrow">ADMINISTRATOR</div>
+        <h2 style="margin-top: 4px; font-size: 22px; font-weight: 800;">📋 寄せられたご意見一覧</h2>
+        <p class="muted" style="font-size: 13px; margin-bottom: 18px;">
+          プレイヤーから送信された意見・要望・不具合報告の一覧です。（スプレッドシート Feedback シートと自動同期）
+        </p>
+
+        <div id="adminFeedbackListGrid" class="feedback-list-container">
+          <div style="text-align: center; color: var(--muted); padding: 30px;">読み込み中...</div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
+          <button type="button" class="secondary-button" type="button" onclick="App.closeAdminFeedbackModal()">閉じる</button>
+        </div>
+      </div>
+    </div>
 
     <div id="adminLoginModal" class="modal hidden">
       <div class="modal-backdrop"></div>
@@ -18642,7 +18878,11 @@ var CardSystem;
       this.state.online.lastSeq = Number(startSeq) || 1;
       this.state.logs = [];
 
-      this.state.firstPlayer = (firstPlayerRole === this.state.online.role) ? 'player' : 'opponent';
+      const myRole = String(this.state.online.role || 'host').toLowerCase();
+      const firstRole = String(firstPlayerRole || 'host').toLowerCase();
+      const isMyTurn = (firstRole === myRole);
+
+      this.state.firstPlayer = isMyTurn ? 'player' : 'opponent';
       this.state.turnPlayer = this.state.firstPlayer;
 
       this.state.player = {
@@ -18702,6 +18942,10 @@ var CardSystem;
       this.playMatchIntro(this.state.player.name, this.state.opponent.name);
       this.startOnlineBattlePolling();
       this.startTurn(this.state.turnPlayer);
+
+      if (this.state.mode === 'online') {
+        this.broadcastOnlineAction('init_board', {});
+      }
     },
 
     pollRoomImmediate() {
@@ -19117,6 +19361,11 @@ var CardSystem;
           }, 500);
           break;
         }
+        case 'init_board': {
+          this.log('🟢 相手の初期盤面を同期しました。');
+          this.render();
+          break;
+        }
         case 'end_turn': {
           this.log('相手がターンを終了しました。あなたの番です！');
           const secondPlayer = this.state.firstPlayer === 'player' ? 'opponent' : 'player';
@@ -19205,9 +19454,17 @@ var CardSystem;
 
     isBasic(c) {
       if (!c) return false;
-      const cat = String(c.category || '');
+      let cat = String(c.category || '');
+      if (!cat && window.CardSystem) {
+        const master = (c.id && window.CardSystem.findCardById ? window.CardSystem.findCardById(c.id) : null) ||
+                       (c.name && window.CardSystem.findCardByName ? window.CardSystem.findCardByName(c.name) : null);
+        if (master && master.category) cat = String(master.category);
+      }
       if (cat.includes('たね') || cat.toLowerCase().includes('basic')) return true;
       if (cat.includes('ポケモン') && !cat.includes('進化')) return true;
+      if ((Number(c.hp) > 0 || c.type) && !this.isEvolution(c) && !this.isTrainer(c) && !this.isEnergy(c)) {
+        return true;
+      }
       return false;
     },
 
@@ -19529,20 +19786,32 @@ var CardSystem;
 
     createRuntimeCard(card) {
       if (!card) card = {};
-      const hp = Number(card.hp) || (this.isBasic(card) || this.isEvolution(card) ? 70 : 0);
-      let img = card.image ? String(card.image).trim() : '';
+      let master = null;
+      if (window.CardSystem) {
+        if (card.id && typeof window.CardSystem.findCardById === 'function') {
+          master = window.CardSystem.findCardById(card.id);
+        }
+        if (!master && card.name && typeof window.CardSystem.findCardByName === 'function') {
+          master = window.CardSystem.findCardByName(card.name);
+        }
+      }
+      const base = master ? { ...master, ...card } : { ...card };
+      if (!base.category && master && master.category) base.category = master.category;
+
+      const hp = Number(base.hp) || (this.isBasic(base) || this.isEvolution(base) ? 70 : 0);
+      let img = base.image ? String(base.image).trim() : '';
       if (!img && window.CardSystem && typeof window.CardSystem.findCardImage === 'function') {
-        img = window.CardSystem.findCardImage(card.name, card.id);
+        img = window.CardSystem.findCardImage(base.name, base.id);
       }
       return {
-        ...card,
-        image: img || card.image || '',
-        instanceId: 'inst_' + Math.random().toString(36).substring(2, 9),
+        ...base,
+        image: img || base.image || '',
+        instanceId: base.instanceId || ('inst_' + Math.random().toString(36).substring(2, 9)),
         maxHp: hp,
         hp: hp,
-        energy: Number(card.energy) || 0,
-        attachedEnergies: Array.isArray(card.attachedEnergies) ? [...card.attachedEnergies] : [],
-        attachedCards: Array.isArray(card.attachedCards) ? [...card.attachedCards] : [],
+        energy: Number(base.energy) || 0,
+        attachedEnergies: Array.isArray(base.attachedEnergies) ? [...base.attachedEnergies] : [],
+        attachedCards: Array.isArray(base.attachedCards) ? [...base.attachedCards] : [],
         getCards(filter) {
           const cards = this.attachedCards || [];
           if (!filter) return [...cards];
@@ -19551,8 +19820,8 @@ var CardSystem;
           }
           return [...cards];
         },
-        status: card.status || null,
-        damageReduction: Number(card.damageReduction) || 0
+        status: base.status || null,
+        damageReduction: Number(base.damageReduction) || 0
       };
     },
 
@@ -19955,6 +20224,10 @@ var CardSystem;
 
     endTurn() {
       if (this.state.phase === 'ended') return;
+      if (this.state.mode === 'online' && this.state.turnPlayer !== 'player') {
+        console.warn('⚠️ [endTurn] スキップされました: 自分のターンではありません。');
+        return;
+      }
       const curEnding = this.state.turnPlayer === 'player' ? this.state.player : this.state.opponent;
       if (curEnding) {
         curEnding.allyKnockedOutThisTurn = false;
@@ -23198,6 +23471,304 @@ console.log('[ORBITAL] App.js.html started execution');
       this.openAdminLogin();
       this.toast('カード作成には管理者ログインが必要です。', true);
       return false;
+    },
+
+    initPresenceTracking() {
+      const email = this.state.userProfile?.email || 'player@gmail.com';
+      const updateCount = () => {
+        if (window.google && google.script && google.script.run && typeof google.script.run.pingPresence === 'function' && !window._is_mock_gas) {
+          google.script.run.withSuccessHandler((res) => {
+            if (res && res.onlineCount != null) {
+              const countEl = document.getElementById('onlinePlayerCount');
+              if (countEl) countEl.textContent = res.onlineCount;
+            }
+          }).pingPresence(email);
+        } else {
+          const countEl = document.getElementById('onlinePlayerCount');
+          if (countEl) countEl.textContent = Math.floor(Math.random() * 3) + 2;
+        }
+      };
+
+      updateCount();
+      if (this._presenceInterval) clearInterval(this._presenceInterval);
+      this._presenceInterval = setInterval(updateCount, 45000);
+    },
+
+    openFeedbackModal() {
+      const modal = document.getElementById('feedbackModal');
+      const emailInput = document.getElementById('feedbackEmailInput');
+      const msgInput = document.getElementById('feedbackMessageInput');
+
+      if (emailInput && this.state.userProfile?.email) {
+        emailInput.value = this.state.userProfile.email;
+      }
+      if (msgInput) msgInput.value = '';
+
+      this.selectFeedbackCategory('💡 機能要望');
+
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.style.display = 'grid';
+      }
+    },
+
+    closeFeedbackModal() {
+      const modal = document.getElementById('feedbackModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+      }
+    },
+
+    selectFeedbackCategory(category) {
+      this.state.selectedFeedbackCategory = category;
+      document.querySelectorAll('.feedback-cat-btn').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.cat === category);
+      });
+    },
+
+    submitFeedback() {
+      const emailInput = document.getElementById('feedbackEmailInput');
+      const msgInput = document.getElementById('feedbackMessageInput');
+      const btn = document.getElementById('submitFeedbackBtn');
+
+      const email = (emailInput ? emailInput.value : '').trim() || (this.state.userProfile?.email || 'player@gmail.com');
+      const message = (msgInput ? msgInput.value : '').trim();
+      const category = this.state.selectedFeedbackCategory || '💡 機能要望';
+
+      if (!message) {
+        this.toast('ご意見・要望の内容を入力してください。', true);
+        return;
+      }
+
+      if (btn) btn.disabled = true;
+
+      const applySuccess = (res) => {
+        if (btn) btn.disabled = false;
+        this.toast('📮 ご意見を受け付けました！貴重なフィードバックありがとうございます。');
+        this.closeFeedbackModal();
+      };
+
+      if (window.google && google.script && google.script.run && typeof google.script.run.submitFeedback === 'function' && !window._is_mock_gas) {
+        google.script.run.withSuccessHandler((res) => {
+          if (!res || !res.ok) {
+            if (btn) btn.disabled = false;
+            this.toast(res?.message || '送信に失敗しました。', true);
+            return;
+          }
+          applySuccess(res);
+        }).withFailureHandler((err) => {
+          if (btn) btn.disabled = false;
+          this.toast('送信エラー: ' + (err.message || err), true);
+        }).submitFeedback({ email, category, message });
+      } else {
+        setTimeout(() => {
+          applySuccess({ ok: true });
+        }, 200);
+      }
+    },
+
+    openAdminFeedbackModal() {
+      const modal = document.getElementById('adminFeedbackModal');
+      const listGrid = document.getElementById('adminFeedbackListGrid');
+      if (!modal) return;
+
+      modal.classList.remove('hidden');
+      modal.style.display = 'grid';
+
+      if (listGrid) listGrid.innerHTML = '<div style="text-align:center; color:var(--muted); padding:30px;">読み込み中...</div>';
+
+      const renderList = (list) => {
+        if (!listGrid) return;
+        if (!list || list.length === 0) {
+          listGrid.innerHTML = '<div style="text-align:center; color:var(--muted); padding:30px;">まだご意見は届いていません。</div>';
+          return;
+        }
+        listGrid.innerHTML = list.map((item) => {
+          const dateStr = item.createdAt ? new Date(item.createdAt).toLocaleString('ja-JP') : '日時不明';
+          return `
+            <div class="feedback-item-card">
+              <div class="feedback-item-header">
+                <span class="feedback-item-category">${this.escape(item.category || 'その他')}</span>
+                <span>👤 ${this.escape(item.email || '匿名')} • ${this.escape(dateStr)}</span>
+              </div>
+              <div class="feedback-item-body">${this.escape(item.message || '')}</div>
+            </div>
+          `;
+        }).join('');
+      };
+
+      if (window.google && google.script && google.script.run && typeof google.script.run.getFeedbackList === 'function' && !window._is_mock_gas) {
+        google.script.run.withSuccessHandler((res) => {
+          renderList(res?.feedbackList || []);
+        }).withFailureHandler((err) => {
+          if (listGrid) listGrid.innerHTML = '<div style="color:#f43f5e; padding:20px;">取得エラー: ' + this.escape(err.message || err) + '</div>';
+        }).getFeedbackList(this.state.adminToken);
+      } else {
+        try {
+          const raw = localStorage.getItem('orbital_mock_feedback_list') || '[]';
+          renderList(JSON.parse(raw));
+        } catch (e) {
+          renderList([]);
+        }
+      }
+    },
+
+    closeAdminFeedbackModal() {
+      const modal = document.getElementById('adminFeedbackModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+      }
+    },
+
+    initPresenceTracking() {
+      const email = this.state.userProfile?.email || 'player@gmail.com';
+      const updateCount = () => {
+        if (window.google && google.script && google.script.run && typeof google.script.run.pingPresence === 'function' && !window._is_mock_gas) {
+          google.script.run.withSuccessHandler((res) => {
+            if (res && res.onlineCount != null) {
+              const countEl = document.getElementById('onlinePlayerCount');
+              if (countEl) countEl.textContent = res.onlineCount;
+            }
+          }).pingPresence(email);
+        } else {
+          const countEl = document.getElementById('onlinePlayerCount');
+          if (countEl) countEl.textContent = Math.floor(Math.random() * 3) + 2;
+        }
+      };
+
+      updateCount();
+      if (this._presenceInterval) clearInterval(this._presenceInterval);
+      this._presenceInterval = setInterval(updateCount, 45000);
+    },
+
+    openFeedbackModal() {
+      const modal = document.getElementById('feedbackModal');
+      const emailInput = document.getElementById('feedbackEmailInput');
+      const msgInput = document.getElementById('feedbackMessageInput');
+
+      if (emailInput && this.state.userProfile?.email) {
+        emailInput.value = this.state.userProfile.email;
+      }
+      if (msgInput) msgInput.value = '';
+
+      this.selectFeedbackCategory('💡 機能要望');
+
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.style.display = 'grid';
+      }
+    },
+
+    closeFeedbackModal() {
+      const modal = document.getElementById('feedbackModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+      }
+    },
+
+    selectFeedbackCategory(category) {
+      this.state.selectedFeedbackCategory = category;
+      document.querySelectorAll('.feedback-cat-btn').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.cat === category);
+      });
+    },
+
+    submitFeedback() {
+      const emailInput = document.getElementById('feedbackEmailInput');
+      const msgInput = document.getElementById('feedbackMessageInput');
+      const btn = document.getElementById('submitFeedbackBtn');
+
+      const email = (emailInput ? emailInput.value : '').trim() || (this.state.userProfile?.email || 'player@gmail.com');
+      const message = (msgInput ? msgInput.value : '').trim();
+      const category = this.state.selectedFeedbackCategory || '💡 機能要望';
+
+      if (!message) {
+        this.toast('ご意見・要望の内容を入力してください。', true);
+        return;
+      }
+
+      if (btn) btn.disabled = true;
+
+      const applySuccess = (res) => {
+        if (btn) btn.disabled = false;
+        this.toast('📮 ご意見を受け付けました！貴重なフィードバックありがとうございます。');
+        this.closeFeedbackModal();
+      };
+
+      if (window.google && google.script && google.script.run && typeof google.script.run.submitFeedback === 'function' && !window._is_mock_gas) {
+        google.script.run.withSuccessHandler((res) => {
+          if (!res || !res.ok) {
+            if (btn) btn.disabled = false;
+            this.toast(res?.message || '送信に失敗しました。', true);
+            return;
+          }
+          applySuccess(res);
+        }).withFailureHandler((err) => {
+          if (btn) btn.disabled = false;
+          this.toast('送信エラー: ' + (err.message || err), true);
+        }).submitFeedback({ email, category, message });
+      } else {
+        setTimeout(() => {
+          applySuccess({ ok: true });
+        }, 200);
+      }
+    },
+
+    openAdminFeedbackModal() {
+      const modal = document.getElementById('adminFeedbackModal');
+      const listGrid = document.getElementById('adminFeedbackListGrid');
+      if (!modal) return;
+
+      modal.classList.remove('hidden');
+      modal.style.display = 'grid';
+
+      if (listGrid) listGrid.innerHTML = '<div style="text-align:center; color:var(--muted); padding:30px;">読み込み中...</div>';
+
+      const renderList = (list) => {
+        if (!listGrid) return;
+        if (!list || list.length === 0) {
+          listGrid.innerHTML = '<div style="text-align:center; color:var(--muted); padding:30px;">まだご意見は届いていません。</div>';
+          return;
+        }
+        listGrid.innerHTML = list.map((item) => {
+          const dateStr = item.createdAt ? new Date(item.createdAt).toLocaleString('ja-JP') : '日時不明';
+          return `
+            <div class="feedback-item-card">
+              <div class="feedback-item-header">
+                <span class="feedback-item-category">${this.escape(item.category || 'その他')}</span>
+                <span>👤 ${this.escape(item.email || '匿名')} • ${this.escape(dateStr)}</span>
+              </div>
+              <div class="feedback-item-body">${this.escape(item.message || '')}</div>
+            </div>
+          `;
+        }).join('');
+      };
+
+      if (window.google && google.script && google.script.run && typeof google.script.run.getFeedbackList === 'function' && !window._is_mock_gas) {
+        google.script.run.withSuccessHandler((res) => {
+          renderList(res?.feedbackList || []);
+        }).withFailureHandler((err) => {
+          if (listGrid) listGrid.innerHTML = '<div style="color:#f43f5e; padding:20px;">取得エラー: ' + this.escape(err.message || err) + '</div>';
+        }).getFeedbackList(this.state.adminToken);
+      } else {
+        try {
+          const raw = localStorage.getItem('orbital_mock_feedback_list') || '[]';
+          renderList(JSON.parse(raw));
+        } catch (e) {
+          renderList([]);
+        }
+      }
+    },
+
+    closeAdminFeedbackModal() {
+      const modal = document.getElementById('adminFeedbackModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+      }
     },
 
     openAdminLogin() {this.el('adminLoginModal').classList.remove('hidden');this.el('adminPassword').focus();},

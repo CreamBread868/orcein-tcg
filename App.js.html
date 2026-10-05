@@ -436,6 +436,304 @@ console.log('[ORBITAL] App.js.html started execution');
       return false;
     },
 
+    initPresenceTracking() {
+      const email = this.state.userProfile?.email || 'player@gmail.com';
+      const updateCount = () => {
+        if (window.google && google.script && google.script.run && typeof google.script.run.pingPresence === 'function' && !window._is_mock_gas) {
+          google.script.run.withSuccessHandler((res) => {
+            if (res && res.onlineCount != null) {
+              const countEl = document.getElementById('onlinePlayerCount');
+              if (countEl) countEl.textContent = res.onlineCount;
+            }
+          }).pingPresence(email);
+        } else {
+          const countEl = document.getElementById('onlinePlayerCount');
+          if (countEl) countEl.textContent = Math.floor(Math.random() * 3) + 2;
+        }
+      };
+
+      updateCount();
+      if (this._presenceInterval) clearInterval(this._presenceInterval);
+      this._presenceInterval = setInterval(updateCount, 45000);
+    },
+
+    openFeedbackModal() {
+      const modal = document.getElementById('feedbackModal');
+      const emailInput = document.getElementById('feedbackEmailInput');
+      const msgInput = document.getElementById('feedbackMessageInput');
+
+      if (emailInput && this.state.userProfile?.email) {
+        emailInput.value = this.state.userProfile.email;
+      }
+      if (msgInput) msgInput.value = '';
+
+      this.selectFeedbackCategory('💡 機能要望');
+
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.style.display = 'grid';
+      }
+    },
+
+    closeFeedbackModal() {
+      const modal = document.getElementById('feedbackModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+      }
+    },
+
+    selectFeedbackCategory(category) {
+      this.state.selectedFeedbackCategory = category;
+      document.querySelectorAll('.feedback-cat-btn').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.cat === category);
+      });
+    },
+
+    submitFeedback() {
+      const emailInput = document.getElementById('feedbackEmailInput');
+      const msgInput = document.getElementById('feedbackMessageInput');
+      const btn = document.getElementById('submitFeedbackBtn');
+
+      const email = (emailInput ? emailInput.value : '').trim() || (this.state.userProfile?.email || 'player@gmail.com');
+      const message = (msgInput ? msgInput.value : '').trim();
+      const category = this.state.selectedFeedbackCategory || '💡 機能要望';
+
+      if (!message) {
+        this.toast('ご意見・要望の内容を入力してください。', true);
+        return;
+      }
+
+      if (btn) btn.disabled = true;
+
+      const applySuccess = (res) => {
+        if (btn) btn.disabled = false;
+        this.toast('📮 ご意見を受け付けました！貴重なフィードバックありがとうございます。');
+        this.closeFeedbackModal();
+      };
+
+      if (window.google && google.script && google.script.run && typeof google.script.run.submitFeedback === 'function' && !window._is_mock_gas) {
+        google.script.run.withSuccessHandler((res) => {
+          if (!res || !res.ok) {
+            if (btn) btn.disabled = false;
+            this.toast(res?.message || '送信に失敗しました。', true);
+            return;
+          }
+          applySuccess(res);
+        }).withFailureHandler((err) => {
+          if (btn) btn.disabled = false;
+          this.toast('送信エラー: ' + (err.message || err), true);
+        }).submitFeedback({ email, category, message });
+      } else {
+        setTimeout(() => {
+          applySuccess({ ok: true });
+        }, 200);
+      }
+    },
+
+    openAdminFeedbackModal() {
+      const modal = document.getElementById('adminFeedbackModal');
+      const listGrid = document.getElementById('adminFeedbackListGrid');
+      if (!modal) return;
+
+      modal.classList.remove('hidden');
+      modal.style.display = 'grid';
+
+      if (listGrid) listGrid.innerHTML = '<div style="text-align:center; color:var(--muted); padding:30px;">読み込み中...</div>';
+
+      const renderList = (list) => {
+        if (!listGrid) return;
+        if (!list || list.length === 0) {
+          listGrid.innerHTML = '<div style="text-align:center; color:var(--muted); padding:30px;">まだご意見は届いていません。</div>';
+          return;
+        }
+        listGrid.innerHTML = list.map((item) => {
+          const dateStr = item.createdAt ? new Date(item.createdAt).toLocaleString('ja-JP') : '日時不明';
+          return `
+            <div class="feedback-item-card">
+              <div class="feedback-item-header">
+                <span class="feedback-item-category">${this.escape(item.category || 'その他')}</span>
+                <span>👤 ${this.escape(item.email || '匿名')} • ${this.escape(dateStr)}</span>
+              </div>
+              <div class="feedback-item-body">${this.escape(item.message || '')}</div>
+            </div>
+          `;
+        }).join('');
+      };
+
+      if (window.google && google.script && google.script.run && typeof google.script.run.getFeedbackList === 'function' && !window._is_mock_gas) {
+        google.script.run.withSuccessHandler((res) => {
+          renderList(res?.feedbackList || []);
+        }).withFailureHandler((err) => {
+          if (listGrid) listGrid.innerHTML = '<div style="color:#f43f5e; padding:20px;">取得エラー: ' + this.escape(err.message || err) + '</div>';
+        }).getFeedbackList(this.state.adminToken);
+      } else {
+        try {
+          const raw = localStorage.getItem('orbital_mock_feedback_list') || '[]';
+          renderList(JSON.parse(raw));
+        } catch (e) {
+          renderList([]);
+        }
+      }
+    },
+
+    closeAdminFeedbackModal() {
+      const modal = document.getElementById('adminFeedbackModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+      }
+    },
+
+    initPresenceTracking() {
+      const email = this.state.userProfile?.email || 'player@gmail.com';
+      const updateCount = () => {
+        if (window.google && google.script && google.script.run && typeof google.script.run.pingPresence === 'function' && !window._is_mock_gas) {
+          google.script.run.withSuccessHandler((res) => {
+            if (res && res.onlineCount != null) {
+              const countEl = document.getElementById('onlinePlayerCount');
+              if (countEl) countEl.textContent = res.onlineCount;
+            }
+          }).pingPresence(email);
+        } else {
+          const countEl = document.getElementById('onlinePlayerCount');
+          if (countEl) countEl.textContent = Math.floor(Math.random() * 3) + 2;
+        }
+      };
+
+      updateCount();
+      if (this._presenceInterval) clearInterval(this._presenceInterval);
+      this._presenceInterval = setInterval(updateCount, 45000);
+    },
+
+    openFeedbackModal() {
+      const modal = document.getElementById('feedbackModal');
+      const emailInput = document.getElementById('feedbackEmailInput');
+      const msgInput = document.getElementById('feedbackMessageInput');
+
+      if (emailInput && this.state.userProfile?.email) {
+        emailInput.value = this.state.userProfile.email;
+      }
+      if (msgInput) msgInput.value = '';
+
+      this.selectFeedbackCategory('💡 機能要望');
+
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.style.display = 'grid';
+      }
+    },
+
+    closeFeedbackModal() {
+      const modal = document.getElementById('feedbackModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+      }
+    },
+
+    selectFeedbackCategory(category) {
+      this.state.selectedFeedbackCategory = category;
+      document.querySelectorAll('.feedback-cat-btn').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.cat === category);
+      });
+    },
+
+    submitFeedback() {
+      const emailInput = document.getElementById('feedbackEmailInput');
+      const msgInput = document.getElementById('feedbackMessageInput');
+      const btn = document.getElementById('submitFeedbackBtn');
+
+      const email = (emailInput ? emailInput.value : '').trim() || (this.state.userProfile?.email || 'player@gmail.com');
+      const message = (msgInput ? msgInput.value : '').trim();
+      const category = this.state.selectedFeedbackCategory || '💡 機能要望';
+
+      if (!message) {
+        this.toast('ご意見・要望の内容を入力してください。', true);
+        return;
+      }
+
+      if (btn) btn.disabled = true;
+
+      const applySuccess = (res) => {
+        if (btn) btn.disabled = false;
+        this.toast('📮 ご意見を受け付けました！貴重なフィードバックありがとうございます。');
+        this.closeFeedbackModal();
+      };
+
+      if (window.google && google.script && google.script.run && typeof google.script.run.submitFeedback === 'function' && !window._is_mock_gas) {
+        google.script.run.withSuccessHandler((res) => {
+          if (!res || !res.ok) {
+            if (btn) btn.disabled = false;
+            this.toast(res?.message || '送信に失敗しました。', true);
+            return;
+          }
+          applySuccess(res);
+        }).withFailureHandler((err) => {
+          if (btn) btn.disabled = false;
+          this.toast('送信エラー: ' + (err.message || err), true);
+        }).submitFeedback({ email, category, message });
+      } else {
+        setTimeout(() => {
+          applySuccess({ ok: true });
+        }, 200);
+      }
+    },
+
+    openAdminFeedbackModal() {
+      const modal = document.getElementById('adminFeedbackModal');
+      const listGrid = document.getElementById('adminFeedbackListGrid');
+      if (!modal) return;
+
+      modal.classList.remove('hidden');
+      modal.style.display = 'grid';
+
+      if (listGrid) listGrid.innerHTML = '<div style="text-align:center; color:var(--muted); padding:30px;">読み込み中...</div>';
+
+      const renderList = (list) => {
+        if (!listGrid) return;
+        if (!list || list.length === 0) {
+          listGrid.innerHTML = '<div style="text-align:center; color:var(--muted); padding:30px;">まだご意見は届いていません。</div>';
+          return;
+        }
+        listGrid.innerHTML = list.map((item) => {
+          const dateStr = item.createdAt ? new Date(item.createdAt).toLocaleString('ja-JP') : '日時不明';
+          return `
+            <div class="feedback-item-card">
+              <div class="feedback-item-header">
+                <span class="feedback-item-category">${this.escape(item.category || 'その他')}</span>
+                <span>👤 ${this.escape(item.email || '匿名')} • ${this.escape(dateStr)}</span>
+              </div>
+              <div class="feedback-item-body">${this.escape(item.message || '')}</div>
+            </div>
+          `;
+        }).join('');
+      };
+
+      if (window.google && google.script && google.script.run && typeof google.script.run.getFeedbackList === 'function' && !window._is_mock_gas) {
+        google.script.run.withSuccessHandler((res) => {
+          renderList(res?.feedbackList || []);
+        }).withFailureHandler((err) => {
+          if (listGrid) listGrid.innerHTML = '<div style="color:#f43f5e; padding:20px;">取得エラー: ' + this.escape(err.message || err) + '</div>';
+        }).getFeedbackList(this.state.adminToken);
+      } else {
+        try {
+          const raw = localStorage.getItem('orbital_mock_feedback_list') || '[]';
+          renderList(JSON.parse(raw));
+        } catch (e) {
+          renderList([]);
+        }
+      }
+    },
+
+    closeAdminFeedbackModal() {
+      const modal = document.getElementById('adminFeedbackModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+      }
+    },
+
     openAdminLogin() {this.el('adminLoginModal').classList.remove('hidden');this.el('adminPassword').focus();},
     closeAdminLogin() {this.el('adminLoginModal').classList.add('hidden');},
 
