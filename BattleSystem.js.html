@@ -1650,6 +1650,15 @@
             }
           });
         }
+        if (res.ok && self.state.mode === 'online' && self.state.phase === 'battle' && res.turnPlayer) {
+          const myRole = self.state.online.role;
+          const isMyTurnOnServer = (res.turnPlayer === myRole);
+          const currentIsMyTurn = (self.state.turnPlayer === 'player');
+          if (isMyTurnOnServer && !currentIsMyTurn) {
+            console.log('🔄 [Online Turn Recovery] Server indicates turn belongs to me! Recovering turn state...');
+            self.startTurn('player');
+          }
+        }
       }, function(err) {
         self.state.online.pollInFlight = false;
         console.warn('❌ [Online Poll Error] Retrying...', err);
@@ -1663,7 +1672,7 @@
       this.state.online.pollTimer = setInterval(function () {
         if (self.state.phase !== 'battle' || !self.state.online.roomId) return;
         self.pollRoomImmediate();
-      }, 1500);
+      }, 1000);
     },
 
     sanitizeCardForNetwork(c) {
@@ -1861,6 +1870,9 @@
           this.render();
           const targetSlotEl = document.getElementById('oppActiveSpot');
           if (targetSlotEl) this.animateCardPlacement(targetSlotEl);
+          if (this.state.mode === 'online' && this.state.turnPlayer === 'player') {
+            setTimeout(() => this.endTurn(), 500);
+          }
           break;
         }
         case 'evolve': {
@@ -2840,9 +2852,28 @@
       this.state.activeLocks = remainingLocks;
     },
 
+    promptPromoteFromBench(victim) {
+      if (!victim || !victim.bench || !victim.bench.length) return;
+      this.showChoiceModal(victim.bench.map((b) => ({ name: b.name, type: b.type, hp: b.hp, category: 'バトル場へ' })), {
+        title: 'バトルポケモン交代',
+        desc: 'バトル場に出すベンチポケモンを選択してください。'
+      }, (idx) => {
+        victim.active = victim.bench.splice(idx, 1)[0];
+        this.log("🔄 " + (victim.name || 'プレイヤー') + " は " + victim.active.name + " をバトル場に出しました。");
+        if (this.state.mode === 'online') {
+          this.broadcastOnlineAction('promote_active', { benchIdx: idx });
+        }
+        this.render();
+      });
+    },
+
     startTurn(turnWho) {
       this.state.turnPlayer = turnWho;
       const cur = turnWho === 'player' ? this.state.player : this.state.opponent;
+
+      if (turnWho === 'player' && !cur.active && cur.bench && cur.bench.length > 0) {
+        this.promptPromoteFromBench(cur);
+      }
 
       cur.turnCount = (cur.turnCount || 0) + 1;
       cur.energyAttached = false;
@@ -4266,20 +4297,7 @@
 
       // 交代ポケモンの選出
       if (victim.id === 'player') {
-        this.showChoiceModal(victim.bench.map((b) => ({ name: b.name, type: b.type, hp: b.hp, category: 'バトル場へ' })), {
-          title: 'きぜつによるバトルポケモン交代',
-          desc: 'バトル場に出すベンチポケモンを選択してください。'
-        }, (idx) => {
-          victim.active = victim.bench.splice(idx, 1)[0];
-          this.log("🔄 プレイヤーは " + victim.active.name + " をバトル場に出しました。");
-          if (this.state.mode === 'online') {
-            this.broadcastOnlineAction('promote_active', { benchIdx: idx });
-          }
-          this.render();
-          if (this.state.mode !== 'online') {
-            setTimeout(() => this.endTurn(), 600);
-          }
-        });
+        this.promptPromoteFromBench(victim);
       } else if (this.state.mode === 'online') {
         // オンライン対戦時、相手の交代はリモートアクション 'promote_active' を待つ
         this.log("⏳ 相手がバトル場に出すポケモンを選択中...");
@@ -5668,6 +5686,9 @@
 
       root.innerHTML = hand.map((c, i) => {
         let actionLabel = '使用';
+        const isEn = this.isEnergy(c);
+        const isBas = this.isBasic(c);
+        const isEvo = this.isEvolution(c);
         const isStad = this.isStadium(c);
         const isSupp = this.isSupporter(c);
         const isFirstTurnFirstPlayer = this.isFirstPlayerFirstTurn('player');

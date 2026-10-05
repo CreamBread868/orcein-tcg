@@ -238,6 +238,9 @@ console.log('[ORBITAL] App.js.html started execution');
     },
 
     showPage(page) {
+      if (page === 'shop') page = 'single-shop';
+      if (page === 'packs' || page === 'pack_shop') page = 'pack';
+
       if (page === 'create' && !this.isAdmin()) {
         this.requireAdmin();
         return;
@@ -247,7 +250,7 @@ console.log('[ORBITAL] App.js.html started execution');
       if (target) target.classList.add('active');
 
       document.querySelectorAll('.nav-button').forEach((btn) => {
-        btn.classList.toggle('active', btn.dataset.page === page);
+        btn.classList.toggle('active', btn.dataset.page === page || (btn.dataset.page === 'single-shop' && page === 'single-shop'));
       });
 
       this.state.page = page;
@@ -270,8 +273,10 @@ console.log('[ORBITAL] App.js.html started execution');
       }
       if (page === 'pack') {
         this.loadPacks();
+        this.renderPackGrid();
       }
       if (page === 'single-shop') {
+        this.loadShopAndTradeItemsFromGas();
         this.renderSingleShopGrid();
       }
     },
@@ -1958,8 +1963,11 @@ console.log('[ORBITAL] App.js.html started execution');
       const drawnCards = [];
 
       if (targetPool.length > 0) {
+        const available = [...targetPool];
         for (let i = 0; i < count; i++) {
-          const randCard = targetPool[Math.floor(Math.random() * targetPool.length)];
+          let poolToUse = available.filter(cand => !drawnCards.some(d => (d.id && cand.id && String(d.id) === String(cand.id)) || (d.name && cand.name && d.name === cand.name)));
+          if (poolToUse.length === 0) poolToUse = available;
+          const randCard = poolToUse[Math.floor(Math.random() * poolToUse.length)];
           drawnCards.push(JSON.parse(JSON.stringify(randCard)));
         }
       } else {

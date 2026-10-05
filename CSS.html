@@ -2590,7 +2590,7 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
 }
 
 #battle-arena-view {
-  padding-bottom: 280px;
+  padding-bottom: 30px;
 }
 
 /* スタジアムトップバー: ターン情報・フェーズ・操作ボタン */
@@ -6638,4 +6638,124 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
 @keyframes popInBubble {
   0% { transform: translateX(-50%) scale(0.5); opacity: 0; }
   100% { transform: translateX(-50%) scale(1); opacity: 1; }
+}
+
+/* ===================================================
+   Chromebook & Laptop Responsive UI Adjustments
+   (Support 1366x768, 1280x800, 1024px-1366px displays)
+   =================================================== */
+
+@media (max-width: 1366px) {
+  .stadium-main-grid {
+    grid-template-columns: 90px 1fr 240px;
+    gap: 12px;
+  }
+  .stadium-col-right {
+    width: 240px;
+  }
+  .stadium-col-left {
+    gap: 20px;
+    justify-content: space-between;
+  }
+  .mini-deck-back, .mini-discard-slot {
+    width: 58px;
+    height: 80px;
+  }
+  .side-zone-box {
+    padding: 8px 10px;
+  }
+  .prize-card-item {
+    width: 44px;
+    height: 62px;
+  }
+  .bench-row {
+    gap: 8px;
+  }
+}
+
+@media (max-height: 850px) {
+  #battle-arena-view {
+    padding-bottom: 20px;
+  }
+  .stadium-topbar {
+    padding: 6px 14px;
+    margin-bottom: 8px;
+  }
+  .battle-stadium {
+    padding: 10px 14px 14px;
+    border-radius: 18px;
+    margin-bottom: 10px;
+  }
+  .stadium-col-left {
+    gap: 16px;
+    justify-content: space-around;
+  }
+  .mini-deck-back, .mini-discard-slot {
+    width: 54px;
+    height: 74px;
+    font-size: 9px;
+  }
+  .card-size-battle {
+    width: 140px;
+    min-width: 140px;
+  }
+  .card-size-bench {
+    width: 96px;
+    min-width: 96px;
+  }
+  .card-size-hand {
+    width: 120px;
+    min-width: 120px;
+  }
+  .hand-cards-rack {
+    min-height: 205px;
+    padding: 16px 10px 8px;
+    gap: 10px;
+  }
+  .battle-hand-dock {
+    padding: 6px 14px;
+    margin-top: 8px;
+    border-radius: 14px;
+  }
+  .stadium-col-center {
+    gap: 8px;
+  }
+  .stadium-col-right {
+    gap: 8px;
+  }
+  .side-zone-box {
+    padding: 8px 10px;
+  }
+  .side-cards-grid {
+    gap: 6px;
+  }
+  .prize-card-item {
+    width: 42px;
+    height: 60px;
+  }
+  .speech-bubble.opp-bubble {
+    top: 90px;
+  }
+  .speech-bubble.player-bubble {
+    bottom: 180px;
+  }
+}
+
+@media (max-height: 720px) {
+  .card-size-battle {
+    width: 125px;
+    min-width: 125px;
+  }
+  .card-size-bench {
+    width: 86px;
+    min-width: 86px;
+  }
+  .card-size-hand {
+    width: 108px;
+    min-width: 108px;
+  }
+  .hand-cards-rack {
+    min-height: 185px;
+    padding: 10px 8px 6px;
+  }
 }
