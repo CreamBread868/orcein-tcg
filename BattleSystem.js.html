@@ -4772,12 +4772,14 @@
       });
     },
 
-    async executeRareCandy(player) {
+    async executeRareCandy(player, opts) {
+      const silent = !!(opts && opts.silent);
+      this._rareCandyFailReason = '';
       const p = player || this.state.player;
       const isFirstTurn = (this.state.firstPlayer === 'player' && this.state.turnNumber === 1) ||
                           (this.state.firstPlayer !== 'player' && this.state.turnNumber === 2);
       if (isFirstTurn) {
-        if (p === this.state.player && window.App && typeof window.App.toast === 'function') App.toast('最初の自分の番には使えません。', true);
+        this._rareCandyFailReason = '最初の自分の番には使えません。'; if (!silent && p === this.state.player && window.App && typeof window.App.toast === 'function') App.toast('最初の自分の番には使えません。', true);
         this.log('⚠️ 最初の自分の番のため、ふしぎなアメは使えませんでした。');
         return false;
       }
@@ -4789,7 +4791,7 @@
       });
 
       if (!stage2List.length) {
-        if (p === this.state.player && window.App && typeof window.App.toast === 'function') App.toast('手札に2進化ポケモンがありません。', true);
+        this._rareCandyFailReason = '手札に2進化ポケモンがありません。'; if (!silent && p === this.state.player && window.App && typeof window.App.toast === 'function') App.toast('手札に2進化ポケモンがありません。', true);
         this.log('⚠️ 手札に2進化ポケモンがいないため、ふしぎなアメは使えませんでした。');
         return false;
       }
@@ -4805,14 +4807,14 @@
       });
 
       if (!fieldBasics.length) {
-        if (p === this.state.player && window.App && typeof window.App.toast === 'function') App.toast('場に進化できるたねポケモンがいません。（出したばかりのポケモンには使えません）', true);
+        this._rareCandyFailReason = '場に進化できるたねポケモンがいません。（出したばかりのポケモンには使えません）'; if (!silent && p === this.state.player && window.App && typeof window.App.toast === 'function') App.toast('場に進化できるたねポケモンがいません。（出したばかりのポケモンには使えません）', true);
         this.log('⚠️ 場に進化できるたねポケモンがいない（または出したばかり）ため使えませんでした。');
         return false;
       }
 
       const validStage2s = stage2List.filter((s2) => fieldBasics.some((b) => this.canRareCandyEvolve(s2, b.target)));
       if (!validStage2s.length) {
-        if (p === this.state.player && window.App && typeof window.App.toast === 'function') App.toast('手札の2進化ポケモンと進化ラインが一致するたねポケモンが場にいません。', true);
+        this._rareCandyFailReason = '手札の2進化ポケモンと進化ラインが一致するたねポケモンが場にいません。'; if (!silent && p === this.state.player && window.App && typeof window.App.toast === 'function') App.toast('手札の2進化ポケモンと進化ラインが一致するたねポケモンが場にいません。', true);
         this.log('⚠️ 進化ラインが一致するたねポケモンが場にいませんでした。');
         return false;
       }
@@ -4833,7 +4835,7 @@
 
       const matchingBasics = fieldBasics.filter((b) => this.canRareCandyEvolve(chosenS2, b.target));
       if (!matchingBasics.length) {
-        if (p === this.state.player && window.App && typeof window.App.toast === 'function') App.toast('進化ラインが一致するたねポケモンが場にいません。', true);
+        this._rareCandyFailReason = '進化ラインが一致するたねポケモンが場にいません。'; if (!silent && p === this.state.player && window.App && typeof window.App.toast === 'function') App.toast('進化ラインが一致するたねポケモンが場にいません。', true);
         return false;
       }
 

@@ -2014,7 +2014,13 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
       },
       async rareCandy(ctx, player) {
         if (window.BattleSystem && typeof window.BattleSystem.executeRareCandy === 'function') {
-          return await window.BattleSystem.executeRareCandy(player || ctx?.self);
+          const ok = await window.BattleSystem.executeRareCandy(player || ctx?.self, { silent: true });
+          if (ok === false) {
+            const reason = window.BattleSystem._rareCandyFailReason ||
+              '手札の2進化ポケモンと進化ラインが一致するたねポケモンが場にいないため使えません。';
+            return this.cant(ctx, reason);
+          }
+          return ok;
         }
         const p = player || ctx?.self;
         if (!p || !p.hand) return false;
