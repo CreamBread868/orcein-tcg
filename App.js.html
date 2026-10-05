@@ -238,16 +238,38 @@ console.log('[ORBITAL] App.js.html started execution');
     },
 
     showPage(page) {
+      // ページセクションが main の外に押し出されていても、必ず main 直下に戻す (レイアウトずれ防止)
+      const mainEl = document.querySelector('main.main');
+      if (mainEl) {
+        document.querySelectorAll('section.page').forEach((sec) => {
+          if (sec.parentElement !== mainEl) mainEl.appendChild(sec);
+        });
+      }
       if (page === 'shop') page = 'single-shop';
       if (page === 'packs' || page === 'pack_shop') page = 'pack';
+      if (page === 'admin-pack' || page === 'admin_pack') {
+        this.openAdminPackModal();
+        return;
+      }
+      if (page === 'feedback') {
+        this.openFeedbackModal();
+        return;
+      }
 
       if (page === 'create' && !this.isAdmin()) {
         this.requireAdmin();
         return;
       }
-      document.querySelectorAll('.page').forEach((el) => el.classList.remove('active'));
+
       const target = this.el("page-" + page);
-      if (target) target.classList.add('active');
+      if (!target) {
+        console.warn('⚠️ [showPage] Target page section not found: page-' + page + '. Falling back to home.');
+        if (page !== 'home') this.showPage('home');
+        return;
+      }
+
+      document.querySelectorAll('.page').forEach((el) => el.classList.remove('active'));
+      target.classList.add('active');
 
       document.querySelectorAll('.nav-button').forEach((btn) => {
         btn.classList.toggle('active', btn.dataset.page === page || (btn.dataset.page === 'single-shop' && page === 'single-shop'));
