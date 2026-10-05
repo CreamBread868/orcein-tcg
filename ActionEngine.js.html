@@ -2119,7 +2119,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         }
         const catNorm = BILINGUAL_CATEGORY_MAP[q] || [q];
         const typeNorm = BILINGUAL_TYPE_MAP[q] || [q];
-        const cardCat = String(card.category || '').toLowerCase();
+        const cardCat = String(card.category || (card.hp != null ? 'たね' : '')).toLowerCase();
         const cardType = String(card.type || '').toLowerCase();
         const cardName = String(card.name || '').toLowerCase();
         if (catNorm.some((k) => cardCat.includes(k.toLowerCase()))) return true;
@@ -2143,7 +2143,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           return card.hp != null || ['たね', '進化', '1進化', '2進化', 'ex'].some((k) => cCat.includes(k));
         }
         const catEquivs = BILINGUAL_CATEGORY_MAP[fCat] || [fCat];
-        const cardCat = String(card.category || '').toLowerCase();
+        const cardCat = String(card.category || (card.hp != null ? 'たね' : '')).toLowerCase();
         const matched = catEquivs.some((k) => cardCat.includes(k.toLowerCase()));
         if (!matched) return false;
       }

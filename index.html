@@ -8133,19 +8133,7 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
             </div>
           </div>
 
-          <!-- バトル汎用選択モーダル (choiceCard / ターゲット選択 / サーチ) -->
-          <div id="battleChoiceModal" class="modal hidden">
-            <div class="modal-backdrop"></div>
-            <div class="modal-card battle-choice-card">
-              <button id="closeBattleChoiceModal" class="modal-close" type="button">×</button>
-              <div class="eyebrow" id="battleChoiceEyebrow">CARD SELECTION</div>
-              <h3 id="battleChoiceTitle">対象カードを選択してください</h3>
-              <p id="battleChoiceDesc" class="muted">選択可能なカード一覧</p>
-              <div id="battleChoiceGrid" class="battle-choice-grid"></div>
-              <div class="heading-actions">
-                <button id="cancelBattleChoiceBtn" class="secondary-button" type="button">キャンセル</button>
-              </div>
-            </div>
+          
           </div>
 
           <!-- トラッシュ確認モーダル (いつでも自分・相手どちらも閲覧可能) -->
@@ -8504,6 +8492,21 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
         </div>
       </div>
     </div>
+
+              <!-- バトル汎用選択モーダル (choiceCard / ターゲット選択 / サーチ) -->
+          <div id="battleChoiceModal" class="modal hidden" style="z-index: 999999;">
+            <div class="modal-backdrop"></div>
+            <div class="modal-card battle-choice-card">
+              <button id="closeBattleChoiceModal" class="modal-close" type="button">×</button>
+              <div class="eyebrow" id="battleChoiceEyebrow">CARD SELECTION</div>
+              <h3 id="battleChoiceTitle">対象カードを選択してください</h3>
+              <p id="battleChoiceDesc" class="muted">選択可能なカード一覧</p>
+              <div id="battleChoiceGrid" class="battle-choice-grid"></div>
+              <div class="heading-actions">
+                <button id="cancelBattleChoiceBtn" class="secondary-button" type="button">キャンセル</button>
+              </div>
+            </div>
+          </div>
 
     <div id="adminLoginModal" class="modal hidden">
       <div class="modal-backdrop"></div>
@@ -10782,7 +10785,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         }
         const catNorm = BILINGUAL_CATEGORY_MAP[q] || [q];
         const typeNorm = BILINGUAL_TYPE_MAP[q] || [q];
-        const cardCat = String(card.category || '').toLowerCase();
+        const cardCat = String(card.category || (card.hp != null ? 'たね' : '')).toLowerCase();
         const cardType = String(card.type || '').toLowerCase();
         const cardName = String(card.name || '').toLowerCase();
         if (catNorm.some((k) => cardCat.includes(k.toLowerCase()))) return true;
@@ -10806,7 +10809,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           return card.hp != null || ['たね', '進化', '1進化', '2進化', 'ex'].some((k) => cCat.includes(k));
         }
         const catEquivs = BILINGUAL_CATEGORY_MAP[fCat] || [fCat];
-        const cardCat = String(card.category || '').toLowerCase();
+        const cardCat = String(card.category || (card.hp != null ? 'たね' : '')).toLowerCase();
         const matched = catEquivs.some((k) => cardCat.includes(k.toLowerCase()));
         if (!matched) return false;
       }
@@ -21657,6 +21660,7 @@ var CardSystem;
 
       modal.classList.remove('hidden');
       modal.style.display = 'grid';
+      modal.style.zIndex = '999999';
 
       const cleanup = () => {
         modal.classList.add('hidden');
