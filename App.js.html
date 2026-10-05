@@ -288,7 +288,9 @@ console.log('[ORBITAL] App.js.html started execution');
 
     bindNavigation() {
       document.querySelectorAll('.nav-button').forEach((btn) => {
-        btn.addEventListener('click', () => this.showPage(btn.dataset.page));
+        if (btn.dataset && btn.dataset.page) {
+          btn.addEventListener('click', () => this.showPage(btn.dataset.page));
+        }
       });
 
       const menuBtn = this.el('mobileMenuButton');
@@ -1589,6 +1591,7 @@ console.log('[ORBITAL] App.js.html started execution');
     initNmtAndPacks() {
       this.updateNmtBadge();
       this.loadPacks();
+      this.renderSingleShopGrid();
       // 今日のログインボーナスが未取得の場合、自動的に大型モータルをポップアップ表示！
       const today = new Date().toISOString().slice(0, 10);
       let lastClaim = '';
@@ -1812,6 +1815,7 @@ console.log('[ORBITAL] App.js.html started execution');
         this.state.packs = defaultPacks;
         this.renderPackGrid();
       }
+      this.renderPackGrid();
 
       if (window.google && google.script && google.script.run && typeof google.script.run.getPacks === 'function') {
         try {

@@ -9543,6 +9543,7 @@
               <div class="stadium-active-player" id="stadiumPlayerBadge">プレイヤーの番</div>
               <div class="stadium-phase-text" id="stadiumPhaseText">カードを1枚引きました。行動してください。</div>
               <div class="stadium-actions">
+                <button id="battleChatToggleBtn" class="secondary-button stadium-action-btn" type="button" onclick="BattleSystem.toggleChatWidget()">💬 チャット<span id="chatUnreadBadge" class="chat-unread-badge hidden">0</span></button>
                 <button id="battleEndTurnBtn" class="primary-button stadium-action-btn" type="button">ターン終了</button>
                 <button id="battleSurrenderBtn" class="secondary-button stadium-action-btn danger-btn"
                   type="button">降参</button>
@@ -9677,6 +9678,33 @@
                 <span class="hand-tip-text">ドラッグ＆ドロップで [ベンチ出し] [エネ付け] [進化] [トレーナー発動] が可能です</span>
               </div>
               <div id="playerHandRow" class="hand-cards-rack"></div>
+            </div>
+
+            <!-- 対戦内リアルタイムチャットウィジェット -->
+            <div id="battle-chat-widget" class="battle-chat-widget hidden">
+              <div class="chat-widget-header">
+                <div class="chat-widget-title">💬 リアルタイム対戦チャット</div>
+                <button type="button" class="chat-close-btn" onclick="BattleSystem.toggleChatWidget()">✕</button>
+              </div>
+              <div class="chat-emotes-bar">
+                <button type="button" class="quick-emote-pill" onclick="BattleSystem.sendQuickEmote('よろしくお願いします！')">👋 よろしく！</button>
+                <button type="button" class="quick-emote-pill" onclick="BattleSystem.sendQuickEmote('ナイスプレイ！')">👍 ナイス！</button>
+                <button type="button" class="quick-emote-pill" onclick="BattleSystem.sendQuickEmote('ありがとう！')">✨ ありがとう</button>
+                <button type="button" class="quick-emote-pill" onclick="BattleSystem.sendQuickEmote('考え中… 🤔')">🤔 考え中</button>
+                <button type="button" class="quick-emote-pill" onclick="BattleSystem.sendQuickEmote('対戦ありがとうございました！')">🙇 感謝！</button>
+              </div>
+              <div id="chatMessageList" class="chat-message-list">
+                <div class="chat-empty-hint">💬 チャットメッセージや定型文を送ってみましょう！</div>
+              </div>
+              <div class="chat-input-bar">
+                <input type="text" id="battleChatInput" class="chat-input-field" placeholder="メッセージを入力..." onkeydown="if(event.key==='Enter') BattleSystem.sendChatMessage()">
+                <button type="button" class="primary-button chat-send-btn" onclick="BattleSystem.sendChatMessage()">送信</button>
+              </div>
+            </div>
+
+            <!-- 浮動スピーチバブル -->
+            <div id="playerSpeechBubble" class="speech-bubble player-bubble hidden"></div>
+            <div id="oppSpeechBubble" class="speech-bubble opp-bubble hidden"></div>
             </div>
           </div>
 

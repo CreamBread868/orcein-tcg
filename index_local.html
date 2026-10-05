@@ -6404,6 +6404,250 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   line-height: 1.5;
   white-space: pre-wrap;
 }
+
+/* -------------------------------------------------------------
+   対戦内リアルタイムチャットウィジェット＆スピーチバブル
+------------------------------------------------------------- */
+.chat-unread-badge {
+  background: #ff0055;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 900;
+  padding: 1px 6px;
+  border-radius: 10px;
+  margin-left: 4px;
+  box-shadow: 0 0 8px rgba(255, 0, 85, 0.8);
+  animation: pulse-badge 1.5s infinite alternate;
+}
+.chat-unread-badge.hidden {
+  display: none !important;
+}
+
+@keyframes pulse-badge {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.15); }
+}
+
+.battle-chat-widget {
+  position: fixed;
+  bottom: 90px;
+  right: 20px;
+  width: 340px;
+  max-width: 90vw;
+  height: 420px;
+  max-height: 70vh;
+  background: rgba(13, 18, 36, 0.95);
+  border: 1px solid rgba(0, 229, 255, 0.4);
+  border-radius: 16px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), 0 0 20px rgba(0, 229, 255, 0.25);
+  backdrop-filter: blur(20px);
+  display: flex;
+  flex-direction: column;
+  z-index: 10050;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.battle-chat-widget.hidden {
+  display: none !important;
+}
+
+.chat-widget-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: rgba(20, 30, 55, 0.8);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px 16px 0 0;
+}
+
+.chat-widget-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #00e5ff;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.5);
+}
+
+.chat-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: color 0.2s, background 0.2s;
+}
+.chat-close-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.chat-emotes-bar {
+  display: flex;
+  gap: 6px;
+  padding: 8px 10px;
+  overflow-x: auto;
+  white-space: nowrap;
+  background: rgba(0, 0, 0, 0.25);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  scrollbar-width: thin;
+}
+
+.quick-emote-pill {
+  background: rgba(0, 229, 255, 0.1);
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  color: #e2e8f0;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 14px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+.quick-emote-pill:hover {
+  background: rgba(0, 229, 255, 0.3);
+  color: #fff;
+  border-color: #00e5ff;
+  transform: translateY(-1px);
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.4);
+}
+
+.chat-message-list {
+  flex: 1;
+  padding: 10px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  scrollbar-width: thin;
+}
+
+.chat-empty-hint {
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+  margin: auto;
+  padding: 10px;
+  opacity: 0.8;
+}
+
+.chat-msg-row {
+  display: flex;
+  flex-direction: column;
+  max-width: 85%;
+}
+.chat-msg-row.my-msg {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+.chat-msg-row.opp-msg {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+
+.chat-msg-sender {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  margin-bottom: 2px;
+  padding: 0 4px;
+}
+.chat-msg-bubble {
+  padding: 8px 12px;
+  border-radius: 14px;
+  font-size: 12px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+.chat-msg-row.my-msg .chat-msg-bubble {
+  background: linear-gradient(135deg, #00c6ff 0%, #0072ff 100%);
+  color: #fff;
+  border-bottom-right-radius: 2px;
+  box-shadow: 0 4px 12px rgba(0, 114, 255, 0.3);
+}
+.chat-msg-row.opp-msg .chat-msg-bubble {
+  background: rgba(30, 41, 59, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #f1f5f9;
+  border-bottom-left-radius: 2px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.chat-input-bar {
+  display: flex;
+  gap: 6px;
+  padding: 10px;
+  background: rgba(15, 23, 42, 0.9);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0 0 16px 16px;
+}
+.chat-input-field {
+  flex: 1;
+  background: rgba(2, 6, 23, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.chat-input-field:focus {
+  border-color: #00e5ff;
+  box-shadow: 0 0 8px rgba(0, 229, 255, 0.3);
+}
+.chat-send-btn {
+  padding: 6px 14px;
+  font-size: 12px;
+  border-radius: 20px;
+}
+
+/* 浮動スピーチバブル */
+.speech-bubble {
+  position: fixed;
+  z-index: 10060;
+  padding: 10px 16px;
+  border-radius: 18px;
+  font-size: 13px;
+  font-weight: 700;
+  max-width: 260px;
+  word-break: break-word;
+  pointer-events: none;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+  animation: popInBubble 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.speech-bubble.hidden {
+  opacity: 0;
+  transform: scale(0.8) translateY(10px);
+}
+.speech-bubble.opp-bubble {
+  top: 130px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%);
+  border: 2px solid #ff9f1c;
+  color: #fff;
+  box-shadow: 0 0 20px rgba(255, 159, 28, 0.4);
+}
+.speech-bubble.player-bubble {
+  bottom: 220px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, rgba(0, 198, 255, 0.95) 0%, rgba(0, 114, 255, 0.98) 100%);
+  border: 2px solid #00e5ff;
+  color: #fff;
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.4);
+}
+@keyframes popInBubble {
+  0% { transform: translateX(-50%) scale(0.5); opacity: 0; }
+  100% { transform: translateX(-50%) scale(1); opacity: 1; }
+}
 </style>
 
   <script>
@@ -8143,6 +8387,7 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
               <div class="stadium-active-player" id="stadiumPlayerBadge">プレイヤーの番</div>
               <div class="stadium-phase-text" id="stadiumPhaseText">カードを1枚引きました。行動してください。</div>
               <div class="stadium-actions">
+                <button id="battleChatToggleBtn" class="secondary-button stadium-action-btn" type="button" onclick="BattleSystem.toggleChatWidget()">💬 チャット<span id="chatUnreadBadge" class="chat-unread-badge hidden">0</span></button>
                 <button id="battleEndTurnBtn" class="primary-button stadium-action-btn" type="button">ターン終了</button>
                 <button id="battleSurrenderBtn" class="secondary-button stadium-action-btn danger-btn"
                   type="button">降参</button>
@@ -8277,6 +8522,33 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
                 <span class="hand-tip-text">ドラッグ＆ドロップで [ベンチ出し] [エネ付け] [進化] [トレーナー発動] が可能です</span>
               </div>
               <div id="playerHandRow" class="hand-cards-rack"></div>
+            </div>
+
+            <!-- 対戦内リアルタイムチャットウィジェット -->
+            <div id="battle-chat-widget" class="battle-chat-widget hidden">
+              <div class="chat-widget-header">
+                <div class="chat-widget-title">💬 リアルタイム対戦チャット</div>
+                <button type="button" class="chat-close-btn" onclick="BattleSystem.toggleChatWidget()">✕</button>
+              </div>
+              <div class="chat-emotes-bar">
+                <button type="button" class="quick-emote-pill" onclick="BattleSystem.sendQuickEmote('よろしくお願いします！')">👋 よろしく！</button>
+                <button type="button" class="quick-emote-pill" onclick="BattleSystem.sendQuickEmote('ナイスプレイ！')">👍 ナイス！</button>
+                <button type="button" class="quick-emote-pill" onclick="BattleSystem.sendQuickEmote('ありがとう！')">✨ ありがとう</button>
+                <button type="button" class="quick-emote-pill" onclick="BattleSystem.sendQuickEmote('考え中… 🤔')">🤔 考え中</button>
+                <button type="button" class="quick-emote-pill" onclick="BattleSystem.sendQuickEmote('対戦ありがとうございました！')">🙇 感謝！</button>
+              </div>
+              <div id="chatMessageList" class="chat-message-list">
+                <div class="chat-empty-hint">💬 チャットメッセージや定型文を送ってみましょう！</div>
+              </div>
+              <div class="chat-input-bar">
+                <input type="text" id="battleChatInput" class="chat-input-field" placeholder="メッセージを入力..." onkeydown="if(event.key==='Enter') BattleSystem.sendChatMessage()">
+                <button type="button" class="primary-button chat-send-btn" onclick="BattleSystem.sendChatMessage()">送信</button>
+              </div>
+            </div>
+
+            <!-- 浮動スピーチバブル -->
+            <div id="playerSpeechBubble" class="speech-bubble player-bubble hidden"></div>
+            <div id="oppSpeechBubble" class="speech-bubble opp-bubble hidden"></div>
             </div>
           </div>
 
@@ -17406,6 +17678,7 @@ var CardSystem;
         discard: [],
         energyAttached: false,
         supporterUsed: false,
+        stadiumUsedThisTurn: false,
         retreated: false
       },
       opponent: {
@@ -17419,6 +17692,7 @@ var CardSystem;
         discard: [],
         energyAttached: false,
         supporterUsed: false,
+        stadiumUsedThisTurn: false,
         retreated: false
       },
       logs: [],
@@ -18876,6 +19150,10 @@ var CardSystem;
       this.state.turnNumber = 1;
       this.state.prizeCountRule = prizeCount || 6;
       this.state.online.lastSeq = Number(startSeq) || 1;
+      this.state.online.chatMessages = [];
+      this.state.online.unreadChatCount = 0;
+      this.state.online.isChatOpen = false;
+      this.updateChatUnreadBadge();
       this.state.logs = [];
 
       const myRole = String(this.state.online.role || 'host').toLowerCase();
@@ -19151,8 +19429,7 @@ var CardSystem;
         { type: type, payload: fullPayload }
       ], function(res) {
         if (res && res.ok && res.lastSeq) {
-          console.log('✅ [Online Packet Ack]', type, '| Returned lastSeq:', res.lastSeq);
-          self.state.online.lastSeq = res.lastSeq;
+          console.log('✅ [Online Packet Ack]', type, '| Server lastSeq:', res.lastSeq);
           App.toast('📡 通信成功: 操作「' + type + '」を送信しました。');
           self.pollRoomImmediate();
         } else {
@@ -19295,8 +19572,19 @@ var CardSystem;
         case 'play_trainer': {
           const card = payload.card || { name: 'トレーナーカード' };
           const kind = payload.kind || 'グッズ';
-          this.log('📜 相手が【' + kind + '】「' + card.name + '」を使用しました！');
-          this.animateTrainerCardPlay(card, kind);
+          const isStadium = kind === 'スタジアム' || this.isStadium(card);
+          if (isStadium) {
+            if (this.state.activeStadium) {
+              const oldStadium = this.state.activeStadium;
+              const oldOwner = (oldStadium.owner === this.state.player.id) ? this.state.player : this.state.opponent;
+              if (oldOwner && Array.isArray(oldOwner.discard)) {
+                oldOwner.discard.push(oldStadium);
+              }
+            }
+            this.state.activeStadium = Object.assign({}, card, { owner: this.state.opponent.id });
+          }
+          this.log((isStadium ? '🏟️' : '📜') + ' 相手が【' + (isStadium ? 'スタジアム' : kind) + '】「' + card.name + '」を使用しました！');
+          this.animateTrainerCardPlay(card, isStadium ? 'スタジアム' : kind);
           this.render();
           break;
         }
@@ -19364,6 +19652,20 @@ var CardSystem;
         case 'init_board': {
           this.log('🟢 相手の初期盤面を同期しました。');
           this.render();
+          break;
+        }
+        case 'chat_message': {
+          const senderName = payload.senderName || (this.state.opponent ? this.state.opponent.name : '対戦相手');
+          const text = payload.text || '💬 ...';
+          this.log('💬 ' + senderName + ': ' + text);
+          App.toast('💬 ' + senderName + ': ' + text);
+          this.addChatMessageToList({
+            senderName: senderName,
+            text: text,
+            by: 'opponent',
+            time: Date.now()
+          });
+          this.showSpeechBubble('opponent', text);
           break;
         }
         case 'end_turn': {
@@ -19772,10 +20074,43 @@ var CardSystem;
       return cat.includes('エネルギー') || cat.toLowerCase().includes('energy');
     },
 
+    isStadium(c) {
+      if (!c) return false;
+      let cat = String(c.category || '');
+      if (!cat && window.CardSystem) {
+        const master = (c.id && window.CardSystem.findCardById ? window.CardSystem.findCardById(c.id) : null) ||
+                       (c.name && window.CardSystem.findCardByName ? window.CardSystem.findCardByName(c.name) : null);
+        if (master && master.category) cat = String(master.category);
+      }
+      return cat.includes('スタジアム') || cat.toLowerCase().includes('stadium');
+    },
+
+    isSupporter(c) {
+      if (!c) return false;
+      let cat = String(c.category || '');
+      if (!cat && window.CardSystem) {
+        const master = (c.id && window.CardSystem.findCardById ? window.CardSystem.findCardById(c.id) : null) ||
+                       (c.name && window.CardSystem.findCardByName ? window.CardSystem.findCardByName(c.name) : null);
+        if (master && master.category) cat = String(master.category);
+      }
+      return (cat.includes('サポート') || cat.toLowerCase().includes('supporter')) && !this.isStadium(c);
+    },
+
+    isItem(c) {
+      if (!c) return false;
+      let cat = String(c.category || '');
+      if (!cat && window.CardSystem) {
+        const master = (c.id && window.CardSystem.findCardById ? window.CardSystem.findCardById(c.id) : null) ||
+                       (c.name && window.CardSystem.findCardByName ? window.CardSystem.findCardByName(c.name) : null);
+        if (master && master.category) cat = String(master.category);
+      }
+      return (cat.includes('グッズ') || cat.toLowerCase().includes('item')) && !this.isStadium(c) && !this.isSupporter(c);
+    },
+
     isTrainer(c) {
       if (!c) return false;
       const cat = String(c.category || '');
-      return cat.includes('グッズ') || cat.includes('サポート') || cat.includes('スタジアム') || cat.toLowerCase().includes('trainer');
+      return cat.includes('グッズ') || cat.includes('サポート') || cat.includes('スタジアム') || cat.toLowerCase().includes('trainer') || this.isStadium(c) || this.isSupporter(c) || this.isItem(c);
     },
 
     isPokemon(c) {
@@ -19958,6 +20293,7 @@ var CardSystem;
         discard: [],
         energyAttached: false,
         supporterUsed: false,
+        stadiumUsedThisTurn: false,
         retreated: false,
         turnCount: 0
       };
@@ -19973,6 +20309,7 @@ var CardSystem;
         discard: [],
         energyAttached: false,
         supporterUsed: false,
+        stadiumUsedThisTurn: false,
         retreated: false,
         turnCount: 0
       };
@@ -20142,6 +20479,7 @@ var CardSystem;
       cur.turnCount = (cur.turnCount || 0) + 1;
       cur.energyAttached = false;
       cur.supporterUsed = false;
+      cur.stadiumUsedThisTurn = false;
       cur.retreated = false;
       if (cur.allyKnockedOutThisTurn || cur.wasAllyKnockedOutLastTurn || cur.allyKnockedOutLastTurn) {
         cur.allyKnockedOutLastTurn = true;
@@ -20339,9 +20677,26 @@ var CardSystem;
         return;
       }
 
-      // 4. グッズ
-      const cat = String(card.category || '');
-      if (cat.includes('グッズ') || cat.toLowerCase().includes('item')) {
+      // 4. スタジアム
+      if (this.isStadium(card)) {
+        if (this.isBlocked('stadium', card, p) || this.isBlocked('trainer', card, p)) {
+          App.toast('効果によりスタジアムカードの使用は禁止されています。', true);
+          return;
+        }
+        if (p.stadiumUsedThisTurn) {
+          App.toast('スタジアムカードは自分の番に1枚しか出せません。', true);
+          return;
+        }
+        if (this.state.activeStadium && this.state.activeStadium.name === card.name) {
+          App.toast('同名のスタジアムカードは場に出せません。', true);
+          return;
+        }
+        this.playTrainerCard(index, card, 'スタジアム');
+        return;
+      }
+
+      // 5. グッズ
+      if (this.isItem(card)) {
         if (this.isBlocked('item', card, p) || this.isBlocked('trainer', card, p)) {
           App.toast('効果によりグッズの使用は禁止されています。', true);
           return;
@@ -20350,8 +20705,8 @@ var CardSystem;
         return;
       }
 
-      // 5. サポート
-      if (cat.includes('サポート') || cat.includes('トレーナー') || cat.toLowerCase().includes('supporter')) {
+      // 6. サポート
+      if (this.isSupporter(card)) {
         if (this.isBlocked('supporter', card, p) || this.isBlocked('trainer', card, p)) {
           App.toast('効果によりサポートの使用は禁止されています。', true);
           return;
@@ -20769,10 +21124,25 @@ var CardSystem;
         return;
       }
 
-      // トレーナー/グッズ/サポートカード
-      const cat = String(card.category || '');
-      const isSupp = cat.includes('サポート') || cat.includes('トレーナー') || cat.toLowerCase().includes('supporter');
-      if (isSupp) {
+      // トレーナー/グッズ/サポート/スタジアムカード
+      if (this.isStadium(card)) {
+        if (this.isBlocked('stadium', card, p) || this.isBlocked('trainer', card, p)) {
+          App.toast('効果によりスタジアムカードの使用は禁止されています。', true);
+          return;
+        }
+        if (p.stadiumUsedThisTurn) {
+          App.toast('スタジアムカードは自分の番に1枚しか出せません。', true);
+          return;
+        }
+        if (this.state.activeStadium && this.state.activeStadium.name === card.name) {
+          App.toast('同名のスタジアムカードは場に出せません。', true);
+          return;
+        }
+        this.playTrainerCard(handIndex, card, 'スタジアム');
+        return;
+      }
+
+      if (this.isSupporter(card)) {
         if (this.isFirstPlayerFirstTurn('player')) {
           App.toast('先攻の最初の番はサポートカードを使用できません。', true);
           return;
@@ -20781,8 +21151,14 @@ var CardSystem;
           App.toast('サポートカードは1ターンに1枚までしか使えません。', true);
           return;
         }
+        this.playTrainerCard(handIndex, card, 'サポート', targetPokemon);
+        return;
       }
-      this.playTrainerCard(handIndex, card, isSupp ? 'サポート' : 'グッズ', targetPokemon);
+
+      if (this.isItem(card)) {
+        this.playTrainerCard(handIndex, card, 'グッズ', targetPokemon);
+        return;
+      }
     },
 
     handleDropOnEmptyBench(handIndex, targetSlotEl, benchIdx) {
@@ -20825,10 +21201,25 @@ var CardSystem;
         return;
       }
 
-      // トレーナーカード
-      const cat = String(card.category || '');
-      const isSupp = cat.includes('サポート') || cat.includes('トレーナー') || cat.toLowerCase().includes('supporter');
-      if (isSupp) {
+      // トレーナーカード (スタジアム / サポート / グッズ)
+      if (this.isStadium(card)) {
+        if (this.isBlocked('stadium', card, p) || this.isBlocked('trainer', card, p)) {
+          App.toast('効果によりスタジアムカードの使用は禁止されています。', true);
+          return;
+        }
+        if (p.stadiumUsedThisTurn) {
+          App.toast('スタジアムカードは自分の番に1枚しか出せません。', true);
+          return;
+        }
+        if (this.state.activeStadium && this.state.activeStadium.name === card.name) {
+          App.toast('同名のスタジアムカードは場に出せません。', true);
+          return;
+        }
+        this.playTrainerCard(handIndex, card, 'スタジアム');
+        return;
+      }
+
+      if (this.isSupporter(card)) {
         if (this.isFirstPlayerFirstTurn('player')) {
           App.toast('先攻の最初の番はサポートカードを使用できません。', true);
           return;
@@ -20837,8 +21228,14 @@ var CardSystem;
           App.toast('サポートカードは1ターンに1枚までしか使えません。', true);
           return;
         }
+        this.playTrainerCard(handIndex, card, 'サポート');
+        return;
       }
-      this.playTrainerCard(handIndex, card, isSupp ? 'サポート' : 'グッズ');
+
+      if (this.isItem(card)) {
+        this.playTrainerCard(handIndex, card, 'グッズ');
+        return;
+      }
     },
 
     promptEvolution(handIndex, evoCard) {
@@ -20937,13 +21334,15 @@ var CardSystem;
           prizes: [...(pl.prizes || [])],
           active: pl.active,
           supporterUsed: !!pl.supporterUsed,
+          stadiumUsedThisTurn: !!pl.stadiumUsedThisTurn,
           energyAttached: !!pl.energyAttached,
           retreated: !!pl.retreated
         };
       };
       return {
         player: snapPlayer(this.state.player),
-        opponent: snapPlayer(this.state.opponent)
+        opponent: snapPlayer(this.state.opponent),
+        activeStadium: this.state.activeStadium ? Object.assign({}, this.state.activeStadium) : null
       };
     },
 
@@ -20958,11 +21357,13 @@ var CardSystem;
         target.prizes = [...saved.prizes];
         target.active = saved.active;
         target.supporterUsed = saved.supporterUsed;
+        target.stadiumUsedThisTurn = saved.stadiumUsedThisTurn;
         target.energyAttached = saved.energyAttached;
         target.retreated = saved.retreated;
       };
       restoreP(this.state.player, snapshot.player);
       restoreP(this.state.opponent, snapshot.opponent);
+      this.state.activeStadium = snapshot.activeStadium ? Object.assign({}, snapshot.activeStadium) : null;
     },
 
     playTrainerCard(handIndex, card, kind, targetPokemon) {
@@ -20975,6 +21376,7 @@ var CardSystem;
 
       p.hand.splice(handIndex, 1);
       if (isStadium) {
+        p.stadiumUsedThisTurn = true;
         if (this.state.activeStadium) {
           const oldStadium = this.state.activeStadium;
           const oldOwner = (oldStadium.owner === this.state.opponent.id) ? this.state.opponent : this.state.player;
@@ -20987,7 +21389,7 @@ var CardSystem;
         p.discard.push(card);
       }
 
-      if (kind === 'サポート') {
+      if (kind === 'サポート' || this.isSupporter(card)) {
         p.supporterUsed = true;
       }
 
@@ -22898,16 +23300,18 @@ var CardSystem;
 
       root.innerHTML = hand.map((c, i) => {
         let actionLabel = '使用';
-        const isEn = this.isEnergy(c);
-        const isBas = this.isBasic(c);
-        const isEvo = this.isEvolution(c);
-        const cat = String(c.category || '');
-        const isSupp = cat.includes('サポート') || cat.toLowerCase().includes('supporter');
+        const isStad = this.isStadium(c);
+        const isSupp = this.isSupporter(c);
         const isFirstTurnFirstPlayer = this.isFirstPlayerFirstTurn('player');
         if (isBas) actionLabel = '場に出す (DnD)';
         else if (isEn) actionLabel = '⚡ エネ付け (DnD)';
         else if (isEvo) {
           actionLabel = this.isFirstTurn('player') ? '初番進化不可' : '進化 (DnD)';
+        }
+        else if (isStad) {
+          if (this.state.player.stadiumUsedThisTurn) actionLabel = '今番使用済';
+          else if (this.state.activeStadium && this.state.activeStadium.name === c.name) actionLabel = '同名不可';
+          else actionLabel = '🏟️ スタジアム (DnD)';
         }
         else if (isSupp && isFirstTurnFirstPlayer) actionLabel = '先攻不可';
         else if (isSupp && this.state.player.supporterUsed) actionLabel = '今番使用済';
@@ -23025,6 +23429,146 @@ var CardSystem;
       replace(/>/g, '&gt;').
       replace(/"/g, '&quot;').
       replace(/'/g, '&#039;');
+    },
+
+    toggleChatWidget() {
+      const widget = document.getElementById('battle-chat-widget');
+      if (!widget) return;
+      const isOpen = !widget.classList.contains('hidden');
+      if (isOpen) {
+        widget.classList.add('hidden');
+        this.state.online.isChatOpen = false;
+      } else {
+        widget.classList.remove('hidden');
+        this.state.online.isChatOpen = true;
+        this.state.online.unreadChatCount = 0;
+        this.updateChatUnreadBadge();
+        const input = document.getElementById('battleChatInput');
+        if (input) input.focus();
+        this.scrollChatToBottom();
+      }
+    },
+
+    updateChatUnreadBadge() {
+      const badge = document.getElementById('chatUnreadBadge');
+      if (!badge) return;
+      const count = this.state.online.unreadChatCount || 0;
+      if (count > 0) {
+        badge.textContent = count;
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+    },
+
+    sendQuickEmote(text) {
+      if (!text) return;
+      this.sendChatMessageText(text);
+    },
+
+    sendChatMessage() {
+      const input = document.getElementById('battleChatInput');
+      if (!input) return;
+      const text = (input.value || '').trim();
+      if (!text) return;
+      input.value = '';
+      this.sendChatMessageText(text);
+    },
+
+    sendChatMessageText(text) {
+      const myName = (this.state.player && this.state.player.name) || 'あなた';
+      const msgObj = {
+        senderName: myName,
+        text: text,
+        by: 'player',
+        time: Date.now()
+      };
+
+      this.addChatMessageToList(msgObj);
+      this.showSpeechBubble('player', text);
+
+      if (this.state.mode === 'online') {
+        this.broadcastOnlineAction('chat_message', {
+          senderName: myName,
+          text: text
+        });
+      } else if (this.state.mode === 'ai') {
+        const self = this;
+        setTimeout(function () {
+          const aiReplies = [
+            'よろしくお願いします！',
+            'いい勝負ですね！',
+            '頑張ります！',
+            'ナイスプレイ！',
+            '対戦ありがとうございました！',
+            '手厳しいですね… 🤔'
+          ];
+          const replyText = aiReplies[Math.floor(Math.random() * aiReplies.length)];
+          const aiMsgObj = {
+            senderName: (self.state.opponent && self.state.opponent.name) || 'AI対戦相手',
+            text: replyText,
+            by: 'opponent',
+            time: Date.now()
+          };
+          self.addChatMessageToList(aiMsgObj);
+          self.showSpeechBubble('opponent', replyText);
+        }, 1200);
+      }
+    },
+
+    addChatMessageToList(msgObj) {
+      if (!this.state.online.chatMessages) this.state.online.chatMessages = [];
+      this.state.online.chatMessages.push(msgObj);
+
+      const container = document.getElementById('chatMessageList');
+      if (!container) return;
+
+      const hint = container.querySelector('.chat-empty-hint');
+      if (hint) hint.remove();
+
+      const isMyMsg = msgObj.by === 'player';
+      const row = document.createElement('div');
+      row.className = 'chat-msg-row ' + (isMyMsg ? 'my-msg' : 'opp-msg');
+
+      const senderEl = document.createElement('div');
+      senderEl.className = 'chat-msg-sender';
+      senderEl.textContent = msgObj.senderName || (isMyMsg ? 'あなた' : '対戦相手');
+
+      const bubbleEl = document.createElement('div');
+      bubbleEl.className = 'chat-msg-bubble';
+      bubbleEl.textContent = msgObj.text;
+
+      row.appendChild(senderEl);
+      row.appendChild(bubbleEl);
+      container.appendChild(row);
+
+      this.scrollChatToBottom();
+
+      if (!isMyMsg && !this.state.online.isChatOpen) {
+        this.state.online.unreadChatCount = (this.state.online.unreadChatCount || 0) + 1;
+        this.updateChatUnreadBadge();
+      }
+    },
+
+    scrollChatToBottom() {
+      const container = document.getElementById('chatMessageList');
+      if (container) {
+        container.scrollTop = container.scrollHeight;
+      }
+    },
+
+    showSpeechBubble(who, text) {
+      const bubbleId = who === 'player' ? 'playerSpeechBubble' : 'oppSpeechBubble';
+      const bubble = document.getElementById(bubbleId);
+      if (!bubble) return;
+
+      bubble.textContent = '💬 ' + text;
+      bubble.classList.remove('hidden');
+
+      if (bubble._hideTimer) clearTimeout(bubble._hideTimer);
+      bubble._hideTimer = setTimeout(function () {
+        bubble.classList.add('hidden');
+      }, 4000);
     }
   };
 
@@ -23325,7 +23869,9 @@ console.log('[ORBITAL] App.js.html started execution');
 
     bindNavigation() {
       document.querySelectorAll('.nav-button').forEach((btn) => {
-        btn.addEventListener('click', () => this.showPage(btn.dataset.page));
+        if (btn.dataset && btn.dataset.page) {
+          btn.addEventListener('click', () => this.showPage(btn.dataset.page));
+        }
       });
 
       const menuBtn = this.el('mobileMenuButton');
@@ -24626,6 +25172,7 @@ console.log('[ORBITAL] App.js.html started execution');
     initNmtAndPacks() {
       this.updateNmtBadge();
       this.loadPacks();
+      this.renderSingleShopGrid();
       // 今日のログインボーナスが未取得の場合、自動的に大型モータルをポップアップ表示！
       const today = new Date().toISOString().slice(0, 10);
       let lastClaim = '';
@@ -24849,6 +25396,7 @@ console.log('[ORBITAL] App.js.html started execution');
         this.state.packs = defaultPacks;
         this.renderPackGrid();
       }
+      this.renderPackGrid();
 
       if (window.google && google.script && google.script.run && typeof google.script.run.getPacks === 'function') {
         try {
