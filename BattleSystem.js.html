@@ -4522,18 +4522,24 @@
       if (desc) desc.textContent = options?.desc || '対象を選択してください。';
 
       grid.innerHTML = cards.map((c, i) => {
+        const rawObj = c._raw || c;
+        if (window.CardSystem && typeof window.CardSystem.createCardHtml === 'function' && rawObj && rawObj.name) {
+          const cardHtml = window.CardSystem.createCardHtml(rawObj, { size: 'sm' });
+          return '\n          <div class="battle-choice-item choice-card-item" data-choice-idx="' + (i) + '">\n            ' + cardHtml + '\n          </div>\n        ';
+        }
         const typeHtml = c.type ? '【' + this.escape(c.type) + '】' : '';
         const hpHtml = c.hp ? '<span>HP ' + c.hp + '</span>' : '';
-        const rawObj = c._raw || c;
         const imgUrl = c.image || rawObj.image || rawObj.imageUrl || (window.CardSystem && typeof window.CardSystem.findCardImage === 'function' ? window.CardSystem.findCardImage(c.name) : '');
         const imgTag = imgUrl ? '<img src="' + this.escape(imgUrl) + '" style="width:100%; height:80px; object-fit:cover; border-radius:6px; margin-bottom:6px;">' : '';
-        return '\n          <div class="choice-card-item" data-choice-idx="' + (i) + '">\n            ' + (imgTag) + '\n            <div class="choice-card-title">' + (this.escape(c.name)) + '</div>\n            <div class="choice-card-meta">\n              <span>' + (this.escape(c.category || '')) + '</span>\n              <span>' + (typeHtml) + '</span>\n              ' + (hpHtml) + '\n            </div>\n          </div>\n        ';
+        return '\n          <div class="battle-choice-item choice-card-item" data-choice-idx="' + (i) + '">\n            ' + (imgTag) + '\n            <div class="card-choice-name choice-card-title">' + (this.escape(c.name)) + '</div>\n            <div class="choice-card-meta" style="display:flex; flex-direction:column; align-items:center; gap:2px; font-size:11px; color:#cbd5e1;">\n              <span class="card-badge">' + (this.escape(c.category || '')) + '</span>\n              <span>' + (typeHtml) + '</span>\n              ' + (hpHtml) + '\n            </div>\n          </div>\n        ';
       }).join('');
 
       modal.classList.remove('hidden');
+      modal.style.display = 'grid';
 
       const cleanup = () => {
         modal.classList.add('hidden');
+        modal.style.display = '';
         if (cancelBtn) cancelBtn.onclick = null;
         if (closeBtn) closeBtn.onclick = null;
       };
@@ -4562,7 +4568,10 @@
 
     closeChoiceModal() {
       const modal = document.getElementById('battleChoiceModal');
-      if (modal) modal.classList.add('hidden');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = '';
+      }
     },
 
     showChoiceModalPromise(cards, options) {

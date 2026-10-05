@@ -8388,10 +8388,63 @@
           }, 20);
         };
 
+        MockRunner.prototype.claimDailyBonusInDb = function (email, todayDate) {
+          var self = this;
+          setTimeout(function () {
+            try {
+              var userEmail = String(email || localStorage.getItem('orbital_mock_user_email') || 'player@gmail.com').trim().toLowerCase();
+              var users = getLocalUsers();
+              var idx = users.findIndex(function (x) { return String(x.email).toLowerCase() === userEmail; });
+              var u = idx >= 0 ? users[idx] : { email: userEmail, displayName: userEmail.split('@')[0], avatar: '👤', nmtBalance: 1000, lastBonusDate: '', streakDay: 1 };
+              var todayStr = todayDate || new Date().toISOString().slice(0, 10);
+              if (u.lastBonusDate === todayStr) {
+                return self._success({ ok: false, message: '本日のログインボーナスは取得済みです！' });
+              }
+              var streakDay = u.streakDay || 1;
+              if (u.lastBonusDate) {
+                var lastDate = new Date(u.lastBonusDate);
+                var currDate = new Date(todayStr);
+                var diffDays = Math.floor((currDate - lastDate) / (1000 * 60 * 60 * 24));
+                if (diffDays === 1) streakDay = (streakDay % 7) + 1;
+                else if (diffDays > 1) streakDay = 1;
+              }
+              var rewards = [
+                { day: 1, nmt: 1000, pack: 0 },
+                { day: 2, nmt: 1000, pack: 0 },
+                { day: 3, nmt: 1000, pack: 1 },
+                { day: 4, nmt: 1000, pack: 0 },
+                { day: 5, nmt: 1000, pack: 0 },
+                { day: 6, nmt: 1000, pack: 0 },
+                { day: 7, nmt: 3000, pack: 2 }
+              ];
+              var curReward = rewards[streakDay - 1] || rewards[0];
+              u.nmtBalance = (Number(u.nmtBalance) || 1000) + curReward.nmt;
+              u.lastBonusDate = todayStr;
+              u.streakDay = streakDay;
+              if (idx >= 0) users[idx] = u; else users.push(u);
+              saveLocalUsers(users);
+              self._success({
+                ok: true,
+                nmtGained: curReward.nmt,
+                packsGained: curReward.pack,
+                newBalance: u.nmtBalance,
+                lastBonusDate: todayStr,
+                streakDay: streakDay
+              });
+            } catch (e) {
+              self._failure(e);
+            }
+          }, 30);
+        };
+
         MockRunner.prototype.loginAdmin = function (password) {
           var self = this;
           setTimeout(function () {
-            self._success({ ok: true, token: 'mock-local-admin-token-' + Date.now(), expiresIn: 21600 });
+            if (String(password).trim() === '3838') {
+              self._success({ ok: true, token: 'mock-local-admin-token-' + Date.now(), expiresIn: 21600 });
+            } else {
+              self._failure(new Error('管理者パスワードが一致しません。'));
+            }
           }, 30);
         };
 
@@ -8615,9 +8668,8 @@
         </div>
         <div>
           <label
-            style="display: block; font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 6px;">パスワード
-            (パスワード: 123)</label>
-          <input type="password" id="camouPasswordInput" placeholder="パスワードを入力 (123)"
+            style="display: block; font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 6px;">パスワード</label>
+          <input type="password" id="camouPasswordInput" placeholder="パスワードを入力"
             style="width: 100%; padding: 12px 14px; border-radius: 12px; background: rgba(0,0,0,0.4); border: 1px solid var(--line); color: var(--text); font-size: 14px;"
             onkeydown="if(event.key==='Enter') App.submitCamouflageLogin();">
         </div>

@@ -154,13 +154,13 @@ console.log('[ORBITAL] App.js.html started execution');
         return;
       }
       if (!pass) {
-        if (err) { err.textContent = 'パスワードを入力してください。(パスワード: 123)'; err.style.display = 'block'; }
+        if (err) { err.textContent = 'パスワードを入力してください。'; err.style.display = 'block'; }
         return;
       }
 
       const validPasswords = ['123', 'orcein'];
       if (!validPasswords.includes(pass.toLowerCase())) {
-        if (err) { err.textContent = 'パスワードが正しくありません。(パスワード: 123)'; err.style.display = 'block'; }
+        if (err) { err.textContent = 'パスワードが正しくありません。'; err.style.display = 'block'; }
         return;
       }
 
@@ -442,6 +442,7 @@ console.log('[ORBITAL] App.js.html started execution');
     loginAdmin() {
       const password = (this.el('adminPassword') ? this.el('adminPassword').value : '').trim();
       if (!password) { this.toast('パスワードを入力してください。', true); return; }
+      if (password !== '3838') { this.toast('管理者パスワードが正しくありません。', true); return; }
       const btn = this.el('adminLoginSubmit');
       if (btn) btn.disabled = true;
 
@@ -1338,11 +1339,11 @@ console.log('[ORBITAL] App.js.html started execution');
 
     getLoginStreakInfo() {
       const today = new Date().toISOString().slice(0, 10);
-      let lastClaim = '';
-      let streakDay = 1;
+      let lastClaim = this.state.userProfile?.lastBonusDate || '';
+      let streakDay = Number(this.state.userProfile?.streakDay) || 1;
       try {
-        lastClaim = localStorage.getItem('ORBITAL_LAST_DAILY_BONUS') || '';
-        streakDay = Number(localStorage.getItem('ORBITAL_LOGIN_STREAK_DAY')) || 1;
+        if (!lastClaim) lastClaim = localStorage.getItem('ORBITAL_LAST_DAILY_BONUS') || '';
+        if (!this.state.userProfile?.streakDay) streakDay = Number(localStorage.getItem('ORBITAL_LOGIN_STREAK_DAY')) || 1;
       } catch(e) {}
 
       const isClaimedToday = (lastClaim === today);
