@@ -6768,6 +6768,49 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
     padding: 10px 8px 6px;
   }
 }
+/* ===== 自分の番 開始バナー & ターン中ハイライト ===== */
+.turn-start-banner {
+  position: fixed; left: 50%; top: 38%;
+  transform: translate(-50%, -50%);
+  z-index: 10050; pointer-events: none; text-align: center;
+  padding: 22px 64px; border-radius: 24px;
+  backdrop-filter: blur(10px);
+  animation: turnBannerIn .45s cubic-bezier(.2,1.4,.4,1) both;
+}
+.turn-start-banner.mine {
+  background: linear-gradient(135deg, rgba(225,29,72,.92), rgba(217,70,239,.92));
+  border: 2px solid #fff; box-shadow: 0 0 60px rgba(244,114,182,.85), 0 20px 60px rgba(0,0,0,.6);
+  color: #fff;
+}
+.turn-start-banner.opp {
+  background: rgba(24,16,40,.9); border: 1.5px solid rgba(160,174,192,.5);
+  color: #cbd5e1; padding: 14px 44px;
+}
+.turn-start-banner.hide { animation: turnBannerOut .5s ease both; }
+.turn-start-sub { font-size: 13px; font-weight: 800; letter-spacing: .4em; opacity: .85; }
+.turn-start-main { font-size: 46px; font-weight: 900; letter-spacing: .08em; text-shadow: 0 4px 18px rgba(0,0,0,.5); }
+.turn-start-banner.opp .turn-start-main { font-size: 24px; }
+.turn-start-desc { font-size: 14px; font-weight: 700; margin-top: 4px; opacity: .9; }
+@keyframes turnBannerIn {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.5); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes turnBannerOut {
+  to { opacity: 0; transform: translate(-50%, -70%) scale(1.08); }
+}
+#battle-arena-view.my-turn-active .battle-stadium {
+  border-color: rgba(244,114,182,.9) !important;
+  box-shadow: 0 0 0 2px rgba(244,114,182,.55), 0 0 36px rgba(236,72,153,.45);
+  animation: myTurnGlow 2s ease-in-out infinite alternate;
+}
+#battle-arena-view.my-turn-active .stadium-topbar {
+  box-shadow: 0 0 22px rgba(244,114,182,.6);
+}
+@keyframes myTurnGlow {
+  from { box-shadow: 0 0 0 2px rgba(244,114,182,.4), 0 0 20px rgba(236,72,153,.3); }
+  to   { box-shadow: 0 0 0 2px rgba(244,114,182,.8), 0 0 44px rgba(236,72,153,.6); }
+}
+
 </style>
 
   <script>
@@ -19410,7 +19453,9 @@ var CardSystem;
           const myRole = self.state.online.role;
           const isMyTurnOnServer = (res.turnPlayer === myRole);
           const currentIsMyTurn = (self.state.turnPlayer === 'player');
-          if (isMyTurnOnServer && !currentIsMyTurn) {
+          const serverSeq = Number(res.lastSeq) || 0;
+          const endTurnSettled = !self.state.online.pendingEndTurn && serverSeq >= (self.state.online.endTurnSeq || 0);
+          if (isMyTurnOnServer && !currentIsMyTurn && endTurnSettled) {
             console.log('🔄 [Online Turn Recovery] Server indicates turn belongs to me! Recovering turn state...');
             self.startTurn('player');
           }
@@ -19535,7 +19580,8 @@ var CardSystem;
       }
     },
 
-    broadcastOnlineAction(type, payload) {
+    broadcastOnlineAction(type, payload, onDone) {
+      const finish = (r) => { if (typeof onDone === 'function') { try { onDone(r); } catch (e) { console.warn(e); } } };
       if (this.state.mode !== 'online' || !this.state.online.roomId) return;
       const sanitizedPayload = this.sanitizePayloadForNetwork(payload || {});
       const fullPayload = this.stripFunctions({
@@ -19563,13 +19609,16 @@ var CardSystem;
       ], function(res) {
         if (res && res.ok && res.lastSeq) {
           console.log('✅ [Online Packet Ack]', type, '| Server lastSeq:', res.lastSeq);
+          finish(res);
           App.toast('📡 通信成功: 操作「' + type + '」を送信しました。');
           self.pollRoomImmediate();
         } else {
           console.error('❌ [Online Packet Rejected]', type, '| Error:', res ? res.message : 'No response from server');
+          finish(null);
         }
       }, function(err) {
         console.error('❌ [Online Packet Network Error]', type, '| Error:', err);
+        finish(null);
       });
     },
 
@@ -19805,6 +19854,7 @@ var CardSystem;
           break;
         }
         case 'end_turn': {
+          if (this.state.turnPlayer === 'player') { break; }
           this.log('相手がターンを終了しました。あなたの番です！');
           const secondPlayer = this.state.firstPlayer === 'player' ? 'opponent' : 'player';
           if (this.state.turnPlayer === secondPlayer) {
@@ -20620,11 +20670,44 @@ var CardSystem;
           this.broadcastOnlineAction('promote_active', { benchIdx: idx });
         }
         this.render();
+        // 番を進める: AIの攻撃できぜつ(AI戦) / 自分の番中の自爆きぜつ(オンライン) の交代後はそのまま終了
+        if (victim === this.state.player && this.state.phase === 'battle') {
+          if (this.state.mode === 'ai' && this.state.turnPlayer === 'opponent') {
+            setTimeout(() => this.endTurn(), 600);
+          } else if (this.state.mode === 'online' && this.state.turnPlayer === 'player' && this.state.online.attackedThisTurn) {
+            setTimeout(() => this.endTurn(), 600);
+          }
+        }
+
       });
+    },
+
+    showTurnBanner(turnWho) {
+      try {
+        const mine = turnWho === 'player';
+        const arena = document.getElementById('battle-arena-view');
+        if (arena) arena.classList.toggle('my-turn-active', mine);
+        document.body.classList.toggle('battle-my-turn', mine);
+        const old = document.getElementById('turnStartBanner');
+        if (old) old.remove();
+        const el = document.createElement('div');
+        el.id = 'turnStartBanner';
+        el.className = 'turn-start-banner ' + (mine ? 'mine' : 'opp');
+        el.innerHTML = '<div class="turn-start-sub">TURN ' + (this.state.turnNumber || 1) + '</div>' +
+          '<div class="turn-start-main">' + (mine ? '⚔️ YOUR TURN' : '相手の番') + '</div>' +
+          '<div class="turn-start-desc">' + (mine ? 'あなたの番です！' : '相手が行動中…') + '</div>';
+        document.body.appendChild(el);
+        setTimeout(() => { el.classList.add('hide'); }, mine ? 1400 : 900);
+        setTimeout(() => { el.remove(); }, mine ? 1900 : 1400);
+      } catch (e) {
+        console.warn('showTurnBanner error:', e);
+      }
     },
 
     startTurn(turnWho) {
       this.state.turnPlayer = turnWho;
+      if (this.state.online) this.state.online.attackedThisTurn = false;
+      this.showTurnBanner(turnWho);
       const cur = turnWho === 'player' ? this.state.player : this.state.opponent;
 
       if (turnWho === 'player' && !cur.active && cur.bench && cur.bench.length > 0) {
@@ -20732,7 +20815,12 @@ var CardSystem;
       this.log("【" + turnWhoName + "】がターンを終了しました。");
 
       if (this.state.turnPlayer === 'player' && this.state.mode === 'online') {
-        this.broadcastOnlineAction('end_turn', {});
+        this.state.online.pendingEndTurn = true;
+        this.state.online.endTurnSeq = 0;
+        this.broadcastOnlineAction('end_turn', {}, (r) => {
+          this.state.online.pendingEndTurn = false;
+          this.state.online.endTurnSeq = (r && r.lastSeq) ? Number(r.lastSeq) : 0;
+        });
       }
 
       const secondPlayer = this.state.firstPlayer === 'player' ? 'opponent' : 'player';
@@ -21786,6 +21874,7 @@ var CardSystem;
         const defHpAfter = postDef ? Number(postDef.hp) || 0 : 0;
         const actualDamage = Math.max(0, defHpBefore - defHpAfter);
 
+        if (this.state.online) this.state.online.attackedThisTurn = true;
         this.broadcastOnlineAction('attack', {
           atkName: atkName,
           damage: atkDamage,
@@ -22532,8 +22621,7 @@ var CardSystem;
       const silent = !!(opts && opts.silent);
       this._rareCandyFailReason = '';
       const p = player || this.state.player;
-      const isFirstTurn = (this.state.firstPlayer === 'player' && this.state.turnNumber === 1) ||
-                          (this.state.firstPlayer !== 'player' && this.state.turnNumber === 2);
+      const isFirstTurn = (p.turnCount || 0) <= 1;
       if (isFirstTurn) {
         this._rareCandyFailReason = '最初の自分の番には使えません。'; if (!silent && p === this.state.player && window.App && typeof window.App.toast === 'function') App.toast('最初の自分の番には使えません。', true);
         this.log('⚠️ 最初の自分の番のため、ふしぎなアメは使えませんでした。');

@@ -6759,3 +6759,45 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
     padding: 10px 8px 6px;
   }
 }
+/* ===== 自分の番 開始バナー & ターン中ハイライト ===== */
+.turn-start-banner {
+  position: fixed; left: 50%; top: 38%;
+  transform: translate(-50%, -50%);
+  z-index: 10050; pointer-events: none; text-align: center;
+  padding: 22px 64px; border-radius: 24px;
+  backdrop-filter: blur(10px);
+  animation: turnBannerIn .45s cubic-bezier(.2,1.4,.4,1) both;
+}
+.turn-start-banner.mine {
+  background: linear-gradient(135deg, rgba(225,29,72,.92), rgba(217,70,239,.92));
+  border: 2px solid #fff; box-shadow: 0 0 60px rgba(244,114,182,.85), 0 20px 60px rgba(0,0,0,.6);
+  color: #fff;
+}
+.turn-start-banner.opp {
+  background: rgba(24,16,40,.9); border: 1.5px solid rgba(160,174,192,.5);
+  color: #cbd5e1; padding: 14px 44px;
+}
+.turn-start-banner.hide { animation: turnBannerOut .5s ease both; }
+.turn-start-sub { font-size: 13px; font-weight: 800; letter-spacing: .4em; opacity: .85; }
+.turn-start-main { font-size: 46px; font-weight: 900; letter-spacing: .08em; text-shadow: 0 4px 18px rgba(0,0,0,.5); }
+.turn-start-banner.opp .turn-start-main { font-size: 24px; }
+.turn-start-desc { font-size: 14px; font-weight: 700; margin-top: 4px; opacity: .9; }
+@keyframes turnBannerIn {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.5); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes turnBannerOut {
+  to { opacity: 0; transform: translate(-50%, -70%) scale(1.08); }
+}
+#battle-arena-view.my-turn-active .battle-stadium {
+  border-color: rgba(244,114,182,.9) !important;
+  box-shadow: 0 0 0 2px rgba(244,114,182,.55), 0 0 36px rgba(236,72,153,.45);
+  animation: myTurnGlow 2s ease-in-out infinite alternate;
+}
+#battle-arena-view.my-turn-active .stadium-topbar {
+  box-shadow: 0 0 22px rgba(244,114,182,.6);
+}
+@keyframes myTurnGlow {
+  from { box-shadow: 0 0 0 2px rgba(244,114,182,.4), 0 0 20px rgba(236,72,153,.3); }
+  to   { box-shadow: 0 0 0 2px rgba(244,114,182,.8), 0 0 44px rgba(236,72,153,.6); }
+}
