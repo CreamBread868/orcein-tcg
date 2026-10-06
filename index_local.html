@@ -11686,9 +11686,16 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         if (!this.listeners[key]) this.listeners[key] = [];
         this.listeners[key].push(fn);
       }
-      emit(name, data) {
+      async emit(name, data) {
         const key = this.normalizeName(name);
-        (this.listeners[key] || []).forEach((fn) => fn(data));
+        const list = this.listeners[key] || [];
+        for (const fn of list) {
+          try {
+            await fn(data);
+          } catch (e) {
+            console.error('Error in event listener [' + key + ']:', e);
+          }
+        }
       }
     }
 
@@ -11922,6 +11929,11 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
       ctx.isBench = isBench;
 
       let asyncCode = String(code);
+      // Convert event.on callbacks to async functions so await can be used inside them without SyntaxError
+      asyncCode = asyncCode.replace(/(\bevent\s*\.\s*on\s*\(\s*['"][^'"]+['"]\s*,\s*)(?<!async\s+)(function\b|\([^()]*\)\s*=>|[\w$]+\s*=>)/g, '$1async $2');
+      // Convert any non-async functions/arrow functions containing async calls (choiceCard, coinFlip, etc.) into async functions
+      asyncCode = asyncCode.replace(/(?<!async\s+)(\((?:[^()]*|\([^()]*\))*\)\s*=>|[\w$]+\s*=>|function\b[^{]*)\s*\{([^}]*?\b(?:choiceCard|choiceCards|coinFlip|flipCoin|rareCandy)\b[^}]*)\}/g, 'async $1 {$2}');
+      // Auto-inject await before async functions
       asyncCode = asyncCode.replace(/(?<!await\s+)\b(choiceCard|choiceCards|coinFlip|flipCoin|rareCandy)\s*\(/g, 'await $1(');
 
       const AsyncFunction = Object.getPrototypeOf(async function () { }).constructor;
@@ -11988,7 +12000,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           window._currentExecutionContext = null;
         }
       }
-      if (eventName) ctx.event.emit(eventName, eventData);
+      if (eventName) await ctx.event.emit(eventName, eventData);
       return ctx;
     };
 
