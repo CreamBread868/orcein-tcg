@@ -26770,6 +26770,14 @@ console.log('[ORBITAL] App.js.html started execution');
     getUserEmail() {
       try {
         if (this.state.userProfile && this.state.userProfile.email) return this.state.userProfile.email;
+        const loggedIn = localStorage.getItem('ORBITAL_LOGGED_IN_USER');
+        if (loggedIn) {
+          const u = JSON.parse(loggedIn);
+          if (u && u.email) {
+            this.state.userProfile = Object.assign({ isLoggedIn: true }, u);
+            return u.email;
+          }
+        }
         if (window.DeckSystem && window.DeckSystem.state && window.DeckSystem.state.currentUser && window.DeckSystem.state.currentUser.email) {
           return window.DeckSystem.state.currentUser.email;
         }
@@ -26839,8 +26847,15 @@ console.log('[ORBITAL] App.js.html started execution');
       if (window.google && google.script && google.script.run && !window._is_mock_gas) {
         try {
           const email = this.getUserEmail();
-          google.script.run.saveUserNmtBalance(email, val);
-        } catch(e) {}
+          console.log('📡 [GAS Sync] Saving NMT balance to Users sheet:', val, 'for email:', email);
+          google.script.run.withSuccessHandler((res) => {
+            console.log('✅ [GAS Sync Success] saveUserNmtBalance:', res);
+          }).withFailureHandler((err) => {
+            console.warn('⚠️ [GAS Sync Error] saveUserNmtBalance:', err);
+          }).saveUserNmtBalance(email, val);
+        } catch(e) {
+          console.warn('setUserNmt GAS error:', e);
+        }
       }
     },
 
@@ -26883,7 +26898,12 @@ console.log('[ORBITAL] App.js.html started execution');
       if (window.google && google.script && google.script.run && !window._is_mock_gas && typeof google.script.run.saveUserCollection === 'function') {
         try {
           const email = this.getUserEmail();
-          google.script.run.saveUserCollection(collectionObj, email);
+          console.log('📡 [GAS Sync] Saving collection to Users sheet for email:', email);
+          google.script.run.withSuccessHandler((res) => {
+            console.log('✅ [GAS Sync Success] saveUserCollection:', res);
+          }).withFailureHandler((err) => {
+            console.warn('⚠️ [GAS Sync Error] saveUserCollection:', err);
+          }).saveUserCollection(collectionObj, email);
         } catch(e) {
           console.warn('saveUserCollectionToGas error:', e);
         }
