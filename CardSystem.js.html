@@ -277,6 +277,9 @@ var CardSystem;
       if (window.App && window.App.state) {
         window.App.state.userCollection = map;
       }
+      if (window.App && typeof window.App.saveUserCollectionToGas === 'function') {
+        window.App.saveUserCollectionToGas(map);
+      }
     },
 
     addCardsToCollection(drawnCards) {
