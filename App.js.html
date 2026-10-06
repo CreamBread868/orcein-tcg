@@ -2498,11 +2498,43 @@ console.log('[ORBITAL] App.js.html started execution');
       });
     },
 
+    getUserCollection() {
+      if (this.state.userCollection && typeof this.state.userCollection === 'object' && Object.keys(this.state.userCollection).length > 0) {
+        return this.state.userCollection;
+      }
+      if (window.CardSystem && typeof window.CardSystem.getUserCollection === 'function') {
+        const col = window.CardSystem.getUserCollection();
+        if (col && typeof col === 'object') {
+          this.state.userCollection = col;
+          return col;
+        }
+      }
+      try {
+        const stored = localStorage.getItem('ORBITAL_USER_COLLECTION');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed && typeof parsed === 'object') {
+            this.state.userCollection = parsed;
+            return parsed;
+          }
+        }
+      } catch(e) {}
+      this.state.userCollection = this.state.userCollection || {};
+      return this.state.userCollection;
+    },
+
     addCardToCollection(cardId) {
-      let col = this.state.userCollection || {};
+      let col = this.getUserCollection();
       col[cardId] = (col[cardId] || 0) + 1;
       this.state.userCollection = col;
       try { localStorage.setItem('ORBITAL_USER_COLLECTION', JSON.stringify(col)); } catch(e) {}
+
+      if (window.CardSystem && typeof window.CardSystem.saveUserCollection === 'function') {
+        window.CardSystem.saveUserCollection(col);
+      }
+      if (window.CardSystem && window.App && window.App.state && window.App.state.page === 'collection') {
+        window.CardSystem.renderCollectionPage();
+      }
 
       if (window.google && google.script && google.script.run && !window._is_mock_gas) {
         try {
@@ -2858,7 +2890,7 @@ console.log('[ORBITAL] App.js.html started execution');
       }
 
       // Remove 1 copy from seller's collection for listing
-      let col = this.state.userCollection || {};
+      let col = this.getUserCollection();
       col[cardId] = Math.max(0, (col[cardId] || 1) - 1);
       this.state.userCollection = col;
       try { localStorage.setItem('ORBITAL_USER_COLLECTION', JSON.stringify(col)); } catch(err) {}
@@ -2946,7 +2978,7 @@ console.log('[ORBITAL] App.js.html started execution');
     },
 
     getUserCardCount(cardId) {
-      const col = this.state.userCollection || {};
+      const col = this.getUserCollection();
       return Number(col[cardId]) || 0;
     },
 
