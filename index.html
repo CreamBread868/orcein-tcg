@@ -18245,26 +18245,41 @@ var CardSystem;
       });
     },
 
+    getUsableDecksForCurrentUser() {
+      const allDecks = (window.DeckSystem && DeckSystem.state && DeckSystem.state.decks) || [];
+      const myEmail = String(
+        (window.App && typeof window.App.getUserEmail === 'function' ? window.App.getUserEmail() : '') ||
+        (window.DeckSystem && window.DeckSystem.state && window.DeckSystem.state.currentUser ? window.DeckSystem.state.currentUser.email : '')
+      ).trim().toLowerCase();
+
+      return allDecks.filter(d => {
+        if (!d) return false;
+        const owner = String(d.userEmail || '').trim().toLowerCase();
+        return !owner || owner === 'sample' || d.isSample === true || (myEmail && owner === myEmail);
+      });
+    },
+
     populateDeckSelect() {
       const sel = document.getElementById('battle-player-deck-select');
       if (!sel) return;
 
-      const decks = window.DeckSystem && DeckSystem.state && DeckSystem.state.decks || [];
+      const decks = this.getUsableDecksForCurrentUser();
       sel.innerHTML = '';
 
       if (decks.length > 0) {
         decks.forEach((d) => {
           const opt = document.createElement('option');
           opt.value = d.id;
-          opt.textContent = d.name + " (" + (d.totalCount || 60) + "枚)";
+          const isSample = !d.userEmail || d.userEmail === 'sample' || d.isSample;
+          const tag = isSample ? ' [公式]' : ' [マイデッキ]';
+          opt.textContent = d.name + tag + " (" + (d.totalCount || 60) + "枚)";
           sel.appendChild(opt);
         });
       }
 
-      // 常にプリセットのスターターデッキも選択可能にする
       const starterOpt = document.createElement('option');
       starterOpt.value = 'preset_starter';
-      starterOpt.textContent = '⚡ スターター雷デッキ (プリセット)';
+      starterOpt.textContent = '⚡ スターター雷デッキ (公式プリセット)';
       sel.appendChild(starterOpt);
 
       this.updatePlayerDeckPreview();
@@ -18330,20 +18345,22 @@ var CardSystem;
         DeckSystem.loadDecks();
       }
 
-      const decks = window.DeckSystem && DeckSystem.state && DeckSystem.state.decks || [];
+      const decks = this.getUsableDecksForCurrentUser();
       sel.innerHTML = '';
       if (decks.length > 0) {
         decks.forEach((d) => {
           const opt = document.createElement('option');
           opt.value = d.id;
+          const isSample = !d.userEmail || d.userEmail === 'sample' || d.isSample;
+          const tag = isSample ? ' [公式]' : ' [マイデッキ]';
           const cardCount = Array.isArray(d.cards) ? d.cards.reduce((sum, item) => sum + (Number(item.count || item.qty || 1) || 1), 0) : 0;
-          opt.textContent = d.name + ' (' + (cardCount || d.totalCount || 60) + '枚)';
+          opt.textContent = d.name + tag + ' (' + (cardCount || d.totalCount || 60) + '枚)';
           sel.appendChild(opt);
         });
       }
       const starterOpt = document.createElement('option');
       starterOpt.value = 'preset_starter';
-      starterOpt.textContent = '⚡ スターター雷デッキ (プリセット)';
+      starterOpt.textContent = '⚡ スターター雷デッキ (公式プリセット)';
       sel.appendChild(starterOpt);
 
       this.updateOnlineDeckPreview();
@@ -20645,9 +20662,50 @@ var CardSystem;
       }, 1800);
     },
 
+    getBestPlayerDeckForCpu() {
+      const decks = (window.DeckSystem && window.DeckSystem.state && window.DeckSystem.state.decks) || [];
+      if (!decks || !decks.length) return null;
+
+      let stats = {};
+      try {
+        stats = JSON.parse(localStorage.getItem('ORBITAL_DECK_STATS') || '{}');
+      } catch(e) {}
+
+      let bestDeck = null;
+      let highestRate = -1;
+
+      decks.forEach(d => {
+        if (!d || !d.cards || !d.cards.length) return;
+        const st = stats[d.id] || { wins: 0, matches: 0 };
+        const rate = st.matches > 0 ? (st.wins / st.matches) : 0;
+        if (rate > highestRate || !bestDeck) {
+          highestRate = rate;
+          bestDeck = d;
+        }
+      });
+
+      return bestDeck;
+    },
+
     startBattle(playerDeckVal, aiDeckKey, prizeCount) {
+      if (playerDeckVal && typeof playerDeckVal === 'object' && playerDeckVal.id) {
+        this._activePlayerDeckId = playerDeckVal.id;
+      }
+
       const rawPlayerDeck = this.resolveDeckCards(playerDeckVal);
-      const rawAiDeck = this.expandAiDeck(this.aiDecks[aiDeckKey] || this.aiDecks.electric);
+
+      // CPU uses highest win rate player deck if available
+      const bestPlayerDeck = this.getBestPlayerDeckForCpu();
+      let rawAiDeck = null;
+      let aiName = 'AIライバル';
+
+      if (bestPlayerDeck && bestPlayerDeck.cards && bestPlayerDeck.cards.length > 0) {
+        rawAiDeck = this.resolveDeckCards(bestPlayerDeck);
+        aiName = 'AI (' + (bestPlayerDeck.name || '最高勝率デッキ') + ')';
+      } else {
+        rawAiDeck = this.expandAiDeck(this.aiDecks[aiDeckKey] || this.aiDecks.electric);
+        aiName = this.aiDecks[aiDeckKey]?.name || 'AIライバル';
+      }
 
       const playerDeck = this.shuffle(rawPlayerDeck.map((c) => this.createRuntimeCard(c)));
       const oppDeck = this.shuffle(rawAiDeck.map((c) => this.createRuntimeCard(c)));
@@ -20658,7 +20716,6 @@ var CardSystem;
       this.state.prizeCountRule = prizeCount;
       this.state.logs = [];
 
-      // コインフリップで先攻決定
       const coin = Math.random() >= 0.5 ? 1 : 0;
       this.state.firstPlayer = coin === 1 ? 'player' : 'opponent';
       this.state.turnPlayer = this.state.firstPlayer;
@@ -20681,7 +20738,7 @@ var CardSystem;
 
       this.state.opponent = {
         id: 'opponent',
-        name: this.aiDecks[aiDeckKey]?.name || 'AIライバル',
+        name: aiName,
         deck: oppDeck,
         hand: [],
         active: null,
@@ -20695,32 +20752,105 @@ var CardSystem;
         turnCount: 0
       };
 
-      // 手札7枚ドロー (たねポケモンを確実に引くまで)
       this.drawInitialHand(this.state.player);
       this.drawInitialHand(this.state.opponent);
 
-      // バトル場とベンチの初期配置
-      this.setupInitialBoard(this.state.player);
       this.setupInitialBoard(this.state.opponent);
 
-      // サイドカード配置
-      for (let i = 0; i < prizeCount; i++) {
-        if (this.state.player.deck.length) this.state.player.prizes.push(this.state.player.deck.shift());
-        if (this.state.opponent.deck.length) this.state.opponent.prizes.push(this.state.opponent.deck.shift());
+      this.promptPlayerInitialActiveChoice(() => {
+        for (let i = 0; i < prizeCount; i++) {
+          if (this.state.player.deck.length) this.state.player.prizes.push(this.state.player.deck.shift());
+          if (this.state.opponent.deck.length) this.state.opponent.prizes.push(this.state.opponent.deck.shift());
+        }
+
+        document.getElementById('battle-select-view').style.display = 'none';
+        document.getElementById('battle-arena-view').style.display = 'block';
+
+        this.closeResultModal();
+        this.log('⚔ バトル開始！ 先攻は【' + (this.state.firstPlayer === 'player' ? 'プレイヤー' : 'AIライバル') + '】です。');
+
+        this.render();
+        this.playMatchIntro(this.state.player.name, this.state.opponent.name);
+
+        this.startTurn(this.state.turnPlayer);
+      });
+    },
+
+    promptPlayerInitialActiveChoice(onComplete) {
+      const p = this.state.player;
+      const basics = p.hand.filter(c => this.isBasic(c));
+
+      if (basics.length <= 1) {
+        this.setupInitialBoard(p);
+        if (onComplete) onComplete();
+        return;
       }
 
-      // UI切り替え
-      document.getElementById('battle-select-view').style.display = 'none';
-      document.getElementById('battle-arena-view').style.display = 'block';
+      let overlay = document.getElementById('initial-active-modal-overlay');
+      if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'initial-active-modal-overlay';
+        overlay.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(15,23,42,0.94); backdrop-filter:blur(10px); z-index:99999; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:20px; box-sizing:border-box; color:#fff;';
+        document.body.appendChild(overlay);
+      }
+      overlay.style.display = 'flex';
 
-      this.closeResultModal();
-      this.log('⚔ バトル開始！ 先攻は【' + (this.state.firstPlayer === 'player' ? 'プレイヤー' : 'AIライバル') + '】です。');
+      let cardsHtml = '';
+      basics.forEach((card, idx) => {
+        const cHtml = window.CardSystem && window.CardSystem.createCardHtml ? window.CardSystem.createCardHtml(card, { size: 'sm' }) : ('<div>' + card.name + '</div>');
+        cardsHtml += '\n' +
+          '<div class="initial-active-option-card" onclick="BattleSystem.selectInitialActivePokemon(' + idx + ')" style="cursor:pointer; transform:scale(1); transition:transform 0.2s ease, box-shadow 0.2s ease; margin:10px;" onmouseover="this.style.transform=\'scale(1.08)\'; this.style.boxShadow=\'0 0 20px rgba(56,189,248,0.8)\';" onmouseout="this.style.transform=\'scale(1)\'; this.style.boxShadow=\'none\';">' +
+          cHtml +
+          '<button style="width:100%; margin-top:8px; background:linear-gradient(135deg,#38bdf8,#3b82f6); color:#fff; border:none; padding:8px 12px; border-radius:6px; font-weight:bold; cursor:pointer;">⚡ バトル場へ配置</button>' +
+          '</div>';
+      });
 
-      this.render();
-      this.playMatchIntro(this.state.player.name, this.state.opponent.name);
+      overlay.innerHTML = '\n' +
+        '<div style="text-align:center; max-width:800px; width:100%;">' +
+        '<div style="font-size:14px; text-transform:uppercase; letter-spacing:2px; color:#38bdf8; font-weight:bold; margin-bottom:6px;">SETUP PHASE</div>' +
+        '<h2 style="font-size:24px; font-weight:800; margin:0 0 8px 0; color:#fff;">⚔ 最初のバトルポケモンを選択してください</h2>' +
+        '<p style="color:#94a3b8; font-size:14px; margin-bottom:20px;">手札の「たねポケモン」の中から、最初にバトル場に出す1匹を選んでください。</p>' +
+        '<div style="display:flex; flex-wrap:wrap; justify-content:center; gap:16px; max-height:60vh; overflow-y:auto; padding:10px;">' +
+        cardsHtml +
+        '</div>' +
+        '</div>';
 
-      // 先攻のターン開始
-      this.startTurn(this.state.turnPlayer);
+      this._onInitialActiveChoiceComplete = () => {
+        overlay.style.display = 'none';
+        if (onComplete) onComplete();
+      };
+    },
+
+    selectInitialActivePokemon(basicIndex) {
+      const p = this.state.player;
+      const basics = p.hand.filter(c => this.isBasic(c));
+      const chosenCard = basics[basicIndex] || basics[0];
+
+      if (chosenCard) {
+        const handIdx = p.hand.findIndex(c => c === chosenCard || (c.id === chosenCard.id && c.instanceId === chosenCard.instanceId));
+        if (handIdx >= 0) {
+          p.active = p.hand.splice(handIdx, 1)[0];
+        } else {
+          p.active = chosenCard;
+        }
+
+        if (!p.active.hp) p.active.hp = 70;
+        if (!p.active.maxHp) p.active.maxHp = Number(p.active.hp) || 70;
+        p.active._turnPlayed = 0;
+
+        for (let i = p.hand.length - 1; i >= 0; i--) {
+          if (this.isBasic(p.hand[i]) && p.bench.length < 2) {
+            const card = p.hand.splice(i, 1)[0];
+            card._turnPlayed = 0;
+            if (!card.maxHp) card.maxHp = Number(card.hp) || 70;
+            p.bench.push(card);
+          }
+        }
+      }
+
+      if (typeof this._onInitialActiveChoiceComplete === 'function') {
+        this._onInitialActiveChoiceComplete();
+      }
     },
 
     drawInitialHand(p) {
@@ -22593,6 +22723,28 @@ var CardSystem;
       this.state.phase = 'ended';
       const isWin = winnerId === 'player';
 
+      if (isWin && this.state.mode === 'ai') {
+        if (window.App && typeof window.App.getUserNmt === 'function' && typeof window.App.setUserNmt === 'function') {
+          const currentNmt = window.App.getUserNmt();
+          const newNmt = currentNmt + 100;
+          window.App.setUserNmt(newNmt);
+          if (typeof window.App.toast === 'function') {
+            window.App.toast('🏆 CPUに勝利！ +100 NMT を獲得しました！', false);
+          }
+        }
+      }
+
+      if (this._activePlayerDeckId) {
+        try {
+          const raw = localStorage.getItem('ORBITAL_DECK_STATS') || '{}';
+          const stats = JSON.parse(raw);
+          if (!stats[this._activePlayerDeckId]) stats[this._activePlayerDeckId] = { wins: 0, matches: 0 };
+          stats[this._activePlayerDeckId].matches += 1;
+          if (isWin) stats[this._activePlayerDeckId].wins += 1;
+          localStorage.setItem('ORBITAL_DECK_STATS', JSON.stringify(stats));
+        } catch(e) {}
+      }
+
       const banner = document.getElementById('resultBanner');
       const title = document.getElementById('resultTitle');
       const msg = document.getElementById('resultMessage');
@@ -22603,14 +22755,14 @@ var CardSystem;
         banner.className = "result-banner " + (isWin ? 'win' : 'lose');
       }
       if (title) title.textContent = isWin ? '🎉 あなたの勝利！' : '💀 敗北…';
-      if (msg) msg.textContent = reason || (isWin ? '対戦相手を圧倒しました！' : '再挑戦してリベンジしましょう！');
+      if (msg) msg.textContent = reason || (isWin ? 'CPUに勝利し、報酬 +100 NMT を獲得しました！' : '再挑戦してリベンジしましょう！');
 
       if (stats) {
+        const rewardHtml = (isWin && this.state.mode === 'ai') ? '<div style="color:#eab308; font-weight:bold; margin-top:6px; font-size:16px;">💰 勝利報酬: +100 NMT 獲得！</div>' : '';
         stats.innerHTML = "\n          <div>対戦ターン数: <strong>" +
         this.state.turnNumber + " ターン</strong></div>\n          <div>あなたの残りサイド: <strong>" +
         this.state.player.prizes.length + " 枚</strong></div>\n          <div>相手の残りサイド: <strong>" +
-        this.state.opponent.prizes.length + " 枚</strong></div>\n        ";
-
+        this.state.opponent.prizes.length + " 枚</strong></div>\n" + rewardHtml;
       }
 
       const modal = document.getElementById('battleResultModal');

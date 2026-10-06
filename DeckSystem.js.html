@@ -433,6 +433,24 @@ window.DeckSystem = function () {
   }
 
   // --- デッキ編集操作 ---
+  function getUserOwnedCount(cardId, cardObj) {
+    const card = cardObj || (state.cardPool || []).find((c) => String(c.id) === String(cardId)) ||
+                 (window.App && window.App.state && window.App.state.cards || []).find((c) => String(c.id) === String(cardId));
+    if (isNormalEnergy(card)) return 60;
+
+    const col = (window.App && typeof window.App.getUserCollection === 'function') ? window.App.getUserCollection() :
+                ((window.CardSystem && typeof window.CardSystem.getUserCollection === 'function') ? window.CardSystem.getUserCollection() : {});
+    
+    if (!col || typeof col !== 'object') return 0;
+
+    const idKey = String(cardId || (card && card.id) || '');
+    const nameKey = String((card && card.name) || '');
+
+    if (idKey && col[idKey] != null) return Number(col[idKey]) || 0;
+    if (nameKey && col[nameKey] != null) return Number(col[nameKey]) || 0;
+    return 0;
+  }
+
   function addCard(cardId) {
     if (!state.activeDeck) return;
     if (!Array.isArray(state.activeDeck.cards)) state.activeDeck.cards = [];
@@ -441,7 +459,21 @@ window.DeckSystem = function () {
                  (window.App && window.App.state && window.App.state.cards || []).find((c) => String(c.id) === String(cardId));
     const isEnergy = isNormalEnergy(card);
 
+    const ownedCount = getUserOwnedCount(cardId, card);
     const existing = state.activeDeck.cards.find((c) => String(c.id) === String(cardId));
+    const currentInDeck = existing ? existing.count : 0;
+
+    if (currentInDeck >= ownedCount) {
+      if (window.CardSystem && window.CardSystem.showMessage) {
+        if (ownedCount === 0) {
+          window.CardSystem.showMessage('このカードは所持していません。パック開封やショップでカードを獲得してください！', 'warning');
+        } else {
+          window.CardSystem.showMessage('所持枚数（' + ownedCount + '枚）を超えてデッキに追加することはできません。', 'warning');
+        }
+      }
+      return;
+    }
+
     if (existing) {
       if (existing.count >= 4 && !isEnergy) {
         if (window.CardSystem && window.CardSystem.showMessage) {
@@ -845,12 +877,25 @@ window.DeckSystem = function () {
     filtered.forEach((card) => {
       const inDeckCount = countMap[card.id] || 0;
       const isEnergy = isNormalEnergy(card);
-      const isMax = isEnergy ? (inDeckCount >= 60) : (inDeckCount >= 4);
+      const ownedCount = getUserOwnedCount(card.id, card);
+      const isUnowned = !isEnergy && ownedCount === 0;
+      const isMax = isEnergy ? (inDeckCount >= 60) : (inDeckCount >= 4 || inDeckCount >= ownedCount);
 
       if (window.CardSystem && window.CardSystem.createCardHtml) {
-        html += "\n          <div onclick=\"DeckSystem.addCard('" +
-        card.id + "')\" title=\"クリックしてデッキに追加\">\n            " +
-        window.CardSystem.createCardHtml(card, { size: 'sm', inDeckCount: inDeckCount, isMax: isMax }) + "\n          </div>\n        ";
+        const cardHtml = window.CardSystem.createCardHtml(card, { size: 'sm', inDeckCount: inDeckCount, isMax: isMax });
+        const opacityStyle = isUnowned ? 'opacity: 0.55; filter: grayscale(50%);' : '';
+        const ownedBadge = isEnergy ? '<span class="owned-badge infinite" style="font-size:10px; color:#22c55e;">♾️ 無制限</span>' :
+                          (ownedCount > 0 ? ('<span class="owned-badge" style="font-size:10px; color:#3b82f6;">所持:' + ownedCount + '枚</span>') : '<span class="owned-badge unowned" style="font-size:10px; color:#ef4444;">未所持</span>');
+
+        html += "\n          <div class=\"deck-pool-card-wrapper\" style=\"position:relative; margin-bottom:12px; " + opacityStyle + "\">\n" +
+                "            <div onclick=\"DeckSystem.addCard('" + card.id + "')\" style=\"cursor:pointer;\">\n" +
+                "              " + cardHtml + "\n" +
+                "            </div>\n" +
+                "            <div style=\"display:flex; justify-content:space-between; align-items:center; margin-top:4px; padding:0 2px;\">\n" +
+                "              " + ownedBadge + "\n" +
+                "              <button class=\"btn-card-detail-zoom\" onclick=\"event.stopPropagation(); if (window.CardSystem && typeof window.CardSystem.showCardDetail === 'function') window.CardSystem.showCardDetail((window.CardSystem.findCard ? window.CardSystem.findCard('" + card.id + "') : null) || {id:'" + card.id + "', name:'" + (card.name || '') + "'});\" title=\"カード効果・詳細を見る\" style=\"background:rgba(15,23,42,0.9); color:#38bdf8; border:1px solid rgba(56,189,248,0.4); border-radius:4px; padding:2px 6px; font-size:11px; cursor:pointer;\">🔍 詳細</button>\n" +
+                "            </div>\n" +
+                "          </div>\n";
       }
     });
 
