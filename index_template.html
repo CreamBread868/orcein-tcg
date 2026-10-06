@@ -9859,6 +9859,66 @@
     </div>
 
     <!-- 大型 毎日ログインボーナス モーダル (豪華新デザイン) -->
+    <!-- 認証 / ログイン・アカウント登録 モーダル -->
+    <div id="authModal" class="modal hidden" style="z-index:99999;">
+      <div class="modal-backdrop" onclick="App.closeAuthModal()"></div>
+      <div class="modal-card auth-modal-card">
+        <button class="modal-close" onclick="App.closeAuthModal()">×</button>
+        <div class="eyebrow" style="color:#e11d48; font-size:12px; letter-spacing:3px; font-weight:900;">ACCOUNT AUTHENTICATION</div>
+        <h2 style="color:#ffffff; font-size:24px; font-weight:900; margin-top:4px;">🔑 オルセインTCG アカウント</h2>
+        <p class="muted" style="font-size:13px; margin-top:4px; color:#cbd5e1;">Gmailアカウントでログイン・登録を行うことで、オンライン対戦やデイリーログインボーナスが利用可能になります。</p>
+
+        <div class="auth-tabs">
+          <button type="button" id="authTabLogin" class="auth-tab active" onclick="App.switchAuthTab('login')">🔑 ログイン</button>
+          <button type="button" id="authTabRegister" class="auth-tab" onclick="App.switchAuthTab('register')">✨ アカウント作成</button>
+        </div>
+
+        <div id="authErrorMsg" class="auth-error-msg hidden"></div>
+
+        <!-- ログインフォーム -->
+        <form id="authLoginForm" onsubmit="App.submitLogin(event)">
+          <div class="auth-form-group">
+            <label class="auth-label" for="loginEmail">Gmailアドレス</label>
+            <input type="email" id="loginEmail" class="auth-input" placeholder="example@gmail.com" required>
+          </div>
+          <div class="auth-form-group">
+            <label class="auth-label" for="loginPassword">パスワード</label>
+            <input type="password" id="loginPassword" class="auth-input" placeholder="••••••••" required>
+          </div>
+          <button type="submit" id="loginSubmitBtn" class="auth-submit-btn">🔑 ログイン</button>
+        </form>
+
+        <!-- 新規登録フォーム -->
+        <form id="authRegisterForm" class="hidden" onsubmit="App.submitRegister(event)">
+          <div class="auth-form-group">
+            <label class="auth-label" for="regEmail">Gmailアドレス</label>
+            <input type="email" id="regEmail" class="auth-input" placeholder="your-name@gmail.com" required>
+          </div>
+          <div class="auth-form-group">
+            <label class="auth-label" for="regPassword">パスワード (4文字以上)</label>
+            <input type="password" id="regPassword" class="auth-input" placeholder="••••••••" required minlength="4">
+          </div>
+          <div class="auth-form-group">
+            <label class="auth-label" for="regDisplayName">ユーザー表示名</label>
+            <input type="text" id="regDisplayName" class="auth-input" placeholder="例: トレーナーサトシ">
+          </div>
+          <div class="auth-form-group">
+            <label class="auth-label" for="regAvatar">アバターアイコン</label>
+            <select id="regAvatar" class="auth-input">
+              <option value="👤">👤 トレーナー (標準)</option>
+              <option value="⚡">⚡ エレキマスター</option>
+              <option value="🔥">🔥 ファイヤーマスター</option>
+              <option value="💧">💧 アクアマスター</option>
+              <option value="🌿">🌿 リーフマスター</option>
+              <option value="👑">👑 クラウンキング</option>
+              <option value="🌟">🌟 スターチャレンジャー</option>
+            </select>
+          </div>
+          <button type="submit" id="regSubmitBtn" class="auth-submit-btn" style="background: linear-gradient(135deg, #d946ef, #a855f7);">✨ アカウント作成 (Users保存)</button>
+        </form>
+      </div>
+    </div>
+
     <div id="dailyBonusModal" class="modal hidden" style="z-index:9999;">
       <div class="modal-backdrop" onclick="App.closeDailyBonusModal()"></div>
       <div class="modal-card daily-bonus-modal-card">

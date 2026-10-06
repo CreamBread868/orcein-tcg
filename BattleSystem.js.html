@@ -316,6 +316,9 @@
     },
 
     setBattleMode(mode) {
+      if (mode === 'online' && window.App && typeof window.App.requireLogin === 'function') {
+        if (!window.App.requireLogin('オンライン対戦')) return;
+      }
       this.state.mode = mode || 'ai';
       const aiTab = document.getElementById('battleModeAiTab');
       const onlineTab = document.getElementById('battleModeOnlineTab');
@@ -1232,6 +1235,9 @@
     },
 
     createRoom() {
+      if (window.App && typeof window.App.requireLogin === 'function') {
+        if (!window.App.requireLogin('オンライン対戦')) return;
+      }
       const deckVal = document.getElementById('battle-online-deck-select')?.value || 'preset_starter';
       const roomName = document.getElementById('online-room-name-input')?.value.trim() || '';
       const prizeCount = Number(document.getElementById('online-prize-count-select')?.value) || 6;
@@ -1396,6 +1402,9 @@
 
     joinRoom(roomId) {
       if (!roomId) return;
+      if (window.App && typeof window.App.requireLogin === 'function') {
+        if (!window.App.requireLogin('オンライン対戦')) return;
+      }
       const deckVal = document.getElementById('battle-online-deck-select')?.value || 'preset_starter';
       const userEmail = window.DeckSystem && DeckSystem.state && DeckSystem.state.currentUser ? DeckSystem.state.currentUser.email : '';
       const rawDeck = this.resolveDeckCards(deckVal);

@@ -288,6 +288,9 @@ var CardSystem;
         col[key] = (col[key] || 0) + 1;
       });
       this.saveUserCollection(col);
+      if (window.App && typeof window.App.saveUserCollectionToGas === 'function') {
+        window.App.saveUserCollectionToGas(col);
+      }
       if (window.App && window.App.state && window.App.state.page === 'collection') {
         this.renderCollectionPage();
       }

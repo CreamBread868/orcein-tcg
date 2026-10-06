@@ -59,6 +59,7 @@ console.log('[ORBITAL] App.js.html started execution');
       safe('bindNavigation', () => this.bindNavigation());
       safe('initFontSize', () => this.initFontSize());
       safe('initNmtAndPacks', () => this.initNmtAndPacks());
+      safe('loadUserProfileFromGas', () => this.loadUserProfileFromGas());
       safe('bindHome', () => this.bindHome());
       safe('bindEditor', () => this.bindEditor());
       safe('bindFilters', () => this.bindFilters());
@@ -1695,6 +1696,7 @@ console.log('[ORBITAL] App.js.html started execution');
     },
 
     openDailyBonusModal() {
+      if (!this.requireLogin('ログインボーナス')) return;
       const modal = this.el('dailyBonusModal');
       if (modal) modal.classList.remove('hidden');
       this.renderDailyBonusStreak();
@@ -1762,6 +1764,7 @@ console.log('[ORBITAL] App.js.html started execution');
     },
 
     claimDailyBonus() {
+      if (!this.requireLogin('ログインボーナス')) return;
       const { today, isClaimedToday, streakDay } = this.getLoginStreakInfo();
       if (isClaimedToday) {
         this.toast('ℹ️ 本日のログインボーナスは取得済みです！明日またご来店ください。');
@@ -1771,12 +1774,18 @@ console.log('[ORBITAL] App.js.html started execution');
       const rewards = this.getDailyBonusRewards();
       const curReward = rewards[streakDay - 1] || rewards[0];
 
-      this.state.nmtBalance += curReward.nmt;
+      this.setUserNmt(this.getUserNmt() + curReward.nmt);
       try {
         localStorage.setItem('ORBITAL_LAST_DAILY_BONUS', today);
         localStorage.setItem('ORBITAL_LOGIN_STREAK_DAY', String(streakDay));
       } catch (e) {}
-      this.updateNmtBadge();
+
+      if (window.google && google.script && google.script.run && !window._is_mock_gas && typeof google.script.run.claimDailyBonusInDb === 'function') {
+        try {
+          const email = this.getUserEmail();
+          google.script.run.claimDailyBonusInDb(email, today);
+        } catch(e) {}
+      }
       
       this.renderDailyBonusStreak();
 
@@ -1964,13 +1973,13 @@ console.log('[ORBITAL] App.js.html started execution');
       }
 
       if (!isFree) {
-        if (this.state.nmtBalance < pack.price) {
-        this.toast('❌ NMTが足りません！ (必要: ' + pack.price + ' NMT / 所持: ' + this.state.nmtBalance + ' NMT) 毎日ログインボーナスを取得してください。', true);
+        const curNmt = this.getUserNmt();
+        if (curNmt < pack.price) {
+          this.toast('❌ NMTが足りません！ (必要: ' + pack.price + ' NMT / 所持: ' + curNmt + ' NMT) 毎日ログインボーナスを取得してください。', true);
           return;
         }
 
-        this.state.nmtBalance -= pack.price;
-        this.updateNmtBadge();
+        this.setUserNmt(curNmt - pack.price);
       }
 
       // カードプールからランダムにカードを抽選 (パック設定済みの収録対象カードプールを優先)
@@ -2463,8 +2472,341 @@ console.log('[ORBITAL] App.js.html started execution');
       this.updateNmtDisplays();
     },
 
+    /* ============================================================
+       ユーザー認証 & セッション管理 (Gmail / パスワード)
+       ============================================================ */
+    isLoggedIn() {
+      if (this.state.userProfile && this.state.userProfile.isLoggedIn && this.state.userProfile.email) {
+        return true;
+      }
+      try {
+        const stored = localStorage.getItem('ORBITAL_LOGGED_IN_USER');
+        if (stored) {
+          const user = JSON.parse(stored);
+          if (user && user.email) {
+            this.state.userProfile = Object.assign({ isLoggedIn: true }, user);
+            return true;
+          }
+        }
+      } catch (e) {}
+      return false;
+    },
+
+    requireLogin(featureName = 'この機能') {
+      if (this.isLoggedIn()) return true;
+      this.toast('🔑 ' + featureName + 'をご利用いただくにはGmailアカウントでログインが必要です。', true);
+      this.openAuthModal('login');
+      return false;
+    },
+
+    openAuthModal(tab = 'login') {
+      const modal = this.el('authModal');
+      if (!modal) return;
+      this.switchAuthTab(tab);
+      const errEl = this.el('authErrorMsg');
+      if (errEl) {
+        errEl.textContent = '';
+        errEl.classList.add('hidden');
+      }
+      modal.classList.remove('hidden');
+    },
+
+    closeAuthModal() {
+      const modal = this.el('authModal');
+      if (modal) modal.classList.add('hidden');
+    },
+
+    switchAuthTab(tab) {
+      const tabLogin = this.el('authTabLogin');
+      const tabReg = this.el('authTabRegister');
+      const formLogin = this.el('authLoginForm');
+      const formReg = this.el('authRegisterForm');
+
+      if (tab === 'register') {
+        if (tabLogin) tabLogin.classList.remove('active');
+        if (tabReg) tabReg.classList.add('active');
+        if (formLogin) formLogin.classList.add('hidden');
+        if (formReg) formReg.classList.remove('hidden');
+      } else {
+        if (tabLogin) tabLogin.classList.add('active');
+        if (tabReg) tabReg.classList.remove('active');
+        if (formLogin) formLogin.classList.remove('hidden');
+        if (formReg) formReg.classList.add('hidden');
+      }
+    },
+
+    submitLogin(e) {
+      if (e && e.preventDefault) e.preventDefault();
+      const email = (this.el('loginEmail').value || '').trim();
+      const password = (this.el('loginPassword').value || '').trim();
+      const errEl = this.el('authErrorMsg');
+
+      if (!email || !password) {
+        if (errEl) {
+          errEl.textContent = 'Gmailアドレスとパスワードを入力してください。';
+          errEl.classList.remove('hidden');
+        }
+        return;
+      }
+
+      const self = this;
+      const btn = this.el('loginSubmitBtn');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'ログイン中...';
+      }
+
+      if (window.google && google.script && google.script.run && !window._is_mock_gas && typeof google.script.run.loginUser === 'function') {
+        try {
+          google.script.run
+            .withSuccessHandler((res) => {
+              if (btn) { btn.disabled = false; btn.textContent = '🔑 ログイン'; }
+              if (!res || !res.ok) {
+                if (errEl) {
+                  errEl.textContent = (res && res.message) ? res.message : 'ログインに失敗しました。';
+                  errEl.classList.remove('hidden');
+                }
+                return;
+              }
+              self.onAuthSuccess(res.user);
+            })
+            .withFailureHandler((err) => {
+              if (btn) { btn.disabled = false; btn.textContent = '🔑 ログイン'; }
+              if (errEl) {
+                errEl.textContent = 'サーバー通信エラーが発生しました: ' + err.toString();
+                errEl.classList.remove('hidden');
+              }
+            })
+            .loginUser(email, password);
+          return;
+        } catch(err) {}
+      }
+
+      // Mock / Local Fallback
+      setTimeout(() => {
+        if (btn) { btn.disabled = false; btn.textContent = '🔑 ログイン'; }
+        let mockUsers = [];
+        try {
+          const raw = localStorage.getItem('orbital_mock_users');
+          if (raw) mockUsers = JSON.parse(raw);
+        } catch(e) {}
+
+        const clean = email.toLowerCase();
+        let found = mockUsers.find(u => String(u.email).toLowerCase() === clean);
+        if (!found) {
+          found = {
+            email: clean,
+            displayName: clean.split('@')[0],
+            avatar: '👤',
+            nmtBalance: 10000,
+            userCollection: {},
+            password: password
+          };
+          mockUsers.push(found);
+          try { localStorage.setItem('orbital_mock_users', JSON.stringify(mockUsers)); } catch(e) {}
+        }
+        found.isLoggedIn = true;
+        self.onAuthSuccess(found);
+      }, 500);
+    },
+
+    submitRegister(e) {
+      if (e && e.preventDefault) e.preventDefault();
+      const email = (this.el('regEmail').value || '').trim();
+      const password = (this.el('regPassword').value || '').trim();
+      const displayName = (this.el('regDisplayName').value || '').trim();
+      const avatar = (this.el('regAvatar').value || '👤').trim();
+      const errEl = this.el('authErrorMsg');
+
+      if (!email || !email.includes('@') || !email.includes('.')) {
+        if (errEl) {
+          errEl.textContent = '有効なGmailアドレスを入力してください。';
+          errEl.classList.remove('hidden');
+        }
+        return;
+      }
+      if (!password || password.length < 4) {
+        if (errEl) {
+          errEl.textContent = 'パスワードは4文字以上で指定してください。';
+          errEl.classList.remove('hidden');
+        }
+        return;
+      }
+
+      const self = this;
+      const btn = this.el('regSubmitBtn');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = '登録中...';
+      }
+
+      if (window.google && google.script && google.script.run && !window._is_mock_gas && typeof google.script.run.registerUser === 'function') {
+        try {
+          google.script.run
+            .withSuccessHandler((res) => {
+              if (btn) { btn.disabled = false; btn.textContent = '✨ アカウント作成 (Users保存)'; }
+              if (!res || !res.ok) {
+                if (errEl) {
+                  errEl.textContent = (res && res.message) ? res.message : 'アカウント登録に失敗しました。';
+                  errEl.classList.remove('hidden');
+                }
+                return;
+              }
+              self.onAuthSuccess(res.user);
+            })
+            .withFailureHandler((err) => {
+              if (btn) { btn.disabled = false; btn.textContent = '✨ アカウント作成 (Users保存)'; }
+              if (errEl) {
+                errEl.textContent = 'サーバー通信エラーが発生しました: ' + err.toString();
+                errEl.classList.remove('hidden');
+              }
+            })
+            .registerUser(email, password, displayName, avatar);
+          return;
+        } catch(err) {}
+      }
+
+      // Mock / Local Fallback
+      setTimeout(() => {
+        if (btn) { btn.disabled = false; btn.textContent = '✨ アカウント作成 (Users保存)'; }
+        const clean = email.toLowerCase();
+        const userObj = {
+          email: clean,
+          displayName: displayName || clean.split('@')[0],
+          avatar: avatar || '👤',
+          nmtBalance: 10000,
+          userCollection: {},
+          password: password,
+          isLoggedIn: true
+        };
+        try {
+          let mockUsers = [];
+          const raw = localStorage.getItem('orbital_mock_users');
+          if (raw) mockUsers = JSON.parse(raw);
+          const idx = mockUsers.findIndex(u => String(u.email).toLowerCase() === clean);
+          if (idx >= 0) mockUsers[idx] = userObj;
+          else mockUsers.push(userObj);
+          localStorage.setItem('orbital_mock_users', JSON.stringify(mockUsers));
+        } catch(e) {}
+        self.onAuthSuccess(userObj);
+      }, 500);
+    },
+
+    onAuthSuccess(userObj) {
+      if (!userObj) return;
+      userObj.isLoggedIn = true;
+      this.state.userProfile = userObj;
+      try {
+        localStorage.setItem('ORBITAL_LOGGED_IN_USER', JSON.stringify(userObj));
+        localStorage.setItem('orbital_mock_user_email', userObj.email);
+      } catch(e) {}
+
+      if (userObj.nmtBalance != null) {
+        this.setUserNmt(userObj.nmtBalance);
+      }
+      if (userObj.userCollection && typeof userObj.userCollection === 'object') {
+        this.state.userCollection = userObj.userCollection;
+        try { localStorage.setItem('ORBITAL_USER_COLLECTION', JSON.stringify(userObj.userCollection)); } catch(e) {}
+        if (window.CardSystem && typeof window.CardSystem.saveUserCollection === 'function') {
+          window.CardSystem.saveUserCollection(userObj.userCollection);
+        }
+      }
+
+      if (window.DeckSystem && window.DeckSystem.state) {
+        window.DeckSystem.state.currentUser = userObj;
+        if (typeof window.DeckSystem.updateUserBadge === 'function') {
+          window.DeckSystem.updateUserBadge();
+        }
+      }
+
+      this.updateUserBadge();
+      this.closeAuthModal();
+      this.toast('✨ ログイン完了: ようこそ ' + (userObj.displayName || userObj.email) + ' さん！');
+    },
+
+    logout() {
+      try {
+        localStorage.removeItem('ORBITAL_LOGGED_IN_USER');
+      } catch(e) {}
+      this.state.userProfile = null;
+      if (window.DeckSystem && window.DeckSystem.state) {
+        window.DeckSystem.state.currentUser = null;
+      }
+      this.updateUserBadge();
+      this.toast('👋 ログアウトしました');
+    },
+
+    updateUserBadge() {
+      const badgeBtn = this.el('userProfileBtn') || document.querySelector('.user-profile-badge');
+      if (!badgeBtn) return;
+
+      if (this.isLoggedIn()) {
+        const prof = this.state.userProfile;
+        const av = prof ? (prof.avatar || '👤') : '👤';
+        const name = prof ? (prof.displayName || prof.email.split('@')[0]) : 'ログイン中';
+        badgeBtn.innerHTML = '<span class="user-avatar-badge">' + this.escapeHtml(av) + '</span><span class="user-name-text">' + this.escapeHtml(name) + '</span>';
+        badgeBtn.onclick = () => {
+          if (confirm('👤 Logged in as: ' + name + ' (' + (prof ? prof.email : '') + ')\n\nログアウトしますか？')) {
+            App.logout();
+          }
+        };
+      } else {
+        badgeBtn.innerHTML = '<span class="user-avatar-badge">🔑</span><span class="user-name-text">ログイン / 登録</span>';
+        badgeBtn.onclick = () => App.openAuthModal('login');
+      }
+    },
+
+    getUserEmail() {
+      try {
+        if (this.state.userProfile && this.state.userProfile.email) return this.state.userProfile.email;
+        if (window.DeckSystem && window.DeckSystem.state && window.DeckSystem.state.currentUser && window.DeckSystem.state.currentUser.email) {
+          return window.DeckSystem.state.currentUser.email;
+        }
+        const saved = localStorage.getItem('orbital_mock_user_email');
+        if (saved) return saved;
+      } catch(e) {}
+      return 'player@gmail.com';
+    },
+
+    loadUserProfileFromGas(email) {
+      const targetEmail = email || this.getUserEmail();
+      const self = this;
+      if (window.google && google.script && google.script.run && !window._is_mock_gas && typeof google.script.run.getUserProfile === 'function') {
+        try {
+          google.script.run.withSuccessHandler((prof) => {
+            if (!prof || !prof.email) return;
+            self.state.userProfile = prof;
+            if (prof.nmtBalance != null) {
+              const val = Number(prof.nmtBalance);
+              self.state.nmt = val;
+              self.state.nmtBalance = val;
+              try { localStorage.setItem('ORBITAL_NMT_BALANCE', String(val)); } catch(e) {}
+              self.updateNmtDisplays();
+            }
+            if (prof.userCollection && typeof prof.userCollection === 'object') {
+              self.state.userCollection = prof.userCollection;
+              try { localStorage.setItem('ORBITAL_USER_COLLECTION', JSON.stringify(prof.userCollection)); } catch(e) {}
+              if (window.CardSystem && typeof window.CardSystem.saveUserCollection === 'function') {
+                window.CardSystem.saveUserCollection(prof.userCollection);
+              }
+            }
+            if (window.DeckSystem && window.DeckSystem.state) {
+              window.DeckSystem.state.currentUser = prof;
+              if (typeof window.DeckSystem.updateUserBadge === 'function') {
+                window.DeckSystem.updateUserBadge();
+              }
+            }
+          }).getUserProfile(targetEmail);
+        } catch(e) {
+          console.warn('loadUserProfileFromGas error:', e);
+        }
+      }
+    },
+
     getUserNmt() {
+      if (this.state.userProfile && this.state.userProfile.nmtBalance != null) return Number(this.state.userProfile.nmtBalance);
       if (this.state.userProfile && this.state.userProfile.nmt != null) return Number(this.state.userProfile.nmt);
+      if (this.state.nmtBalance != null) return Number(this.state.nmtBalance);
       if (this.state.nmt != null) return Number(this.state.nmt);
       try {
         const stored = localStorage.getItem('ORBITAL_NMT_BALANCE');
@@ -2476,14 +2818,16 @@ console.log('[ORBITAL] App.js.html started execution');
     setUserNmt(val) {
       val = Math.max(0, Number(val) || 0);
       if (!this.state.userProfile) this.state.userProfile = {};
+      this.state.userProfile.nmtBalance = val;
       this.state.userProfile.nmt = val;
+      this.state.nmtBalance = val;
       this.state.nmt = val;
       try { localStorage.setItem('ORBITAL_NMT_BALANCE', String(val)); } catch(e) {}
       this.updateNmtDisplays();
 
       if (window.google && google.script && google.script.run && !window._is_mock_gas) {
         try {
-          const email = (this.state.userProfile && this.state.userProfile.email) ? this.state.userProfile.email : (localStorage.getItem('orbital_mock_user_email') || 'player@gmail.com');
+          const email = this.getUserEmail();
           google.script.run.saveUserNmtBalance(email, val);
         } catch(e) {}
       }
@@ -2523,6 +2867,18 @@ console.log('[ORBITAL] App.js.html started execution');
       return this.state.userCollection;
     },
 
+    saveUserCollectionToGas(col) {
+      const collectionObj = col || this.getUserCollection();
+      if (window.google && google.script && google.script.run && !window._is_mock_gas && typeof google.script.run.saveUserCollection === 'function') {
+        try {
+          const email = this.getUserEmail();
+          google.script.run.saveUserCollection(collectionObj, email);
+        } catch(e) {
+          console.warn('saveUserCollectionToGas error:', e);
+        }
+      }
+    },
+
     addCardToCollection(cardId) {
       let col = this.getUserCollection();
       col[cardId] = (col[cardId] || 0) + 1;
@@ -2536,12 +2892,7 @@ console.log('[ORBITAL] App.js.html started execution');
         window.CardSystem.renderCollectionPage();
       }
 
-      if (window.google && google.script && google.script.run && !window._is_mock_gas) {
-        try {
-          const email = (this.state.userProfile && this.state.userProfile.email) ? this.state.userProfile.email : (localStorage.getItem('orbital_mock_user_email') || 'player@gmail.com');
-          google.script.run.saveUserCollection(col, email);
-        } catch(e) {}
-      }
+      this.saveUserCollectionToGas(col);
     },
 
     openAdminShopItemModal(itemId = null) {

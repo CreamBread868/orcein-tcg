@@ -6811,6 +6811,111 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   to   { box-shadow: 0 0 0 2px rgba(244,114,182,.8), 0 0 44px rgba(236,72,153,.6); }
 }
 
+/* ============================================================
+   AUTHENTICATION & USER PROFILE MODAL STYLES
+   ============================================================ */
+.auth-modal-card {
+  max-width: 460px;
+  width: 90%;
+  background: linear-gradient(135deg, rgba(17, 24, 39, 0.96), rgba(31, 41, 55, 0.98));
+  border: 1px solid rgba(225, 29, 72, 0.35);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 30px rgba(225, 29, 72, 0.25);
+  border-radius: 24px;
+  padding: 32px 28px;
+  backdrop-filter: blur(16px);
+  position: relative;
+}
+
+.auth-tabs {
+  display: flex;
+  background: rgba(15, 23, 42, 0.8);
+  padding: 4px;
+  border-radius: 14px;
+  margin: 20px 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.auth-tab {
+  flex: 1;
+  padding: 10px 16px;
+  border: none;
+  background: transparent;
+  color: var(--muted, #94a3b8);
+  font-size: 14px;
+  font-weight: 800;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.auth-tab.active {
+  background: linear-gradient(135deg, #e11d48, #d946ef);
+  color: #ffffff;
+  box-shadow: 0 4px 15px rgba(225, 29, 72, 0.4);
+}
+
+.auth-form-group {
+  margin-bottom: 16px;
+  text-align: left;
+}
+
+.auth-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #cbd5e1;
+  margin-bottom: 6px;
+}
+
+.auth-input {
+  width: 100%;
+  padding: 12px 16px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  color: #ffffff;
+  font-size: 14px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.auth-input:focus {
+  outline: none;
+  border-color: #e11d48;
+  box-shadow: 0 0 12px rgba(225, 29, 72, 0.35);
+}
+
+.auth-submit-btn {
+  width: 100%;
+  padding: 14px;
+  font-size: 15px;
+  font-weight: 900;
+  color: #ffffff;
+  background: linear-gradient(135deg, #e11d48, #d946ef);
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  box-shadow: 0 8px 25px rgba(225, 29, 72, 0.4);
+  transition: transform 0.15s, box-shadow 0.15s;
+  margin-top: 8px;
+}
+
+.auth-submit-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(225, 29, 72, 0.55);
+}
+
+.auth-error-msg {
+  background: rgba(225, 29, 72, 0.15);
+  border: 1px solid rgba(225, 29, 72, 0.4);
+  color: #f43f5e;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+
+
 </style>
 
   <script>
@@ -8866,6 +8971,66 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
     </div>
 
     <!-- 大型 毎日ログインボーナス モーダル (豪華新デザイン) -->
+    <!-- 認証 / ログイン・アカウント登録 モーダル -->
+    <div id="authModal" class="modal hidden" style="z-index:99999;">
+      <div class="modal-backdrop" onclick="App.closeAuthModal()"></div>
+      <div class="modal-card auth-modal-card">
+        <button class="modal-close" onclick="App.closeAuthModal()">×</button>
+        <div class="eyebrow" style="color:#e11d48; font-size:12px; letter-spacing:3px; font-weight:900;">ACCOUNT AUTHENTICATION</div>
+        <h2 style="color:#ffffff; font-size:24px; font-weight:900; margin-top:4px;">🔑 オルセインTCG アカウント</h2>
+        <p class="muted" style="font-size:13px; margin-top:4px; color:#cbd5e1;">Gmailアカウントでログイン・登録を行うことで、オンライン対戦やデイリーログインボーナスが利用可能になります。</p>
+
+        <div class="auth-tabs">
+          <button type="button" id="authTabLogin" class="auth-tab active" onclick="App.switchAuthTab('login')">🔑 ログイン</button>
+          <button type="button" id="authTabRegister" class="auth-tab" onclick="App.switchAuthTab('register')">✨ アカウント作成</button>
+        </div>
+
+        <div id="authErrorMsg" class="auth-error-msg hidden"></div>
+
+        <!-- ログインフォーム -->
+        <form id="authLoginForm" onsubmit="App.submitLogin(event)">
+          <div class="auth-form-group">
+            <label class="auth-label" for="loginEmail">Gmailアドレス</label>
+            <input type="email" id="loginEmail" class="auth-input" placeholder="example@gmail.com" required>
+          </div>
+          <div class="auth-form-group">
+            <label class="auth-label" for="loginPassword">パスワード</label>
+            <input type="password" id="loginPassword" class="auth-input" placeholder="••••••••" required>
+          </div>
+          <button type="submit" id="loginSubmitBtn" class="auth-submit-btn">🔑 ログイン</button>
+        </form>
+
+        <!-- 新規登録フォーム -->
+        <form id="authRegisterForm" class="hidden" onsubmit="App.submitRegister(event)">
+          <div class="auth-form-group">
+            <label class="auth-label" for="regEmail">Gmailアドレス</label>
+            <input type="email" id="regEmail" class="auth-input" placeholder="your-name@gmail.com" required>
+          </div>
+          <div class="auth-form-group">
+            <label class="auth-label" for="regPassword">パスワード (4文字以上)</label>
+            <input type="password" id="regPassword" class="auth-input" placeholder="••••••••" required minlength="4">
+          </div>
+          <div class="auth-form-group">
+            <label class="auth-label" for="regDisplayName">ユーザー表示名</label>
+            <input type="text" id="regDisplayName" class="auth-input" placeholder="例: トレーナーサトシ">
+          </div>
+          <div class="auth-form-group">
+            <label class="auth-label" for="regAvatar">アバターアイコン</label>
+            <select id="regAvatar" class="auth-input">
+              <option value="👤">👤 トレーナー (標準)</option>
+              <option value="⚡">⚡ エレキマスター</option>
+              <option value="🔥">🔥 ファイヤーマスター</option>
+              <option value="💧">💧 アクアマスター</option>
+              <option value="🌿">🌿 リーフマスター</option>
+              <option value="👑">👑 クラウンキング</option>
+              <option value="🌟">🌟 スターチャレンジャー</option>
+            </select>
+          </div>
+          <button type="submit" id="regSubmitBtn" class="auth-submit-btn" style="background: linear-gradient(135deg, #d946ef, #a855f7);">✨ アカウント作成 (Users保存)</button>
+        </form>
+      </div>
+    </div>
+
     <div id="dailyBonusModal" class="modal hidden" style="z-index:9999;">
       <div class="modal-backdrop" onclick="App.closeDailyBonusModal()"></div>
       <div class="modal-card daily-bonus-modal-card">
@@ -15562,6 +15727,9 @@ var CardSystem;
         col[key] = (col[key] || 0) + 1;
       });
       this.saveUserCollection(col);
+      if (window.App && typeof window.App.saveUserCollectionToGas === 'function') {
+        window.App.saveUserCollectionToGas(col);
+      }
       if (window.App && window.App.state && window.App.state.page === 'collection') {
         this.renderCollectionPage();
       }
@@ -18118,6 +18286,9 @@ var CardSystem;
     },
 
     setBattleMode(mode) {
+      if (mode === 'online' && window.App && typeof window.App.requireLogin === 'function') {
+        if (!window.App.requireLogin('オンライン対戦')) return;
+      }
       this.state.mode = mode || 'ai';
       const aiTab = document.getElementById('battleModeAiTab');
       const onlineTab = document.getElementById('battleModeOnlineTab');
@@ -19034,6 +19205,9 @@ var CardSystem;
     },
 
     createRoom() {
+      if (window.App && typeof window.App.requireLogin === 'function') {
+        if (!window.App.requireLogin('オンライン対戦')) return;
+      }
       const deckVal = document.getElementById('battle-online-deck-select')?.value || 'preset_starter';
       const roomName = document.getElementById('online-room-name-input')?.value.trim() || '';
       const prizeCount = Number(document.getElementById('online-prize-count-select')?.value) || 6;
@@ -19198,6 +19372,9 @@ var CardSystem;
 
     joinRoom(roomId) {
       if (!roomId) return;
+      if (window.App && typeof window.App.requireLogin === 'function') {
+        if (!window.App.requireLogin('オンライン対戦')) return;
+      }
       const deckVal = document.getElementById('battle-online-deck-select')?.value || 'preset_starter';
       const userEmail = window.DeckSystem && DeckSystem.state && DeckSystem.state.currentUser ? DeckSystem.state.currentUser.email : '';
       const rawDeck = this.resolveDeckCards(deckVal);
@@ -23878,6 +24055,7 @@ console.log('[ORBITAL] App.js.html started execution');
       safe('bindNavigation', () => this.bindNavigation());
       safe('initFontSize', () => this.initFontSize());
       safe('initNmtAndPacks', () => this.initNmtAndPacks());
+      safe('loadUserProfileFromGas', () => this.loadUserProfileFromGas());
       safe('bindHome', () => this.bindHome());
       safe('bindEditor', () => this.bindEditor());
       safe('bindFilters', () => this.bindFilters());
@@ -25514,6 +25692,7 @@ console.log('[ORBITAL] App.js.html started execution');
     },
 
     openDailyBonusModal() {
+      if (!this.requireLogin('ログインボーナス')) return;
       const modal = this.el('dailyBonusModal');
       if (modal) modal.classList.remove('hidden');
       this.renderDailyBonusStreak();
@@ -25581,6 +25760,7 @@ console.log('[ORBITAL] App.js.html started execution');
     },
 
     claimDailyBonus() {
+      if (!this.requireLogin('ログインボーナス')) return;
       const { today, isClaimedToday, streakDay } = this.getLoginStreakInfo();
       if (isClaimedToday) {
         this.toast('ℹ️ 本日のログインボーナスは取得済みです！明日またご来店ください。');
@@ -25590,12 +25770,18 @@ console.log('[ORBITAL] App.js.html started execution');
       const rewards = this.getDailyBonusRewards();
       const curReward = rewards[streakDay - 1] || rewards[0];
 
-      this.state.nmtBalance += curReward.nmt;
+      this.setUserNmt(this.getUserNmt() + curReward.nmt);
       try {
         localStorage.setItem('ORBITAL_LAST_DAILY_BONUS', today);
         localStorage.setItem('ORBITAL_LOGIN_STREAK_DAY', String(streakDay));
       } catch (e) {}
-      this.updateNmtBadge();
+
+      if (window.google && google.script && google.script.run && !window._is_mock_gas && typeof google.script.run.claimDailyBonusInDb === 'function') {
+        try {
+          const email = this.getUserEmail();
+          google.script.run.claimDailyBonusInDb(email, today);
+        } catch(e) {}
+      }
       
       this.renderDailyBonusStreak();
 
@@ -25783,13 +25969,13 @@ console.log('[ORBITAL] App.js.html started execution');
       }
 
       if (!isFree) {
-        if (this.state.nmtBalance < pack.price) {
-        this.toast('❌ NMTが足りません！ (必要: ' + pack.price + ' NMT / 所持: ' + this.state.nmtBalance + ' NMT) 毎日ログインボーナスを取得してください。', true);
+        const curNmt = this.getUserNmt();
+        if (curNmt < pack.price) {
+          this.toast('❌ NMTが足りません！ (必要: ' + pack.price + ' NMT / 所持: ' + curNmt + ' NMT) 毎日ログインボーナスを取得してください。', true);
           return;
         }
 
-        this.state.nmtBalance -= pack.price;
-        this.updateNmtBadge();
+        this.setUserNmt(curNmt - pack.price);
       }
 
       // カードプールからランダムにカードを抽選 (パック設定済みの収録対象カードプールを優先)
@@ -26282,8 +26468,341 @@ console.log('[ORBITAL] App.js.html started execution');
       this.updateNmtDisplays();
     },
 
+    /* ============================================================
+       ユーザー認証 & セッション管理 (Gmail / パスワード)
+       ============================================================ */
+    isLoggedIn() {
+      if (this.state.userProfile && this.state.userProfile.isLoggedIn && this.state.userProfile.email) {
+        return true;
+      }
+      try {
+        const stored = localStorage.getItem('ORBITAL_LOGGED_IN_USER');
+        if (stored) {
+          const user = JSON.parse(stored);
+          if (user && user.email) {
+            this.state.userProfile = Object.assign({ isLoggedIn: true }, user);
+            return true;
+          }
+        }
+      } catch (e) {}
+      return false;
+    },
+
+    requireLogin(featureName = 'この機能') {
+      if (this.isLoggedIn()) return true;
+      this.toast('🔑 ' + featureName + 'をご利用いただくにはGmailアカウントでログインが必要です。', true);
+      this.openAuthModal('login');
+      return false;
+    },
+
+    openAuthModal(tab = 'login') {
+      const modal = this.el('authModal');
+      if (!modal) return;
+      this.switchAuthTab(tab);
+      const errEl = this.el('authErrorMsg');
+      if (errEl) {
+        errEl.textContent = '';
+        errEl.classList.add('hidden');
+      }
+      modal.classList.remove('hidden');
+    },
+
+    closeAuthModal() {
+      const modal = this.el('authModal');
+      if (modal) modal.classList.add('hidden');
+    },
+
+    switchAuthTab(tab) {
+      const tabLogin = this.el('authTabLogin');
+      const tabReg = this.el('authTabRegister');
+      const formLogin = this.el('authLoginForm');
+      const formReg = this.el('authRegisterForm');
+
+      if (tab === 'register') {
+        if (tabLogin) tabLogin.classList.remove('active');
+        if (tabReg) tabReg.classList.add('active');
+        if (formLogin) formLogin.classList.add('hidden');
+        if (formReg) formReg.classList.remove('hidden');
+      } else {
+        if (tabLogin) tabLogin.classList.add('active');
+        if (tabReg) tabReg.classList.remove('active');
+        if (formLogin) formLogin.classList.remove('hidden');
+        if (formReg) formReg.classList.add('hidden');
+      }
+    },
+
+    submitLogin(e) {
+      if (e && e.preventDefault) e.preventDefault();
+      const email = (this.el('loginEmail').value || '').trim();
+      const password = (this.el('loginPassword').value || '').trim();
+      const errEl = this.el('authErrorMsg');
+
+      if (!email || !password) {
+        if (errEl) {
+          errEl.textContent = 'Gmailアドレスとパスワードを入力してください。';
+          errEl.classList.remove('hidden');
+        }
+        return;
+      }
+
+      const self = this;
+      const btn = this.el('loginSubmitBtn');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'ログイン中...';
+      }
+
+      if (window.google && google.script && google.script.run && !window._is_mock_gas && typeof google.script.run.loginUser === 'function') {
+        try {
+          google.script.run
+            .withSuccessHandler((res) => {
+              if (btn) { btn.disabled = false; btn.textContent = '🔑 ログイン'; }
+              if (!res || !res.ok) {
+                if (errEl) {
+                  errEl.textContent = (res && res.message) ? res.message : 'ログインに失敗しました。';
+                  errEl.classList.remove('hidden');
+                }
+                return;
+              }
+              self.onAuthSuccess(res.user);
+            })
+            .withFailureHandler((err) => {
+              if (btn) { btn.disabled = false; btn.textContent = '🔑 ログイン'; }
+              if (errEl) {
+                errEl.textContent = 'サーバー通信エラーが発生しました: ' + err.toString();
+                errEl.classList.remove('hidden');
+              }
+            })
+            .loginUser(email, password);
+          return;
+        } catch(err) {}
+      }
+
+      // Mock / Local Fallback
+      setTimeout(() => {
+        if (btn) { btn.disabled = false; btn.textContent = '🔑 ログイン'; }
+        let mockUsers = [];
+        try {
+          const raw = localStorage.getItem('orbital_mock_users');
+          if (raw) mockUsers = JSON.parse(raw);
+        } catch(e) {}
+
+        const clean = email.toLowerCase();
+        let found = mockUsers.find(u => String(u.email).toLowerCase() === clean);
+        if (!found) {
+          found = {
+            email: clean,
+            displayName: clean.split('@')[0],
+            avatar: '👤',
+            nmtBalance: 10000,
+            userCollection: {},
+            password: password
+          };
+          mockUsers.push(found);
+          try { localStorage.setItem('orbital_mock_users', JSON.stringify(mockUsers)); } catch(e) {}
+        }
+        found.isLoggedIn = true;
+        self.onAuthSuccess(found);
+      }, 500);
+    },
+
+    submitRegister(e) {
+      if (e && e.preventDefault) e.preventDefault();
+      const email = (this.el('regEmail').value || '').trim();
+      const password = (this.el('regPassword').value || '').trim();
+      const displayName = (this.el('regDisplayName').value || '').trim();
+      const avatar = (this.el('regAvatar').value || '👤').trim();
+      const errEl = this.el('authErrorMsg');
+
+      if (!email || !email.includes('@') || !email.includes('.')) {
+        if (errEl) {
+          errEl.textContent = '有効なGmailアドレスを入力してください。';
+          errEl.classList.remove('hidden');
+        }
+        return;
+      }
+      if (!password || password.length < 4) {
+        if (errEl) {
+          errEl.textContent = 'パスワードは4文字以上で指定してください。';
+          errEl.classList.remove('hidden');
+        }
+        return;
+      }
+
+      const self = this;
+      const btn = this.el('regSubmitBtn');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = '登録中...';
+      }
+
+      if (window.google && google.script && google.script.run && !window._is_mock_gas && typeof google.script.run.registerUser === 'function') {
+        try {
+          google.script.run
+            .withSuccessHandler((res) => {
+              if (btn) { btn.disabled = false; btn.textContent = '✨ アカウント作成 (Users保存)'; }
+              if (!res || !res.ok) {
+                if (errEl) {
+                  errEl.textContent = (res && res.message) ? res.message : 'アカウント登録に失敗しました。';
+                  errEl.classList.remove('hidden');
+                }
+                return;
+              }
+              self.onAuthSuccess(res.user);
+            })
+            .withFailureHandler((err) => {
+              if (btn) { btn.disabled = false; btn.textContent = '✨ アカウント作成 (Users保存)'; }
+              if (errEl) {
+                errEl.textContent = 'サーバー通信エラーが発生しました: ' + err.toString();
+                errEl.classList.remove('hidden');
+              }
+            })
+            .registerUser(email, password, displayName, avatar);
+          return;
+        } catch(err) {}
+      }
+
+      // Mock / Local Fallback
+      setTimeout(() => {
+        if (btn) { btn.disabled = false; btn.textContent = '✨ アカウント作成 (Users保存)'; }
+        const clean = email.toLowerCase();
+        const userObj = {
+          email: clean,
+          displayName: displayName || clean.split('@')[0],
+          avatar: avatar || '👤',
+          nmtBalance: 10000,
+          userCollection: {},
+          password: password,
+          isLoggedIn: true
+        };
+        try {
+          let mockUsers = [];
+          const raw = localStorage.getItem('orbital_mock_users');
+          if (raw) mockUsers = JSON.parse(raw);
+          const idx = mockUsers.findIndex(u => String(u.email).toLowerCase() === clean);
+          if (idx >= 0) mockUsers[idx] = userObj;
+          else mockUsers.push(userObj);
+          localStorage.setItem('orbital_mock_users', JSON.stringify(mockUsers));
+        } catch(e) {}
+        self.onAuthSuccess(userObj);
+      }, 500);
+    },
+
+    onAuthSuccess(userObj) {
+      if (!userObj) return;
+      userObj.isLoggedIn = true;
+      this.state.userProfile = userObj;
+      try {
+        localStorage.setItem('ORBITAL_LOGGED_IN_USER', JSON.stringify(userObj));
+        localStorage.setItem('orbital_mock_user_email', userObj.email);
+      } catch(e) {}
+
+      if (userObj.nmtBalance != null) {
+        this.setUserNmt(userObj.nmtBalance);
+      }
+      if (userObj.userCollection && typeof userObj.userCollection === 'object') {
+        this.state.userCollection = userObj.userCollection;
+        try { localStorage.setItem('ORBITAL_USER_COLLECTION', JSON.stringify(userObj.userCollection)); } catch(e) {}
+        if (window.CardSystem && typeof window.CardSystem.saveUserCollection === 'function') {
+          window.CardSystem.saveUserCollection(userObj.userCollection);
+        }
+      }
+
+      if (window.DeckSystem && window.DeckSystem.state) {
+        window.DeckSystem.state.currentUser = userObj;
+        if (typeof window.DeckSystem.updateUserBadge === 'function') {
+          window.DeckSystem.updateUserBadge();
+        }
+      }
+
+      this.updateUserBadge();
+      this.closeAuthModal();
+      this.toast('✨ ログイン完了: ようこそ ' + (userObj.displayName || userObj.email) + ' さん！');
+    },
+
+    logout() {
+      try {
+        localStorage.removeItem('ORBITAL_LOGGED_IN_USER');
+      } catch(e) {}
+      this.state.userProfile = null;
+      if (window.DeckSystem && window.DeckSystem.state) {
+        window.DeckSystem.state.currentUser = null;
+      }
+      this.updateUserBadge();
+      this.toast('👋 ログアウトしました');
+    },
+
+    updateUserBadge() {
+      const badgeBtn = this.el('userProfileBtn') || document.querySelector('.user-profile-badge');
+      if (!badgeBtn) return;
+
+      if (this.isLoggedIn()) {
+        const prof = this.state.userProfile;
+        const av = prof ? (prof.avatar || '👤') : '👤';
+        const name = prof ? (prof.displayName || prof.email.split('@')[0]) : 'ログイン中';
+        badgeBtn.innerHTML = '<span class="user-avatar-badge">' + this.escapeHtml(av) + '</span><span class="user-name-text">' + this.escapeHtml(name) + '</span>';
+        badgeBtn.onclick = () => {
+          if (confirm('👤 Logged in as: ' + name + ' (' + (prof ? prof.email : '') + ')\n\nログアウトしますか？')) {
+            App.logout();
+          }
+        };
+      } else {
+        badgeBtn.innerHTML = '<span class="user-avatar-badge">🔑</span><span class="user-name-text">ログイン / 登録</span>';
+        badgeBtn.onclick = () => App.openAuthModal('login');
+      }
+    },
+
+    getUserEmail() {
+      try {
+        if (this.state.userProfile && this.state.userProfile.email) return this.state.userProfile.email;
+        if (window.DeckSystem && window.DeckSystem.state && window.DeckSystem.state.currentUser && window.DeckSystem.state.currentUser.email) {
+          return window.DeckSystem.state.currentUser.email;
+        }
+        const saved = localStorage.getItem('orbital_mock_user_email');
+        if (saved) return saved;
+      } catch(e) {}
+      return 'player@gmail.com';
+    },
+
+    loadUserProfileFromGas(email) {
+      const targetEmail = email || this.getUserEmail();
+      const self = this;
+      if (window.google && google.script && google.script.run && !window._is_mock_gas && typeof google.script.run.getUserProfile === 'function') {
+        try {
+          google.script.run.withSuccessHandler((prof) => {
+            if (!prof || !prof.email) return;
+            self.state.userProfile = prof;
+            if (prof.nmtBalance != null) {
+              const val = Number(prof.nmtBalance);
+              self.state.nmt = val;
+              self.state.nmtBalance = val;
+              try { localStorage.setItem('ORBITAL_NMT_BALANCE', String(val)); } catch(e) {}
+              self.updateNmtDisplays();
+            }
+            if (prof.userCollection && typeof prof.userCollection === 'object') {
+              self.state.userCollection = prof.userCollection;
+              try { localStorage.setItem('ORBITAL_USER_COLLECTION', JSON.stringify(prof.userCollection)); } catch(e) {}
+              if (window.CardSystem && typeof window.CardSystem.saveUserCollection === 'function') {
+                window.CardSystem.saveUserCollection(prof.userCollection);
+              }
+            }
+            if (window.DeckSystem && window.DeckSystem.state) {
+              window.DeckSystem.state.currentUser = prof;
+              if (typeof window.DeckSystem.updateUserBadge === 'function') {
+                window.DeckSystem.updateUserBadge();
+              }
+            }
+          }).getUserProfile(targetEmail);
+        } catch(e) {
+          console.warn('loadUserProfileFromGas error:', e);
+        }
+      }
+    },
+
     getUserNmt() {
+      if (this.state.userProfile && this.state.userProfile.nmtBalance != null) return Number(this.state.userProfile.nmtBalance);
       if (this.state.userProfile && this.state.userProfile.nmt != null) return Number(this.state.userProfile.nmt);
+      if (this.state.nmtBalance != null) return Number(this.state.nmtBalance);
       if (this.state.nmt != null) return Number(this.state.nmt);
       try {
         const stored = localStorage.getItem('ORBITAL_NMT_BALANCE');
@@ -26295,14 +26814,16 @@ console.log('[ORBITAL] App.js.html started execution');
     setUserNmt(val) {
       val = Math.max(0, Number(val) || 0);
       if (!this.state.userProfile) this.state.userProfile = {};
+      this.state.userProfile.nmtBalance = val;
       this.state.userProfile.nmt = val;
+      this.state.nmtBalance = val;
       this.state.nmt = val;
       try { localStorage.setItem('ORBITAL_NMT_BALANCE', String(val)); } catch(e) {}
       this.updateNmtDisplays();
 
       if (window.google && google.script && google.script.run && !window._is_mock_gas) {
         try {
-          const email = (this.state.userProfile && this.state.userProfile.email) ? this.state.userProfile.email : (localStorage.getItem('orbital_mock_user_email') || 'player@gmail.com');
+          const email = this.getUserEmail();
           google.script.run.saveUserNmtBalance(email, val);
         } catch(e) {}
       }
@@ -26342,6 +26863,18 @@ console.log('[ORBITAL] App.js.html started execution');
       return this.state.userCollection;
     },
 
+    saveUserCollectionToGas(col) {
+      const collectionObj = col || this.getUserCollection();
+      if (window.google && google.script && google.script.run && !window._is_mock_gas && typeof google.script.run.saveUserCollection === 'function') {
+        try {
+          const email = this.getUserEmail();
+          google.script.run.saveUserCollection(collectionObj, email);
+        } catch(e) {
+          console.warn('saveUserCollectionToGas error:', e);
+        }
+      }
+    },
+
     addCardToCollection(cardId) {
       let col = this.getUserCollection();
       col[cardId] = (col[cardId] || 0) + 1;
@@ -26355,12 +26888,7 @@ console.log('[ORBITAL] App.js.html started execution');
         window.CardSystem.renderCollectionPage();
       }
 
-      if (window.google && google.script && google.script.run && !window._is_mock_gas) {
-        try {
-          const email = (this.state.userProfile && this.state.userProfile.email) ? this.state.userProfile.email : (localStorage.getItem('orbital_mock_user_email') || 'player@gmail.com');
-          google.script.run.saveUserCollection(col, email);
-        } catch(e) {}
-      }
+      this.saveUserCollectionToGas(col);
     },
 
     openAdminShopItemModal(itemId = null) {
