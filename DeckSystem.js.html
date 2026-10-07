@@ -15,7 +15,7 @@ window.DeckSystem = function () {
     decks: [],
     activeDeck: null,
     cardPool: [],
-    filter: { search: '', category: 'all', type: 'all' },
+    filter: { search: '', category: 'all', type: 'all', ownership: 'owned' },
     galleryTab: 'all', // 'all' | 'my' | 'sample'
     currentUser: { email: '', isLoggedIn: false },
     viewMode: 'gallery' // 'gallery' | 'editor'
@@ -148,6 +148,7 @@ window.DeckSystem = function () {
     const searchInput = document.getElementById('deck-pool-search');
     const catSelect = document.getElementById('deck-pool-category');
     const typeSelect = document.getElementById('deck-pool-type');
+        const ownSelect = document.getElementById('deck-pool-ownership');
 
     if (searchInput) {
       searchInput.addEventListener('input', function (e) {
@@ -284,7 +285,31 @@ window.DeckSystem = function () {
     return [];
   }
 
-  function isNormalEnergy(card) {
+  
+      function getCardOwnedCount(card) {
+        if (!card) return 0;
+        // 基本エネルギーは公式ルール上無制限
+        if (isNormalEnergy(card)) return 999;
+
+        // 管理者が公式サンプルデッキを作成・編集している場合は制限なし
+        const isAdmin = window.App && typeof window.App.isAdmin === 'function' && window.App.isAdmin();
+        const isSampleDeck = state.activeDeck && (state.activeDeck.userEmail === 'sample' || state.activeDeck.isSample);
+        if (isAdmin && isSampleDeck) return 999;
+
+        const col = (window.App && typeof window.App.getUserCollection === 'function')
+          ? window.App.getUserCollection()
+          : ((window.CardSystem && typeof window.CardSystem.getUserCollection === 'function')
+            ? window.CardSystem.getUserCollection()
+            : {});
+
+        const idKey = String(card.id || '');
+        const nameKey = String(card.name || '');
+        const byId = Number(col[idKey]) || 0;
+        const byName = Number(col[nameKey]) || 0;
+        return Math.max(byId, byName);
+      }
+
+      function isNormalEnergy(card) {
     if (!card) return false;
     const cat = String(card.category || '').toLowerCase();
     const name = String(card.name || '').toLowerCase();
@@ -298,64 +323,69 @@ window.DeckSystem = function () {
 
   // --- ルール検証 ---
   function validateDeck(deck) {
-    const cards = deck && Array.isArray(deck.cards) ? deck.cards : [];
-    let totalCount = 0;
-    let basicCount = 0;
-    const errors = [];
-    const warnings = [];
-    const overLimitCards = [];
+        const cards = deck && Array.isArray(deck.cards) ? deck.cards : [];
+        let totalCount = 0;
+        let basicCount = 0;
+        const errors = [];
+        const warnings = [];
+        const overLimitCards = [];
+        const unownedErrors = [];
 
-    const pool = state.cardPool && state.cardPool.length ?
-      state.cardPool :
-      (window.App && window.App.state && window.App.state.cards || []);
+        const poolMap = {};
+        const pool = state.cardPool && state.cardPool.length ?
+          state.cardPool :
+          window.App && window.App.state && window.App.state.cards || [];
+        pool.forEach((c) => { if (c && c.id) poolMap[c.id] = c; });
 
-    const poolMap = {};
-    pool.forEach((c) => {
-      if (c) {
-        if (c.id) poolMap[String(c.id).toLowerCase()] = c;
-        if (c.name) poolMap[String(c.name).toLowerCase()] = c;
+        cards.forEach((item) => {
+          const card = poolMap[item.id] ||
+            pool.find((c) => String(c.id) === String(item.id) || (item.name && c.name === item.name)) ||
+            { id: item.id, name: item.name || '不明なカード', category: item.category || '' };
+          const count = Number(item.count) || 0;
+          totalCount += count;
+
+          const isBasicEnergy = isNormalEnergy(card);
+          const ownedCount = getCardOwnedCount(card);
+
+          // 所持枚数チェック (基本エネルギー以外)
+          if (!isBasicEnergy && count > ownedCount) {
+            unownedErrors.push({ id: item.id, name: card.name, count: count, owned: ownedCount });
+            if (ownedCount <= 0) {
+              errors.push("「" + card.name + "」は未所持です (デッキ内: " + count + "枚)");
+            } else {
+              errors.push("「" + card.name + "」が所持枚数(" + ownedCount + "枚)を超過しています (デッキ内: " + count + "枚)");
+            }
+          }
+
+          if (count > 4 && !isBasicEnergy) {
+            overLimitCards.push({ id: item.id, name: card.name, count: count });
+            errors.push("「" + card.name + "」が" + count + "枚（上限4枚）");
+          }
+
+          const cat = String(card.category || '');
+          if (cat.includes('たね') || cat.toLowerCase().includes('basic') || (cat.includes('ポケモン') && !cat.includes('進化'))) {
+            basicCount += count;
+          }
+        });
+
+        if (totalCount !== 60) {
+          errors.push("デッキ枚数が" + totalCount + "枚です（公式ルールは60枚必須）");
+        }
+        if (basicCount < 1) {
+          errors.push('「たねポケモン」が1枚以上必要です');
+        }
+
+        const isValid = errors.length === 0;
+
+        return {
+          isValid: isValid,
+          totalCount: totalCount,
+          basicCount: basicCount,
+          errors: errors,
+          overLimitCards: overLimitCards,
+          unownedErrors: unownedErrors
+        };
       }
-    });
-
-    cards.forEach((item) => {
-      if (!item) return;
-      const key = String(item.id || item.name || item.cardId || '').toLowerCase();
-      const card = poolMap[key] ||
-                   pool.find((c) => String(c.id).toLowerCase() === key || String(c.name).toLowerCase() === key) ||
-                   { name: item.name || item.id || '不明なカード', category: item.category || '' };
-      const count = Number(item.count || item.qty || item.num || 1) || 1;
-      totalCount += count;
-
-      const isBasicEnergy = isNormalEnergy(card);
-
-      if (count > 4 && !isBasicEnergy) {
-        overLimitCards.push({ id: item.id || item.name, name: card.name, count: count });
-        errors.push("「" + card.name + "」が" + count + "枚（上限4枚）");
-      }
-
-      const cat = String(card.category || '');
-      if (cat.includes('たね') || cat.toLowerCase().includes('basic') || (cat.includes('ポケモン') && !cat.includes('進化'))) {
-        basicCount += count;
-      }
-    });
-
-    if (totalCount !== 60) {
-      errors.push("デッキ枚数が" + totalCount + "枚です（公式ルールは60枚必須）");
-    }
-    if (basicCount < 1) {
-      errors.push('「たねポケモン」が1枚以上必要です');
-    }
-
-    const isValid = errors.length === 0;
-
-    return {
-      isValid: isValid,
-      totalCount: totalCount,
-      basicCount: basicCount,
-      errors: errors,
-      overLimitCards: overLimitCards
-    };
-  }
 
   // --- ビュー切り替え ---
   function openGallery() {
@@ -390,6 +420,8 @@ window.DeckSystem = function () {
     const descInput = document.getElementById('deck-desc-input');
     if (nameInput) nameInput.value = state.activeDeck.name || '';
     if (descInput) descInput.value = state.activeDeck.description || '';
+        const ownSelect = document.getElementById('deck-pool-ownership');
+        if (ownSelect) ownSelect.value = state.filter.ownership || 'owned';
 
     renderEditor();
   }
@@ -452,45 +484,60 @@ window.DeckSystem = function () {
   }
 
   function addCard(cardId) {
-    if (!state.activeDeck) return;
-    if (!Array.isArray(state.activeDeck.cards)) state.activeDeck.cards = [];
+        if (!state.activeDeck) return;
+        if (!Array.isArray(state.activeDeck.cards)) state.activeDeck.cards = [];
 
-    const card = (state.cardPool || []).find((c) => String(c.id) === String(cardId)) ||
-                 (window.App && window.App.state && window.App.state.cards || []).find((c) => String(c.id) === String(cardId));
-    const isEnergy = isNormalEnergy(card);
+        const card = (state.cardPool || []).find((c) => String(c.id) === String(cardId)) ||
+          (window.App && window.App.state && window.App.state.cards || []).find((c) => String(c.id) === String(cardId));
+        if (!card) return;
 
-    const ownedCount = getUserOwnedCount(cardId, card);
-    const existing = state.activeDeck.cards.find((c) => String(c.id) === String(cardId));
-    const currentInDeck = existing ? existing.count : 0;
+        const isEnergy = isNormalEnergy(card);
+        const ownedCount = getCardOwnedCount(card);
 
-    if (currentInDeck >= ownedCount) {
-      if (window.CardSystem && window.CardSystem.showMessage) {
-        if (ownedCount === 0) {
-          window.CardSystem.showMessage('このカードは所持していません。パック開封やショップでカードを獲得してください！', 'warning');
+        // 未所持チェック (基本エネルギー以外)
+        if (!isEnergy && ownedCount <= 0) {
+          if (window.CardSystem && window.CardSystem.showMessage) {
+            window.CardSystem.showMessage('「' + (card.name || 'このカード') + '」を所持していないためデッキに追加できません。パックやショップで獲得してください。', 'warning');
+          }
+          return;
+        }
+
+        const existing = state.activeDeck.cards.find((c) => String(c.id) === String(cardId));
+        const currentCount = existing ? existing.count : 0;
+
+        // 所持枚数上限チェック (基本エネルギー以外)
+        if (!isEnergy && currentCount >= ownedCount) {
+          if (window.CardSystem && window.CardSystem.showMessage) {
+            window.CardSystem.showMessage('「' + (card.name || 'このカード') + '」の所持枚数（' + ownedCount + '枚）に達しています。', 'warning');
+          }
+          return;
+        }
+
+        // 同名4枚上限チェック
+        if (currentCount >= 4 && !isEnergy) {
+          if (window.CardSystem && window.CardSystem.showMessage) {
+            window.CardSystem.showMessage('同名カードは1デッキに最大4枚までです。(通常エネルギーは無制限)', 'warning');
+          }
+          return;
+        }
+
+        // 60枚上限チェック
+        const currentTotal = state.activeDeck.cards.reduce((sum, item) => sum + item.count, 0);
+        if (currentTotal >= 60) {
+          if (window.CardSystem && window.CardSystem.showMessage) {
+            window.CardSystem.showMessage('デッキは最大60枚です。カードを減らしてから追加してください。', 'warning');
+          }
+          return;
+        }
+
+        if (existing) {
+          existing.count += 1;
         } else {
-          window.CardSystem.showMessage('所持枚数（' + ownedCount + '枚）を超えてデッキに追加することはできません。', 'warning');
+          state.activeDeck.cards.push({ id: cardId, count: 1 });
         }
-      }
-      return;
-    }
 
-    if (existing) {
-      if (existing.count >= 4 && !isEnergy) {
-        if (window.CardSystem && window.CardSystem.showMessage) {
-          window.CardSystem.showMessage('同名カードは1デッキに最大4枚までです。(通常エネルギーは無制限)', 'warning');
-        }
-        return;
+        renderEditor();
       }
-      if (existing.count >= 60) {
-        return;
-      }
-      existing.count += 1;
-    } else {
-      state.activeDeck.cards.push({ id: cardId, count: 1 });
-    }
-
-    renderEditor();
-  }
 
   function removeCard(cardId) {
     if (!state.activeDeck || !Array.isArray(state.activeDeck.cards)) return;
@@ -506,24 +553,27 @@ window.DeckSystem = function () {
   }
 
   function setCardCount(cardId, count) {
-    if (!state.activeDeck || !Array.isArray(state.activeDeck.cards)) return;
-    const card = (state.cardPool || []).find((c) => String(c.id) === String(cardId)) ||
-                 (window.App && window.App.state && window.App.state.cards || []).find((c) => String(c.id) === String(cardId));
-    const isEnergy = isNormalEnergy(card);
-    const maxLimit = isEnergy ? 60 : 4;
-    const targetCount = Math.max(0, Math.min(maxLimit, Number(count) || 0));
-    const index = state.activeDeck.cards.findIndex((c) => String(c.id) === String(cardId));
-    if (targetCount === 0) {
-      if (index >= 0) state.activeDeck.cards.splice(index, 1);
-    } else {
-      if (index >= 0) {
-        state.activeDeck.cards[index].count = targetCount;
-      } else {
-        state.activeDeck.cards.push({ id: cardId, count: targetCount });
+        if (!state.activeDeck || !Array.isArray(state.activeDeck.cards)) return;
+        const card = (state.cardPool || []).find((c) => String(c.id) === String(cardId)) ||
+          (window.App && window.App.state && window.App.state.cards || []).find((c) => String(c.id) === String(cardId));
+        const isEnergy = isNormalEnergy(card);
+        const ownedCount = getCardOwnedCount(card);
+        const isAdmin = window.App && typeof window.App.isAdmin === 'function' && window.App.isAdmin();
+        const isSampleDeck = state.activeDeck && (state.activeDeck.userEmail === 'sample' || state.activeDeck.isSample);
+        const maxLimit = isEnergy ? 60 : ((isAdmin && isSampleDeck) ? 4 : Math.min(4, ownedCount));
+        const targetCount = Math.max(0, Math.min(maxLimit, Number(count) || 0));
+        const index = state.activeDeck.cards.findIndex((c) => String(c.id) === String(cardId));
+        if (targetCount === 0) {
+          if (index >= 0) state.activeDeck.cards.splice(index, 1);
+        } else {
+          if (index >= 0) {
+            state.activeDeck.cards[index].count = targetCount;
+          } else {
+            state.activeDeck.cards.push({ id: cardId, count: targetCount });
+          }
+        }
+        renderEditor();
       }
-    }
-    renderEditor();
-  }
 
   function clearActiveDeck() {
     if (state.activeDeck) {
@@ -621,7 +671,20 @@ window.DeckSystem = function () {
     }
   }
 
-  function deleteDeck(deckId) {
+  
+      function saveAsOfficialSample() {
+        if (!window.App || !window.App.isAdmin()) {
+          if (window.CardSystem && window.CardSystem.showMessage) {
+            window.CardSystem.showMessage('管理者権限が必要です。', 'error');
+          }
+          return;
+        }
+        if (!state.activeDeck) return;
+        if (!confirm('このデッキを「公式サンプルデッキ」として全ユーザーに公開しますか？')) return;
+        saveActiveDeck(true);
+      }
+
+      function deleteDeck(deckId) {
     if (!confirm('本当にこのデッキを削除しますか？')) return;
     const token = window.CardSystem ? window.CardSystem.getAdminToken() : '';
     const userEmail = (state.currentUser && state.currentUser.email) || '';
@@ -779,128 +842,151 @@ window.DeckSystem = function () {
   }
 
   function renderDeckCardsList() {
-    const container = document.getElementById('deck-cards-list');
-    if (!container || !state.activeDeck) return;
+        const container = document.getElementById('deck-cards-list');
+        if (!container || !state.activeDeck) return;
 
-    const cards = state.activeDeck.cards || [];
-    if (cards.length === 0) {
-      container.innerHTML = "<div class=\"empty-list-notice\">右のカードプールからカードをクリックしてデッキに追加してください。</div>";
-      return;
-    }
+        const cards = state.activeDeck.cards || [];
+        if (cards.length === 0) {
+          container.innerHTML = "<div class=\"empty-list-notice\">右のカードプールからカードをクリックしてデッキに追加してください。</div>";
+          return;
+        }
 
-    const poolMap = {};
-    const pool = state.cardPool && state.cardPool.length ?
-    state.cardPool :
-    window.App && window.App.state && window.App.state.cards || [];
-    pool.forEach((c) => {poolMap[c.id] = c;});
+        const poolMap = {};
+        const pool = state.cardPool && state.cardPool.length ?
+          state.cardPool :
+          window.App && window.App.state && window.App.state.cards || [];
+        pool.forEach((c) => { poolMap[c.id] = c; });
 
-    // カテゴリ別グループ化
-    const groups = {
-      'たね': [],
-      '1進化': [],
-      '2進化': [],
-      'トレーナーズ': [],
-      'エネルギー': [],
-      'その他': []
-    };
+        // カテゴリ別グループ化
+        const groups = {
+          'たね': [],
+          '1進化': [],
+          '2進化': [],
+          'トレーナーズ': [],
+          'エネルギー': [],
+          'その他': []
+        };
 
-    cards.forEach((item) => {
-      const card = poolMap[item.id] ||
-                   pool.find((c) => String(c.id) === String(item.id) || (item.name && c.name === item.name)) ||
-                   { id: item.id, name: item.name || '不明なカード', category: item.category || 'その他', type: item.type || '無' };
-      let catKey = 'その他';
-      const cat = String(card.category || '');
-      if (cat.includes('たね') || cat.includes('ポケモン') && !cat.includes('進化')) catKey = 'たね';else
-      if (cat.includes('1進化')) catKey = '1進化';else
-      if (cat.includes('2進化')) catKey = '2進化';else
-      if (cat.includes('グッズ') || cat.includes('サポート') || cat.includes('スタジアム') || cat.includes('ポケモンのどうぐ')) catKey = 'トレーナーズ';else
-      if (cat.includes('エネルギー') || card.type === 'エネルギー') catKey = 'エネルギー';
+        cards.forEach((item) => {
+          const card = poolMap[item.id] ||
+            pool.find((c) => String(c.id) === String(item.id) || (item.name && c.name === item.name)) ||
+            { id: item.id, name: item.name || '不明なカード', category: item.category || 'その他', type: item.type || '無' };
+          let catKey = 'その他';
+          const cat = String(card.category || '');
+          if (cat.includes('たね') || cat.includes('ポケモン') && !cat.includes('進化')) catKey = 'たね'; else
+            if (cat.includes('1進化')) catKey = '1進化'; else
+              if (cat.includes('2進化')) catKey = '2進化'; else
+                if (cat.includes('グッズ') || cat.includes('サポート') || cat.includes('スタジアム') || cat.includes('ポケモンのどうぐ')) catKey = 'トレーナーズ'; else
+                  if (cat.includes('エネルギー') || card.type === 'エネルギー') catKey = 'エネルギー';
 
-      groups[catKey].push({ card: card, count: item.count });
-    });
+          groups[catKey].push({ card: card, count: item.count });
+        });
 
-    let html = '';
-    Object.keys(groups).forEach((cat) => {
-      const list = groups[cat];
-      if (list.length === 0) return;
+        let html = '';
+        Object.keys(groups).forEach((cat) => {
+          const list = groups[cat];
+          if (list.length === 0) return;
 
-      const groupTotal = list.reduce((sum, item) => sum + item.count, 0);
-      html += "<div class=\"deck-group-header\"><span>" + cat + "</span> <span class=\"group-count\">(" + groupTotal + "枚)</span></div>";
+          const groupTotal = list.reduce((sum, item) => sum + item.count, 0);
+          html += "<div class=\"deck-group-header\"><span>" + cat + "</span> <span class=\"group-count\">(" + groupTotal + "枚)</span></div>";
 
-      list.forEach(({ card, count }) => {
-        const typeBadge = card.type ? "<span class=\"type-mini-badge type-" + card.type + "\">" + card.type + "</span>" : '';
-        const isEnergy = isNormalEnergy(card);
-        const isMaxCount = isEnergy ? (count >= 60) : (count >= 4);
-        html += "\n          <div class=\"deck-item-row\">\n            <div class=\"deck-item-info\">\n              " +
-        typeBadge + "\n              <span class=\"deck-item-name\" title=\"" +
-        escapeHtml(card.name) + "\">" + escapeHtml(card.name) + "</span>\n            </div>\n            <div class=\"deck-item-controls\">\n              <button class=\"btn-step\" onclick=\"DeckSystem.removeCard('" +
-        card.id + "')\">-</button>\n              <span class=\"deck-item-count\">" +
-        count + "</span>\n              <button class=\"btn-step\" onclick=\"DeckSystem.addCard('" +
-        card.id + "')\" " + (isMaxCount ? 'disabled' : '') + ">+</button>\n              <button class=\"btn-remove-all\" onclick=\"DeckSystem.setCardCount('" +
-        card.id + "', 0)\" title=\"全削除\"><i class=\"fas fa-trash-alt\"></i></button>\n            </div>\n          </div>\n        ";
-      });
-    });
+          list.forEach(({ card, count }) => {
+            const typeBadge = card.type ? "<span class=\"type-mini-badge type-" + card.type + "\">" + card.type + "</span>" : '';
+            const isEnergy = isNormalEnergy(card);
+            const ownedCount = getCardOwnedCount(card);
+            const isOverOwned = !isEnergy && count > ownedCount;
+            const isAdmin = window.App && typeof window.App.isAdmin === 'function' && window.App.isAdmin();
+            const isSampleDeck = state.activeDeck && (state.activeDeck.userEmail === 'sample' || state.activeDeck.isSample);
+            const maxAllowed = isEnergy ? 60 : ((isAdmin && isSampleDeck) ? 4 : Math.min(4, ownedCount));
+            const isMaxCount = count >= maxAllowed;
+            const warnBadge = isOverOwned
+              ? ("<span class=\"deck-unowned-warning-badge\">" + (ownedCount <= 0 ? '⚠️ 未所持' : '⚠️ 所持:' + ownedCount + '枚') + "</span>")
+              : ("<span style=\"font-size:11px; color:#94a3b8; margin-left:6px;\">" + (isEnergy ? '(無制限)' : '所持:' + ownedCount + '枚') + "</span>");
 
-    container.innerHTML = html;
-  }
+            html += '<div class="deck-item-row ' + (isOverOwned ? 'is-unowned-deck-item' : '') + '">' +
+              '<div class="deck-item-info">' +
+              typeBadge +
+              '<span class="deck-item-name" title="' + escapeHtml(card.name) + '">' + escapeHtml(card.name) + '</span>' +
+              warnBadge +
+              '</div>' +
+              '<div class="deck-item-controls">' +
+              '<button class="btn-step" onclick="DeckSystem.removeCard(\'' + card.id + '\')">-</button>' +
+              '<span class="deck-item-count">' + count + '</span>' +
+              '<button class="btn-step" onclick="DeckSystem.addCard(\'' + card.id + '\')" ' + (isMaxCount ? 'disabled' : '') + '>+</button>' +
+              '<button class="btn-remove-all" onclick="DeckSystem.setCardCount(\'' + card.id + '\', 0)" title="全削除"><i class="fas fa-trash-alt"></i></button>' +
+              '</div>' +
+              '</div>';
+          });
+        });
+
+        container.innerHTML = html;
+      }
 
   function renderPoolGallery() {
-    const grid = document.getElementById('deck-pool-grid');
-    if (!grid) return;
+        const grid = document.getElementById('deck-pool-grid');
+        if (!grid) return;
 
-    let filtered = state.cardPool.filter((card) => {
-      if (state.filter.search) {
-        const q = state.filter.search;
-        const matchName = String(card.name || '').toLowerCase().includes(q);
-        const matchEffect = String(card.abilityText || '').toLowerCase().includes(q) || String(card.attack1Text || '').toLowerCase().includes(q);
-        if (!matchName && !matchEffect) return false;
+        let filtered = state.cardPool.filter((card) => {
+          if (state.filter.search) {
+            const q = state.filter.search;
+            const matchName = String(card.name || '').toLowerCase().includes(q);
+            const matchEffect = String(card.abilityText || '').toLowerCase().includes(q) || String(card.attack1Text || '').toLowerCase().includes(q);
+            if (!matchName && !matchEffect) return false;
+          }
+          if (state.filter.category !== 'all') {
+            if (card.category !== state.filter.category) return false;
+          }
+          if (state.filter.type !== 'all') {
+            if (card.type !== state.filter.type) return false;
+          }
+          return true;
+        });
+
+        if (filtered.length === 0) {
+          grid.innerHTML = "<div class=\"empty-pool-notice\">該当するカードが見つかりません。</div>";
+          return;
+        }
+
+        const currentDeckCards = state.activeDeck && state.activeDeck.cards ? state.activeDeck.cards : [];
+        const countMap = {};
+        currentDeckCards.forEach((c) => { countMap[c.id] = c.count; });
+
+        let html = '';
+        filtered.forEach((card) => {
+          const inDeckCount = countMap[card.id] || 0;
+          const isEnergy = isNormalEnergy(card);
+          const ownedCount = getCardOwnedCount(card);
+          const isUnowned = !isEnergy && ownedCount <= 0;
+          const isAdmin = window.App && typeof window.App.isAdmin === 'function' && window.App.isAdmin();
+          const isSampleDeck = state.activeDeck && (state.activeDeck.userEmail === 'sample' || state.activeDeck.isSample);
+          const maxLimit = isEnergy ? 60 : ((isAdmin && isSampleDeck) ? 4 : Math.min(4, ownedCount));
+          const isMax = inDeckCount >= maxLimit;
+
+          // 所持フィルター適用
+          if (state.filter.ownership === 'owned' && isUnowned) return;
+          if (state.filter.ownership === 'unowned' && !isUnowned) return;
+
+          const badgeHtml = isEnergy
+            ? "<div class=\"pool-in-deck-badge pool-energy-badge\" style=\"top:6px; right:6px; z-index:10; font-size:10px;\">基本エネ (無制限)</div>"
+            : (isUnowned
+              ? "<div class=\"pool-in-deck-badge pool-unowned-badge\" style=\"top:6px; right:6px; z-index:10; font-size:10px;\">未所持</div>"
+              : "<div class=\"pool-in-deck-badge pool-owned-badge\" style=\"top:6px; right:6px; z-index:10; font-size:10px;\">所持: " + ownedCount + "枚" + (inDeckCount > 0 ? " (" + inDeckCount + "枚使用中)" : "") + "</div>");
+
+          if (window.CardSystem && window.CardSystem.createCardHtml) {
+            html += "\n          <div class=\"deck-pool-card-wrapper " + (isUnowned ? 'pool-card-unowned' : '') + " " + (isMax ? 'pool-card-max' : '') + "\" onclick=\"DeckSystem.addCard('" +
+              card.id + "')\" title=\"" + (isUnowned ? '未所持（デッキに追加できません）' : (isMax ? '上限枚数に達しています' : 'クリックしてデッキに追加')) + "\">\n            " +
+              badgeHtml + "\n            " +
+              window.CardSystem.createCardHtml(card, { size: 'sm', inDeckCount: inDeckCount, isMax: isMax }) + "\n          </div>\n        ";
+          }
+        });
+
+        if (!html) {
+          grid.innerHTML = "<div class=\"empty-pool-notice\">該当する所持カードがありません。「すべてのカード」を選択して確認するか、パックを開封してカードを獲得してください。</div>";
+          return;
+        }
+
+        grid.innerHTML = html;
       }
-      if (state.filter.category !== 'all') {
-        if (card.category !== state.filter.category) return false;
-      }
-      if (state.filter.type !== 'all') {
-        if (card.type !== state.filter.type) return false;
-      }
-      return true;
-    });
-
-    if (filtered.length === 0) {
-      grid.innerHTML = "<div class=\"empty-pool-notice\">該当するカードが見つかりません。</div>";
-      return;
-    }
-
-    const currentDeckCards = state.activeDeck && state.activeDeck.cards ? state.activeDeck.cards : [];
-    const countMap = {};
-    currentDeckCards.forEach((c) => {countMap[c.id] = c.count;});
-
-    let html = '';
-    filtered.forEach((card) => {
-      const inDeckCount = countMap[card.id] || 0;
-      const isEnergy = isNormalEnergy(card);
-      const ownedCount = getUserOwnedCount(card.id, card);
-      const isUnowned = !isEnergy && ownedCount === 0;
-      const isMax = isEnergy ? (inDeckCount >= 60) : (inDeckCount >= 4 || inDeckCount >= ownedCount);
-
-      if (window.CardSystem && window.CardSystem.createCardHtml) {
-        const cardHtml = window.CardSystem.createCardHtml(card, { size: 'sm', inDeckCount: inDeckCount, isMax: isMax });
-        const opacityStyle = isUnowned ? 'opacity: 0.55; filter: grayscale(50%);' : '';
-        const ownedBadge = isEnergy ? '<span class="owned-badge infinite" style="font-size:10px; color:#22c55e;">♾️ 無制限</span>' :
-                          (ownedCount > 0 ? ('<span class="owned-badge" style="font-size:10px; color:#3b82f6;">所持:' + ownedCount + '枚</span>') : '<span class="owned-badge unowned" style="font-size:10px; color:#ef4444;">未所持</span>');
-
-        html += "\n          <div class=\"deck-pool-card-wrapper\" style=\"position:relative; margin-bottom:12px; " + opacityStyle + "\">\n" +
-                "            <div onclick=\"DeckSystem.addCard('" + card.id + "')\" style=\"cursor:pointer;\">\n" +
-                "              " + cardHtml + "\n" +
-                "            </div>\n" +
-                "            <div style=\"display:flex; justify-content:space-between; align-items:center; margin-top:4px; padding:0 2px;\">\n" +
-                "              " + ownedBadge + "\n" +
-                "              <button class=\"btn-card-detail-zoom\" onclick=\"event.stopPropagation(); if (window.CardSystem && typeof window.CardSystem.showCardDetail === 'function') window.CardSystem.showCardDetail((window.CardSystem.findCard ? window.CardSystem.findCard('" + card.id + "') : null) || {id:'" + card.id + "', name:'" + (card.name || '') + "'});\" title=\"カード効果・詳細を見る\" style=\"background:rgba(15,23,42,0.9); color:#38bdf8; border:1px solid rgba(56,189,248,0.4); border-radius:4px; padding:2px 6px; font-size:11px; cursor:pointer;\">🔍 詳細</button>\n" +
-                "            </div>\n" +
-                "          </div>\n";
-      }
-    });
-
-    grid.innerHTML = html;
-  }
 
   function escapeHtml(str) {
     if (!str) return '';
@@ -919,6 +1005,7 @@ window.DeckSystem = function () {
     updateUserBadge: updateUserBadge,
     setGalleryTab: setGalleryTab,
     loadDecks: loadDecks,
+    saveAsOfficialSample: saveAsOfficialSample,
     openGallery: openGallery,
     openEditor: openEditor,
     duplicateDeck: duplicateDeck,
@@ -929,7 +1016,9 @@ window.DeckSystem = function () {
     saveActiveDeck: saveActiveDeck,
     deleteDeck: deleteDeck,
     renderGallery: renderGallery,
-    renderEditor: renderEditor
+    renderEditor: renderEditor,
+    validateDeck: validateDeck,
+    getCardOwnedCount: getCardOwnedCount
   };
   console.log('[ORBITAL] DeckSystem.js.html finished execution. window.DeckSystem =', typeof window.DeckSystem);
 }();

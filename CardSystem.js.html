@@ -167,7 +167,7 @@ var CardSystem;
         '無色': 1, '炎': 2, '水': 3, '草': 4, '雷': 5, '超': 6, '闘': 7, '悪': 8, '鋼': 9
       };
       const rarityOrder = {
-        'UR': 1, 'SR': 2, 'AR': 3, 'R': 4, 'N': 5
+        'SR': 1, 'RR': 2, 'AR': 3, 'R': 4, 'N': 5, 'UR': 1
       };
 
       return cards.slice().sort((a, b) => {
@@ -581,7 +581,7 @@ var CardSystem;
 
       const isPokemon = !isTrainer && !isEnergy;
       const hpBadgeHtml = isPokemon && card.hp != null && card.hp !== '' && Number(card.hp) > 0 ? '<span class="card-hp-badge">HP <strong>' + this.escape(card.hp) + '</strong></span>' : '';
-      const rarityBadgeHtml = card.rarity ? '<span class="card-rarity-badge">' + this.escape(card.rarity) + '</span>' : '';
+      const rarityBadgeHtml = card.rarity ? '<span class="card-rarity-badge rarity-badge-' + this.escape(card.rarity) + '">' + this.escape(card.rarity) + '</span>' : '';
 
       let typeBadgeHtml = '';
       if (!isTrainer && (card.type || isPokemon || isEnergy)) {

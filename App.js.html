@@ -1620,15 +1620,47 @@ console.log('[ORBITAL] App.js.html started execution');
       this.updateNmtBadge();
       this.loadPacks();
       this.renderSingleShopGrid();
-      // 今日のログインボーナスが未取得の場合、自動的に大型モータルをポップアップ表示！
-      const today = new Date().toISOString().slice(0, 10);
-      let lastClaim = '';
-      try { lastClaim = localStorage.getItem('ORBITAL_LAST_DAILY_BONUS') || ''; } catch(e) {}
-      if (lastClaim !== today) {
+      // 今日のログインボーナスが未取得かつログイン中の場合、自動的に大型モーダルをポップアップ表示！
+      const { isClaimedToday } = this.getLoginStreakInfo();
+      if (!isClaimedToday && this.isLoggedIn()) {
         setTimeout(() => {
           this.openDailyBonusModal();
         }, 800);
       }
+    },
+
+    getTodayDateStr() {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return y + '-' + m + '-' + day;
+    },
+
+    normalizeDateStr(val) {
+      if (!val) return '';
+      if (val instanceof Date) {
+        if (isNaN(val.getTime())) return '';
+        const y = val.getFullYear();
+        const m = String(val.getMonth() + 1).padStart(2, '0');
+        const d = String(val.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + d;
+      }
+      const str = String(val).trim();
+      const mat = str.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+      if (mat) {
+        const mo = mat[2].length === 1 ? '0' + mat[2] : mat[2];
+        const da = mat[3].length === 1 ? '0' + mat[3] : mat[3];
+        return mat[1] + '-' + mo + '-' + da;
+      }
+      const dt = new Date(str);
+      if (!isNaN(dt.getTime())) {
+        const y = dt.getFullYear();
+        const mo = String(dt.getMonth() + 1).padStart(2, '0');
+        const d = String(dt.getDate()).padStart(2, '0');
+        return y + '-' + mo + '-' + d;
+      }
+      return str.slice(0, 10);
     },
 
     updateNmtBadge() {
@@ -1639,13 +1671,11 @@ console.log('[ORBITAL] App.js.html started execution');
       if (valEl) {
         valEl.textContent = this.state.nmtBalance + ' NMT';
       }
-      const today = new Date().toISOString().slice(0, 10);
-      let lastClaim = '';
-      try { lastClaim = localStorage.getItem('ORBITAL_LAST_DAILY_BONUS') || ''; } catch(e) {}
+      const { isClaimedToday } = this.getLoginStreakInfo();
       const claimBtn = this.el('dailyBonusClaimBtn');
       if (claimBtn) {
-        if (lastClaim === today) {
-          claimBtn.textContent = '取得済み';
+        if (isClaimedToday) {
+          claimBtn.textContent = '本日は受取済';
           claimBtn.style.opacity = '0.6';
         } else {
           claimBtn.textContent = 'デイリーボーナス!';
@@ -1667,27 +1697,42 @@ console.log('[ORBITAL] App.js.html started execution');
     },
 
     getLoginStreakInfo() {
-      const today = new Date().toISOString().slice(0, 10);
-      let lastClaim = this.state.userProfile?.lastBonusDate || '';
-      let streakDay = Number(this.state.userProfile?.streakDay) || 1;
-      try {
-        if (!lastClaim) lastClaim = localStorage.getItem('ORBITAL_LAST_DAILY_BONUS') || '';
-        if (!this.state.userProfile?.streakDay) streakDay = Number(localStorage.getItem('ORBITAL_LOGIN_STREAK_DAY')) || 1;
-      } catch(e) {}
+      const today = this.getTodayDateStr();
+      const email = this.getUserEmail();
 
-      const isClaimedToday = (lastClaim === today);
+      let rawClaim = this.state.userProfile?.lastBonusDate || '';
+      if (!rawClaim) {
+        try {
+          rawClaim = localStorage.getItem('ORBITAL_LAST_DAILY_BONUS_' + email) ||
+                     localStorage.getItem('ORBITAL_LAST_DAILY_BONUS') || '';
+        } catch(e) {}
+      }
+      const lastClaim = this.normalizeDateStr(rawClaim);
+
+      let streakDay = Number(this.state.userProfile?.streakDay);
+      if (!streakDay || isNaN(streakDay)) {
+        try {
+          streakDay = Number(localStorage.getItem('ORBITAL_LOGIN_STREAK_DAY_' + email) ||
+                             localStorage.getItem('ORBITAL_LOGIN_STREAK_DAY')) || 1;
+        } catch(e) {}
+      }
+      if (isNaN(streakDay) || streakDay < 1) streakDay = 1;
+
+      const isClaimedToday = Boolean(lastClaim && lastClaim === today);
 
       if (!isClaimedToday && lastClaim) {
         // 前回取得から1日経過したかのチェック
-        const lastDate = new Date(lastClaim);
-        const currDate = new Date(today);
-        const diffDays = Math.floor((currDate - lastDate) / (1000 * 60 * 60 * 24));
+        const lastParts = lastClaim.split('-').map(Number);
+        const currParts = today.split('-').map(Number);
+        const lastDate = new Date(lastParts[0], lastParts[1] - 1, lastParts[2]);
+        const currDate = new Date(currParts[0], currParts[1] - 1, currParts[2]);
+        const diffDays = Math.round((currDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
 
         if (diffDays === 1) {
           // 連続ログイン成功
           streakDay = (streakDay % 7) + 1;
         } else if (diffDays > 1) {
-          // リセット
+          // リセット (2日以上経過)
           streakDay = 1;
         }
       }
@@ -1720,12 +1765,14 @@ console.log('[ORBITAL] App.js.html started execution');
       const btn = this.el('claimBigDailyBonusBtn');
       if (btn) {
         if (isClaimedToday) {
-          btn.textContent = '✅ Day ' + streakDay + ' 本日の受取完了 (' + curReward.label + ')';
+          btn.textContent = '✅ 本日の受取完了 (Day ' + streakDay + ': ' + curReward.label + ')';
           btn.style.opacity = '0.6';
+          btn.style.cursor = 'not-allowed';
           btn.disabled = true;
         } else {
           btn.textContent = '🎁 Day ' + streakDay + ' ボーナスを受け取る！ (' + curReward.label + ')';
           btn.style.opacity = '1';
+          btn.style.cursor = 'pointer';
           btn.disabled = false;
         }
       }
@@ -1768,36 +1815,80 @@ console.log('[ORBITAL] App.js.html started execution');
       const { today, isClaimedToday, streakDay } = this.getLoginStreakInfo();
       if (isClaimedToday) {
         this.toast('ℹ️ 本日のログインボーナスは取得済みです！明日またご来店ください。');
+        this.renderDailyBonusStreak();
         return;
       }
 
+      // 二重クリック連打を即座に防御
+      const btn = this.el('claimBigDailyBonusBtn');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = '処理中...';
+        btn.style.opacity = '0.5';
+      }
+
+      const email = this.getUserEmail();
       const rewards = this.getDailyBonusRewards();
       const curReward = rewards[streakDay - 1] || rewards[0];
+      const newNmt = this.getUserNmt() + curReward.nmt;
 
-      this.setUserNmt(this.getUserNmt() + curReward.nmt);
+      // 1. メモリと状態を即時更新 (確実に「本日取得済み」フラグを確定)
+      if (!this.state.userProfile) this.state.userProfile = {};
+      this.state.userProfile.lastBonusDate = today;
+      this.state.userProfile.streakDay = streakDay;
+      this.state.userProfile.nmtBalance = newNmt;
+      this.state.userProfile.nmt = newNmt;
+      this.state.nmt = newNmt;
+      this.state.nmtBalance = newNmt;
+
+      // 2. localStorage へ確実に保存 (全体キーおよびアカウント別キー)
       try {
         localStorage.setItem('ORBITAL_LAST_DAILY_BONUS', today);
+        localStorage.setItem('ORBITAL_LAST_DAILY_BONUS_' + email, today);
         localStorage.setItem('ORBITAL_LOGIN_STREAK_DAY', String(streakDay));
+        localStorage.setItem('ORBITAL_LOGIN_STREAK_DAY_' + email, String(streakDay));
+        localStorage.setItem('ORBITAL_NMT_BALANCE', String(newNmt));
+        if (this.state.userProfile) {
+          localStorage.setItem('ORBITAL_LOGGED_IN_USER', JSON.stringify(this.state.userProfile));
+        }
       } catch (e) {}
 
-      if (window.google && google.script && google.script.run && !window._is_mock_gas && typeof google.script.run.claimDailyBonusInDb === 'function') {
-        try {
-          const email = this.getUserEmail();
-          google.script.run.claimDailyBonusInDb(email, today);
-        } catch(e) {}
-      }
-      
+      // 3. UI表示を即座に受取完了状態に更新
+      this.updateNmtDisplays();
+      this.updateNmtBadge();
       this.renderDailyBonusStreak();
 
       // 金コインエフェクト表示
       this.triggerCoinBurst();
+
+      // 4. バックエンド (GAS / Mock) への同期保存
+      // ※ setUserNmt を呼ぶと saveUserNmtBalance と競合して lastBonusDate が上書きされる恐れがあるため、
+      // 　 claimDailyBonusInDb 単独で残高・日付・ストリークを同時に安全更新！
+      const self = this;
+      if (window.google && google.script && google.script.run) {
+        try {
+          google.script.run
+            .withSuccessHandler((res) => {
+              console.log('✅ [DailyBonus Sync] claimDailyBonusInDb success:', res);
+              if (res && res.profile) {
+                self.state.userProfile = Object.assign(self.state.userProfile || {}, res.profile);
+                try { localStorage.setItem('ORBITAL_LOGGED_IN_USER', JSON.stringify(self.state.userProfile)); } catch(e) {}
+              }
+            })
+            .withFailureHandler((err) => {
+              console.warn('⚠️ [DailyBonus Sync] claimDailyBonusInDb error:', err);
+            })
+            .claimDailyBonusInDb(email, today);
+        } catch(e) {
+          console.warn('claimDailyBonusInDb call warning:', e);
+        }
+      }
 
       if (curReward.pack > 0) {
         this.toast('🎉 Day ' + streakDay + ' ボーナス (+' + curReward.nmt + ' NMT ＆ 特典パック ' + curReward.pack + '個) を獲得しました！');
         // 無料パック即時開封体験
         setTimeout(() => {
           this.closeDailyBonusModal();
-          const packToOpen = (this.state.packs && this.state.packs.length > 0) ? this.state.packs[0].id : 'pack_standard';
           this.addFreePackTickets(curReward.pack);
           this.showPage('pack');
         }, 1500);
@@ -1904,10 +1995,17 @@ console.log('[ORBITAL] App.js.html started execution');
         this.openDailyBonusModal();
         return;
       }
+      const packs = (this.state.packs && this.state.packs.length > 0) ? this.state.packs : [];
+      if (packs.length === 0) {
+        this.toast('利用可能なパックが登録されていません', true);
+        return;
+      }
       this.setUserFreePackTickets(tickets - 1);
-      const targetPackId = (this.state.packs && this.state.packs.length > 0) ? this.state.packs[0].id : 'pack_standard';
-      this.toast('🎁 ログインボーナス特別パックを開封します！');
-      this.buyAndOpenPack(targetPackId, true);
+
+      // 既存のパックからランダムに1つ選出
+      const chosenPack = packs[Math.floor(Math.random() * packs.length)];
+      this.toast('🎁 ログボ特典！既存パックの中から【' + (chosenPack.title || 'パック') + '】が選ばれました！');
+      this.buyAndOpenPack(chosenPack.id, true, true);
       this.renderPackGrid();
     },
 
@@ -1926,28 +2024,29 @@ console.log('[ORBITAL] App.js.html started execution');
 
       const logboCardHtml =
         '<div class="pack-card" style="border: 2px solid #fbbf24; background: linear-gradient(135deg, rgba(251,191,36,0.18), rgba(217,70,239,0.18)); box-shadow: 0 0 25px rgba(251,191,36,0.35); position:relative;">' +
-          '<div class="single-shop-tag" style="background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #000; font-weight:900;">🎁 ログボ特典</div>' +
+          '<div class="single-shop-tag" style="background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #000; font-weight:900;">🎁 ログボ特典 (全パック対象)</div>' +
           '<div class="pack-cover-wrapper" style="border-color: rgba(251,191,36,0.6);">' +
-            '<div class="pack-foil-art" style="color:#fbbf24; filter:drop-shadow(0 0 10px rgba(251,191,36,0.8));">🌟</div>' +
-            '<div class="pack-foil-header" style="color:#fbbf24;">ログインボーナス</div>' +
+            '<div class="pack-foil-art" style="color:#fbbf24; filter:drop-shadow(0 0 10px rgba(251,191,36,0.8));">🎲</div>' +
+            '<div class="pack-foil-header" style="color:#fbbf24;">ランダム特典</div>' +
           '</div>' +
           '<div class="pack-title" style="color:#fbbf24; font-weight:900;">🎁 ログインボーナス特別パック</div>' +
-          '<div class="pack-desc">ログインボーナスで獲得した特別無料パック！激レアカードをゲットしよう！</div>' +
+          '<div class="pack-desc">ログインボーナスで獲得した特別無料チケット！既存の全パックから毎回ランダムに1つが選ばれて開封されます！</div>' +
           '<div class="pack-price-tag" style="color:#fbbf24;">✨ 所持チケット: <strong>' + freeTickets + '</strong> 個</div>' +
           (freeTickets > 0 ? (
             '<button class="pack-buy-btn" type="button" style="background: linear-gradient(135deg, #fbbf24, #f59e0b); color:#0b0f19; font-weight:900; box-shadow:0 6px 20px rgba(251,191,36,0.5);" onclick="App.openLogboPack()">' +
-              '✨ 無料でパック開封！ (残り ' + freeTickets + '個)' +
+              '🎲 ランダムパック開封！ (残り ' + freeTickets + '個)' +
             '</button>'
           ) : (
             '<button class="pack-buy-btn" type="button" style="opacity: 0.7; cursor: pointer; background: rgba(255,255,255,0.12);" onclick="App.openDailyBonusModal()">' +
               '🔒 チケットなし (ログボでGET)' +
             '</button>'
           )) +
+          '<button class="pack-rates-btn" type="button" onclick="App.openPackRatesModal(\'logbo\')">📊 排出率を見る</button>' +
         '</div>';
 
       const customPacksHtml = packs.map(p => {
       const coverArt = p.image ? ('<img src="' + this.escapeHtml(p.image) + '" style="width:100%; height:100%; object-fit:cover; border-radius:8px;">') : ('<div class="pack-foil-art">✦</div><div class="pack-foil-header">' + this.escapeHtml(p.title) + '</div>');
-        return '\n          <div class="pack-card">\n            <div class="pack-cover-wrapper">\n              ' + (coverArt) + '\n            </div>\n            <div class="pack-title">' + (this.escapeHtml(p.title)) + '</div>\n            <div class="pack-desc">' + (this.escapeHtml(p.description || '5枚のカードを収録')) + '</div>\n            <div class="pack-price-tag">✨ ' + (p.price || 100) + ' NMT</div>\n            <button class="pack-buy-btn" type="button" onclick="App.buyAndOpenPack(\'' + (p.id) + '\')">🎁 ' + (p.price || 100) + ' NMT で開封</button>\n          </div>\n        ';
+        return '\n          <div class="pack-card">\n            <div class="pack-cover-wrapper">\n              ' + (coverArt) + '\n            </div>\n            <div class="pack-title">' + (this.escapeHtml(p.title)) + '</div>\n            <div class="pack-desc">' + (this.escapeHtml(p.description || '5枚のカードを収録')) + '</div>\n            <div class="pack-price-tag">✨ ' + (p.price || 100) + ' NMT</div>\n            <button class="pack-buy-btn" type="button" onclick="App.buyAndOpenPack(\'' + (p.id) + '\')">🎁 ' + (p.price || 100) + ' NMT で開封</button>\n            <button class="pack-rates-btn" type="button" onclick="App.openPackRatesModal(\'' + (p.id) + '\')">📊 排出率を見る</button>\n          </div>\n        ';
       }).join('');
       grid.innerHTML = logboCardHtml + customPacksHtml;
     },
@@ -1965,7 +2064,279 @@ console.log('[ORBITAL] App.js.html started execution');
       return '◇';
     },
 
-    buyAndOpenPack(packId, isFree = false) {
+    getPackEmissionRates(packId) {
+      const allCards = this.getAllCards();
+      let pack = null;
+      if (packId === 'logbo') {
+        const packs = (this.state.packs && this.state.packs.length > 0) ? this.state.packs : [];
+        const packTitles = packs.map(p => p.title).filter(Boolean);
+        const packNamesStr = packTitles.length > 0 ? packTitles.join(' / ') : '全拡張パック';
+
+        // 収録プール: 既存パックのカードプールを統合（未設定パックがあれば全カード）
+        let combinedPool = [];
+        let hasUnrestrictedPack = false;
+        packs.forEach(p => {
+          if (Array.isArray(p.cardPool) && p.cardPool.length > 0) {
+            combinedPool.push(...p.cardPool);
+          } else {
+            hasUnrestrictedPack = true;
+          }
+        });
+        const targetPoolIds = (hasUnrestrictedPack || combinedPool.length === 0 || packs.length === 0)
+          ? []
+          : Array.from(new Set(combinedPool));
+
+        pack = {
+          id: 'logbo',
+          title: '🎁 ログインボーナス特別パック (既存パックからランダム抽選)',
+          description: `既存のパック（${packNamesStr}）の中から毎回等確率でランダムに1つのパックが選出されて開封されます！`,
+          cardPool: targetPoolIds
+        };
+      } else {
+        pack = (this.state.packs || []).find(p => p.id === packId) || (this.state.packs && this.state.packs[0]) || {
+          id: packId,
+          title: '拡張パック',
+          cardPool: []
+        };
+      }
+
+      let targetPool = allCards;
+      if (pack && Array.isArray(pack.cardPool) && pack.cardPool.length > 0) {
+        const filtered = allCards.filter(c => pack.cardPool.includes(c.id) || pack.cardPool.includes(c.name));
+        if (filtered.length > 0) targetPool = filtered;
+      }
+
+      // レアリティ別基本排出比重 (左から順に高く: N:55%, R:25%, AR:11%, RR:6%, SR:3%)
+      const BASE_WEIGHTS = {
+        'N': 55.0,
+        'R': 25.0,
+        'AR': 11.0,
+        'RR': 6.0,
+        'SR': 3.0
+      };
+
+      const groups = {};
+      targetPool.forEach(card => {
+        let r = String(card.rarity || 'N').toUpperCase().trim();
+        if (!BASE_WEIGHTS[r]) {
+          if (r === 'C' || r === 'UC' || r === 'COMMON' || r === 'NORMAL' || !r) r = 'N';
+          else if (r === 'RARE') r = 'R';
+          else if (r === 'ART RARE') r = 'AR';
+          else if (r === 'DOUBLE RARE' || r === 'EX') r = 'RR';
+          else if (r === 'SUPER RARE' || r === 'UR' || r === 'ULTRA RARE') r = 'SR';
+          else r = 'N';
+        }
+        if (!groups[r]) groups[r] = [];
+        groups[r].push(card);
+      });
+
+      const rarityKeys = ['N', 'R', 'AR', 'RR', 'SR'];
+      let activeWeightSum = 0;
+      rarityKeys.forEach(r => {
+        if (groups[r] && groups[r].length > 0) {
+          activeWeightSum += BASE_WEIGHTS[r];
+        }
+      });
+      if (activeWeightSum <= 0) activeWeightSum = 100;
+
+      const raritySummaries = [];
+      const cardList = [];
+
+      rarityKeys.forEach(r => {
+        const cards = groups[r] || [];
+        if (cards.length === 0) return;
+        const groupPct = (BASE_WEIGHTS[r] / activeWeightSum) * 100;
+        const perCardPct = groupPct / cards.length;
+
+        raritySummaries.push({
+          rarity: r,
+          cardCount: cards.length,
+          groupPercent: groupPct,
+          perCardPercent: perCardPct
+        });
+
+        cards.forEach(card => {
+          cardList.push({
+            card: card,
+            rarity: r,
+            percent: perCardPct
+          });
+        });
+      });
+
+      return {
+        pack: pack,
+        targetPool: targetPool,
+        totalCards: targetPool.length,
+        raritySummaries: raritySummaries,
+        cardList: cardList
+      };
+    },
+
+    openPackRatesModal(packId) {
+      const data = this.getPackEmissionRates(packId);
+      this._currentPackRatesData = data;
+      this._packRatesFilterRarity = 'all';
+
+      const titleEl = this.el('packRatesModalTitle');
+      if (titleEl) {
+        titleEl.textContent = '📊 ' + (data.pack ? data.pack.title : 'パック') + ' 提供割合・排出率';
+      }
+
+      this.renderPackRatesSummary(data);
+      this.renderPackRatesRarityTabs(data);
+      this.renderPackRatesCardList(data);
+
+      const modal = this.el('packRatesModal');
+      if (modal) modal.classList.remove('hidden');
+    },
+
+    closePackRatesModal() {
+      const modal = this.el('packRatesModal');
+      if (modal) modal.classList.add('hidden');
+    },
+
+    renderPackRatesSummary(data) {
+      const container = this.el('packRatesSummaryContainer');
+      if (!container) return;
+
+      const pack = data.pack || {};
+      const rarityIcons = {
+        'N': '⚪',
+        'R': '🔷',
+        'AR': '🎨',
+        'RR': '⚡',
+        'SR': '✨'
+      };
+
+      const chipsHtml = data.raritySummaries.map(s => {
+        const icon = rarityIcons[s.rarity] || '✦';
+        return `
+          <div class="pack-rates-chip rarity-chip-${s.rarity}">
+            <div style="font-size:12px; font-weight:800; color:var(--text-bright); margin-bottom:2px;">
+              ${icon} ${s.rarity}
+            </div>
+            <div style="font-size:16px; font-weight:900; color:#fbbf24; margin-bottom:2px;">
+              ${s.groupPercent.toFixed(2)}%
+            </div>
+            <div style="font-size:11px; color:#94a3b8;">
+              全${s.cardCount}種 / 各${s.perCardPercent.toFixed(3)}%
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      container.innerHTML = `
+        <div class="pack-rates-summary-header">
+          <div>
+            <div style="font-size:15px; font-weight:900; color:#fff;">${this.escapeHtml(pack.title || 'ブースターパック')}</div>
+            <div style="font-size:12px; color:#94a3b8; margin-top:2px;">${this.escapeHtml(pack.description || '5枚のカードを収録')}</div>
+          </div>
+          <div style="text-align:right;">
+            <span style="font-size:12px; color:#94a3b8;">総収録数</span>
+            <div style="font-size:17px; font-weight:900; color:#38bdf8;">全 ${data.totalCards} 種類</div>
+          </div>
+        </div>
+        <div class="pack-rates-chips-grid">
+          ${chipsHtml}
+        </div>
+      `;
+    },
+
+    renderPackRatesRarityTabs(data) {
+      const container = this.el('packRatesRarityTabs');
+      if (!container) return;
+
+      const active = this._packRatesFilterRarity || 'all';
+      let html = `<button type="button" class="pack-rates-tab-btn ${active === 'all' ? 'active' : ''}" onclick="App.setPackRatesRarityFilter('all')">すべて (${data.totalCards})</button>`;
+
+      data.raritySummaries.forEach(s => {
+        const isActive = active === s.rarity;
+        html += `<button type="button" class="pack-rates-tab-btn ${isActive ? 'active' : ''}" onclick="App.setPackRatesRarityFilter('${s.rarity}')">${s.rarity} (${s.cardCount})</button>`;
+      });
+
+      container.innerHTML = html;
+    },
+
+    setPackRatesRarityFilter(rarity) {
+      this._packRatesFilterRarity = rarity;
+      if (this._currentPackRatesData) {
+        this.renderPackRatesRarityTabs(this._currentPackRatesData);
+        this.renderPackRatesCardList(this._currentPackRatesData);
+      }
+    },
+
+    filterPackRatesList() {
+      if (this._currentPackRatesData) {
+        this.renderPackRatesCardList(this._currentPackRatesData);
+      }
+    },
+
+    renderPackRatesCardList(data) {
+      const container = this.el('packRatesCardsContainer');
+      if (!container) return;
+
+      const filterRarity = this._packRatesFilterRarity || 'all';
+      const searchInput = this.el('packRatesSearchInput');
+      const search = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+      let list = data.cardList || [];
+      if (filterRarity !== 'all') {
+        list = list.filter(item => item.rarity === filterRarity);
+      }
+      if (search) {
+        list = list.filter(item => {
+          const name = String(item.card.name || '').toLowerCase();
+          const cat = String(item.card.category || '').toLowerCase();
+          const type = String(item.card.type || '').toLowerCase();
+          return name.includes(search) || cat.includes(search) || type.includes(search);
+        });
+      }
+
+      if (list.length === 0) {
+        container.innerHTML = '<div style="text-align:center; padding:30px; color:#94a3b8;">該当するカードがありません</div>';
+        return;
+      }
+
+      let rowsHtml = list.map(item => {
+        const c = item.card;
+        const emblem = this.getCardTypeEmblem(c.type);
+        const img = c.image ? `<img src="${this.escapeHtml(c.image)}" style="width:36px; height:48px; object-fit:cover; border-radius:4px; border:1px solid rgba(255,255,255,0.15);">` : `<div style="width:36px; height:48px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.05); border-radius:4px; font-size:16px;">${emblem}</div>`;
+        const rarityBadge = `<span class="card-rarity-badge rarity-badge-${item.rarity}" style="font-size:11px; font-weight:800; padding:2px 8px; border-radius:4px; background:rgba(255,255,255,0.1);">${item.rarity}</span>`;
+
+        return `
+          <tr>
+            <td style="width:50px; text-align:center;">${rarityBadge}</td>
+            <td style="width:50px;">${img}</td>
+            <td>
+              <div style="font-weight:800; color:#fff; font-size:13.5px;">${this.escapeHtml(c.name)}</div>
+              <div style="font-size:11.5px; color:#94a3b8;">${this.escapeHtml(c.category || 'たね')} / ${emblem} ${this.escapeHtml(c.type || '無色')}${c.hp ? ' / HP ' + c.hp : ''}</div>
+            </td>
+            <td style="text-align:right; width:110px;">
+              <span class="rate-percent-badge">${item.percent.toFixed(3)}%</span>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      container.innerHTML = `
+        <table class="pack-rates-table">
+          <thead>
+            <tr>
+              <th style="text-align:center;">レア</th>
+              <th></th>
+              <th>カード名 / 種類</th>
+              <th style="text-align:right;">排出確率</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+      `;
+    },
+
+    buyAndOpenPack(packId, isFree = false, isLogbo = false) {
       const pack = (this.state.packs || []).find(p => p.id === packId) || (this.state.packs && this.state.packs[0]);
       if (!pack) {
         this.toast('指定されたパックが見つかりません', true);
@@ -1982,24 +2353,30 @@ console.log('[ORBITAL] App.js.html started execution');
         this.setUserNmt(curNmt - pack.price);
       }
 
-      // カードプールからランダムにカードを抽選 (パック設定済みの収録対象カードプールを優先)
-      const allCards = this.getAllCards();
-      let targetPool = allCards;
-      if (Array.isArray(pack.cardPool) && pack.cardPool.length > 0) {
-        const filtered = allCards.filter(c => pack.cardPool.includes(c.id) || pack.cardPool.includes(c.name));
-        if (filtered.length > 0) targetPool = filtered;
-      }
+      this.state.currentOpeningPackId = packId;
 
+      // 排出率設定に基づき確率重み付け抽選を行う
+      const ratesData = this.getPackEmissionRates(packId);
+      const cardList = ratesData.cardList;
       const count = pack.cardCount || 5;
       const drawnCards = [];
 
-      if (targetPool.length > 0) {
-        const available = [...targetPool];
+      if (cardList && cardList.length > 0) {
         for (let i = 0; i < count; i++) {
-          let poolToUse = available.filter(cand => !drawnCards.some(d => (d.id && cand.id && String(d.id) === String(cand.id)) || (d.name && cand.name && d.name === cand.name)));
-          if (poolToUse.length === 0) poolToUse = available;
-          const randCard = poolToUse[Math.floor(Math.random() * poolToUse.length)];
-          drawnCards.push(JSON.parse(JSON.stringify(randCard)));
+          let poolToUse = cardList.filter(cand => !drawnCards.some(d => String(d.id) === String(cand.card.id) || (d.name && cand.card.name && d.name === cand.card.name)));
+          if (poolToUse.length === 0) poolToUse = cardList;
+
+          const totalWeight = poolToUse.reduce((sum, item) => sum + item.percent, 0);
+          let randVal = Math.random() * totalWeight;
+          let selected = poolToUse[0].card;
+          for (let j = 0; j < poolToUse.length; j++) {
+            randVal -= poolToUse[j].percent;
+            if (randVal <= 0) {
+              selected = poolToUse[j].card;
+              break;
+            }
+          }
+          drawnCards.push(JSON.parse(JSON.stringify(selected)));
         }
       } else {
         // デフォルトサンプルカード生成
@@ -2012,7 +2389,7 @@ console.log('[ORBITAL] App.js.html started execution');
             hp: 80,
             attack1Name: 'スターバースト',
             attack1Damage: 40,
-            rarity: (i === 4 ? 'UR' : (i === 3 ? 'SR' : (i === 2 ? 'R' : 'N')))
+            rarity: (i === 4 ? 'SR' : (i === 3 ? 'RR' : (i === 2 ? 'AR' : (i === 1 ? 'R' : 'N'))))
           });
         }
       }
@@ -2031,12 +2408,24 @@ console.log('[ORBITAL] App.js.html started execution');
         try { localStorage.setItem('ORBITAL_CUSTOM_CARDS', JSON.stringify(CardSystem.customCards)); } catch(e) {}
       }
 
-      this.openPackOpeningModal(pack);
+      this.openPackOpeningModal(pack, isLogbo);
     },
 
-    openPackOpeningModal(pack) {
+    openPackOpeningModal(pack, isLogbo = false) {
       const titleEl = this.el('packFoilTitle');
       if (titleEl) titleEl.textContent = pack.title || '拡張パック';
+      const headerEl = this.el('packFoilHeader');
+      if (headerEl) headerEl.textContent = isLogbo ? '🎁 ログボ特典 (ランダム当選)' : 'ORCEIN BOOSTER';
+      const subEl = this.el('packFoilSub');
+      if (subEl) subEl.textContent = isLogbo ? '🎁 既存パックからランダム選出！' : ((pack.cardCount || 5) + ' CARDS INSIDE');
+      const artEl = this.el('packFoilArt');
+      if (artEl) {
+        if (pack.image) {
+          artEl.innerHTML = '<img src="' + this.escapeHtml(pack.image) + '" style="width:72px; height:72px; object-fit:cover; border-radius:10px;">';
+        } else {
+          artEl.textContent = isLogbo ? '🎁' : '🧪';
+        }
+      }
       const stageVis = this.el('packStageVisual');
       const revealStage = this.el('packRevealStage');
       if (stageVis) stageVis.style.display = 'flex';
@@ -2095,14 +2484,18 @@ console.log('[ORBITAL] App.js.html started execution');
       inner.classList.add('flipped');
       if (!card) return;
 
-      if (card.rarity === 'UR' || card.rarity === 'SR') {
+      if (card.rarity === 'SR' || card.rarity === 'UR') {
         const glow = document.createElement('div');
         glow.className = 'ur-glow-effect';
         document.body.appendChild(glow);
         setTimeout(() => { if (glow.parentNode) glow.parentNode.removeChild(glow); }, 1500);
-        this.toast('🌟 ULTRA RARE！【' + card.name + '】を引き当てました！');
+        this.toast('✨ SUPER RARE！【' + card.name + '】を引き当てました！');
+      } else if (card.rarity === 'RR') {
+        this.toast('⚡ DOUBLE RARE！【' + card.name + '】を引き当てました！');
+      } else if (card.rarity === 'AR') {
+        this.toast('🎨 ART RARE！【' + card.name + '】を引き当てました！');
       } else if (card.rarity === 'R') {
-        this.toast('✨ RARE！【' + card.name + '】を手に入れました！');
+        this.toast('🔷 RARE！【' + card.name + '】を手に入れました！');
       }
     },
 
@@ -2695,10 +3088,19 @@ console.log('[ORBITAL] App.js.html started execution');
     onAuthSuccess(userObj) {
       if (!userObj) return;
       userObj.isLoggedIn = true;
+      if (userObj.lastBonusDate) userObj.lastBonusDate = this.normalizeDateStr(userObj.lastBonusDate);
       this.state.userProfile = userObj;
       try {
         localStorage.setItem('ORBITAL_LOGGED_IN_USER', JSON.stringify(userObj));
         localStorage.setItem('orbital_mock_user_email', userObj.email);
+        if (userObj.lastBonusDate) {
+          localStorage.setItem('ORBITAL_LAST_DAILY_BONUS', userObj.lastBonusDate);
+          localStorage.setItem('ORBITAL_LAST_DAILY_BONUS_' + userObj.email, userObj.lastBonusDate);
+        }
+        if (userObj.streakDay) {
+          localStorage.setItem('ORBITAL_LOGIN_STREAK_DAY', String(userObj.streakDay));
+          localStorage.setItem('ORBITAL_LOGIN_STREAK_DAY_' + userObj.email, String(userObj.streakDay));
+        }
       } catch(e) {}
 
       if (userObj.nmtBalance != null) {
@@ -2720,8 +3122,16 @@ console.log('[ORBITAL] App.js.html started execution');
       }
 
       this.updateUserBadge();
+      this.updateNmtBadge();
+      this.renderDailyBonusStreak();
       this.closeAuthModal();
       this.toast('✨ ログイン完了: ようこそ ' + (userObj.displayName || userObj.email) + ' さん！');
+
+      // 本日のボーナスがまだ未受取ならモーダルを案内
+      const { isClaimedToday } = this.getLoginStreakInfo();
+      if (!isClaimedToday) {
+        setTimeout(() => this.openDailyBonusModal(), 600);
+      }
     },
 
     logout() {
@@ -2733,6 +3143,8 @@ console.log('[ORBITAL] App.js.html started execution');
         window.DeckSystem.state.currentUser = null;
       }
       this.updateUserBadge();
+      this.updateNmtBadge();
+      this.renderDailyBonusStreak();
       this.toast('👋 ログアウトしました');
     },
 
@@ -2783,7 +3195,18 @@ console.log('[ORBITAL] App.js.html started execution');
         try {
           google.script.run.withSuccessHandler((prof) => {
             if (!prof || !prof.email) return;
+            if (prof.lastBonusDate) prof.lastBonusDate = self.normalizeDateStr(prof.lastBonusDate);
             self.state.userProfile = prof;
+            try {
+              if (prof.lastBonusDate) {
+                localStorage.setItem('ORBITAL_LAST_DAILY_BONUS', prof.lastBonusDate);
+                localStorage.setItem('ORBITAL_LAST_DAILY_BONUS_' + prof.email, prof.lastBonusDate);
+              }
+              if (prof.streakDay) {
+                localStorage.setItem('ORBITAL_LOGIN_STREAK_DAY', String(prof.streakDay));
+                localStorage.setItem('ORBITAL_LOGIN_STREAK_DAY_' + prof.email, String(prof.streakDay));
+              }
+            } catch(e) {}
             if (prof.nmtBalance != null) {
               const val = Number(prof.nmtBalance);
               self.state.nmt = val;
@@ -2804,6 +3227,8 @@ console.log('[ORBITAL] App.js.html started execution');
                 window.DeckSystem.updateUserBadge();
               }
             }
+            self.updateNmtBadge();
+            self.renderDailyBonusStreak();
           }).getUserProfile(targetEmail);
         } catch(e) {
           console.warn('loadUserProfileFromGas error:', e);
@@ -3350,7 +3775,16 @@ console.log('[ORBITAL] App.js.html started execution');
 
     getUserCardCount(cardId) {
       const col = this.getUserCollection();
-      return Number(col[cardId]) || 0;
+      if (!cardId) return 0;
+      const idKey = String(cardId);
+      const byId = Number(col[idKey]) || 0;
+      if (byId > 0) return byId;
+      const allCards = this.getAllCards();
+      const match = allCards.find(c => String(c.id) === idKey || String(c.name) === idKey);
+      if (match && match.name) {
+        return Number(col[String(match.name)]) || 0;
+      }
+      return 0;
     },
 
     escapeHtml(str) {

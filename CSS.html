@@ -5692,8 +5692,16 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   100% { filter: brightness(1.35) drop-shadow(0 0 25px #ec4899); }
 }
 .rarity-aura-SR {
-  box-shadow: 0 0 35px rgba(251, 191, 36, 0.85), 0 0 50px rgba(129, 140, 248, 0.7) !important;
+  box-shadow: 0 0 35px rgba(251, 191, 36, 0.9), 0 0 55px rgba(236, 72, 153, 0.7) !important;
   border-color: #ffd700 !important;
+}
+.rarity-aura-RR {
+  box-shadow: 0 0 30px rgba(234, 179, 8, 0.8), 0 0 45px rgba(99, 102, 241, 0.75) !important;
+  border-color: #facc15 !important;
+}
+.rarity-aura-AR {
+  box-shadow: 0 0 26px rgba(217, 70, 239, 0.8), 0 0 40px rgba(56, 189, 248, 0.65) !important;
+  border-color: #e879f9 !important;
 }
 .rarity-aura-R {
   box-shadow: 0 0 22px rgba(56, 189, 248, 0.75) !important;
@@ -6906,3 +6914,255 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   margin-bottom: 14px;
 }
 
+/* ============================================================
+   パック排出率・提供割合モーダル & UI スタイル
+   ============================================================ */
+.pack-rates-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  color: #fbbf24;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pack-rates-btn:hover {
+  background: rgba(251, 191, 36, 0.2);
+  border-color: #fbbf24;
+  box-shadow: 0 0 14px rgba(251, 191, 36, 0.4);
+  transform: translateY(-1px);
+}
+
+.pack-rates-summary-container {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.85), rgba(15, 23, 42, 0.95));
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+
+.pack-rates-summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 8px;
+}
+
+.pack-rates-chips-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+  gap: 10px;
+}
+
+.pack-rates-chip {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 10px 12px;
+  text-align: center;
+  transition: transform 0.15s, border-color 0.15s;
+}
+
+.pack-rates-chip:hover {
+  transform: translateY(-2px);
+}
+
+.pack-rates-chip.rarity-chip-UR {
+  border-color: rgba(251, 191, 36, 0.6);
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(236, 72, 153, 0.15));
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.25);
+}
+
+.pack-rates-chip.rarity-chip-SR {
+  border-color: rgba(251, 191, 36, 0.7);
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.2), rgba(236, 72, 153, 0.2));
+  box-shadow: 0 0 14px rgba(251, 191, 36, 0.35);
+}
+
+.pack-rates-chip.rarity-chip-RR {
+  border-color: rgba(234, 179, 8, 0.7);
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.18), rgba(99, 102, 241, 0.18));
+  box-shadow: 0 0 12px rgba(234, 179, 8, 0.25);
+}
+
+.pack-rates-chip.rarity-chip-AR {
+  border-color: rgba(168, 85, 247, 0.6);
+  background: rgba(168, 85, 247, 0.12);
+}
+
+.pack-rates-chip.rarity-chip-R {
+  border-color: rgba(56, 189, 248, 0.6);
+  background: rgba(56, 189, 248, 0.12);
+}
+
+.pack-rates-chip.rarity-chip-N {
+  border-color: rgba(148, 163, 184, 0.4);
+  background: rgba(148, 163, 184, 0.08);
+}
+
+.pack-rates-tab-btn {
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pack-rates-tab-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.pack-rates-tab-btn.active {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #0b0f19;
+  border-color: #fbbf24;
+  font-weight: 900;
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.4);
+}
+
+.pack-rates-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.pack-rates-table th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 12px;
+  color: #94a3b8;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(15, 23, 42, 0.9);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.pack-rates-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 13px;
+  vertical-align: middle;
+}
+
+.pack-rates-table tr:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.rate-percent-badge {
+  font-family: monospace;
+  font-weight: 800;
+  font-size: 13px;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  display: inline-block;
+}
+
+/* ============================================================
+   デッキ作成画面 カード所持制限・未所持バッジ スタイル
+   ============================================================ */
+.deck-pool-card-wrapper {
+  position: relative;
+  transition: transform 0.15s ease;
+}
+
+.deck-pool-card-wrapper:hover {
+  transform: translateY(-2px);
+}
+
+.deck-pool-card-wrapper.pool-card-unowned {
+  opacity: 0.42;
+  filter: grayscale(0.85);
+  cursor: not-allowed !important;
+}
+
+.deck-pool-card-wrapper.pool-card-unowned:hover {
+  opacity: 0.65;
+  filter: grayscale(0.45);
+}
+
+.deck-pool-card-wrapper.pool-card-max {
+  opacity: 0.72;
+}
+
+.pool-in-deck-badge.pool-unowned-badge {
+  background: rgba(239, 68, 68, 0.92) !important;
+  color: #ffffff !important;
+  font-weight: 800;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+}
+
+.pool-in-deck-badge.pool-owned-badge {
+  background: rgba(16, 185, 129, 0.92) !important;
+  color: #ffffff !important;
+  font-weight: 800;
+}
+
+.pool-in-deck-badge.pool-energy-badge {
+  background: rgba(51, 65, 85, 0.92) !important;
+  color: #e2e8f0 !important;
+  font-weight: 700;
+}
+
+.deck-item-row.is-unowned-deck-item {
+  border-left: 3px solid #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.deck-unowned-warning-badge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  margin-left: 6px;
+}
+
+
+.card-rarity-badge.rarity-badge-SR, .card-rarity-badge.rarity-badge-UR {
+  background: linear-gradient(135deg, #fbbf24, #ec4899) !important;
+  color: #000 !important;
+  font-weight: 900 !important;
+}
+.card-rarity-badge.rarity-badge-RR {
+  background: linear-gradient(135deg, #facc15, #6366f1) !important;
+  color: #000 !important;
+  font-weight: 900 !important;
+}
+.card-rarity-badge.rarity-badge-AR {
+  background: linear-gradient(135deg, #e879f9, #38bdf8) !important;
+  color: #000 !important;
+  font-weight: 900 !important;
+}
+.card-rarity-badge.rarity-badge-R {
+  background: rgba(56, 189, 248, 0.25) !important;
+  color: #38bdf8 !important;
+  border: 1px solid rgba(56, 189, 248, 0.5) !important;
+  font-weight: 800 !important;
+}
+.card-rarity-badge.rarity-badge-N {
+  background: rgba(148, 163, 184, 0.2) !important;
+  color: #cbd5e1 !important;
+  border: 1px solid rgba(148, 163, 184, 0.4) !important;
+  font-weight: 800 !important;
+}

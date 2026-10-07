@@ -1260,6 +1260,19 @@
       const prizeCount = Number(document.getElementById('online-prize-count-select')?.value) || 6;
       const userEmail = window.DeckSystem && DeckSystem.state && DeckSystem.state.currentUser ? DeckSystem.state.currentUser.email : '';
 
+      if (deckVal !== 'preset_starter' && window.DeckSystem && typeof window.DeckSystem.validateDeck === 'function') {
+        const decks = window.DeckSystem.state && window.DeckSystem.state.decks || [];
+        const deck = decks.find((d) => String(d.id) === String(deckVal));
+        if (deck && (!deck.userEmail || deck.userEmail !== 'sample')) {
+          const val = window.DeckSystem.validateDeck(deck);
+          if (val.unownedErrors && val.unownedErrors.length > 0) {
+            const msg = '未所持のカード（' + val.unownedErrors.map(e => e.name).join('、') + '）が含まれているため対戦を開始できません。デッキ管理画面で所持カードに変更してください。';
+            App.toast(msg, true);
+            return;
+          }
+        }
+      }
+
       const rawDeck = this.resolveDeckCards(deckVal);
       if (!rawDeck || rawDeck.length === 0) {
         App.toast('対戦デッキを選択してください。', true);
@@ -2109,6 +2122,20 @@
       const playerDeckVal = document.getElementById('battle-player-deck-select')?.value || 'preset_starter';
       const aiDeckKey = document.getElementById('battle-ai-deck-select')?.value || 'electric';
       const prizeCount = Number(document.getElementById('battle-prize-count-select')?.value) || 6;
+
+      if (playerDeckVal !== 'preset_starter' && window.DeckSystem && typeof window.DeckSystem.validateDeck === 'function') {
+        const decks = window.DeckSystem.state && window.DeckSystem.state.decks || [];
+        const deck = decks.find((d) => String(d.id) === String(playerDeckVal));
+        if (deck && (!deck.userEmail || deck.userEmail !== 'sample')) {
+          const val = window.DeckSystem.validateDeck(deck);
+          if (val.unownedErrors && val.unownedErrors.length > 0) {
+            const msg = '未所持のカード（' + val.unownedErrors.map(e => e.name).join('、') + '）が含まれているため対戦を開始できません。デッキ管理画面で所持カードに変更してください。';
+            if (window.App && window.App.toast) window.App.toast(msg, true);
+            else alert(msg);
+            return;
+          }
+        }
+      }
 
       this.startBattle(playerDeckVal, aiDeckKey, prizeCount);
     },

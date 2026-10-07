@@ -5701,8 +5701,16 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   100% { filter: brightness(1.35) drop-shadow(0 0 25px #ec4899); }
 }
 .rarity-aura-SR {
-  box-shadow: 0 0 35px rgba(251, 191, 36, 0.85), 0 0 50px rgba(129, 140, 248, 0.7) !important;
+  box-shadow: 0 0 35px rgba(251, 191, 36, 0.9), 0 0 55px rgba(236, 72, 153, 0.7) !important;
   border-color: #ffd700 !important;
+}
+.rarity-aura-RR {
+  box-shadow: 0 0 30px rgba(234, 179, 8, 0.8), 0 0 45px rgba(99, 102, 241, 0.75) !important;
+  border-color: #facc15 !important;
+}
+.rarity-aura-AR {
+  box-shadow: 0 0 26px rgba(217, 70, 239, 0.8), 0 0 40px rgba(56, 189, 248, 0.65) !important;
+  border-color: #e879f9 !important;
 }
 .rarity-aura-R {
   box-shadow: 0 0 22px rgba(56, 189, 248, 0.75) !important;
@@ -6915,6 +6923,258 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   margin-bottom: 14px;
 }
 
+/* ============================================================
+   パック排出率・提供割合モーダル & UI スタイル
+   ============================================================ */
+.pack-rates-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  color: #fbbf24;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pack-rates-btn:hover {
+  background: rgba(251, 191, 36, 0.2);
+  border-color: #fbbf24;
+  box-shadow: 0 0 14px rgba(251, 191, 36, 0.4);
+  transform: translateY(-1px);
+}
+
+.pack-rates-summary-container {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.85), rgba(15, 23, 42, 0.95));
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+
+.pack-rates-summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 8px;
+}
+
+.pack-rates-chips-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+  gap: 10px;
+}
+
+.pack-rates-chip {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 10px 12px;
+  text-align: center;
+  transition: transform 0.15s, border-color 0.15s;
+}
+
+.pack-rates-chip:hover {
+  transform: translateY(-2px);
+}
+
+.pack-rates-chip.rarity-chip-UR {
+  border-color: rgba(251, 191, 36, 0.6);
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(236, 72, 153, 0.15));
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.25);
+}
+
+.pack-rates-chip.rarity-chip-SR {
+  border-color: rgba(251, 191, 36, 0.7);
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.2), rgba(236, 72, 153, 0.2));
+  box-shadow: 0 0 14px rgba(251, 191, 36, 0.35);
+}
+
+.pack-rates-chip.rarity-chip-RR {
+  border-color: rgba(234, 179, 8, 0.7);
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.18), rgba(99, 102, 241, 0.18));
+  box-shadow: 0 0 12px rgba(234, 179, 8, 0.25);
+}
+
+.pack-rates-chip.rarity-chip-AR {
+  border-color: rgba(168, 85, 247, 0.6);
+  background: rgba(168, 85, 247, 0.12);
+}
+
+.pack-rates-chip.rarity-chip-R {
+  border-color: rgba(56, 189, 248, 0.6);
+  background: rgba(56, 189, 248, 0.12);
+}
+
+.pack-rates-chip.rarity-chip-N {
+  border-color: rgba(148, 163, 184, 0.4);
+  background: rgba(148, 163, 184, 0.08);
+}
+
+.pack-rates-tab-btn {
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pack-rates-tab-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.pack-rates-tab-btn.active {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #0b0f19;
+  border-color: #fbbf24;
+  font-weight: 900;
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.4);
+}
+
+.pack-rates-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.pack-rates-table th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 12px;
+  color: #94a3b8;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(15, 23, 42, 0.9);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.pack-rates-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 13px;
+  vertical-align: middle;
+}
+
+.pack-rates-table tr:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.rate-percent-badge {
+  font-family: monospace;
+  font-weight: 800;
+  font-size: 13px;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  display: inline-block;
+}
+
+/* ============================================================
+   デッキ作成画面 カード所持制限・未所持バッジ スタイル
+   ============================================================ */
+.deck-pool-card-wrapper {
+  position: relative;
+  transition: transform 0.15s ease;
+}
+
+.deck-pool-card-wrapper:hover {
+  transform: translateY(-2px);
+}
+
+.deck-pool-card-wrapper.pool-card-unowned {
+  opacity: 0.42;
+  filter: grayscale(0.85);
+  cursor: not-allowed !important;
+}
+
+.deck-pool-card-wrapper.pool-card-unowned:hover {
+  opacity: 0.65;
+  filter: grayscale(0.45);
+}
+
+.deck-pool-card-wrapper.pool-card-max {
+  opacity: 0.72;
+}
+
+.pool-in-deck-badge.pool-unowned-badge {
+  background: rgba(239, 68, 68, 0.92) !important;
+  color: #ffffff !important;
+  font-weight: 800;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+}
+
+.pool-in-deck-badge.pool-owned-badge {
+  background: rgba(16, 185, 129, 0.92) !important;
+  color: #ffffff !important;
+  font-weight: 800;
+}
+
+.pool-in-deck-badge.pool-energy-badge {
+  background: rgba(51, 65, 85, 0.92) !important;
+  color: #e2e8f0 !important;
+  font-weight: 700;
+}
+
+.deck-item-row.is-unowned-deck-item {
+  border-left: 3px solid #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.deck-unowned-warning-badge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  margin-left: 6px;
+}
+
+
+.card-rarity-badge.rarity-badge-SR, .card-rarity-badge.rarity-badge-UR {
+  background: linear-gradient(135deg, #fbbf24, #ec4899) !important;
+  color: #000 !important;
+  font-weight: 900 !important;
+}
+.card-rarity-badge.rarity-badge-RR {
+  background: linear-gradient(135deg, #facc15, #6366f1) !important;
+  color: #000 !important;
+  font-weight: 900 !important;
+}
+.card-rarity-badge.rarity-badge-AR {
+  background: linear-gradient(135deg, #e879f9, #38bdf8) !important;
+  color: #000 !important;
+  font-weight: 900 !important;
+}
+.card-rarity-badge.rarity-badge-R {
+  background: rgba(56, 189, 248, 0.25) !important;
+  color: #38bdf8 !important;
+  border: 1px solid rgba(56, 189, 248, 0.5) !important;
+  font-weight: 800 !important;
+}
+.card-rarity-badge.rarity-badge-N {
+  background: rgba(148, 163, 184, 0.2) !important;
+  color: #cbd5e1 !important;
+  border: 1px solid rgba(148, 163, 184, 0.4) !important;
+  font-weight: 800 !important;
+}
 
 </style>
 
@@ -7507,16 +7767,30 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
               var userEmail = String(email || localStorage.getItem('orbital_mock_user_email') || 'player@gmail.com').trim().toLowerCase();
               var users = getLocalUsers();
               var idx = users.findIndex(function (x) { return String(x.email).toLowerCase() === userEmail; });
-              var u = idx >= 0 ? users[idx] : { email: userEmail, displayName: userEmail.split('@')[0], avatar: '👤', nmtBalance: 1000, lastBonusDate: '', streakDay: 1 };
-              var todayStr = todayDate || new Date().toISOString().slice(0, 10);
-              if (u.lastBonusDate === todayStr) {
-                return self._success({ ok: false, message: '本日のログインボーナスは取得済みです！' });
+              var u = idx >= 0 ? users[idx] : { email: userEmail, displayName: userEmail.split('@')[0], avatar: '👤', nmtBalance: 10000, lastBonusDate: '', streakDay: 1 };
+              var todayStr = todayDate || (function() {
+                var d = new Date();
+                var y = d.getFullYear();
+                var m = String(d.getMonth() + 1).padStart(2, '0');
+                var day = String(d.getDate()).padStart(2, '0');
+                return y + '-' + m + '-' + day;
+              })();
+
+              if (u.lastBonusDate && u.lastBonusDate === todayStr) {
+                return self._success({
+                  ok: false,
+                  alreadyClaimed: true,
+                  message: '本日のログインボーナスは取得済みです！明日またご来店ください。',
+                  profile: u,
+                  user: u
+                });
               }
-              var streakDay = u.streakDay || 1;
+
+              var streakDay = Number(u.streakDay) || 1;
               if (u.lastBonusDate) {
                 var lastDate = new Date(u.lastBonusDate);
                 var currDate = new Date(todayStr);
-                var diffDays = Math.floor((currDate - lastDate) / (1000 * 60 * 60 * 24));
+                var diffDays = Math.round((currDate - lastDate) / (1000 * 60 * 60 * 24));
                 if (diffDays === 1) streakDay = (streakDay % 7) + 1;
                 else if (diffDays > 1) streakDay = 1;
               }
@@ -7530,7 +7804,7 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
                 { day: 7, nmt: 3000, pack: 2 }
               ];
               var curReward = rewards[streakDay - 1] || rewards[0];
-              u.nmtBalance = (Number(u.nmtBalance) || 1000) + curReward.nmt;
+              u.nmtBalance = (Number(u.nmtBalance) || 10000) + curReward.nmt;
               u.lastBonusDate = todayStr;
               u.streakDay = streakDay;
               if (idx >= 0) users[idx] = u; else users.push(u);
@@ -7541,7 +7815,9 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
                 packsGained: curReward.pack,
                 newBalance: u.nmtBalance,
                 lastBonusDate: todayStr,
-                streakDay: streakDay
+                streakDay: streakDay,
+                profile: u,
+                user: u
               });
             } catch (e) {
               self._failure(e);
@@ -8111,10 +8387,11 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
                     </label>
                     <label>レアリティ
                       <select id="rarity" class="input">
-                        <option>N</option>
-                        <option>R</option>
-                        <option>SR</option>
-                        <option>UR</option>
+                        <option value="N">N</option>
+                        <option value="R">R</option>
+                        <option value="AR">AR</option>
+                        <option value="RR">RR</option>
+                        <option value="SR">SR</option>
                       </select>
                     </label>
                     <label id="pokemonHpLabel">HP<input id="hp" class="input" type="number" min="0"></label>
@@ -8394,6 +8671,7 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
               <div class="heading-actions">
                 <button class="secondary-button" onclick="DeckSystem.openGallery()">← 一覧へ戻る</button>
                 <button class="secondary-button" onclick="DeckSystem.clearActiveDeck()">リセット</button>
+                <button class="primary-button admin-only-ui hidden" id="deck-save-as-sample-btn" onclick="DeckSystem.saveAsOfficialSample()" title="公式サンプルデッキとして全ユーザーに公開">⭐ 公式サンプルとして保存</button>
                 <button class="primary-button" onclick="DeckSystem.saveActiveDeck()">保存する</button>
               </div>
             </div>
@@ -8438,6 +8716,11 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
                   <div class="pool-title">カードプール（選択して追加）</div>
                   <div class="filter-panel pool-filter-panel">
                     <input id="deck-pool-search" class="input" placeholder="カード名・効果で検索...">
+                    <select id="deck-pool-ownership" class="input">
+                      <option value="owned" selected>所持カードのみ</option>
+                      <option value="all">すべてのカード</option>
+                      <option value="unowned">未所持カードのみ</option>
+                    </select>
                     <select id="deck-pool-category" class="input">
                       <option value="all">全カテゴリ</option>
                       <option value="たね">たね</option>
@@ -9076,11 +9359,14 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
             <div class="pokepoke-pack-body" id="packFoilCover">
               <div class="pokepoke-tear-line"></div>
               <div class="pokepoke-tear-handle">✂️ OPEN</div>
-              <div class="pack-foil-header" style="margin-top:55px;">ORCEIN BOOSTER</div>
+              <div class="pack-foil-header" id="packFoilHeader" style="margin-top:55px;">ORCEIN BOOSTER</div>
               <div class="pack-foil-art" id="packFoilArt">🧪</div>
               <div class="pack-foil-title" id="packFoilTitle">酢酸オルセイン パック</div>
-              <div class="pack-foil-sub" style="margin-bottom:20px;">5 CARDS INSIDE</div>
+              <div class="pack-foil-sub" id="packFoilSub" style="margin-bottom:20px;">5 CARDS INSIDE</div>
             </div>
+          </div>
+          <div style="text-align:center; margin-top:14px;">
+            <button type="button" class="pack-rates-btn" style="max-width:260px; margin:0 auto;" onclick="App.openPackRatesModal(App.state.currentOpeningPackId || 'pack_standard')">📊 提供割合・排出率を確認</button>
           </div>
         </div>
 
@@ -9102,6 +9388,47 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
               style="padding:12px 34px; font-size:15px; font-weight:900; background:linear-gradient(135deg, #fbbf24, #f59e0b); color:#0b0f19; border-radius:14px; box-shadow:0 6px 20px rgba(245,158,11,0.4);"
               onclick="App.closePackOpening()">コレクションに保存して完了</button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    
+    <!-- パック提供割合・排出率モーダル -->
+    <div id="packRatesModal" class="modal hidden" style="z-index: 10000;">
+      <div class="modal-backdrop" onclick="App.closePackRatesModal()"></div>
+      <div class="modal-card pack-rates-modal-card"
+        style="max-width: 820px; width: 95vw; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; padding: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(251,191,36,0.3); padding-bottom: 14px; margin-bottom: 16px;">
+          <div>
+            <div class="eyebrow" style="color: #fbbf24; font-size: 11px; letter-spacing: 2px;">PROBABILITY &amp; RATES</div>
+            <h2 id="packRatesModalTitle" style="margin: 0; font-size: 22px; color: #fff;">📊 パック提供割合・排出率</h2>
+          </div>
+          <button type="button" class="modal-close" onclick="App.closePackRatesModal()" style="position: static;">×</button>
+        </div>
+
+        <div class="pack-rates-modal-body" style="overflow-y: auto; flex: 1; padding-right: 6px;">
+          <!-- パック情報 & サマリー -->
+          <div id="packRatesSummaryContainer" class="pack-rates-summary-container"></div>
+
+          <!-- レアリティ別タブ & 検索 -->
+          <div class="pack-rates-controls" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin: 16px 0 12px 0;">
+            <div id="packRatesRarityTabs" class="pack-rates-tabs" style="display: flex; gap: 6px; flex-wrap: wrap;"></div>
+            <input type="text" id="packRatesSearchInput" class="input" placeholder="カード名で絞り込み..." style="width: 200px; padding: 6px 12px; font-size: 13px;" oninput="App.filterPackRatesList()">
+          </div>
+
+          <!-- カード別確率リスト -->
+          <div id="packRatesCardsContainer" class="pack-rates-cards-container"></div>
+
+          <!-- 注記 -->
+          <div class="pack-rates-note" style="margin-top: 18px; padding: 12px 16px; background: rgba(15,23,42,0.6); border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); font-size: 11.5px; color: #94a3b8; line-height: 1.6;">
+            <div>※ 表示されている提供割合は小数点第3位まで表示（第4位を四捨五入）しています。</div>
+            <div>※ 同一レアリティ内の各カードは均等な確率で抽選されます。</div>
+            <div>※ カードの排出抽選は1枚ずつ独立して行われます。</div>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.1); margin-top: 14px;">
+          <button type="button" class="secondary-button" onclick="App.closePackRatesModal()">閉じる</button>
         </div>
       </div>
     </div>
@@ -15618,7 +15945,7 @@ var CardSystem;
         '無色': 1, '炎': 2, '水': 3, '草': 4, '雷': 5, '超': 6, '闘': 7, '悪': 8, '鋼': 9
       };
       const rarityOrder = {
-        'UR': 1, 'SR': 2, 'AR': 3, 'R': 4, 'N': 5
+        'SR': 1, 'RR': 2, 'AR': 3, 'R': 4, 'N': 5, 'UR': 1
       };
 
       return cards.slice().sort((a, b) => {
@@ -16032,7 +16359,7 @@ var CardSystem;
 
       const isPokemon = !isTrainer && !isEnergy;
       const hpBadgeHtml = isPokemon && card.hp != null && card.hp !== '' && Number(card.hp) > 0 ? '<span class="card-hp-badge">HP <strong>' + this.escape(card.hp) + '</strong></span>' : '';
-      const rarityBadgeHtml = card.rarity ? '<span class="card-rarity-badge">' + this.escape(card.rarity) + '</span>' : '';
+      const rarityBadgeHtml = card.rarity ? '<span class="card-rarity-badge rarity-badge-' + this.escape(card.rarity) + '">' + this.escape(card.rarity) + '</span>' : '';
 
       let typeBadgeHtml = '';
       if (!isTrainer && (card.type || isPokemon || isEnergy)) {
@@ -17170,242 +17497,337 @@ var CardSystem;
 
 
   <script>
+console.log('[ORBITAL] DeckSystem.js.html started execution');
+window.DeckSystem = function () {
+  const CardSystem = new Proxy({}, {
+    get(target, prop) {
+      return window.CardSystem ? window.CardSystem[prop] : undefined;
+    }
+  });
+  const App = new Proxy({}, {
+    get(target, prop) {
+      return window.App ? window.App[prop] : undefined;
+    }
+  });
+  const state = {
+    decks: [],
+    activeDeck: null,
+    cardPool: [],
+    filter: { search: '', category: 'all', type: 'all', ownership: 'owned' },
+    galleryTab: 'all', // 'all' | 'my' | 'sample'
+    currentUser: { email: '', isLoggedIn: false },
+    viewMode: 'gallery' // 'gallery' | 'editor'
+  };
 
-    window.DeckSystem = function () {
-      const CardSystem = new Proxy({}, {
-        get(target, prop) {
-          return window.CardSystem ? window.CardSystem[prop] : undefined;
-        }
-      });
-      const App = new Proxy({}, {
-        get(target, prop) {
-          return window.App ? window.App[prop] : undefined;
-        }
-      });
-      const state = {
-        decks: [],
-        activeDeck: null,
-        cardPool: [],
-        filter: { search: '', category: 'all', type: 'all' },
-        galleryTab: 'all', // 'all' | 'my' | 'sample'
-        currentUser: { email: '', isLoggedIn: false },
-        viewMode: 'gallery' // 'gallery' | 'editor'
+  function init() {
+    bindEvents();
+    fetchCurrentUser();
+    syncCardPool();
+  }
+
+  function fetchCurrentUser(callback) {
+    const localEmail = (function () {
+      try { return localStorage.getItem('orbital_mock_user_email') || ''; } catch (e) { return ''; }
+    })();
+
+    const fallbackUser = () => {
+      var email = localEmail || 'player@gmail.com';
+      var users = [];
+      try {
+        var raw = localStorage.getItem('orbital_mock_users');
+        if (raw) users = JSON.parse(raw);
+      } catch (e) {}
+      var u = users.find(x => String(x.email).toLowerCase() === email.toLowerCase());
+      state.currentUser = {
+        email: email,
+        displayName: u && u.displayName ? u.displayName : email.split('@')[0],
+        avatar: u && u.avatar ? u.avatar : '⚡',
+        isLoggedIn: true
       };
+      updateUserBadge();
+      if (callback) callback(state.currentUser);
+    };
 
-      function init() {
-        bindEvents();
-        fetchCurrentUser();
-        syncCardPool();
-      }
-
-      function fetchCurrentUser(callback) {
-        const localEmail = (function () {
-          try { return localStorage.getItem('orbital_mock_user_email') || ''; } catch (e) { return ''; }
-        })();
-
-        if (window.google && google.script && google.script.run) {
-          try {
-            google.script.run
-              .withSuccessHandler(function (user) {
-                state.currentUser = user || { email: 'player@gmail.com', displayName: 'プレイヤー', avatar: '⚡', isLoggedIn: true };
-                updateUserBadge();
-                if (callback) callback(state.currentUser);
-              })
-              .withFailureHandler(function (err) {
-                console.warn('Failed to get current user:', err);
-                state.currentUser = { email: 'player@gmail.com', displayName: 'プレイヤー', avatar: '⚡', isLoggedIn: true };
-                updateUserBadge();
-                if (callback) callback(state.currentUser);
-              })
-              .getUserProfile(localEmail);
-          } catch (e) {
-            console.warn('fetchCurrentUser error:', e);
-            state.currentUser = { email: 'player@gmail.com', displayName: 'プレイヤー', avatar: '⚡', isLoggedIn: true };
+    if (window.google && google.script && google.script.run) {
+      try {
+        google.script.run
+          .withSuccessHandler(function (user) {
+            state.currentUser = user || { email: 'player@gmail.com', displayName: 'プレイヤー', avatar: '⚡', isLoggedIn: true };
             updateUserBadge();
             if (callback) callback(state.currentUser);
+          })
+          .withFailureHandler(function (err) {
+            console.warn('Failed to get current user:', err);
+            fallbackUser();
+          })
+          .getUserProfile(localEmail);
+      } catch (e) {
+        console.warn('fetchCurrentUser error:', e);
+        fallbackUser();
+      }
+    } else {
+      fallbackUser();
+    }
+  }
+
+  function updateUserBadge() {
+    const avatarBadge = document.getElementById('userAvatarBadge');
+    const nameBadge = document.getElementById('userDisplayNameBadge');
+    const emailBadge = document.getElementById('userEmailBadge');
+    const topbarUserAccount = document.getElementById('topbarUserAccount');
+
+    const u = state.currentUser || {};
+    const email = u.email || 'player@gmail.com';
+    const name = u.displayName || email.split('@')[0] || 'ゲスト';
+    const avatar = u.avatar || '⚡';
+
+    if (avatarBadge) avatarBadge.textContent = avatar;
+    if (nameBadge) nameBadge.textContent = name;
+    if (emailBadge) emailBadge.textContent = '(' + email + ')';
+    if (topbarUserAccount) {
+      topbarUserAccount.title = 'ログイン中: ' + name + ' (' + email + ')\nクリックしてプロフ編集・アカウント切替';
+    }
+  }
+
+  function setGalleryTab(tab) {
+    state.galleryTab = tab;
+    renderGallery();
+  }
+
+  function syncCardPool(callback) {
+    if (window.App && window.App.state && Array.isArray(window.App.state.cards) && window.App.state.cards.length > 0) {
+      state.cardPool = window.App.state.cards;
+      if (callback) callback(state.cardPool);
+      return;
+    }
+    if (window.CardSystem && window.CardSystem.state && Array.isArray(window.CardSystem.state.cards) && window.CardSystem.state.cards.length > 0) {
+      state.cardPool = window.CardSystem.state.cards;
+      if (callback) callback(state.cardPool);
+      return;
+    }
+
+    const fallbackCardPool = () => {
+      try {
+        const raw = localStorage.getItem('orbital_cards_mock') || localStorage.getItem('orbital_cards');
+        state.cardPool = raw ? JSON.parse(raw) : [];
+      } catch (e) {
+        state.cardPool = [];
+      }
+      if (window.App && window.App.state) window.App.state.cards = state.cardPool;
+      if (callback) callback(state.cardPool);
+      renderEditor();
+    };
+
+    if (window.google && google.script && google.script.run) {
+      try {
+        google.script.run
+          .withSuccessHandler(function (cards) {
+            state.cardPool = Array.isArray(cards) ? cards : [];
+            if (window.App && window.App.state) window.App.state.cards = state.cardPool;
+            if (callback) callback(state.cardPool);
+            renderEditor();
+          })
+          .withFailureHandler(function (err) {
+            console.warn('Failed to load card pool:', err);
+            fallbackCardPool();
+          })
+          .getCards();
+      } catch (e) {
+        console.warn('syncCardPool runner error:', e);
+        fallbackCardPool();
+      }
+    } else {
+      fallbackCardPool();
+    }
+  }
+
+  function bindEvents() {
+    // 検索・フィルタ変更
+    const searchInput = document.getElementById('deck-pool-search');
+    const catSelect = document.getElementById('deck-pool-category');
+    const typeSelect = document.getElementById('deck-pool-type');
+        const ownSelect = document.getElementById('deck-pool-ownership');
+
+    if (searchInput) {
+      searchInput.addEventListener('input', function (e) {
+        state.filter.search = e.target.value.toLowerCase().trim();
+        renderPoolGallery();
+      });
+    }
+    if (catSelect) {
+      catSelect.addEventListener('change', function (e) {
+        state.filter.category = e.target.value;
+        renderPoolGallery();
+      });
+    }
+    if (typeSelect) {
+      typeSelect.addEventListener('change', function (e) {
+        state.filter.type = e.target.value;
+        renderPoolGallery();
+      });
+    }
+
+    // デッキ属性のリアルタイム変更
+    const nameInput = document.getElementById('deck-name-input');
+    const descInput = document.getElementById('deck-desc-input');
+    if (nameInput) {
+      nameInput.addEventListener('input', function (e) {
+        if (state.activeDeck) state.activeDeck.name = e.target.value;
+      });
+    }
+    if (descInput) {
+      descInput.addEventListener('input', function (e) {
+        if (state.activeDeck) state.activeDeck.description = e.target.value;
+      });
+    }
+  }
+
+  function loadDecks(callback) {
+    if (state.isLoadingDecks) {
+      if (callback) callback(state.decks);
+      return;
+    }
+    state.isLoadingDecks = true;
+    syncCardPool();
+    const userEmail = (state.currentUser && state.currentUser.email) || '';
+    const parseLocalCards = function(raw) {
+      if (Array.isArray(raw)) return raw;
+      if (typeof raw === 'string' && raw.trim()) {
+        try { return JSON.parse(raw); } catch (e) {}
+      }
+      return [];
+    };
+
+    const onLoaded = function (decks) {
+      state.isLoadingDecks = false;
+      if (Array.isArray(decks)) {
+        state.decks = decks.map(d => {
+          if (!d) return d;
+          let cards = d.cards;
+          if (!Array.isArray(cards) || cards.length === 0) {
+            const raw = d.cardsJson || d.cards_json || d.cardsList || d.cardslist || d['カードリスト'] || d['デッキカード'] || d['内容'] || d['カード'];
+            cards = parseLocalCards(raw);
           }
-        } else {
-          var email = localEmail || 'player@gmail.com';
-          var users = [];
-          try {
-            var raw = localStorage.getItem('orbital_mock_users');
-            if (raw) users = JSON.parse(raw);
-          } catch (e) { }
-          var u = users.find(x => String(x.email).toLowerCase() === email.toLowerCase());
-          state.currentUser = {
-            email: email,
-            displayName: u && u.displayName ? u.displayName : email.split('@')[0],
-            avatar: u && u.avatar ? u.avatar : '⚡',
-            isLoggedIn: true
+          let normCards = [];
+          if (Array.isArray(cards)) {
+            normCards = cards.map(c => {
+              if (typeof c === 'string') return { id: c, count: 1 };
+              if (c && typeof c === 'object') {
+                return {
+                  id: String(c.id || c.cardId || c.code || c.name || ''),
+                  name: String(c.name || ''),
+                  count: Number(c.count || c.qty || c.num || 1) || 1
+                };
+              }
+              return null;
+            }).filter(Boolean);
+          }
+          return {
+            ...d,
+            id: String(d.id || 'deck_' + Math.random().toString(36).substr(2, 6)),
+            name: String(d.name || d.デッキ名 || '無題のデッキ'),
+            description: String(d.description || d.説明 || ''),
+            cards: normCards
           };
-          updateUserBadge();
-          if (callback) callback(state.currentUser);
-        }
+        });
+      } else {
+        state.decks = [];
       }
-
-      function updateUserBadge() {
-        const avatarBadge = document.getElementById('userAvatarBadge');
-        const nameBadge = document.getElementById('userDisplayNameBadge');
-        const emailBadge = document.getElementById('userEmailBadge');
-        const topbarUserAccount = document.getElementById('topbarUserAccount');
-
-        const u = state.currentUser || {};
-        const email = u.email || 'player@gmail.com';
-        const name = u.displayName || email.split('@')[0] || 'ゲスト';
-        const avatar = u.avatar || '⚡';
-
-        if (avatarBadge) avatarBadge.textContent = avatar;
-        if (nameBadge) nameBadge.textContent = name;
-        if (emailBadge) emailBadge.textContent = '(' + email + ')';
-        if (topbarUserAccount) {
-          topbarUserAccount.title = 'ログイン中: ' + name + ' (' + email + ')\nクリックしてプロフ編集・アカウント切替';
-        }
+      renderGallery();
+      if (window.BattleSystem) {
+        if (typeof BattleSystem.populateDeckSelect === 'function') BattleSystem.populateDeckSelect();
+        if (typeof BattleSystem.populateOnlineDeckSelect === 'function') BattleSystem.populateOnlineDeckSelect();
       }
+      if (callback) callback(state.decks);
+    };
 
-      function setGalleryTab(tab) {
-        state.galleryTab = tab;
-        renderGallery();
+    const fallbackDecks = () => {
+      state.isLoadingDecks = false;
+      loadLocalDecks();
+      onLoaded(state.decks);
+    };
+
+    if (window.google && google.script && google.script.run) {
+      try {
+        console.log('📡 Requesting getDecks from Spreadsheet via GAS...');
+        google.script.run
+          .withSuccessHandler(function (decks) {
+            console.log('✅ Received decks from Spreadsheet:', decks);
+            onLoaded(decks);
+          })
+          .withFailureHandler(function (err) {
+            console.error('❌ Failed to load decks from server:', err);
+            fallbackDecks();
+          })
+          .getDecks(userEmail);
+      } catch (e) {
+        console.error('❌ loadDecks runner error:', e);
+        fallbackDecks();
       }
+    } else {
+      fallbackDecks();
+    }
+  }
 
-      function syncCardPool(callback) {
-        if (window.App && window.App.state && Array.isArray(window.App.state.cards) && window.App.state.cards.length > 0) {
-          state.cardPool = window.App.state.cards;
-          if (callback) callback(state.cardPool);
-          return;
-        }
-        if (window.CardSystem && window.CardSystem.state && Array.isArray(window.CardSystem.state.cards) && window.CardSystem.state.cards.length > 0) {
-          state.cardPool = window.CardSystem.state.cards;
-          if (callback) callback(state.cardPool);
-          return;
-        }
+  function loadLocalDecks() {
+    try {
+      const raw = localStorage.getItem('orbital_decks_mock') || localStorage.getItem('orbital_decks');
+      state.decks = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(state.decks)) state.decks = [];
+    } catch (e) {
+      state.decks = [];
+    }
+  }
 
-        if (window.google && google.script && google.script.run) {
-          google.script.run.
-            withSuccessHandler(function (cards) {
-              state.cardPool = Array.isArray(cards) ? cards : [];
-              if (window.App && window.App.state) window.App.state.cards = state.cardPool;
-              if (callback) callback(state.cardPool);
-              renderEditor();
-            }).
-            withFailureHandler(function (err) {
-              console.error('Failed to load card pool:', err);
-              if (callback) callback([]);
-            }).
-            getCards();
-        } else if (callback) {
-          callback(state.cardPool);
-        }
-      }
+  function getSampleDecks() {
+    return [];
+  }
 
-      function bindEvents() {
-        // 検索・フィルタ変更
-        const searchInput = document.getElementById('deck-pool-search');
-        const catSelect = document.getElementById('deck-pool-category');
-        const typeSelect = document.getElementById('deck-pool-type');
+  
+      function getCardOwnedCount(card) {
+        if (!card) return 0;
+        // 基本エネルギーは公式ルール上無制限
+        if (isNormalEnergy(card)) return 999;
 
-        if (searchInput) {
-          searchInput.addEventListener('input', function (e) {
-            state.filter.search = e.target.value.toLowerCase().trim();
-            renderPoolGallery();
-          });
-        }
-        if (catSelect) {
-          catSelect.addEventListener('change', function (e) {
-            state.filter.category = e.target.value;
-            renderPoolGallery();
-          });
-        }
-        if (typeSelect) {
-          typeSelect.addEventListener('change', function (e) {
-            state.filter.type = e.target.value;
-            renderPoolGallery();
-          });
-        }
+        // 管理者が公式サンプルデッキを作成・編集している場合は制限なし
+        const isAdmin = window.App && typeof window.App.isAdmin === 'function' && window.App.isAdmin();
+        const isSampleDeck = state.activeDeck && (state.activeDeck.userEmail === 'sample' || state.activeDeck.isSample);
+        if (isAdmin && isSampleDeck) return 999;
 
-        // デッキ属性のリアルタイム変更
-        const nameInput = document.getElementById('deck-name-input');
-        const descInput = document.getElementById('deck-desc-input');
-        if (nameInput) {
-          nameInput.addEventListener('input', function (e) {
-            if (state.activeDeck) state.activeDeck.name = e.target.value;
-          });
-        }
-        if (descInput) {
-          descInput.addEventListener('input', function (e) {
-            if (state.activeDeck) state.activeDeck.description = e.target.value;
-          });
-        }
-      }
+        const col = (window.App && typeof window.App.getUserCollection === 'function')
+          ? window.App.getUserCollection()
+          : ((window.CardSystem && typeof window.CardSystem.getUserCollection === 'function')
+            ? window.CardSystem.getUserCollection()
+            : {});
 
-      function loadDecks(callback) {
-        syncCardPool();
-        const userEmail = (state.currentUser && state.currentUser.email) || '';
-        const onLoaded = function (decks) {
-          state.decks = Array.isArray(decks) ? decks : [];
-          renderGallery();
-          if (window.BattleSystem) {
-            if (typeof BattleSystem.populateDeckSelect === 'function') BattleSystem.populateDeckSelect();
-            if (typeof BattleSystem.populateOnlineDeckSelect === 'function') BattleSystem.populateOnlineDeckSelect();
-          }
-          if (callback) callback(state.decks);
-        };
-
-        if (window.google && google.script && google.script.run) {
-          google.script.run.
-            withSuccessHandler(onLoaded).
-            withFailureHandler(function (err) {
-              console.error('Failed to load decks from server:', err);
-              loadLocalDecks();
-              onLoaded(state.decks);
-            }).
-            getDecks(userEmail);
-        } else {
-          loadLocalDecks();
-          onLoaded(state.decks);
-        }
-      }
-
-      function loadLocalDecks() {
-        try {
-          const raw = localStorage.getItem('orbital_decks_mock') || localStorage.getItem('orbital_decks');
-          state.decks = raw ? JSON.parse(raw) : [];
-          if (!Array.isArray(state.decks)) state.decks = [];
-        } catch (e) {
-          state.decks = [];
-        }
-      }
-
-      function saveLocalDecks() {
-        try {
-          localStorage.setItem('orbital_decks_mock', JSON.stringify(state.decks));
-          localStorage.setItem('orbital_decks', JSON.stringify(state.decks));
-        } catch (e) { }
-      }
-
-      function getSampleDecks() {
-        return [];
+        const idKey = String(card.id || '');
+        const nameKey = String(card.name || '');
+        const byId = Number(col[idKey]) || 0;
+        const byName = Number(col[nameKey]) || 0;
+        return Math.max(byId, byName);
       }
 
       function isNormalEnergy(card) {
-        if (!card) return false;
-        const cat = String(card.category || '').toLowerCase();
-        const name = String(card.name || '').toLowerCase();
-        if (cat.includes('特殊') || cat.includes('special') || name.includes('特殊') || name.includes('special')) {
-          return false;
-        }
-        if (cat.includes('基本エネルギー') || cat === 'エネルギー' || cat.includes('energy')) return true;
-        if (name.includes('エネルギー') || card.type === 'エネルギー') return true;
-        return false;
-      }
+    if (!card) return false;
+    const cat = String(card.category || '').toLowerCase();
+    const name = String(card.name || '').toLowerCase();
+    if (cat.includes('特殊') || cat.includes('special') || name.includes('特殊') || name.includes('special')) {
+      return false;
+    }
+    if (cat.includes('基本エネルギー') || cat === 'エネルギー' || cat.includes('energy')) return true;
+    if (name.includes('エネルギー') || card.type === 'エネルギー') return true;
+    return false;
+  }
 
-      // --- ルール検証 ---
-      function validateDeck(deck) {
+  // --- ルール検証 ---
+  function validateDeck(deck) {
         const cards = deck && Array.isArray(deck.cards) ? deck.cards : [];
         let totalCount = 0;
         let basicCount = 0;
         const errors = [];
         const warnings = [];
         const overLimitCards = [];
+        const unownedErrors = [];
 
         const poolMap = {};
         const pool = state.cardPool && state.cardPool.length ?
@@ -17416,11 +17838,22 @@ var CardSystem;
         cards.forEach((item) => {
           const card = poolMap[item.id] ||
             pool.find((c) => String(c.id) === String(item.id) || (item.name && c.name === item.name)) ||
-            { name: item.name || '不明なカード', category: item.category || '' };
+            { id: item.id, name: item.name || '不明なカード', category: item.category || '' };
           const count = Number(item.count) || 0;
           totalCount += count;
 
           const isBasicEnergy = isNormalEnergy(card);
+          const ownedCount = getCardOwnedCount(card);
+
+          // 所持枚数チェック (基本エネルギー以外)
+          if (!isBasicEnergy && count > ownedCount) {
+            unownedErrors.push({ id: item.id, name: card.name, count: count, owned: ownedCount });
+            if (ownedCount <= 0) {
+              errors.push("「" + card.name + "」は未所持です (デッキ内: " + count + "枚)");
+            } else {
+              errors.push("「" + card.name + "」が所持枚数(" + ownedCount + "枚)を超過しています (デッキ内: " + count + "枚)");
+            }
+          }
 
           if (count > 4 && !isBasicEnergy) {
             overLimitCards.push({ id: item.id, name: card.name, count: count });
@@ -17447,105 +17880,155 @@ var CardSystem;
           totalCount: totalCount,
           basicCount: basicCount,
           errors: errors,
-          overLimitCards: overLimitCards
+          overLimitCards: overLimitCards,
+          unownedErrors: unownedErrors
         };
       }
 
-      // --- ビュー切り替え ---
-      function openGallery() {
-        state.viewMode = 'gallery';
-        const galView = document.getElementById('deck-gallery-view');
-        const edtView = document.getElementById('deck-editor-view');
-        if (galView) galView.style.display = 'block';
-        if (edtView) edtView.style.display = 'none';
-        renderGallery();
-      }
+  // --- ビュー切り替え ---
+  function openGallery() {
+    state.viewMode = 'gallery';
+    const galView = document.getElementById('deck-gallery-view');
+    const edtView = document.getElementById('deck-editor-view');
+    if (galView) galView.style.display = 'block';
+    if (edtView) edtView.style.display = 'none';
+    renderGallery();
+  }
 
-      function openEditor(deckId) {
-        syncCardPool();
-        state.viewMode = 'editor';
-        if (deckId) {
-          const found = state.decks.find((d) => String(d.id) === String(deckId));
-          if (found) {
-            state.activeDeck = JSON.parse(JSON.stringify(found));
-          } else {
-            createNewDeck();
-          }
-        } else {
-          createNewDeck();
-        }
-
-        const galView = document.getElementById('deck-gallery-view');
-        const edtView = document.getElementById('deck-editor-view');
-        if (galView) galView.style.display = 'none';
-        if (edtView) edtView.style.display = 'block';
-
-        const nameInput = document.getElementById('deck-name-input');
-        const descInput = document.getElementById('deck-desc-input');
-        if (nameInput) nameInput.value = state.activeDeck.name || '';
-        if (descInput) descInput.value = state.activeDeck.description || '';
-
-        renderEditor();
-      }
-
-      function duplicateDeck(deckId) {
-        syncCardPool();
-        const found = state.decks.find((d) => String(d.id) === String(deckId));
-        if (!found) return;
-
+  function openEditor(deckId) {
+    syncCardPool();
+    state.viewMode = 'editor';
+    if (deckId) {
+      const found = state.decks.find((d) => String(d.id) === String(deckId));
+      if (found) {
         state.activeDeck = JSON.parse(JSON.stringify(found));
-        state.activeDeck.id = '';
-        state.activeDeck.name = (found.name || 'デッキ') + ' (コピー)';
-        state.activeDeck.userEmail = (state.currentUser && state.currentUser.email) || '';
-        state.viewMode = 'editor';
-
-        const galView = document.getElementById('deck-gallery-view');
-        const edtView = document.getElementById('deck-editor-view');
-        if (galView) galView.style.display = 'none';
-        if (edtView) edtView.style.display = 'block';
-
-        const nameInput = document.getElementById('deck-name-input');
-        const descInput = document.getElementById('deck-desc-input');
-        if (nameInput) nameInput.value = state.activeDeck.name;
-        if (descInput) descInput.value = state.activeDeck.description || '';
-
-        renderEditor();
-        if (window.CardSystem && window.CardSystem.showMessage) {
-          window.CardSystem.showMessage('デッキを複製しました。編集して保存してください。', 'info');
-        }
+      } else {
+        createNewDeck();
       }
+    } else {
+      createNewDeck();
+    }
 
-      function createNewDeck() {
-        state.activeDeck = {
-          id: '',
-          name: '新規デッキ',
-          description: '',
-          totalCount: 0,
-          userEmail: (state.currentUser && state.currentUser.email) || '',
-          cards: []
-        };
-      }
+    const galView = document.getElementById('deck-gallery-view');
+    const edtView = document.getElementById('deck-editor-view');
+    if (galView) galView.style.display = 'none';
+    if (edtView) edtView.style.display = 'block';
 
-      // --- デッキ編集操作 ---
-      function addCard(cardId) {
+    const nameInput = document.getElementById('deck-name-input');
+    const descInput = document.getElementById('deck-desc-input');
+    if (nameInput) nameInput.value = state.activeDeck.name || '';
+    if (descInput) descInput.value = state.activeDeck.description || '';
+        const ownSelect = document.getElementById('deck-pool-ownership');
+        if (ownSelect) ownSelect.value = state.filter.ownership || 'owned';
+
+    renderEditor();
+  }
+
+  function duplicateDeck(deckId) {
+    syncCardPool();
+    const found = state.decks.find((d) => String(d.id) === String(deckId));
+    if (!found) return;
+
+    state.activeDeck = JSON.parse(JSON.stringify(found));
+    state.activeDeck.id = '';
+    state.activeDeck.name = (found.name || 'デッキ') + ' (コピー)';
+    state.activeDeck.userEmail = (state.currentUser && state.currentUser.email) || '';
+    state.viewMode = 'editor';
+
+    const galView = document.getElementById('deck-gallery-view');
+    const edtView = document.getElementById('deck-editor-view');
+    if (galView) galView.style.display = 'none';
+    if (edtView) edtView.style.display = 'block';
+
+    const nameInput = document.getElementById('deck-name-input');
+    const descInput = document.getElementById('deck-desc-input');
+    if (nameInput) nameInput.value = state.activeDeck.name;
+    if (descInput) descInput.value = state.activeDeck.description || '';
+
+    renderEditor();
+    if (window.CardSystem && window.CardSystem.showMessage) {
+      window.CardSystem.showMessage('デッキを複製しました。編集して保存してください。', 'info');
+    }
+  }
+
+  function createNewDeck() {
+    state.activeDeck = {
+      id: '',
+      name: '新規デッキ',
+      description: '',
+      totalCount: 0,
+      userEmail: (state.currentUser && state.currentUser.email) || '',
+      cards: []
+    };
+  }
+
+  // --- デッキ編集操作 ---
+  function getUserOwnedCount(cardId, cardObj) {
+    const card = cardObj || (state.cardPool || []).find((c) => String(c.id) === String(cardId)) ||
+                 (window.App && window.App.state && window.App.state.cards || []).find((c) => String(c.id) === String(cardId));
+    if (isNormalEnergy(card)) return 60;
+
+    const col = (window.App && typeof window.App.getUserCollection === 'function') ? window.App.getUserCollection() :
+                ((window.CardSystem && typeof window.CardSystem.getUserCollection === 'function') ? window.CardSystem.getUserCollection() : {});
+    
+    if (!col || typeof col !== 'object') return 0;
+
+    const idKey = String(cardId || (card && card.id) || '');
+    const nameKey = String((card && card.name) || '');
+
+    if (idKey && col[idKey] != null) return Number(col[idKey]) || 0;
+    if (nameKey && col[nameKey] != null) return Number(col[nameKey]) || 0;
+    return 0;
+  }
+
+  function addCard(cardId) {
         if (!state.activeDeck) return;
         if (!Array.isArray(state.activeDeck.cards)) state.activeDeck.cards = [];
 
         const card = (state.cardPool || []).find((c) => String(c.id) === String(cardId)) ||
           (window.App && window.App.state && window.App.state.cards || []).find((c) => String(c.id) === String(cardId));
+        if (!card) return;
+
         const isEnergy = isNormalEnergy(card);
+        const ownedCount = getCardOwnedCount(card);
+
+        // 未所持チェック (基本エネルギー以外)
+        if (!isEnergy && ownedCount <= 0) {
+          if (window.CardSystem && window.CardSystem.showMessage) {
+            window.CardSystem.showMessage('「' + (card.name || 'このカード') + '」を所持していないためデッキに追加できません。パックやショップで獲得してください。', 'warning');
+          }
+          return;
+        }
 
         const existing = state.activeDeck.cards.find((c) => String(c.id) === String(cardId));
+        const currentCount = existing ? existing.count : 0;
+
+        // 所持枚数上限チェック (基本エネルギー以外)
+        if (!isEnergy && currentCount >= ownedCount) {
+          if (window.CardSystem && window.CardSystem.showMessage) {
+            window.CardSystem.showMessage('「' + (card.name || 'このカード') + '」の所持枚数（' + ownedCount + '枚）に達しています。', 'warning');
+          }
+          return;
+        }
+
+        // 同名4枚上限チェック
+        if (currentCount >= 4 && !isEnergy) {
+          if (window.CardSystem && window.CardSystem.showMessage) {
+            window.CardSystem.showMessage('同名カードは1デッキに最大4枚までです。(通常エネルギーは無制限)', 'warning');
+          }
+          return;
+        }
+
+        // 60枚上限チェック
+        const currentTotal = state.activeDeck.cards.reduce((sum, item) => sum + item.count, 0);
+        if (currentTotal >= 60) {
+          if (window.CardSystem && window.CardSystem.showMessage) {
+            window.CardSystem.showMessage('デッキは最大60枚です。カードを減らしてから追加してください。', 'warning');
+          }
+          return;
+        }
+
         if (existing) {
-          if (existing.count >= 4 && !isEnergy) {
-            if (window.CardSystem && window.CardSystem.showMessage) {
-              window.CardSystem.showMessage('同名カードは1デッキに最大4枚までです。(通常エネルギーは無制限)', 'warning');
-            }
-            return;
-          }
-          if (existing.count >= 60) {
-            return;
-          }
           existing.count += 1;
         } else {
           state.activeDeck.cards.push({ id: cardId, count: 1 });
@@ -17554,25 +18037,28 @@ var CardSystem;
         renderEditor();
       }
 
-      function removeCard(cardId) {
-        if (!state.activeDeck || !Array.isArray(state.activeDeck.cards)) return;
-        const index = state.activeDeck.cards.findIndex((c) => String(c.id) === String(cardId));
-        if (index >= 0) {
-          if (state.activeDeck.cards[index].count > 1) {
-            state.activeDeck.cards[index].count -= 1;
-          } else {
-            state.activeDeck.cards.splice(index, 1);
-          }
-        }
-        renderEditor();
+  function removeCard(cardId) {
+    if (!state.activeDeck || !Array.isArray(state.activeDeck.cards)) return;
+    const index = state.activeDeck.cards.findIndex((c) => String(c.id) === String(cardId));
+    if (index >= 0) {
+      if (state.activeDeck.cards[index].count > 1) {
+        state.activeDeck.cards[index].count -= 1;
+      } else {
+        state.activeDeck.cards.splice(index, 1);
       }
+    }
+    renderEditor();
+  }
 
-      function setCardCount(cardId, count) {
+  function setCardCount(cardId, count) {
         if (!state.activeDeck || !Array.isArray(state.activeDeck.cards)) return;
         const card = (state.cardPool || []).find((c) => String(c.id) === String(cardId)) ||
           (window.App && window.App.state && window.App.state.cards || []).find((c) => String(c.id) === String(cardId));
         const isEnergy = isNormalEnergy(card);
-        const maxLimit = isEnergy ? 60 : 4;
+        const ownedCount = getCardOwnedCount(card);
+        const isAdmin = window.App && typeof window.App.isAdmin === 'function' && window.App.isAdmin();
+        const isSampleDeck = state.activeDeck && (state.activeDeck.userEmail === 'sample' || state.activeDeck.isSample);
+        const maxLimit = isEnergy ? 60 : ((isAdmin && isSampleDeck) ? 4 : Math.min(4, ownedCount));
         const targetCount = Math.max(0, Math.min(maxLimit, Number(count) || 0));
         const index = state.activeDeck.cards.findIndex((c) => String(c.id) === String(cardId));
         if (targetCount === 0) {
@@ -17587,260 +18073,273 @@ var CardSystem;
         renderEditor();
       }
 
-      function clearActiveDeck() {
-        if (state.activeDeck) {
-          state.activeDeck.cards = [];
-          renderEditor();
-        }
+  function clearActiveDeck() {
+    if (state.activeDeck) {
+      state.activeDeck.cards = [];
+      renderEditor();
+    }
+  }
+
+  // --- 保存・削除 ---
+  function saveActiveDeck() {
+    if (!state.activeDeck) return;
+    const nameInput = document.getElementById('deck-name-input');
+    const descInput = document.getElementById('deck-desc-input');
+    if (nameInput) state.activeDeck.name = nameInput.value.trim() || '無題のデッキ';
+    if (descInput) state.activeDeck.description = descInput.value.trim();
+
+    if (!state.activeDeck.userEmail && state.currentUser && state.currentUser.email) {
+      state.activeDeck.userEmail = state.currentUser.email;
+    }
+
+    const validation = validateDeck(state.activeDeck);
+    if (!validation.isValid) {
+      const msg = '警告: ルール違反があります（下書きとして保存します）:\n・' + validation.errors.join('\n・');
+      if (window.CardSystem && window.CardSystem.showMessage) {
+        window.CardSystem.showMessage(msg, 'warning');
       }
+    }
 
-      // --- 保存・削除 ---
-      function saveActiveDeck() {
-        if (!state.activeDeck) return;
-        const nameInput = document.getElementById('deck-name-input');
-        const descInput = document.getElementById('deck-desc-input');
-        if (nameInput) state.activeDeck.name = nameInput.value.trim() || '無題のデッキ';
-        if (descInput) state.activeDeck.description = descInput.value.trim();
+    const token = window.CardSystem ? window.CardSystem.getAdminToken() : '';
+    const userEmail = (state.currentUser && state.currentUser.email) || '';
 
-        if (!state.activeDeck.userEmail && state.currentUser && state.currentUser.email) {
-          state.activeDeck.userEmail = state.currentUser.email;
-        }
+    const saveButtons = document.querySelectorAll('#deck-editor-view .primary-button');
+    saveButtons.forEach((btn) => {
+      btn.disabled = true;
+      btn.textContent = '保存中…';
+    });
 
-        const validation = validateDeck(state.activeDeck);
-        if (!validation.isValid) {
-          const msg = '警告: ルール違反があります（下書きとして保存します）:\n・' + validation.errors.join('\n・');
-          if (window.CardSystem && window.CardSystem.showMessage) {
-            window.CardSystem.showMessage(msg, 'warning');
-          }
-        }
+    const resetButtons = () => {
+      saveButtons.forEach((btn) => {
+        btn.disabled = false;
+        btn.textContent = '保存する';
+      });
+    };
 
-        const token = window.CardSystem ? window.CardSystem.getAdminToken() : '';
-        const userEmail = (state.currentUser && state.currentUser.email) || '';
+    const handleSuccess = (res) => {
+      resetButtons();
+      if (res && res.deck && res.deck.id) {
+        state.activeDeck.id = res.deck.id;
+        state.activeDeck.updatedAt = res.deck.updatedAt;
+      }
+      if (window.CardSystem && window.CardSystem.showMessage) {
+        window.CardSystem.showMessage('デッキを保存しました！', 'success');
+      }
+      loadDecks(function () {
+        openGallery();
+      });
+    };
 
-        const saveButtons = document.querySelectorAll('#deck-editor-view .primary-button');
-        saveButtons.forEach((btn) => {
-          btn.disabled = true;
-          btn.textContent = '保存中…';
-        });
+    const handleFailure = (errMsg) => {
+      resetButtons();
+      if (window.CardSystem && window.CardSystem.showMessage) {
+        window.CardSystem.showMessage('保存失敗: ' + errMsg, 'error');
+      } else {
+        alert('保存失敗: ' + errMsg);
+      }
+    };
 
-        const resetButtons = () => {
-          saveButtons.forEach((btn) => {
-            btn.disabled = false;
-            btn.textContent = '保存する';
-          });
-        };
-
-        const handleSuccess = (res) => {
-          resetButtons();
-          if (res && res.deck && res.deck.id) {
-            state.activeDeck.id = res.deck.id;
-            state.activeDeck.updatedAt = res.deck.updatedAt;
-          }
-          if (window.CardSystem && window.CardSystem.showMessage) {
-            window.CardSystem.showMessage('デッキを保存しました！', 'success');
-          }
-          loadDecks(function () {
-            openGallery();
-          });
-        };
-
-        const handleFailure = (errMsg) => {
-          resetButtons();
-          if (window.CardSystem && window.CardSystem.showMessage) {
-            window.CardSystem.showMessage('保存失敗: ' + errMsg, 'error');
-          } else {
-            alert('保存失敗: ' + errMsg);
-          }
-        };
-
-        if (window.google && google.script && google.script.run) {
-          google.script.run.
-            withSuccessHandler(function (res) {
-              if (res && res.ok) {
-                handleSuccess(res);
-              } else {
-                handleFailure((res && res.message) || '保存できませんでした。');
-              }
-            }).
-            withFailureHandler(function (err) {
-              handleFailure(err.message || err);
-            }).
-            saveDeck(state.activeDeck, token, userEmail);
+    if (window.google && google.script && google.script.run) {
+      google.script.run.
+      withSuccessHandler(function (res) {
+        if (res && res.ok) {
+          handleSuccess(res);
         } else {
-          // ローカル保存フォールバック
-          if (!state.activeDeck.id) {
-            state.activeDeck.id = 'deck_' + Date.now();
-          }
-          state.activeDeck.updatedAt = new Date().toLocaleString();
-          const idx = state.decks.findIndex((d) => String(d.id) === String(state.activeDeck.id));
-          if (idx >= 0) {
-            state.decks[idx] = JSON.parse(JSON.stringify(state.activeDeck));
-          } else {
-            state.decks.unshift(JSON.parse(JSON.stringify(state.activeDeck)));
-          }
-          saveLocalDecks();
-          handleSuccess({ ok: true, deck: state.activeDeck });
+          handleFailure((res && res.message) || '保存できませんでした。');
         }
+      }).
+      withFailureHandler(function (err) {
+        handleFailure(err.message || err);
+      }).
+      saveDeck(state.activeDeck, token, userEmail);
+    } else {
+      // ローカル保存フォールバック
+      if (!state.activeDeck.id) {
+        state.activeDeck.id = 'deck_' + Date.now();
+      }
+      state.activeDeck.updatedAt = new Date().toLocaleString();
+      const idx = state.decks.findIndex((d) => String(d.id) === String(state.activeDeck.id));
+      if (idx >= 0) {
+        state.decks[idx] = JSON.parse(JSON.stringify(state.activeDeck));
+      } else {
+        state.decks.unshift(JSON.parse(JSON.stringify(state.activeDeck)));
+      }
+      saveLocalDecks();
+      handleSuccess({ ok: true, deck: state.activeDeck });
+    }
+  }
+
+  
+      function saveAsOfficialSample() {
+        if (!window.App || !window.App.isAdmin()) {
+          if (window.CardSystem && window.CardSystem.showMessage) {
+            window.CardSystem.showMessage('管理者権限が必要です。', 'error');
+          }
+          return;
+        }
+        if (!state.activeDeck) return;
+        if (!confirm('このデッキを「公式サンプルデッキ」として全ユーザーに公開しますか？')) return;
+        saveActiveDeck(true);
       }
 
       function deleteDeck(deckId) {
-        if (!confirm('本当にこのデッキを削除しますか？')) return;
-        const token = window.CardSystem ? window.CardSystem.getAdminToken() : '';
-        const userEmail = (state.currentUser && state.currentUser.email) || '';
+    if (!confirm('本当にこのデッキを削除しますか？')) return;
+    const token = window.CardSystem ? window.CardSystem.getAdminToken() : '';
+    const userEmail = (state.currentUser && state.currentUser.email) || '';
 
-        if (window.google && google.script && google.script.run) {
-          google.script.run.
-            withSuccessHandler(function (res) {
-              if (res && res.ok) {
-                if (window.CardSystem) window.CardSystem.showMessage('デッキを削除しました。', 'info');
-                loadDecks();
-              } else {
-                if (window.CardSystem) window.CardSystem.showMessage(res.message || '削除できませんでした。', 'error');
-              }
-            }).
-            withFailureHandler(function (err) {
-              if (window.CardSystem) window.CardSystem.showMessage('エラー: ' + err.message, 'error');
-            }).
-            deleteDeck(deckId, token, userEmail);
-        } else {
-          state.decks = state.decks.filter((d) => String(d.id) !== String(deckId));
-          saveLocalDecks();
+    if (window.google && google.script && google.script.run) {
+      google.script.run.
+      withSuccessHandler(function (res) {
+        if (res && res.ok) {
           if (window.CardSystem) window.CardSystem.showMessage('デッキを削除しました。', 'info');
-          renderGallery();
+          loadDecks();
+        } else {
+          if (window.CardSystem) window.CardSystem.showMessage(res.message || '削除できませんでした。', 'error');
         }
+      }).
+      withFailureHandler(function (err) {
+        if (window.CardSystem) window.CardSystem.showMessage('エラー: ' + err.message, 'error');
+      }).
+      deleteDeck(deckId, token, userEmail);
+    } else {
+      state.decks = state.decks.filter((d) => String(d.id) !== String(deckId));
+      saveLocalDecks();
+      if (window.CardSystem) window.CardSystem.showMessage('デッキを削除しました。', 'info');
+      renderGallery();
+    }
+  }
+
+  // --- 描画関数 ---
+  function renderGallery() {
+    const grid = document.getElementById('deck-gallery-grid');
+    if (!grid) return;
+
+    const myEmail = (state.currentUser && state.currentUser.email) || '';
+
+    let visibleDecks = state.decks;
+    if (state.galleryTab === 'my') {
+      visibleDecks = state.decks.filter((d) => !d.userEmail || !myEmail || d.userEmail === myEmail || d.userEmail === 'sample');
+    } else if (state.galleryTab === 'sample') {
+      visibleDecks = state.decks.filter((d) => !d.userEmail || d.userEmail === 'sample');
+    }
+
+    let tabControls = "\n      <div class=\"deck-tabs-bar\">\n        <button class=\"deck-tab-btn " +
+    (state.galleryTab === 'all' ? 'active' : '') + "\" onclick=\"DeckSystem.setGalleryTab('all')\"><i class=\"fas fa-globe\"></i> すべて (" +
+    state.decks.length + ")</button>\n        <button class=\"deck-tab-btn " +
+    (state.galleryTab === 'my' ? 'active' : '') + "\" onclick=\"DeckSystem.setGalleryTab('my')\"><i class=\"fas fa-folder\"></i> 自分のデッキ (" +
+    state.decks.filter((d) => d.userEmail && myEmail && d.userEmail === myEmail).length + ")</button>\n        <button class=\"deck-tab-btn " +
+    (state.galleryTab === 'sample' ? 'active' : '') + "\" onclick=\"DeckSystem.setGalleryTab('sample')\"><i class=\"fas fa-star\"></i> 公式サンプル (" +
+    state.decks.filter((d) => !d.userEmail || d.userEmail === 'sample').length + ")</button>\n      </div>\n    ";
+
+    const tabsContainer = document.getElementById('deck-gallery-tabs-container');
+    if (tabsContainer) {
+      tabsContainer.innerHTML = tabControls;
+    }
+
+    if (visibleDecks.length === 0) {
+      grid.innerHTML = "\n        <div class=\"empty-deck-notice\">\n          <div class=\"empty-icon\">🎴</div>\n          <p>" +
+      (state.galleryTab === 'my' ? '作成した自分のデッキがまだありません。' : 'デッキが見つかりません。') + "</p>\n          <button class=\"btn btn-primary btn-lg\" onclick=\"DeckSystem.openEditor()\">＋ 新規デッキ作成</button>\n        </div>\n      ";
+      return;
+    }
+
+    let html = '';
+    visibleDecks.forEach((deck) => {
+      const val = validateDeck(deck);
+      const readyBadge = val.isValid ? "<span class=\"badge badge-success\"><i class=\"fas fa-check-circle\"></i> READY (60枚)</span>" : "<span class=\"badge badge-warning\"><i class=\"fas fa-exclamation-triangle\"></i> 制作中 (" +
+      val.totalCount + "/60)</span>";
+
+      const isMine = !!(deck.userEmail && myEmail && deck.userEmail === myEmail);
+      const isSample = !deck.userEmail || deck.userEmail === 'sample';
+
+      let ownerBadgeHtml = '';
+      if (isMine) {
+        ownerBadgeHtml = "<span class=\"deck-owner-badge my-deck\"><i class=\"fas fa-user\"></i> あなたのデッキ</span>";
+      } else if (isSample) {
+        ownerBadgeHtml = "<span class=\"deck-owner-badge sample-deck\"><i class=\"fas fa-star\"></i> 公式サンプル</span>";
+      } else {
+        ownerBadgeHtml = "<span class=\"deck-owner-badge\"><i class=\"fas fa-user-circle\"></i> " + escapeHtml(deck.userEmail) + "</span>";
       }
 
-      // --- 描画関数 ---
-      function renderGallery() {
-        const grid = document.getElementById('deck-gallery-grid');
-        if (!grid) return;
-
-        const myEmail = (state.currentUser && state.currentUser.email) || '';
-
-        let visibleDecks = state.decks;
-        if (state.galleryTab === 'my') {
-          visibleDecks = state.decks.filter((d) => !d.userEmail || !myEmail || d.userEmail === myEmail || d.userEmail === 'sample');
-        } else if (state.galleryTab === 'sample') {
-          visibleDecks = state.decks.filter((d) => !d.userEmail || d.userEmail === 'sample');
-        }
-
-        let tabControls = "\n      <div class=\"deck-tabs-bar\">\n        <button class=\"deck-tab-btn " +
-          (state.galleryTab === 'all' ? 'active' : '') + "\" onclick=\"DeckSystem.setGalleryTab('all')\"><i class=\"fas fa-globe\"></i> すべて (" +
-          state.decks.length + ")</button>\n        <button class=\"deck-tab-btn " +
-          (state.galleryTab === 'my' ? 'active' : '') + "\" onclick=\"DeckSystem.setGalleryTab('my')\"><i class=\"fas fa-folder\"></i> 自分のデッキ (" +
-          state.decks.filter((d) => d.userEmail && myEmail && d.userEmail === myEmail).length + ")</button>\n        <button class=\"deck-tab-btn " +
-          (state.galleryTab === 'sample' ? 'active' : '') + "\" onclick=\"DeckSystem.setGalleryTab('sample')\"><i class=\"fas fa-star\"></i> 公式サンプル (" +
-          state.decks.filter((d) => !d.userEmail || d.userEmail === 'sample').length + ")</button>\n      </div>\n    ";
-
-        const tabsContainer = document.getElementById('deck-gallery-tabs-container');
-        if (tabsContainer) {
-          tabsContainer.innerHTML = tabControls;
-        }
-
-        if (visibleDecks.length === 0) {
-          grid.innerHTML = "\n        <div class=\"empty-deck-notice\">\n          <div class=\"empty-icon\">🎴</div>\n          <p>" +
-            (state.galleryTab === 'my' ? '作成した自分のデッキがまだありません。' : 'デッキが見つかりません。') + "</p>\n          <button class=\"btn btn-primary btn-lg\" onclick=\"DeckSystem.openEditor()\">＋ 新規デッキ作成</button>\n        </div>\n      ";
-          return;
-        }
-
-        let html = '';
-        visibleDecks.forEach((deck) => {
-          const val = validateDeck(deck);
-          const readyBadge = val.isValid ? "<span class=\"badge badge-success\"><i class=\"fas fa-check-circle\"></i> READY (60枚)</span>" : "<span class=\"badge badge-warning\"><i class=\"fas fa-exclamation-triangle\"></i> 制作中 (" +
-            val.totalCount + "/60)</span>";
-
-          const isMine = !!(deck.userEmail && myEmail && deck.userEmail === myEmail);
-          const isSample = !deck.userEmail || deck.userEmail === 'sample';
-
-          let ownerBadgeHtml = '';
-          if (isMine) {
-            ownerBadgeHtml = "<span class=\"deck-owner-badge my-deck\"><i class=\"fas fa-user\"></i> あなたのデッキ</span>";
-          } else if (isSample) {
-            ownerBadgeHtml = "<span class=\"deck-owner-badge sample-deck\"><i class=\"fas fa-star\"></i> 公式サンプル</span>";
-          } else {
-            ownerBadgeHtml = "<span class=\"deck-owner-badge\"><i class=\"fas fa-user-circle\"></i> " + escapeHtml(deck.userEmail) + "</span>";
-          }
-
-          // カバー画像取得
-          let coverImg = '';
-          if (deck.cards && deck.cards.length > 0) {
-            const topCardId = deck.cards[0].id;
-            const c = state.cardPool.find((x) => String(x.id) === String(topCardId));
-            if (c && c.image) coverImg = c.image;
-          }
-
-          const coverHtml = coverImg ? "<img src=\"" +
-            coverImg + "\" class=\"deck-card-cover-img\" alt=\"cover\">" : "<div class=\"deck-card-cover-placeholder\">🎴</div>";
-
-          let actionButtons = '';
-          if (isMine || (!isSample && !deck.userEmail)) {
-            actionButtons = "\n          <button class=\"btn btn-secondary btn-sm\" onclick=\"DeckSystem.openEditor('" +
-              deck.id + "')\"><i class=\"fas fa-edit\"></i> 編集</button>\n          <button class=\"btn btn-secondary btn-sm\" onclick=\"DeckSystem.duplicateDeck('" +
-              deck.id + "')\" title=\"複製\"><i class=\"fas fa-copy\"></i> 複製</button>\n          <button class=\"btn btn-danger btn-sm\" onclick=\"DeckSystem.deleteDeck('" +
-              deck.id + "')\"><i class=\"fas fa-trash\"></i> 削除</button>\n        ";
-          } else {
-            actionButtons = "\n          <button class=\"btn btn-primary btn-sm\" onclick=\"DeckSystem.duplicateDeck('" +
-              deck.id + "')\"><i class=\"fas fa-copy\"></i> コピーして新規作成</button>\n          <button class=\"btn btn-secondary btn-sm\" onclick=\"DeckSystem.openEditor('" +
-              deck.id + "')\"><i class=\"fas fa-eye\"></i> 閲覧</button>\n        ";
-          }
-
-          html += "\n        <div class=\"deck-gallery-card\">\n          <div class=\"deck-gallery-cover\">\n            " +
-            coverHtml + "\n            <div class=\"deck-gallery-badge-overlay\">" +
-            readyBadge + "</div>\n          </div>\n          <div class=\"deck-gallery-body\">\n            <div style=\"margin-bottom: 6px;\">" +
-            ownerBadgeHtml + "</div>\n            <h3 class=\"deck-title\">" +
-            escapeHtml(deck.name || '無題のデッキ') + "</h3>\n            <p class=\"deck-desc\">" +
-            escapeHtml(deck.description || '説明なし') + "</p>\n            <div class=\"deck-meta\">\n              <span><i class=\"fas fa-layer-group\"></i> " +
-            val.totalCount + "枚</span>\n              <span><i class=\"fas fa-clock\"></i> " + (
-              deck.updatedAt || '更新日時不明') + "</span>\n            </div>\n            <div class=\"deck-actions\">\n              " +
-            actionButtons + "\n            </div>\n          </div>\n        </div>\n      ";
-        });
-
-        grid.innerHTML = html;
+      // カバー画像取得
+      let coverImg = '';
+      if (deck.cards && deck.cards.length > 0) {
+        const topCardId = deck.cards[0].id;
+        const c = state.cardPool.find((x) => String(x.id) === String(topCardId));
+        if (c && c.image) coverImg = c.image;
       }
 
-      function renderEditor() {
-        if (!state.activeDeck) return;
-        const val = validateDeck(state.activeDeck);
+      const coverHtml = coverImg ? "<img src=\"" +
+      coverImg + "\" class=\"deck-card-cover-img\" alt=\"cover\">" : "<div class=\"deck-card-cover-placeholder\">🎴</div>";
 
-        // プログレスバー & ルールステータス
-        const countEl = document.getElementById('deck-count-display');
-        const barEl = document.getElementById('deck-progress-bar');
-        const ruleStatusEl = document.getElementById('deck-rule-status');
-
-        if (countEl) countEl.innerText = val.totalCount + " / 60";
-        if (barEl) {
-          const pct = Math.min(100, Math.round(val.totalCount / 60 * 100));
-          barEl.style.width = pct + '%';
-          barEl.className = 'deck-progress-fill ' + (val.totalCount === 60 ? 'bg-success' : val.totalCount > 60 ? 'bg-danger' : 'bg-primary');
-        }
-
-        if (ruleStatusEl) {
-          let statusHtml = '';
-          if (val.totalCount === 60) {
-            statusHtml += "<span class=\"badge badge-success\"><i class=\"fas fa-check\"></i> 60枚ピッタリ</span> ";
-          } else {
-            statusHtml += "<span class=\"badge badge-warning\"><i class=\"fas fa-info-circle\"></i> " + (val.totalCount < 60 ? 'あと' + (60 - val.totalCount) + '枚' : val.totalCount - 60 + '枚超過') + "</span> ";
-          }
-
-          if (val.basicCount >= 1) {
-            statusHtml += "<span class=\"badge badge-success\"><i class=\"fas fa-check\"></i> たねポケモン:" + val.basicCount + "枚</span> ";
-          } else {
-            statusHtml += "<span class=\"badge badge-danger\"><i class=\"fas fa-times\"></i> たねポケモン0枚</span> ";
-          }
-
-          if (val.overLimitCards.length > 0) {
-            statusHtml += "<span class=\"badge badge-danger\"><i class=\"fas fa-times\"></i> 同名4枚超過あり</span>";
-          } else {
-            statusHtml += "<span class=\"badge badge-success\"><i class=\"fas fa-check\"></i> 同名4枚上限OK</span>";
-          }
-          ruleStatusEl.innerHTML = statusHtml;
-        }
-
-        renderDeckCardsList();
-        renderPoolGallery();
+      let actionButtons = '';
+      if (isMine || (!isSample && !deck.userEmail)) {
+        actionButtons = "\n          <button class=\"btn btn-secondary btn-sm\" onclick=\"DeckSystem.openEditor('" +
+        deck.id + "')\"><i class=\"fas fa-edit\"></i> 編集</button>\n          <button class=\"btn btn-secondary btn-sm\" onclick=\"DeckSystem.duplicateDeck('" +
+        deck.id + "')\" title=\"複製\"><i class=\"fas fa-copy\"></i> 複製</button>\n          <button class=\"btn btn-danger btn-sm\" onclick=\"DeckSystem.deleteDeck('" +
+        deck.id + "')\"><i class=\"fas fa-trash\"></i> 削除</button>\n        ";
+      } else {
+        actionButtons = "\n          <button class=\"btn btn-primary btn-sm\" onclick=\"DeckSystem.duplicateDeck('" +
+        deck.id + "')\"><i class=\"fas fa-copy\"></i> コピーして新規作成</button>\n          <button class=\"btn btn-secondary btn-sm\" onclick=\"DeckSystem.openEditor('" +
+        deck.id + "')\"><i class=\"fas fa-eye\"></i> 閲覧</button>\n        ";
       }
 
-      function renderDeckCardsList() {
+      html += "\n        <div class=\"deck-gallery-card\">\n          <div class=\"deck-gallery-cover\">\n            " +
+      coverHtml + "\n            <div class=\"deck-gallery-badge-overlay\">" +
+      readyBadge + "</div>\n          </div>\n          <div class=\"deck-gallery-body\">\n            <div style=\"margin-bottom: 6px;\">" +
+      ownerBadgeHtml + "</div>\n            <h3 class=\"deck-title\">" +
+      escapeHtml(deck.name || '無題のデッキ') + "</h3>\n            <p class=\"deck-desc\">" +
+      escapeHtml(deck.description || '説明なし') + "</p>\n            <div class=\"deck-meta\">\n              <span><i class=\"fas fa-layer-group\"></i> " +
+      val.totalCount + "枚</span>\n              <span><i class=\"fas fa-clock\"></i> " + (
+      deck.updatedAt || '更新日時不明') + "</span>\n            </div>\n            <div class=\"deck-actions\">\n              " +
+      actionButtons + "\n            </div>\n          </div>\n        </div>\n      ";
+    });
+
+    grid.innerHTML = html;
+  }
+
+  function renderEditor() {
+    if (!state.activeDeck) return;
+    const val = validateDeck(state.activeDeck);
+
+    // プログレスバー & ルールステータス
+    const countEl = document.getElementById('deck-count-display');
+    const barEl = document.getElementById('deck-progress-bar');
+    const ruleStatusEl = document.getElementById('deck-rule-status');
+
+    if (countEl) countEl.innerText = val.totalCount + " / 60";
+    if (barEl) {
+      const pct = Math.min(100, Math.round(val.totalCount / 60 * 100));
+      barEl.style.width = pct + '%';
+      barEl.className = 'deck-progress-fill ' + (val.totalCount === 60 ? 'bg-success' : val.totalCount > 60 ? 'bg-danger' : 'bg-primary');
+    }
+
+    if (ruleStatusEl) {
+      let statusHtml = '';
+      if (val.totalCount === 60) {
+        statusHtml += "<span class=\"badge badge-success\"><i class=\"fas fa-check\"></i> 60枚ピッタリ</span> ";
+      } else {
+        statusHtml += "<span class=\"badge badge-warning\"><i class=\"fas fa-info-circle\"></i> " + (val.totalCount < 60 ? 'あと' + (60 - val.totalCount) + '枚' : val.totalCount - 60 + '枚超過') + "</span> ";
+      }
+
+      if (val.basicCount >= 1) {
+        statusHtml += "<span class=\"badge badge-success\"><i class=\"fas fa-check\"></i> たねポケモン:" + val.basicCount + "枚</span> ";
+      } else {
+        statusHtml += "<span class=\"badge badge-danger\"><i class=\"fas fa-times\"></i> たねポケモン0枚</span> ";
+      }
+
+      if (val.overLimitCards.length > 0) {
+        statusHtml += "<span class=\"badge badge-danger\"><i class=\"fas fa-times\"></i> 同名4枚超過あり</span>";
+      } else {
+        statusHtml += "<span class=\"badge badge-success\"><i class=\"fas fa-check\"></i> 同名4枚上限OK</span>";
+      }
+      ruleStatusEl.innerHTML = statusHtml;
+    }
+
+    renderDeckCardsList();
+    renderPoolGallery();
+  }
+
+  function renderDeckCardsList() {
         const container = document.getElementById('deck-cards-list');
         if (!container || !state.activeDeck) return;
 
@@ -17892,21 +18391,36 @@ var CardSystem;
           list.forEach(({ card, count }) => {
             const typeBadge = card.type ? "<span class=\"type-mini-badge type-" + card.type + "\">" + card.type + "</span>" : '';
             const isEnergy = isNormalEnergy(card);
-            const isMaxCount = isEnergy ? (count >= 60) : (count >= 4);
-            html += "\n          <div class=\"deck-item-row\">\n            <div class=\"deck-item-info\">\n              " +
-              typeBadge + "\n              <span class=\"deck-item-name\" title=\"" +
-              escapeHtml(card.name) + "\">" + escapeHtml(card.name) + "</span>\n            </div>\n            <div class=\"deck-item-controls\">\n              <button class=\"btn-step\" onclick=\"DeckSystem.removeCard('" +
-              card.id + "')\">-</button>\n              <span class=\"deck-item-count\">" +
-              count + "</span>\n              <button class=\"btn-step\" onclick=\"DeckSystem.addCard('" +
-              card.id + "')\" " + (isMaxCount ? 'disabled' : '') + ">+</button>\n              <button class=\"btn-remove-all\" onclick=\"DeckSystem.setCardCount('" +
-              card.id + "', 0)\" title=\"全削除\"><i class=\"fas fa-trash-alt\"></i></button>\n            </div>\n          </div>\n        ";
+            const ownedCount = getCardOwnedCount(card);
+            const isOverOwned = !isEnergy && count > ownedCount;
+            const isAdmin = window.App && typeof window.App.isAdmin === 'function' && window.App.isAdmin();
+            const isSampleDeck = state.activeDeck && (state.activeDeck.userEmail === 'sample' || state.activeDeck.isSample);
+            const maxAllowed = isEnergy ? 60 : ((isAdmin && isSampleDeck) ? 4 : Math.min(4, ownedCount));
+            const isMaxCount = count >= maxAllowed;
+            const warnBadge = isOverOwned
+              ? ("<span class=\"deck-unowned-warning-badge\">" + (ownedCount <= 0 ? '⚠️ 未所持' : '⚠️ 所持:' + ownedCount + '枚') + "</span>")
+              : ("<span style=\"font-size:11px; color:#94a3b8; margin-left:6px;\">" + (isEnergy ? '(無制限)' : '所持:' + ownedCount + '枚') + "</span>");
+
+            html += '<div class="deck-item-row ' + (isOverOwned ? 'is-unowned-deck-item' : '') + '">' +
+              '<div class="deck-item-info">' +
+              typeBadge +
+              '<span class="deck-item-name" title="' + escapeHtml(card.name) + '">' + escapeHtml(card.name) + '</span>' +
+              warnBadge +
+              '</div>' +
+              '<div class="deck-item-controls">' +
+              '<button class="btn-step" onclick="DeckSystem.removeCard(\'' + card.id + '\')">-</button>' +
+              '<span class="deck-item-count">' + count + '</span>' +
+              '<button class="btn-step" onclick="DeckSystem.addCard(\'' + card.id + '\')" ' + (isMaxCount ? 'disabled' : '') + '>+</button>' +
+              '<button class="btn-remove-all" onclick="DeckSystem.setCardCount(\'' + card.id + '\', 0)" title="全削除"><i class="fas fa-trash-alt"></i></button>' +
+              '</div>' +
+              '</div>';
           });
         });
 
         container.innerHTML = html;
       }
 
-      function renderPoolGallery() {
+  function renderPoolGallery() {
         const grid = document.getElementById('deck-pool-grid');
         if (!grid) return;
 
@@ -17939,49 +18453,76 @@ var CardSystem;
         filtered.forEach((card) => {
           const inDeckCount = countMap[card.id] || 0;
           const isEnergy = isNormalEnergy(card);
-          const isMax = isEnergy ? (inDeckCount >= 60) : (inDeckCount >= 4);
+          const ownedCount = getCardOwnedCount(card);
+          const isUnowned = !isEnergy && ownedCount <= 0;
+          const isAdmin = window.App && typeof window.App.isAdmin === 'function' && window.App.isAdmin();
+          const isSampleDeck = state.activeDeck && (state.activeDeck.userEmail === 'sample' || state.activeDeck.isSample);
+          const maxLimit = isEnergy ? 60 : ((isAdmin && isSampleDeck) ? 4 : Math.min(4, ownedCount));
+          const isMax = inDeckCount >= maxLimit;
+
+          // 所持フィルター適用
+          if (state.filter.ownership === 'owned' && isUnowned) return;
+          if (state.filter.ownership === 'unowned' && !isUnowned) return;
+
+          const badgeHtml = isEnergy
+            ? "<div class=\"pool-in-deck-badge pool-energy-badge\" style=\"top:6px; right:6px; z-index:10; font-size:10px;\">基本エネ (無制限)</div>"
+            : (isUnowned
+              ? "<div class=\"pool-in-deck-badge pool-unowned-badge\" style=\"top:6px; right:6px; z-index:10; font-size:10px;\">未所持</div>"
+              : "<div class=\"pool-in-deck-badge pool-owned-badge\" style=\"top:6px; right:6px; z-index:10; font-size:10px;\">所持: " + ownedCount + "枚" + (inDeckCount > 0 ? " (" + inDeckCount + "枚使用中)" : "") + "</div>");
 
           if (window.CardSystem && window.CardSystem.createCardHtml) {
-            html += "\n          <div onclick=\"DeckSystem.addCard('" +
-              card.id + "')\" title=\"クリックしてデッキに追加\">\n            " +
+            html += "\n          <div class=\"deck-pool-card-wrapper " + (isUnowned ? 'pool-card-unowned' : '') + " " + (isMax ? 'pool-card-max' : '') + "\" onclick=\"DeckSystem.addCard('" +
+              card.id + "')\" title=\"" + (isUnowned ? '未所持（デッキに追加できません）' : (isMax ? '上限枚数に達しています' : 'クリックしてデッキに追加')) + "\">\n            " +
+              badgeHtml + "\n            " +
               window.CardSystem.createCardHtml(card, { size: 'sm', inDeckCount: inDeckCount, isMax: isMax }) + "\n          </div>\n        ";
           }
         });
 
+        if (!html) {
+          grid.innerHTML = "<div class=\"empty-pool-notice\">該当する所持カードがありません。「すべてのカード」を選択して確認するか、パックを開封してカードを獲得してください。</div>";
+          return;
+        }
+
         grid.innerHTML = html;
       }
 
-      function escapeHtml(str) {
-        if (!str) return '';
-        return String(str).
-          replace(/&/g, '&amp;').
-          replace(/</g, '&lt;').
-          replace(/>/g, '&gt;').
-          replace(/"/g, '&quot;').
-          replace(/'/g, '&#039;');
-      }
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).
+    replace(/&/g, '&amp;').
+    replace(/</g, '&lt;').
+    replace(/>/g, '&gt;').
+    replace(/"/g, '&quot;').
+    replace(/'/g, '&#039;');
+  }
 
-      return {
-        state: state,
-        init: init,
-        fetchCurrentUser: fetchCurrentUser,
-        updateUserBadge: updateUserBadge,
-        setGalleryTab: setGalleryTab,
-        loadDecks: loadDecks,
-        openGallery: openGallery,
-        openEditor: openEditor,
-        duplicateDeck: duplicateDeck,
-        addCard: addCard,
-        removeCard: removeCard,
-        setCardCount: setCardCount,
-        clearActiveDeck: clearActiveDeck,
-        saveActiveDeck: saveActiveDeck,
-        deleteDeck: deleteDeck,
-        renderGallery: renderGallery,
-        renderEditor: renderEditor
-      };
-    }();
-  </script>
+  return {
+    state: state,
+    init: init,
+    fetchCurrentUser: fetchCurrentUser,
+    updateUserBadge: updateUserBadge,
+    setGalleryTab: setGalleryTab,
+    loadDecks: loadDecks,
+    saveAsOfficialSample: saveAsOfficialSample,
+    openGallery: openGallery,
+    openEditor: openEditor,
+    duplicateDeck: duplicateDeck,
+    addCard: addCard,
+    removeCard: removeCard,
+    setCardCount: setCardCount,
+    clearActiveDeck: clearActiveDeck,
+    saveActiveDeck: saveActiveDeck,
+    deleteDeck: deleteDeck,
+    renderGallery: renderGallery,
+    renderEditor: renderEditor,
+    validateDeck: validateDeck,
+    getCardOwnedCount: getCardOwnedCount
+  };
+  console.log('[ORBITAL] DeckSystem.js.html finished execution. window.DeckSystem =', typeof window.DeckSystem);
+}();
+</script>
+
+
 
   <script>
 
@@ -19245,6 +19786,19 @@ var CardSystem;
       const prizeCount = Number(document.getElementById('online-prize-count-select')?.value) || 6;
       const userEmail = window.DeckSystem && DeckSystem.state && DeckSystem.state.currentUser ? DeckSystem.state.currentUser.email : '';
 
+      if (deckVal !== 'preset_starter' && window.DeckSystem && typeof window.DeckSystem.validateDeck === 'function') {
+        const decks = window.DeckSystem.state && window.DeckSystem.state.decks || [];
+        const deck = decks.find((d) => String(d.id) === String(deckVal));
+        if (deck && (!deck.userEmail || deck.userEmail !== 'sample')) {
+          const val = window.DeckSystem.validateDeck(deck);
+          if (val.unownedErrors && val.unownedErrors.length > 0) {
+            const msg = '未所持のカード（' + val.unownedErrors.map(e => e.name).join('、') + '）が含まれているため対戦を開始できません。デッキ管理画面で所持カードに変更してください。';
+            App.toast(msg, true);
+            return;
+          }
+        }
+      }
+
       const rawDeck = this.resolveDeckCards(deckVal);
       if (!rawDeck || rawDeck.length === 0) {
         App.toast('対戦デッキを選択してください。', true);
@@ -20094,6 +20648,20 @@ var CardSystem;
       const playerDeckVal = document.getElementById('battle-player-deck-select')?.value || 'preset_starter';
       const aiDeckKey = document.getElementById('battle-ai-deck-select')?.value || 'electric';
       const prizeCount = Number(document.getElementById('battle-prize-count-select')?.value) || 6;
+
+      if (playerDeckVal !== 'preset_starter' && window.DeckSystem && typeof window.DeckSystem.validateDeck === 'function') {
+        const decks = window.DeckSystem.state && window.DeckSystem.state.decks || [];
+        const deck = decks.find((d) => String(d.id) === String(playerDeckVal));
+        if (deck && (!deck.userEmail || deck.userEmail !== 'sample')) {
+          const val = window.DeckSystem.validateDeck(deck);
+          if (val.unownedErrors && val.unownedErrors.length > 0) {
+            const msg = '未所持のカード（' + val.unownedErrors.map(e => e.name).join('、') + '）が含まれているため対戦を開始できません。デッキ管理画面で所持カードに変更してください。';
+            if (window.App && window.App.toast) window.App.toast(msg, true);
+            else alert(msg);
+            return;
+          }
+        }
+      }
 
       this.startBattle(playerDeckVal, aiDeckKey, prizeCount);
     },
@@ -25783,15 +26351,47 @@ console.log('[ORBITAL] App.js.html started execution');
       this.updateNmtBadge();
       this.loadPacks();
       this.renderSingleShopGrid();
-      // 今日のログインボーナスが未取得の場合、自動的に大型モータルをポップアップ表示！
-      const today = new Date().toISOString().slice(0, 10);
-      let lastClaim = '';
-      try { lastClaim = localStorage.getItem('ORBITAL_LAST_DAILY_BONUS') || ''; } catch(e) {}
-      if (lastClaim !== today) {
+      // 今日のログインボーナスが未取得かつログイン中の場合、自動的に大型モーダルをポップアップ表示！
+      const { isClaimedToday } = this.getLoginStreakInfo();
+      if (!isClaimedToday && this.isLoggedIn()) {
         setTimeout(() => {
           this.openDailyBonusModal();
         }, 800);
       }
+    },
+
+    getTodayDateStr() {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return y + '-' + m + '-' + day;
+    },
+
+    normalizeDateStr(val) {
+      if (!val) return '';
+      if (val instanceof Date) {
+        if (isNaN(val.getTime())) return '';
+        const y = val.getFullYear();
+        const m = String(val.getMonth() + 1).padStart(2, '0');
+        const d = String(val.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + d;
+      }
+      const str = String(val).trim();
+      const mat = str.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+      if (mat) {
+        const mo = mat[2].length === 1 ? '0' + mat[2] : mat[2];
+        const da = mat[3].length === 1 ? '0' + mat[3] : mat[3];
+        return mat[1] + '-' + mo + '-' + da;
+      }
+      const dt = new Date(str);
+      if (!isNaN(dt.getTime())) {
+        const y = dt.getFullYear();
+        const mo = String(dt.getMonth() + 1).padStart(2, '0');
+        const d = String(dt.getDate()).padStart(2, '0');
+        return y + '-' + mo + '-' + d;
+      }
+      return str.slice(0, 10);
     },
 
     updateNmtBadge() {
@@ -25802,13 +26402,11 @@ console.log('[ORBITAL] App.js.html started execution');
       if (valEl) {
         valEl.textContent = this.state.nmtBalance + ' NMT';
       }
-      const today = new Date().toISOString().slice(0, 10);
-      let lastClaim = '';
-      try { lastClaim = localStorage.getItem('ORBITAL_LAST_DAILY_BONUS') || ''; } catch(e) {}
+      const { isClaimedToday } = this.getLoginStreakInfo();
       const claimBtn = this.el('dailyBonusClaimBtn');
       if (claimBtn) {
-        if (lastClaim === today) {
-          claimBtn.textContent = '取得済み';
+        if (isClaimedToday) {
+          claimBtn.textContent = '本日は受取済';
           claimBtn.style.opacity = '0.6';
         } else {
           claimBtn.textContent = 'デイリーボーナス!';
@@ -25830,27 +26428,42 @@ console.log('[ORBITAL] App.js.html started execution');
     },
 
     getLoginStreakInfo() {
-      const today = new Date().toISOString().slice(0, 10);
-      let lastClaim = this.state.userProfile?.lastBonusDate || '';
-      let streakDay = Number(this.state.userProfile?.streakDay) || 1;
-      try {
-        if (!lastClaim) lastClaim = localStorage.getItem('ORBITAL_LAST_DAILY_BONUS') || '';
-        if (!this.state.userProfile?.streakDay) streakDay = Number(localStorage.getItem('ORBITAL_LOGIN_STREAK_DAY')) || 1;
-      } catch(e) {}
+      const today = this.getTodayDateStr();
+      const email = this.getUserEmail();
 
-      const isClaimedToday = (lastClaim === today);
+      let rawClaim = this.state.userProfile?.lastBonusDate || '';
+      if (!rawClaim) {
+        try {
+          rawClaim = localStorage.getItem('ORBITAL_LAST_DAILY_BONUS_' + email) ||
+                     localStorage.getItem('ORBITAL_LAST_DAILY_BONUS') || '';
+        } catch(e) {}
+      }
+      const lastClaim = this.normalizeDateStr(rawClaim);
+
+      let streakDay = Number(this.state.userProfile?.streakDay);
+      if (!streakDay || isNaN(streakDay)) {
+        try {
+          streakDay = Number(localStorage.getItem('ORBITAL_LOGIN_STREAK_DAY_' + email) ||
+                             localStorage.getItem('ORBITAL_LOGIN_STREAK_DAY')) || 1;
+        } catch(e) {}
+      }
+      if (isNaN(streakDay) || streakDay < 1) streakDay = 1;
+
+      const isClaimedToday = Boolean(lastClaim && lastClaim === today);
 
       if (!isClaimedToday && lastClaim) {
         // 前回取得から1日経過したかのチェック
-        const lastDate = new Date(lastClaim);
-        const currDate = new Date(today);
-        const diffDays = Math.floor((currDate - lastDate) / (1000 * 60 * 60 * 24));
+        const lastParts = lastClaim.split('-').map(Number);
+        const currParts = today.split('-').map(Number);
+        const lastDate = new Date(lastParts[0], lastParts[1] - 1, lastParts[2]);
+        const currDate = new Date(currParts[0], currParts[1] - 1, currParts[2]);
+        const diffDays = Math.round((currDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
 
         if (diffDays === 1) {
           // 連続ログイン成功
           streakDay = (streakDay % 7) + 1;
         } else if (diffDays > 1) {
-          // リセット
+          // リセット (2日以上経過)
           streakDay = 1;
         }
       }
@@ -25883,12 +26496,14 @@ console.log('[ORBITAL] App.js.html started execution');
       const btn = this.el('claimBigDailyBonusBtn');
       if (btn) {
         if (isClaimedToday) {
-          btn.textContent = '✅ Day ' + streakDay + ' 本日の受取完了 (' + curReward.label + ')';
+          btn.textContent = '✅ 本日の受取完了 (Day ' + streakDay + ': ' + curReward.label + ')';
           btn.style.opacity = '0.6';
+          btn.style.cursor = 'not-allowed';
           btn.disabled = true;
         } else {
           btn.textContent = '🎁 Day ' + streakDay + ' ボーナスを受け取る！ (' + curReward.label + ')';
           btn.style.opacity = '1';
+          btn.style.cursor = 'pointer';
           btn.disabled = false;
         }
       }
@@ -25931,36 +26546,80 @@ console.log('[ORBITAL] App.js.html started execution');
       const { today, isClaimedToday, streakDay } = this.getLoginStreakInfo();
       if (isClaimedToday) {
         this.toast('ℹ️ 本日のログインボーナスは取得済みです！明日またご来店ください。');
+        this.renderDailyBonusStreak();
         return;
       }
 
+      // 二重クリック連打を即座に防御
+      const btn = this.el('claimBigDailyBonusBtn');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = '処理中...';
+        btn.style.opacity = '0.5';
+      }
+
+      const email = this.getUserEmail();
       const rewards = this.getDailyBonusRewards();
       const curReward = rewards[streakDay - 1] || rewards[0];
+      const newNmt = this.getUserNmt() + curReward.nmt;
 
-      this.setUserNmt(this.getUserNmt() + curReward.nmt);
+      // 1. メモリと状態を即時更新 (確実に「本日取得済み」フラグを確定)
+      if (!this.state.userProfile) this.state.userProfile = {};
+      this.state.userProfile.lastBonusDate = today;
+      this.state.userProfile.streakDay = streakDay;
+      this.state.userProfile.nmtBalance = newNmt;
+      this.state.userProfile.nmt = newNmt;
+      this.state.nmt = newNmt;
+      this.state.nmtBalance = newNmt;
+
+      // 2. localStorage へ確実に保存 (全体キーおよびアカウント別キー)
       try {
         localStorage.setItem('ORBITAL_LAST_DAILY_BONUS', today);
+        localStorage.setItem('ORBITAL_LAST_DAILY_BONUS_' + email, today);
         localStorage.setItem('ORBITAL_LOGIN_STREAK_DAY', String(streakDay));
+        localStorage.setItem('ORBITAL_LOGIN_STREAK_DAY_' + email, String(streakDay));
+        localStorage.setItem('ORBITAL_NMT_BALANCE', String(newNmt));
+        if (this.state.userProfile) {
+          localStorage.setItem('ORBITAL_LOGGED_IN_USER', JSON.stringify(this.state.userProfile));
+        }
       } catch (e) {}
 
-      if (window.google && google.script && google.script.run && !window._is_mock_gas && typeof google.script.run.claimDailyBonusInDb === 'function') {
-        try {
-          const email = this.getUserEmail();
-          google.script.run.claimDailyBonusInDb(email, today);
-        } catch(e) {}
-      }
-      
+      // 3. UI表示を即座に受取完了状態に更新
+      this.updateNmtDisplays();
+      this.updateNmtBadge();
       this.renderDailyBonusStreak();
 
       // 金コインエフェクト表示
       this.triggerCoinBurst();
+
+      // 4. バックエンド (GAS / Mock) への同期保存
+      // ※ setUserNmt を呼ぶと saveUserNmtBalance と競合して lastBonusDate が上書きされる恐れがあるため、
+      // 　 claimDailyBonusInDb 単独で残高・日付・ストリークを同時に安全更新！
+      const self = this;
+      if (window.google && google.script && google.script.run) {
+        try {
+          google.script.run
+            .withSuccessHandler((res) => {
+              console.log('✅ [DailyBonus Sync] claimDailyBonusInDb success:', res);
+              if (res && res.profile) {
+                self.state.userProfile = Object.assign(self.state.userProfile || {}, res.profile);
+                try { localStorage.setItem('ORBITAL_LOGGED_IN_USER', JSON.stringify(self.state.userProfile)); } catch(e) {}
+              }
+            })
+            .withFailureHandler((err) => {
+              console.warn('⚠️ [DailyBonus Sync] claimDailyBonusInDb error:', err);
+            })
+            .claimDailyBonusInDb(email, today);
+        } catch(e) {
+          console.warn('claimDailyBonusInDb call warning:', e);
+        }
+      }
 
       if (curReward.pack > 0) {
         this.toast('🎉 Day ' + streakDay + ' ボーナス (+' + curReward.nmt + ' NMT ＆ 特典パック ' + curReward.pack + '個) を獲得しました！');
         // 無料パック即時開封体験
         setTimeout(() => {
           this.closeDailyBonusModal();
-          const packToOpen = (this.state.packs && this.state.packs.length > 0) ? this.state.packs[0].id : 'pack_standard';
           this.addFreePackTickets(curReward.pack);
           this.showPage('pack');
         }, 1500);
@@ -26067,10 +26726,17 @@ console.log('[ORBITAL] App.js.html started execution');
         this.openDailyBonusModal();
         return;
       }
+      const packs = (this.state.packs && this.state.packs.length > 0) ? this.state.packs : [];
+      if (packs.length === 0) {
+        this.toast('利用可能なパックが登録されていません', true);
+        return;
+      }
       this.setUserFreePackTickets(tickets - 1);
-      const targetPackId = (this.state.packs && this.state.packs.length > 0) ? this.state.packs[0].id : 'pack_standard';
-      this.toast('🎁 ログインボーナス特別パックを開封します！');
-      this.buyAndOpenPack(targetPackId, true);
+
+      // 既存のパックからランダムに1つ選出
+      const chosenPack = packs[Math.floor(Math.random() * packs.length)];
+      this.toast('🎁 ログボ特典！既存パックの中から【' + (chosenPack.title || 'パック') + '】が選ばれました！');
+      this.buyAndOpenPack(chosenPack.id, true, true);
       this.renderPackGrid();
     },
 
@@ -26089,28 +26755,29 @@ console.log('[ORBITAL] App.js.html started execution');
 
       const logboCardHtml =
         '<div class="pack-card" style="border: 2px solid #fbbf24; background: linear-gradient(135deg, rgba(251,191,36,0.18), rgba(217,70,239,0.18)); box-shadow: 0 0 25px rgba(251,191,36,0.35); position:relative;">' +
-          '<div class="single-shop-tag" style="background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #000; font-weight:900;">🎁 ログボ特典</div>' +
+          '<div class="single-shop-tag" style="background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #000; font-weight:900;">🎁 ログボ特典 (全パック対象)</div>' +
           '<div class="pack-cover-wrapper" style="border-color: rgba(251,191,36,0.6);">' +
-            '<div class="pack-foil-art" style="color:#fbbf24; filter:drop-shadow(0 0 10px rgba(251,191,36,0.8));">🌟</div>' +
-            '<div class="pack-foil-header" style="color:#fbbf24;">ログインボーナス</div>' +
+            '<div class="pack-foil-art" style="color:#fbbf24; filter:drop-shadow(0 0 10px rgba(251,191,36,0.8));">🎲</div>' +
+            '<div class="pack-foil-header" style="color:#fbbf24;">ランダム特典</div>' +
           '</div>' +
           '<div class="pack-title" style="color:#fbbf24; font-weight:900;">🎁 ログインボーナス特別パック</div>' +
-          '<div class="pack-desc">ログインボーナスで獲得した特別無料パック！激レアカードをゲットしよう！</div>' +
+          '<div class="pack-desc">ログインボーナスで獲得した特別無料チケット！既存の全パックから毎回ランダムに1つが選ばれて開封されます！</div>' +
           '<div class="pack-price-tag" style="color:#fbbf24;">✨ 所持チケット: <strong>' + freeTickets + '</strong> 個</div>' +
           (freeTickets > 0 ? (
             '<button class="pack-buy-btn" type="button" style="background: linear-gradient(135deg, #fbbf24, #f59e0b); color:#0b0f19; font-weight:900; box-shadow:0 6px 20px rgba(251,191,36,0.5);" onclick="App.openLogboPack()">' +
-              '✨ 無料でパック開封！ (残り ' + freeTickets + '個)' +
+              '🎲 ランダムパック開封！ (残り ' + freeTickets + '個)' +
             '</button>'
           ) : (
             '<button class="pack-buy-btn" type="button" style="opacity: 0.7; cursor: pointer; background: rgba(255,255,255,0.12);" onclick="App.openDailyBonusModal()">' +
               '🔒 チケットなし (ログボでGET)' +
             '</button>'
           )) +
+          '<button class="pack-rates-btn" type="button" onclick="App.openPackRatesModal(\'logbo\')">📊 排出率を見る</button>' +
         '</div>';
 
       const customPacksHtml = packs.map(p => {
       const coverArt = p.image ? ('<img src="' + this.escapeHtml(p.image) + '" style="width:100%; height:100%; object-fit:cover; border-radius:8px;">') : ('<div class="pack-foil-art">✦</div><div class="pack-foil-header">' + this.escapeHtml(p.title) + '</div>');
-        return '\n          <div class="pack-card">\n            <div class="pack-cover-wrapper">\n              ' + (coverArt) + '\n            </div>\n            <div class="pack-title">' + (this.escapeHtml(p.title)) + '</div>\n            <div class="pack-desc">' + (this.escapeHtml(p.description || '5枚のカードを収録')) + '</div>\n            <div class="pack-price-tag">✨ ' + (p.price || 100) + ' NMT</div>\n            <button class="pack-buy-btn" type="button" onclick="App.buyAndOpenPack(\'' + (p.id) + '\')">🎁 ' + (p.price || 100) + ' NMT で開封</button>\n          </div>\n        ';
+        return '\n          <div class="pack-card">\n            <div class="pack-cover-wrapper">\n              ' + (coverArt) + '\n            </div>\n            <div class="pack-title">' + (this.escapeHtml(p.title)) + '</div>\n            <div class="pack-desc">' + (this.escapeHtml(p.description || '5枚のカードを収録')) + '</div>\n            <div class="pack-price-tag">✨ ' + (p.price || 100) + ' NMT</div>\n            <button class="pack-buy-btn" type="button" onclick="App.buyAndOpenPack(\'' + (p.id) + '\')">🎁 ' + (p.price || 100) + ' NMT で開封</button>\n            <button class="pack-rates-btn" type="button" onclick="App.openPackRatesModal(\'' + (p.id) + '\')">📊 排出率を見る</button>\n          </div>\n        ';
       }).join('');
       grid.innerHTML = logboCardHtml + customPacksHtml;
     },
@@ -26128,7 +26795,279 @@ console.log('[ORBITAL] App.js.html started execution');
       return '◇';
     },
 
-    buyAndOpenPack(packId, isFree = false) {
+    getPackEmissionRates(packId) {
+      const allCards = this.getAllCards();
+      let pack = null;
+      if (packId === 'logbo') {
+        const packs = (this.state.packs && this.state.packs.length > 0) ? this.state.packs : [];
+        const packTitles = packs.map(p => p.title).filter(Boolean);
+        const packNamesStr = packTitles.length > 0 ? packTitles.join(' / ') : '全拡張パック';
+
+        // 収録プール: 既存パックのカードプールを統合（未設定パックがあれば全カード）
+        let combinedPool = [];
+        let hasUnrestrictedPack = false;
+        packs.forEach(p => {
+          if (Array.isArray(p.cardPool) && p.cardPool.length > 0) {
+            combinedPool.push(...p.cardPool);
+          } else {
+            hasUnrestrictedPack = true;
+          }
+        });
+        const targetPoolIds = (hasUnrestrictedPack || combinedPool.length === 0 || packs.length === 0)
+          ? []
+          : Array.from(new Set(combinedPool));
+
+        pack = {
+          id: 'logbo',
+          title: '🎁 ログインボーナス特別パック (既存パックからランダム抽選)',
+          description: `既存のパック（${packNamesStr}）の中から毎回等確率でランダムに1つのパックが選出されて開封されます！`,
+          cardPool: targetPoolIds
+        };
+      } else {
+        pack = (this.state.packs || []).find(p => p.id === packId) || (this.state.packs && this.state.packs[0]) || {
+          id: packId,
+          title: '拡張パック',
+          cardPool: []
+        };
+      }
+
+      let targetPool = allCards;
+      if (pack && Array.isArray(pack.cardPool) && pack.cardPool.length > 0) {
+        const filtered = allCards.filter(c => pack.cardPool.includes(c.id) || pack.cardPool.includes(c.name));
+        if (filtered.length > 0) targetPool = filtered;
+      }
+
+      // レアリティ別基本排出比重 (左から順に高く: N:55%, R:25%, AR:11%, RR:6%, SR:3%)
+      const BASE_WEIGHTS = {
+        'N': 55.0,
+        'R': 25.0,
+        'AR': 11.0,
+        'RR': 6.0,
+        'SR': 3.0
+      };
+
+      const groups = {};
+      targetPool.forEach(card => {
+        let r = String(card.rarity || 'N').toUpperCase().trim();
+        if (!BASE_WEIGHTS[r]) {
+          if (r === 'C' || r === 'UC' || r === 'COMMON' || r === 'NORMAL' || !r) r = 'N';
+          else if (r === 'RARE') r = 'R';
+          else if (r === 'ART RARE') r = 'AR';
+          else if (r === 'DOUBLE RARE' || r === 'EX') r = 'RR';
+          else if (r === 'SUPER RARE' || r === 'UR' || r === 'ULTRA RARE') r = 'SR';
+          else r = 'N';
+        }
+        if (!groups[r]) groups[r] = [];
+        groups[r].push(card);
+      });
+
+      const rarityKeys = ['N', 'R', 'AR', 'RR', 'SR'];
+      let activeWeightSum = 0;
+      rarityKeys.forEach(r => {
+        if (groups[r] && groups[r].length > 0) {
+          activeWeightSum += BASE_WEIGHTS[r];
+        }
+      });
+      if (activeWeightSum <= 0) activeWeightSum = 100;
+
+      const raritySummaries = [];
+      const cardList = [];
+
+      rarityKeys.forEach(r => {
+        const cards = groups[r] || [];
+        if (cards.length === 0) return;
+        const groupPct = (BASE_WEIGHTS[r] / activeWeightSum) * 100;
+        const perCardPct = groupPct / cards.length;
+
+        raritySummaries.push({
+          rarity: r,
+          cardCount: cards.length,
+          groupPercent: groupPct,
+          perCardPercent: perCardPct
+        });
+
+        cards.forEach(card => {
+          cardList.push({
+            card: card,
+            rarity: r,
+            percent: perCardPct
+          });
+        });
+      });
+
+      return {
+        pack: pack,
+        targetPool: targetPool,
+        totalCards: targetPool.length,
+        raritySummaries: raritySummaries,
+        cardList: cardList
+      };
+    },
+
+    openPackRatesModal(packId) {
+      const data = this.getPackEmissionRates(packId);
+      this._currentPackRatesData = data;
+      this._packRatesFilterRarity = 'all';
+
+      const titleEl = this.el('packRatesModalTitle');
+      if (titleEl) {
+        titleEl.textContent = '📊 ' + (data.pack ? data.pack.title : 'パック') + ' 提供割合・排出率';
+      }
+
+      this.renderPackRatesSummary(data);
+      this.renderPackRatesRarityTabs(data);
+      this.renderPackRatesCardList(data);
+
+      const modal = this.el('packRatesModal');
+      if (modal) modal.classList.remove('hidden');
+    },
+
+    closePackRatesModal() {
+      const modal = this.el('packRatesModal');
+      if (modal) modal.classList.add('hidden');
+    },
+
+    renderPackRatesSummary(data) {
+      const container = this.el('packRatesSummaryContainer');
+      if (!container) return;
+
+      const pack = data.pack || {};
+      const rarityIcons = {
+        'N': '⚪',
+        'R': '🔷',
+        'AR': '🎨',
+        'RR': '⚡',
+        'SR': '✨'
+      };
+
+      const chipsHtml = data.raritySummaries.map(s => {
+        const icon = rarityIcons[s.rarity] || '✦';
+        return `
+          <div class="pack-rates-chip rarity-chip-${s.rarity}">
+            <div style="font-size:12px; font-weight:800; color:var(--text-bright); margin-bottom:2px;">
+              ${icon} ${s.rarity}
+            </div>
+            <div style="font-size:16px; font-weight:900; color:#fbbf24; margin-bottom:2px;">
+              ${s.groupPercent.toFixed(2)}%
+            </div>
+            <div style="font-size:11px; color:#94a3b8;">
+              全${s.cardCount}種 / 各${s.perCardPercent.toFixed(3)}%
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      container.innerHTML = `
+        <div class="pack-rates-summary-header">
+          <div>
+            <div style="font-size:15px; font-weight:900; color:#fff;">${this.escapeHtml(pack.title || 'ブースターパック')}</div>
+            <div style="font-size:12px; color:#94a3b8; margin-top:2px;">${this.escapeHtml(pack.description || '5枚のカードを収録')}</div>
+          </div>
+          <div style="text-align:right;">
+            <span style="font-size:12px; color:#94a3b8;">総収録数</span>
+            <div style="font-size:17px; font-weight:900; color:#38bdf8;">全 ${data.totalCards} 種類</div>
+          </div>
+        </div>
+        <div class="pack-rates-chips-grid">
+          ${chipsHtml}
+        </div>
+      `;
+    },
+
+    renderPackRatesRarityTabs(data) {
+      const container = this.el('packRatesRarityTabs');
+      if (!container) return;
+
+      const active = this._packRatesFilterRarity || 'all';
+      let html = `<button type="button" class="pack-rates-tab-btn ${active === 'all' ? 'active' : ''}" onclick="App.setPackRatesRarityFilter('all')">すべて (${data.totalCards})</button>`;
+
+      data.raritySummaries.forEach(s => {
+        const isActive = active === s.rarity;
+        html += `<button type="button" class="pack-rates-tab-btn ${isActive ? 'active' : ''}" onclick="App.setPackRatesRarityFilter('${s.rarity}')">${s.rarity} (${s.cardCount})</button>`;
+      });
+
+      container.innerHTML = html;
+    },
+
+    setPackRatesRarityFilter(rarity) {
+      this._packRatesFilterRarity = rarity;
+      if (this._currentPackRatesData) {
+        this.renderPackRatesRarityTabs(this._currentPackRatesData);
+        this.renderPackRatesCardList(this._currentPackRatesData);
+      }
+    },
+
+    filterPackRatesList() {
+      if (this._currentPackRatesData) {
+        this.renderPackRatesCardList(this._currentPackRatesData);
+      }
+    },
+
+    renderPackRatesCardList(data) {
+      const container = this.el('packRatesCardsContainer');
+      if (!container) return;
+
+      const filterRarity = this._packRatesFilterRarity || 'all';
+      const searchInput = this.el('packRatesSearchInput');
+      const search = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+      let list = data.cardList || [];
+      if (filterRarity !== 'all') {
+        list = list.filter(item => item.rarity === filterRarity);
+      }
+      if (search) {
+        list = list.filter(item => {
+          const name = String(item.card.name || '').toLowerCase();
+          const cat = String(item.card.category || '').toLowerCase();
+          const type = String(item.card.type || '').toLowerCase();
+          return name.includes(search) || cat.includes(search) || type.includes(search);
+        });
+      }
+
+      if (list.length === 0) {
+        container.innerHTML = '<div style="text-align:center; padding:30px; color:#94a3b8;">該当するカードがありません</div>';
+        return;
+      }
+
+      let rowsHtml = list.map(item => {
+        const c = item.card;
+        const emblem = this.getCardTypeEmblem(c.type);
+        const img = c.image ? `<img src="${this.escapeHtml(c.image)}" style="width:36px; height:48px; object-fit:cover; border-radius:4px; border:1px solid rgba(255,255,255,0.15);">` : `<div style="width:36px; height:48px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.05); border-radius:4px; font-size:16px;">${emblem}</div>`;
+        const rarityBadge = `<span class="card-rarity-badge rarity-badge-${item.rarity}" style="font-size:11px; font-weight:800; padding:2px 8px; border-radius:4px; background:rgba(255,255,255,0.1);">${item.rarity}</span>`;
+
+        return `
+          <tr>
+            <td style="width:50px; text-align:center;">${rarityBadge}</td>
+            <td style="width:50px;">${img}</td>
+            <td>
+              <div style="font-weight:800; color:#fff; font-size:13.5px;">${this.escapeHtml(c.name)}</div>
+              <div style="font-size:11.5px; color:#94a3b8;">${this.escapeHtml(c.category || 'たね')} / ${emblem} ${this.escapeHtml(c.type || '無色')}${c.hp ? ' / HP ' + c.hp : ''}</div>
+            </td>
+            <td style="text-align:right; width:110px;">
+              <span class="rate-percent-badge">${item.percent.toFixed(3)}%</span>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      container.innerHTML = `
+        <table class="pack-rates-table">
+          <thead>
+            <tr>
+              <th style="text-align:center;">レア</th>
+              <th></th>
+              <th>カード名 / 種類</th>
+              <th style="text-align:right;">排出確率</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+      `;
+    },
+
+    buyAndOpenPack(packId, isFree = false, isLogbo = false) {
       const pack = (this.state.packs || []).find(p => p.id === packId) || (this.state.packs && this.state.packs[0]);
       if (!pack) {
         this.toast('指定されたパックが見つかりません', true);
@@ -26145,24 +27084,30 @@ console.log('[ORBITAL] App.js.html started execution');
         this.setUserNmt(curNmt - pack.price);
       }
 
-      // カードプールからランダムにカードを抽選 (パック設定済みの収録対象カードプールを優先)
-      const allCards = this.getAllCards();
-      let targetPool = allCards;
-      if (Array.isArray(pack.cardPool) && pack.cardPool.length > 0) {
-        const filtered = allCards.filter(c => pack.cardPool.includes(c.id) || pack.cardPool.includes(c.name));
-        if (filtered.length > 0) targetPool = filtered;
-      }
+      this.state.currentOpeningPackId = packId;
 
+      // 排出率設定に基づき確率重み付け抽選を行う
+      const ratesData = this.getPackEmissionRates(packId);
+      const cardList = ratesData.cardList;
       const count = pack.cardCount || 5;
       const drawnCards = [];
 
-      if (targetPool.length > 0) {
-        const available = [...targetPool];
+      if (cardList && cardList.length > 0) {
         for (let i = 0; i < count; i++) {
-          let poolToUse = available.filter(cand => !drawnCards.some(d => (d.id && cand.id && String(d.id) === String(cand.id)) || (d.name && cand.name && d.name === cand.name)));
-          if (poolToUse.length === 0) poolToUse = available;
-          const randCard = poolToUse[Math.floor(Math.random() * poolToUse.length)];
-          drawnCards.push(JSON.parse(JSON.stringify(randCard)));
+          let poolToUse = cardList.filter(cand => !drawnCards.some(d => String(d.id) === String(cand.card.id) || (d.name && cand.card.name && d.name === cand.card.name)));
+          if (poolToUse.length === 0) poolToUse = cardList;
+
+          const totalWeight = poolToUse.reduce((sum, item) => sum + item.percent, 0);
+          let randVal = Math.random() * totalWeight;
+          let selected = poolToUse[0].card;
+          for (let j = 0; j < poolToUse.length; j++) {
+            randVal -= poolToUse[j].percent;
+            if (randVal <= 0) {
+              selected = poolToUse[j].card;
+              break;
+            }
+          }
+          drawnCards.push(JSON.parse(JSON.stringify(selected)));
         }
       } else {
         // デフォルトサンプルカード生成
@@ -26175,7 +27120,7 @@ console.log('[ORBITAL] App.js.html started execution');
             hp: 80,
             attack1Name: 'スターバースト',
             attack1Damage: 40,
-            rarity: (i === 4 ? 'UR' : (i === 3 ? 'SR' : (i === 2 ? 'R' : 'N')))
+            rarity: (i === 4 ? 'SR' : (i === 3 ? 'RR' : (i === 2 ? 'AR' : (i === 1 ? 'R' : 'N'))))
           });
         }
       }
@@ -26194,12 +27139,24 @@ console.log('[ORBITAL] App.js.html started execution');
         try { localStorage.setItem('ORBITAL_CUSTOM_CARDS', JSON.stringify(CardSystem.customCards)); } catch(e) {}
       }
 
-      this.openPackOpeningModal(pack);
+      this.openPackOpeningModal(pack, isLogbo);
     },
 
-    openPackOpeningModal(pack) {
+    openPackOpeningModal(pack, isLogbo = false) {
       const titleEl = this.el('packFoilTitle');
       if (titleEl) titleEl.textContent = pack.title || '拡張パック';
+      const headerEl = this.el('packFoilHeader');
+      if (headerEl) headerEl.textContent = isLogbo ? '🎁 ログボ特典 (ランダム当選)' : 'ORCEIN BOOSTER';
+      const subEl = this.el('packFoilSub');
+      if (subEl) subEl.textContent = isLogbo ? '🎁 既存パックからランダム選出！' : ((pack.cardCount || 5) + ' CARDS INSIDE');
+      const artEl = this.el('packFoilArt');
+      if (artEl) {
+        if (pack.image) {
+          artEl.innerHTML = '<img src="' + this.escapeHtml(pack.image) + '" style="width:72px; height:72px; object-fit:cover; border-radius:10px;">';
+        } else {
+          artEl.textContent = isLogbo ? '🎁' : '🧪';
+        }
+      }
       const stageVis = this.el('packStageVisual');
       const revealStage = this.el('packRevealStage');
       if (stageVis) stageVis.style.display = 'flex';
@@ -26258,14 +27215,18 @@ console.log('[ORBITAL] App.js.html started execution');
       inner.classList.add('flipped');
       if (!card) return;
 
-      if (card.rarity === 'UR' || card.rarity === 'SR') {
+      if (card.rarity === 'SR' || card.rarity === 'UR') {
         const glow = document.createElement('div');
         glow.className = 'ur-glow-effect';
         document.body.appendChild(glow);
         setTimeout(() => { if (glow.parentNode) glow.parentNode.removeChild(glow); }, 1500);
-        this.toast('🌟 ULTRA RARE！【' + card.name + '】を引き当てました！');
+        this.toast('✨ SUPER RARE！【' + card.name + '】を引き当てました！');
+      } else if (card.rarity === 'RR') {
+        this.toast('⚡ DOUBLE RARE！【' + card.name + '】を引き当てました！');
+      } else if (card.rarity === 'AR') {
+        this.toast('🎨 ART RARE！【' + card.name + '】を引き当てました！');
       } else if (card.rarity === 'R') {
-        this.toast('✨ RARE！【' + card.name + '】を手に入れました！');
+        this.toast('🔷 RARE！【' + card.name + '】を手に入れました！');
       }
     },
 
@@ -26858,10 +27819,19 @@ console.log('[ORBITAL] App.js.html started execution');
     onAuthSuccess(userObj) {
       if (!userObj) return;
       userObj.isLoggedIn = true;
+      if (userObj.lastBonusDate) userObj.lastBonusDate = this.normalizeDateStr(userObj.lastBonusDate);
       this.state.userProfile = userObj;
       try {
         localStorage.setItem('ORBITAL_LOGGED_IN_USER', JSON.stringify(userObj));
         localStorage.setItem('orbital_mock_user_email', userObj.email);
+        if (userObj.lastBonusDate) {
+          localStorage.setItem('ORBITAL_LAST_DAILY_BONUS', userObj.lastBonusDate);
+          localStorage.setItem('ORBITAL_LAST_DAILY_BONUS_' + userObj.email, userObj.lastBonusDate);
+        }
+        if (userObj.streakDay) {
+          localStorage.setItem('ORBITAL_LOGIN_STREAK_DAY', String(userObj.streakDay));
+          localStorage.setItem('ORBITAL_LOGIN_STREAK_DAY_' + userObj.email, String(userObj.streakDay));
+        }
       } catch(e) {}
 
       if (userObj.nmtBalance != null) {
@@ -26883,8 +27853,16 @@ console.log('[ORBITAL] App.js.html started execution');
       }
 
       this.updateUserBadge();
+      this.updateNmtBadge();
+      this.renderDailyBonusStreak();
       this.closeAuthModal();
       this.toast('✨ ログイン完了: ようこそ ' + (userObj.displayName || userObj.email) + ' さん！');
+
+      // 本日のボーナスがまだ未受取ならモーダルを案内
+      const { isClaimedToday } = this.getLoginStreakInfo();
+      if (!isClaimedToday) {
+        setTimeout(() => this.openDailyBonusModal(), 600);
+      }
     },
 
     logout() {
@@ -26896,6 +27874,8 @@ console.log('[ORBITAL] App.js.html started execution');
         window.DeckSystem.state.currentUser = null;
       }
       this.updateUserBadge();
+      this.updateNmtBadge();
+      this.renderDailyBonusStreak();
       this.toast('👋 ログアウトしました');
     },
 
@@ -26946,7 +27926,18 @@ console.log('[ORBITAL] App.js.html started execution');
         try {
           google.script.run.withSuccessHandler((prof) => {
             if (!prof || !prof.email) return;
+            if (prof.lastBonusDate) prof.lastBonusDate = self.normalizeDateStr(prof.lastBonusDate);
             self.state.userProfile = prof;
+            try {
+              if (prof.lastBonusDate) {
+                localStorage.setItem('ORBITAL_LAST_DAILY_BONUS', prof.lastBonusDate);
+                localStorage.setItem('ORBITAL_LAST_DAILY_BONUS_' + prof.email, prof.lastBonusDate);
+              }
+              if (prof.streakDay) {
+                localStorage.setItem('ORBITAL_LOGIN_STREAK_DAY', String(prof.streakDay));
+                localStorage.setItem('ORBITAL_LOGIN_STREAK_DAY_' + prof.email, String(prof.streakDay));
+              }
+            } catch(e) {}
             if (prof.nmtBalance != null) {
               const val = Number(prof.nmtBalance);
               self.state.nmt = val;
@@ -26967,6 +27958,8 @@ console.log('[ORBITAL] App.js.html started execution');
                 window.DeckSystem.updateUserBadge();
               }
             }
+            self.updateNmtBadge();
+            self.renderDailyBonusStreak();
           }).getUserProfile(targetEmail);
         } catch(e) {
           console.warn('loadUserProfileFromGas error:', e);
@@ -27513,7 +28506,16 @@ console.log('[ORBITAL] App.js.html started execution');
 
     getUserCardCount(cardId) {
       const col = this.getUserCollection();
-      return Number(col[cardId]) || 0;
+      if (!cardId) return 0;
+      const idKey = String(cardId);
+      const byId = Number(col[idKey]) || 0;
+      if (byId > 0) return byId;
+      const allCards = this.getAllCards();
+      const match = allCards.find(c => String(c.id) === idKey || String(c.name) === idKey);
+      if (match && match.name) {
+        return Number(col[String(match.name)]) || 0;
+      }
+      return 0;
     },
 
     escapeHtml(str) {
