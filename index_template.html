@@ -8957,10 +8957,11 @@
               <option value="">全レアリティ</option>
               <option value="N">N</option>
               <option value="R">R</option>
+              <option value="AR">AR</option>
+              <option value="RR">RR</option>
               <option value="SR">SR</option>
-                        <option value="UR">UR</option>
-                        <option value="ACE">ACE (ACE SPEC)</option>
               <option value="UR">UR</option>
+              <option value="ACESPEC">ACESPEC</option>
             </select>
             <select id="collectionOwnedFilter" class="input">
               <option value="">すべてのカード</option>
@@ -9019,8 +9020,11 @@
               <option value="">全レアリティ</option>
               <option value="N">N</option>
               <option value="R">R</option>
+              <option value="AR">AR</option>
+              <option value="RR">RR</option>
               <option value="SR">SR</option>
               <option value="UR">UR</option>
+              <option value="ACESPEC">ACESPEC</option>
             </select>
           </div>
 
@@ -9093,6 +9097,8 @@
                         <option value="AR">AR</option>
                         <option value="RR">RR</option>
                         <option value="SR">SR</option>
+                        <option value="UR">UR</option>
+                        <option value="ACESPEC">ACESPEC</option>
                       </select>
                     </label>
                     <label id="aceSpecLabel" class="ace-spec-form-label" style="display: flex; flex-direction: column; justify-content: flex-end;">
@@ -9225,6 +9231,12 @@
                     <button id="trainerEffectButton" type="button"
                       class="primary-button compact-btn effect-editor-open">⚙ バトル処理コードを編集</button>
                     <span id="trainerEffectSummary" class="muted effect-summary-text"></span>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
+                    <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer; height: 34px; background: rgba(244, 63, 94, 0.12); border: 1.5px solid rgba(244, 63, 94, 0.4); border-radius: 8px; padding: 0 12px; margin: 0; transition: all 0.2s ease;">
+                      <input id="isAceSpecTrainer" type="checkbox" style="width: 16px; height: 16px; accent-color: #f43f5e; cursor: pointer;">
+                      <span style="font-size: 12px; font-weight: 800; color: #fda4af;">✨ ACE SPEC (デッキ1枚制限)</span>
+                    </label>
                   </div>
                 </div>
 

@@ -64,7 +64,8 @@
         retreated: false
       },
       logs: [],
-      activeStadium: null
+      activeStadium: null,
+      delayedEffects: []
     },
 
     // プリセット・フォールバック用AIデッキ
@@ -76,7 +77,7 @@
           { name: 'ピカチュウ', category: 'たね', type: '雷', hp: 70, image: 'https://images.pokemontcg.io/sv3pt5/25_hires.png', attack1Name: 'でんじは', attack1Damage: 20, attack1Energy: '雷', attack1Code: 'damage(opponent.active, 20);', weakness: '闘', retreat: 1, count: 4 },
           { name: 'ライチュウ', category: '1進化', preEvolution: 'ピカチュウ', type: '雷', hp: 120, image: 'https://images.pokemontcg.io/sv3pt5/26_hires.png', attack1Name: 'ギガボルト', attack1Damage: 120, attack1Energy: '雷,雷,雷', attack1Code: 'damage(opponent.active, 120);', weakness: '闘', retreat: 2, count: 3 },
           { name: 'ミライドンex', category: 'たねex', type: '雷', hp: 220, image: 'https://images.pokemontcg.io/sv1/81_hires.png', attack1Name: 'フォトンレーザー', attack1Damage: 120, attack1Energy: '雷,雷', attack1Code: 'damage(opponent.active, 120);', count: 2, isEx: true, retreat: 1 },
-          { name: 'プライムキャッチャー', category: 'グッズ', isAceSpec: true, rarity: 'ACE', type: '', hp: '', image: 'https://images.pokemontcg.io/sv5/157_hires.png', attack1Code: 'const oppTgt = choiceCard(opponent.bench, {}, 1, "相手のベンチポケモンを1匹選ぶ");\nif (oppTgt) switchActive(opponent, oppTgt);\nconst selfTgt = choiceCard(self.bench, {}, 1, "自分のベンチポケモンを1匹選ぶ");\nif (selfTgt) switchActive(self, selfTgt);', attack1Text: '相手のベンチポケモンを1匹選び、バトルポケモンと入れ替える。その後、自分のバトルポケモンをベンチポケモンと入れ替える。', description: 'ACE SPECルール: ACE SPECカードは、デッキに1枚しか入れられない。\n相手のベンチポケモンを1匹選び、バトルポケモンと入れ替える。その後、自分のバトルポケモンをベンチポケモンと入れ替える。', count: 1 },
+          { name: 'プライムキャッチャー', category: 'グッズ', isAceSpec: true, rarity: 'ACESPEC', type: '', hp: '', image: 'https://images.pokemontcg.io/sv5/157_hires.png', attack1Code: 'const oppTgt = choiceCard(opponent.bench, {}, 1, "相手のベンチポケモンを1匹選ぶ");\nif (oppTgt) switchActive(opponent, oppTgt);\nconst selfTgt = choiceCard(self.bench, {}, 1, "自分のベンチポケモンを1匹選ぶ");\nif (selfTgt) switchActive(self, selfTgt);', attack1Text: '相手のベンチポケモンを1匹選び、バトルポケモンと入れ替える。その後、自分のバトルポケモンをベンチポケモンと入れ替える。', description: 'ACE SPECルール: ACE SPECカードは、デッキに1枚しか入れられない。\n相手のベンチポケモンを1匹選び、バトルポケモンと入れ替える。その後、自分のバトルポケモンをベンチポケモンと入れ替える。', count: 1 },
           { name: '大きなおまもり', category: 'ポケモンのどうぐ', type: '', hp: '', image: 'https://images.pokemontcg.io/swsh1/158_hires.png', hpBonus: 30, description: 'このカードをつけているポケモンの最大HPは「+30」される。', count: 2 },
           { name: 'こだわりベルト', category: 'ポケモンのどうぐ', type: '', hp: '', image: 'https://images.pokemontcg.io/swsh9/135_hires.png', damageBonusEx: 30, description: 'このカードをつけているポケモンが使うワザの、相手の「ポケモンex」へのダメージは「+30」される。', count: 2 },
           { name: 'たべのこし', category: 'ポケモンのどうぐ', type: '', hp: '', image: 'https://images.pokemontcg.io/sv3pt5/163_hires.png', turnEndHeal: 20, description: '自分の番の終わりに、このカードをつけているポケモンのHPを「20」回復する。', count: 2 },
@@ -1631,7 +1632,7 @@
       this.state.online.isChatOpen = false;
       this.updateChatUnreadBadge();
       this.state.logs = [];
-
+      this.state.delayedEffects = [];
       const myRole = String(this.state.online.role || 'host').toLowerCase();
       const firstRole = String(firstPlayerRole || 'host').toLowerCase();
       const isMyTurn = (firstRole === myRole);
@@ -2861,7 +2862,7 @@
       this.state.turnNumber = 1;
       this.state.prizeCountRule = prizeCount;
       this.state.logs = [];
-
+      this.state.delayedEffects = [];
       const coin = Math.random() >= 0.5 ? 1 : 0;
       this.state.firstPlayer = coin === 1 ? 'player' : 'opponent';
       this.state.turnPlayer = this.state.firstPlayer;
@@ -3129,6 +3130,111 @@
       this.state.activeLocks = remainingLocks;
     },
 
+    async processDelayedEffects(timing, curTurnWho) {
+      if (!Array.isArray(this.state.delayedEffects) || this.state.delayedEffects.length === 0) return;
+
+      const remaining = [];
+      const toExecute = [];
+
+      for (let item of this.state.delayedEffects) {
+        if (this.state.phase === 'ended') return;
+
+        // 場を離れたら解除フラグ
+        if (item.requireAlive && item.card) {
+          const p = item.sourcePlayer === 'player' ? this.state.player : this.state.opponent;
+          const alive = (p.active === item.card || (p.bench && p.bench.includes(item.card)));
+          if (!alive) {
+            this.log('✦ 【' + (item.card.name || 'カード') + '】が場を離れたため、予約効果（' + item.label + '）は解除されました。');
+            continue;
+          }
+        }
+
+        const isCreatedTurn = (
+          item.createdTurnNumber === this.state.turnNumber &&
+          curTurnWho === item.sourcePlayer
+        );
+
+        if (item.timing === timing) {
+          // 0ターンの場合は即座に対象タイミングで発動 (例: atEndOfTurn)
+          if (item.turnsRemaining <= 0) {
+            toExecute.push(item);
+            continue;
+          }
+
+          let shouldDecrement = false;
+          if (!isCreatedTurn) {
+            if (item.targetPlayer === 'self' && curTurnWho === item.sourcePlayer) {
+              shouldDecrement = true;
+            } else if (item.targetPlayer === 'opponent' && curTurnWho !== item.sourcePlayer) {
+              shouldDecrement = true;
+            } else if (item.targetPlayer === 'any' || item.targetPlayer === 'both') {
+              shouldDecrement = true;
+            }
+          }
+
+          if (shouldDecrement) {
+            item.turnsRemaining--;
+            if (typeof item.options?.onTick === 'function') {
+              try { item.options.onTick(item.turnsRemaining); } catch (e) { console.warn(e); }
+            }
+            if (item.turnsRemaining <= 0) {
+              toExecute.push(item);
+              continue;
+            }
+          }
+        }
+
+        remaining.push(item);
+      }
+
+      this.state.delayedEffects = remaining;
+
+      for (let item of toExecute) {
+        if (this.state.phase === 'ended') return;
+        this.log('⚡ 【' + item.label + '】の予約効果が発動しました！');
+        await this.executeDelayedEffect(item);
+      }
+    },
+
+    async executeDelayedEffect(item) {
+      const { callback, sourcePlayer, card, label } = item;
+      const self = sourcePlayer === 'player' ? this.state.player : this.state.opponent;
+      const opponent = sourcePlayer === 'player' ? this.state.opponent : this.state.player;
+      const game = { players: [this.state.player, this.state.opponent], logs: this.state.logs, state: this.state };
+
+      let ctx = null;
+      if (window.createCardEffectContext) {
+        ctx = window.createCardEffectContext(game, self);
+      } else {
+        ctx = { self, opponent, game, card: card || self.active, pokemon: card || self.active };
+      }
+      ctx.thisPokemon = card || self.active;
+      ctx.card = card || self.active;
+      ctx.pokemon = card || self.active;
+
+      window._currentExecutionContext = ctx;
+
+      try {
+        if (typeof callback === 'function') {
+          const res = callback(self, opponent, game, ctx);
+          if (res && typeof res.then === 'function') {
+            await res;
+          }
+        } else if (typeof callback === 'string' && window.executeCardEffectCode) {
+          await window.executeCardEffectCode(callback, game, self, 'delayedEffect', { card: card || self.active });
+        }
+      } catch (err) {
+        console.error('Error executing delayed effect (' + label + '):', err);
+        this.log('⚠️ 予約効果の実行中にエラーが発生しました: ' + (err?.message || err));
+      } finally {
+        if (window._currentExecutionContext === ctx) {
+          window._currentExecutionContext = null;
+        }
+        this.render();
+      }
+    },
+
+
     promptPromoteFromBench(victim) {
       if (!victim || !victim.bench || !victim.bench.length) return;
       this.showChoiceModal(victim.bench.map((b) => ({ name: b.name, type: b.type, hp: b.hp, category: 'バトル場へ' })), {
@@ -3175,7 +3281,7 @@
       }
     },
 
-    startTurn(turnWho) {
+    async startTurn(turnWho) {
       this.state.turnPlayer = turnWho;
       if (this.state.online) this.state.online.attackedThisTurn = false;
       this.showTurnBanner(turnWho);
@@ -3205,6 +3311,7 @@
       }
 
       this.updateLocksOnTurnChange(turnWho);
+      await this.processDelayedEffects('start', turnWho);
 
       // ターン開始時 (turnStart / start) の自動・強制発動
       // ※ event.on('turnStart', ...) または event.on('start', ...) を明示的に宣言しているコードのみ実行する
@@ -3269,7 +3376,7 @@
       }
     },
 
-    endTurn() {
+    async endTurn() {
       if (this.state.phase === 'ended') return;
       if (this.state.mode === 'online' && this.state.turnPlayer !== 'player') {
         console.warn('⚠️ [endTurn] スキップされました: 自分のターンではありません。');
@@ -3300,6 +3407,7 @@
         curEnding.lastKnockedOutPokemon = null;
         curEnding.lastKnockedOutAlly = null;
       }
+      await this.processDelayedEffects('end', this.state.turnPlayer);
       const turnWhoName = this.state.turnPlayer === 'player' ? (this.state.player.name || 'プレイヤー') : (this.state.opponent.name || '対戦相手');
       this.log("【" + turnWhoName + "】がターンを終了しました。");
 

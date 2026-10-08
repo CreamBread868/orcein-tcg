@@ -167,7 +167,7 @@ var CardSystem;
         '無色': 1, '炎': 2, '水': 3, '草': 4, '雷': 5, '超': 6, '闘': 7, '悪': 8, '鋼': 9
       };
       const rarityOrder = {
-        'ACE': 0.5, 'UR': 1, 'SR': 2, 'RR': 3, 'AR': 4, 'R': 5, 'N': 6
+        'ACESPEC': 0.5, 'ACE': 0.5, 'UR': 1, 'SR': 2, 'RR': 3, 'AR': 4, 'R': 5, 'N': 6
       };
 
       return cards.slice().sort((a, b) => {
@@ -242,7 +242,7 @@ var CardSystem;
         return (!search || String(card.name).toLowerCase().includes(search)) &&
           matchCat &&
           (!type || card.type === type) &&
-          (!rarity || card.rarity === rarity);
+          (!rarity || (rarity === 'ACESPEC' || rarity === 'ACE' ? (card.rarity === 'ACESPEC' || card.rarity === 'ACE' || card.rarity === 'ACESPEC' || !!card.isAceSpec) : card.rarity === rarity));
       });
 
       const cards = this.sortCards(filtered, sortKey);
@@ -360,7 +360,7 @@ var CardSystem;
 
         return (!search || String(card.name).toLowerCase().includes(search)) &&
           matchCat &&
-          (!rarity || card.rarity === rarity);
+          (!rarity || (rarity === 'ACESPEC' || rarity === 'ACE' ? (card.rarity === 'ACESPEC' || card.rarity === 'ACE' || !!card.isAceSpec) : card.rarity === rarity));
       });
 
       const cards = this.sortCards(filtered, sortKey);
@@ -587,6 +587,7 @@ var CardSystem;
         card.aceSpec ||
         card.subCategory === 'ACESPEC' ||
         String(card.rarity || '').toUpperCase() === 'ACE' ||
+        String(card.rarity || '').toUpperCase() === 'ACESPEC' ||
         /ACE\s*SPEC|エーススペック/i.test(String(card.category || '')) ||
         /ACE\s*SPEC|エーススペック/i.test(String(card.subCategory || '')) ||
         /ACE\s*SPEC|エーススペック/i.test(String(card.name || '')) ||
@@ -850,19 +851,41 @@ var CardSystem;
       if (combatSec) combatSec.style.display = isPokemon ? 'block' : 'none';
       if (trainerSec) trainerSec.style.display = (isTrainer || cat === '特殊エネルギー') ? 'block' : 'none';
 
-      const aceEl = document.getElementById('isAceSpec');
+            const aceEl = document.getElementById('isAceSpec');
       const aceTrainerEl = document.getElementById('isAceSpecTrainer');
+      const rarityEl = document.getElementById('rarity');
+
+      const onAceToggle = (isChecked) => {
+        if (aceEl && aceEl.checked !== isChecked) aceEl.checked = isChecked;
+        if (aceTrainerEl && aceTrainerEl.checked !== isChecked) aceTrainerEl.checked = isChecked;
+        if (rarityEl) {
+          if (isChecked) {
+            rarityEl.value = 'ACESPEC';
+          } else if (rarityEl.value === 'ACESPEC' || rarityEl.value === 'ACE') {
+            rarityEl.value = 'R';
+          }
+        }
+        this.updatePreview();
+      };
+
       if (aceEl && !aceEl._hasAceSync) {
         aceEl._hasAceSync = true;
         aceEl.addEventListener('change', () => {
-          if (aceTrainerEl) aceTrainerEl.checked = aceEl.checked;
-          this.updatePreview();
+          onAceToggle(aceEl.checked);
         });
       }
       if (aceTrainerEl && !aceTrainerEl._hasAceSync) {
         aceTrainerEl._hasAceSync = true;
         aceTrainerEl.addEventListener('change', () => {
-          if (aceEl) aceEl.checked = aceTrainerEl.checked;
+          onAceToggle(aceTrainerEl.checked);
+        });
+      }
+      if (rarityEl && !rarityEl._hasAceRaritySync) {
+        rarityEl._hasAceRaritySync = true;
+        rarityEl.addEventListener('change', () => {
+          const isAce = rarityEl.value === 'ACESPEC' || rarityEl.value === 'ACE';
+          if (aceEl && aceEl.checked !== isAce) aceEl.checked = isAce;
+          if (aceTrainerEl && aceTrainerEl.checked !== isAce) aceTrainerEl.checked = isAce;
           this.updatePreview();
         });
       }
@@ -877,7 +900,7 @@ var CardSystem;
       const isAceSpec = !!(
         document.getElementById('isAceSpec')?.checked ||
         document.getElementById('isAceSpecTrainer')?.checked ||
-        val('rarity') === 'ACE'
+        val('rarity') === 'ACE' || val('rarity') === 'ACESPEC'
       );
       const isTrainer = cat === 'グッズ' || cat === 'サポート' || cat === 'トレーナー' || cat === 'スタジアム' || cat === 'ポケモンのどうぐ' || cat === 'どうぐ';
       const isEnergy = cat === 'エネルギー' || cat === '基本エネルギー' || cat === '特殊エネルギー';
@@ -961,6 +984,7 @@ var CardSystem;
           weakness: '',
           resistance: '',
           retreat: '',
+          isAceSpec,
           description: val('description') || 'エネルギーをポケモンにつける。'
         };
       }
@@ -1027,6 +1051,8 @@ var CardSystem;
       if (aceEl) aceEl.checked = false;
       const aceTrainerEl = document.getElementById('isAceSpecTrainer');
       if (aceTrainerEl) aceTrainerEl.checked = false;
+      const rarityEl = document.getElementById('rarity');
+      if (rarityEl) rarityEl.value = 'N';
       this.resetImageAdjust();
       this.syncCategoryForm();
       this.updatePreview();
@@ -1108,7 +1134,7 @@ var CardSystem;
       set('category', card.category);
       set('preEvolution', card.preEvolution);
       set('type', card.type);
-      set('rarity', card.rarity);
+      set('rarity', (isAce && (!card.rarity || card.rarity === 'ACE')) ? 'ACESPEC' : (card.rarity || 'N'));
       set('hp', card.hp);
       set('image', card.image);
       set('imageScale', card.imageScale != null && card.imageScale !== '' ? card.imageScale : 100);
@@ -1592,6 +1618,27 @@ var CardSystem;
 
   document.addEventListener('change', function (e) {
     if (e.target && (e.target.closest('#cardForm') || e.target.form?.id === 'cardForm')) {
+      if (e.target.id === 'isAceSpec' || e.target.id === 'isAceSpecTrainer') {
+        const checked = !!e.target.checked;
+        const otherId = e.target.id === 'isAceSpec' ? 'isAceSpecTrainer' : 'isAceSpec';
+        const otherEl = document.getElementById(otherId);
+        if (otherEl && otherEl.checked !== checked) otherEl.checked = checked;
+        const rarityEl = document.getElementById('rarity');
+        if (rarityEl) {
+          if (checked) {
+            rarityEl.value = 'ACESPEC';
+          } else if (rarityEl.value === 'ACESPEC' || rarityEl.value === 'ACE') {
+            rarityEl.value = 'R';
+          }
+        }
+      } else if (e.target.id === 'rarity') {
+        const isAce = e.target.value === 'ACESPEC' || e.target.value === 'ACE';
+        const a1 = document.getElementById('isAceSpec');
+        const a2 = document.getElementById('isAceSpecTrainer');
+        if (a1 && a1.checked !== isAce) a1.checked = isAce;
+        if (a2 && a2.checked !== isAce) a2.checked = isAce;
+      }
+
       if (window.CardSystem && window.CardSystem.updatePreview) {
         window.CardSystem.updatePreview();
       }

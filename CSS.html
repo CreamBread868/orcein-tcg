@@ -5726,6 +5726,15 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
 }
 
 /* レアリティ別後光エフェクト */
+.rarity-aura-ACESPEC, .rarity-aura-ACE {
+  box-shadow: 0 0 35px rgba(244, 63, 94, 0.95), 0 0 60px rgba(217, 70, 239, 0.8) !important;
+  border-color: #f43f5e !important;
+  animation: auraGlowAce 1.3s infinite alternate ease-in-out;
+}
+@keyframes auraGlowAce {
+  0% { filter: brightness(1) drop-shadow(0 0 12px #f43f5e); }
+  100% { filter: brightness(1.3) drop-shadow(0 0 25px #d946ef); }
+}
 .rarity-aura-UR {
   box-shadow: 0 0 40px rgba(251, 191, 36, 1), 0 0 70px rgba(236, 72, 153, 0.8) !important;
   border-color: #fef08a !important;
@@ -7022,6 +7031,10 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   transform: translateY(-2px);
 }
 
+.pack-rates-chip.rarity-chip-ACESPEC, .pack-rates-chip.rarity-chip-ACE {
+  background: rgba(244, 63, 94, 0.15);
+  border: 1px solid rgba(244, 63, 94, 0.5);
+}
 .pack-rates-chip.rarity-chip-UR {
   border-color: rgba(251, 191, 36, 0.6);
   background: linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(236, 72, 153, 0.15));
@@ -7278,7 +7291,7 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   box-shadow: 0 0 8px rgba(244, 63, 94, 0.6) !important;
 }
 
-.card-rarity-badge.rarity-badge-ACE {
+.card-rarity-badge.rarity-badge-ACE, .card-rarity-badge.rarity-badge-ACESPEC {
   background: linear-gradient(135deg, #e11d48, #d946ef);
   color: #ffffff;
   font-weight: 900;

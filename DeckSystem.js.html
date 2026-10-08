@@ -316,6 +316,7 @@ window.DeckSystem = function () {
       card.aceSpec ||
       card.subCategory === 'ACESPEC' ||
       String(card.rarity || '').toUpperCase() === 'ACE' ||
+          String(card.rarity || '').toUpperCase() === 'ACESPEC' ||
       /ACE\s*SPEC|エーススペック/i.test(String(card.category || '')) ||
       /ACE\s*SPEC|エーススペック/i.test(String(card.subCategory || '')) ||
       /ACE\s*SPEC|エーススペック/i.test(String(card.name || '')) ||

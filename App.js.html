@@ -2274,7 +2274,8 @@ console.log('[ORBITAL] App.js.html started execution');
         'R': 25.0,
         'AR': 11.0,
         'RR': 6.0,
-        'SR': 3.0
+        'SR': 3.0,
+        'ACESPEC': 2.0
       };
 
       const groups = {};
@@ -2286,13 +2287,14 @@ console.log('[ORBITAL] App.js.html started execution');
           else if (r === 'ART RARE') r = 'AR';
           else if (r === 'DOUBLE RARE' || r === 'EX') r = 'RR';
           else if (r === 'SUPER RARE' || r === 'UR' || r === 'ULTRA RARE') r = 'SR';
+          else if (r === 'ACE' || r === 'ACESPEC' || r === 'ACE SPEC') r = 'ACESPEC';
           else r = 'N';
         }
         if (!groups[r]) groups[r] = [];
         groups[r].push(card);
       });
 
-      const rarityKeys = ['N', 'R', 'AR', 'RR', 'SR'];
+      const rarityKeys = ['N', 'R', 'AR', 'RR', 'SR', 'ACESPEC'];
       let activeWeightSum = 0;
       rarityKeys.forEach(r => {
         if (groups[r] && groups[r].length > 0) {
@@ -2368,7 +2370,8 @@ console.log('[ORBITAL] App.js.html started execution');
         'R': '🔷',
         'AR': '🎨',
         'RR': '⚡',
-        'SR': '✨'
+        'SR': '✨',
+        'ACESPEC': '💎'
       };
 
       const chipsHtml = data.raritySummaries.map(s => {
@@ -2646,7 +2649,14 @@ console.log('[ORBITAL] App.js.html started execution');
       inner.classList.add('flipped');
       if (!card) return;
 
-      if (card.rarity === 'SR' || card.rarity === 'UR') {
+      if (card.rarity === 'ACESPEC' || card.rarity === 'ACE' || card.isAceSpec) {
+        const glow = document.createElement('div');
+        glow.className = 'ur-glow-effect';
+        glow.style.background = 'radial-gradient(circle, rgba(244,63,94,0.45) 0%, rgba(217,70,239,0.3) 45%, transparent 75%)';
+        document.body.appendChild(glow);
+        setTimeout(() => { if (glow.parentNode) glow.parentNode.removeChild(glow); }, 1500);
+        this.toast('✨ ACE SPEC！【' + card.name + '】を引き当てました！');
+      } else if (card.rarity === 'SR' || card.rarity === 'UR') {
         const glow = document.createElement('div');
         glow.className = 'ur-glow-effect';
         document.body.appendChild(glow);

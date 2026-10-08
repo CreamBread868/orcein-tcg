@@ -2228,7 +2228,92 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           return true;
         }
         return false;
-      }
+      },
+      afterTurns(ctx, turns = 1, callback = null, options = {}) {
+        if (typeof turns === 'function' || typeof turns === 'string') {
+          options = callback || {};
+          callback = turns;
+          turns = 1;
+        }
+        if (!callback) {
+          console.warn('⚠️ [afterTurns] コールバック関数が指定されていません。');
+          return null;
+        }
+
+        const n = Math.max(0, parseInt(turns, 10) || 0);
+        const opt = (options && typeof options === 'object') ? options : {};
+        const timing = (opt.timing === 'end') ? 'end' : 'start';
+        const targetPlayer = String(opt.player || opt.turnOf || opt.countBy || 'self').toLowerCase();
+
+        const bs = window.BattleSystem;
+        let sourcePlayer = 'player';
+        if (ctx?.self) {
+          if (bs?.state) {
+            sourcePlayer = (ctx.self === bs.state.opponent) ? 'opponent' : 'player';
+          } else if (ctx.self.id === 'opponent') {
+            sourcePlayer = 'opponent';
+          }
+        } else if (bs?.state?.turnPlayer) {
+          sourcePlayer = bs.state.turnPlayer;
+        }
+
+        const sourceCard = ctx?.card || ctx?.thisPokemon || (sourcePlayer === 'player' ? bs?.state?.player?.active : bs?.state?.opponent?.active);
+        const label = opt.label || opt.name || (sourceCard?.name ? `【${sourceCard.name}】` : '予約効果');
+
+        const delayedItem = {
+          id: 'delayed_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+          turnsTotal: n,
+          turnsRemaining: n,
+          callback: callback,
+          sourcePlayer: sourcePlayer,
+          targetPlayer: targetPlayer,
+          timing: timing,
+          label: label,
+          card: sourceCard,
+          requireAlive: !!opt.requireAlive,
+          createdTurnNumber: bs?.state?.turnNumber || 1,
+          createdTurnCount: (sourcePlayer === 'player' ? bs?.state?.player?.turnCount : bs?.state?.opponent?.turnCount) || 1,
+          options: opt
+        };
+
+        if (bs && bs.state) {
+          bs.state.delayedEffects = bs.state.delayedEffects || [];
+          bs.state.delayedEffects.push(delayedItem);
+        }
+
+        const whoLabel = (targetPlayer === 'opponent') ? '相手の番' : (targetPlayer === 'any' || targetPlayer === 'both' ? 'ターン' : '自分の番');
+        const timingLabel = timing === 'end' ? 'の終わり' : '';
+        const scheduleMsg = (n === 0 && timing === 'end')
+          ? `⏳ ${label}の効果を予約しました（この番の終わりに発動）。`
+          : `⏳ ${label}の効果を予約しました（${n}${whoLabel}後${timingLabel}に発動）。`;
+
+        if (bs?.log) {
+          bs.log(scheduleMsg);
+        } else if (ctx?.game?.logs) {
+          ctx.game.logs.push(scheduleMsg);
+        }
+
+        return {
+          id: delayedItem.id,
+          cancel: () => {
+            if (bs?.state?.delayedEffects) {
+              const idx = bs.state.delayedEffects.findIndex(d => d.id === delayedItem.id);
+              if (idx >= 0) {
+                bs.state.delayedEffects.splice(idx, 1);
+                if (bs.log) bs.log(`✦ ${label}の予約効果がキャンセルされました。`);
+                return true;
+              }
+            }
+            return false;
+          }
+        };
+      },
+      afterTurn(ctx, turns, cb, opt) { return this.afterTurns(ctx, turns, cb, opt); },
+      delayTurns(ctx, turns, cb, opt) { return this.afterTurns(ctx, turns, cb, opt); },
+      delayTurn(ctx, turns, cb, opt) { return this.afterTurns(ctx, turns, cb, opt); },
+      waitTurns(ctx, turns, cb, opt) { return this.afterTurns(ctx, turns, cb, opt); },
+      waitTurn(ctx, turns, cb, opt) { return this.afterTurns(ctx, turns, cb, opt); },
+      atEndOfTurn(ctx, cb) { return this.afterTurns(ctx, 0, cb, { timing: 'end' }); }
     };
 
     const BILINGUAL_CATEGORY_MAP = {
@@ -2539,7 +2624,14 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         getPreEvolution: (c) => api.getPreEvolution(ctx, c),
         getNextEvolutions: (c, s) => api.getNextEvolutions(ctx, c, s),
         isEvolutionOf: (e, b, s) => api.isEvolutionOf(ctx, e, b, s),
-        rareCandy: (p) => api.rareCandy(ctx, p)
+        rareCandy: (p) => api.rareCandy(ctx, p),
+        afterTurns: (n, fn, opt) => api.afterTurns(ctx, n, fn, opt),
+        afterTurn: (n, fn, opt) => api.afterTurn(ctx, n, fn, opt),
+        delayTurns: (n, fn, opt) => api.delayTurns(ctx, n, fn, opt),
+        delayTurn: (n, fn, opt) => api.delayTurn(ctx, n, fn, opt),
+        waitTurns: (n, fn, opt) => api.waitTurns(ctx, n, fn, opt),
+        waitTurn: (n, fn, opt) => api.waitTurn(ctx, n, fn, opt),
+        atEndOfTurn: (fn) => api.atEndOfTurn(ctx, fn)
       };
 
       const attachGetters = (pk) => {
@@ -2682,6 +2774,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         'rareCandy',
         'hasTool', 'getTool', 'attachTool', 'discardTool',
         'getStadium', 'setStadium', 'discardStadium', 'hasStadium',
+        'afterTurns', 'afterTurn', 'delayTurns', 'delayTurn', 'waitTurns', 'waitTurn', 'atEndOfTurn',
         '{\n' + asyncCode + '\n}'
       );
       try {
@@ -2712,7 +2805,8 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           ctx.isFirstTurn, ctx.isFirstPlayerFirstTurn, ctx.isJustPlayed,
           ctx.getPreEvolution, ctx.getNextEvolutions, ctx.isEvolutionOf,
           ctx.rareCandy,
-          ctx.getStadium, ctx.setStadium, ctx.discardStadium, ctx.hasStadium
+          ctx.getStadium, ctx.setStadium, ctx.discardStadium, ctx.hasStadium,
+          ctx.afterTurns, ctx.afterTurn, ctx.delayTurns, ctx.delayTurn, ctx.waitTurns, ctx.waitTurn, ctx.atEndOfTurn
         );
         if (eventName) await ctx.event.emit(eventName, eventData);
       } catch (e) {
@@ -2778,6 +2872,13 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
     window.blockEvolution = (tgt, opt) => window.ORBITAL_EFFECT_API.blockEvolution(null, tgt, opt);
     window.blockEffect = (tgt, opt) => window.ORBITAL_EFFECT_API.blockEffect(null, tgt, opt);
     window.cant = (r) => window.ORBITAL_EFFECT_API.cant(null, r);
+    window.afterTurns = (n, fn, opt) => window.ORBITAL_EFFECT_API.afterTurns(null, n, fn, opt);
+    window.afterTurn = (n, fn, opt) => window.ORBITAL_EFFECT_API.afterTurn(null, n, fn, opt);
+    window.delayTurns = (n, fn, opt) => window.ORBITAL_EFFECT_API.delayTurns(null, n, fn, opt);
+    window.delayTurn = (n, fn, opt) => window.ORBITAL_EFFECT_API.delayTurn(null, n, fn, opt);
+    window.waitTurns = (n, fn, opt) => window.ORBITAL_EFFECT_API.waitTurns(null, n, fn, opt);
+    window.waitTurn = (n, fn, opt) => window.ORBITAL_EFFECT_API.waitTurn(null, n, fn, opt);
+    window.atEndOfTurn = (fn) => window.ORBITAL_EFFECT_API.atEndOfTurn(null, fn);
     window.useLimit = (n) => window.ORBITAL_EFFECT_API.useLimit(null, n);
     window.limitPerTurn = (n) => window.ORBITAL_EFFECT_API.limitPerTurn(null, n);
     window.timesPerTurn = (n) => window.ORBITAL_EFFECT_API.timesPerTurn(null, n);

@@ -798,6 +798,33 @@ var EffectEditor;
       targets: ['attack1', 'attack2', 'ability']
     },
     {
+      keyword: 'afterTurns',
+      label: 'afterTurns(1, () => { ... });',
+      category: 'action',
+      badge: 'nターン後に実行',
+      desc: '指定ターン数後に() => {}内の効果を実行する（例: 1ターン後に相手バトル場に50ダメージ、カードを2枚引く等）',
+      snippet: 'afterTurns(1, () => {\n  damage(opponent.active, 50);\n});',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'afterTurn',
+      label: 'afterTurn(1, () => { ... });',
+      category: 'action',
+      badge: '1ターン後に実行',
+      desc: '1ターン後（次の自分の番）に() => {}内の効果を実行する（エイリアス）',
+      snippet: 'afterTurn(1, () => {\n  draw(2);\n});',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'atEndOfTurn',
+      label: 'atEndOfTurn(() => { ... });',
+      category: 'action',
+      badge: 'この番の終わりに実行',
+      desc: '現在の番の終了時に() => {}内の効果を実行する',
+      snippet: 'atEndOfTurn(() => {\n  heal(self.active, 30);\n});',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
       keyword: 'nextTurnDamage',
       label: 'nextTurnDamage(80);',
       category: 'action',
@@ -2511,6 +2538,23 @@ var EffectEditor;
             { keyword: '2', label: '2 (2枚)', category: 'arg', badge: '引数4:枚数', desc: '2枚選ぶ', snippet: '2' },
             { keyword: '3', label: '3 (3枚)', category: 'arg', badge: '引数4:枚数', desc: '3枚選ぶ', snippet: '3' },
             { keyword: '4', label: '4 (4枚)', category: 'arg', badge: '引数4:枚数', desc: '4枚選ぶ', snippet: '4' }
+          ];
+        }
+      }
+
+            if (fn === 'afterTurns' || fn === 'afterTurn' || fn === 'delayTurns' || fn === 'delayTurn') {
+        if (idx === 0) {
+          return [
+            { keyword: '1', label: '1 (1ターン後 / 次の自分の番)', category: 'arg', badge: 'ターン数:1', desc: '1ターン後（次の自分の番）に発動', snippet: '1' },
+            { keyword: '2', label: '2 (2ターン後)', category: 'arg', badge: 'ターン数:2', desc: '2ターン後に発動', snippet: '2' },
+            { keyword: '3', label: '3 (3ターン後)', category: 'arg', badge: 'ターン数:3', desc: '3ターン後に発動', snippet: '3' }
+          ];
+        }
+        if (idx === 1) {
+          return [
+            { keyword: '() => {\n  damage(opponent.active, 50);\n}', label: '() => { damage(...) }', category: 'arg', badge: '効果コールバック', desc: 'nターン後に実行する効果', snippet: '() => {\n  damage(opponent.active, 50);\n}' },
+            { keyword: '() => {\n  draw(2);\n}', label: '() => { draw(2) }', category: 'arg', badge: '効果コールバック', desc: 'nターン後に2枚ドロー', snippet: '() => {\n  draw(2);\n}' },
+            { keyword: '() => {\n  heal(self.active, 40);\n}', label: '() => { heal(...) }', category: 'arg', badge: '効果コールバック', desc: 'nターン後にHP回復', snippet: '() => {\n  heal(self.active, 40);\n}' }
           ];
         }
       }

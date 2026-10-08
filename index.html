@@ -5735,6 +5735,15 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
 }
 
 /* レアリティ別後光エフェクト */
+.rarity-aura-ACESPEC, .rarity-aura-ACE {
+  box-shadow: 0 0 35px rgba(244, 63, 94, 0.95), 0 0 60px rgba(217, 70, 239, 0.8) !important;
+  border-color: #f43f5e !important;
+  animation: auraGlowAce 1.3s infinite alternate ease-in-out;
+}
+@keyframes auraGlowAce {
+  0% { filter: brightness(1) drop-shadow(0 0 12px #f43f5e); }
+  100% { filter: brightness(1.3) drop-shadow(0 0 25px #d946ef); }
+}
 .rarity-aura-UR {
   box-shadow: 0 0 40px rgba(251, 191, 36, 1), 0 0 70px rgba(236, 72, 153, 0.8) !important;
   border-color: #fef08a !important;
@@ -7031,6 +7040,10 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   transform: translateY(-2px);
 }
 
+.pack-rates-chip.rarity-chip-ACESPEC, .pack-rates-chip.rarity-chip-ACE {
+  background: rgba(244, 63, 94, 0.15);
+  border: 1px solid rgba(244, 63, 94, 0.5);
+}
 .pack-rates-chip.rarity-chip-UR {
   border-color: rgba(251, 191, 36, 0.6);
   background: linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(236, 72, 153, 0.15));
@@ -7287,7 +7300,7 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   box-shadow: 0 0 8px rgba(244, 63, 94, 0.6) !important;
 }
 
-.card-rarity-badge.rarity-badge-ACE {
+.card-rarity-badge.rarity-badge-ACE, .card-rarity-badge.rarity-badge-ACESPEC {
   background: linear-gradient(135deg, #e11d48, #d946ef);
   color: #ffffff;
   font-weight: 900;
@@ -8452,10 +8465,11 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
               <option value="">全レアリティ</option>
               <option value="N">N</option>
               <option value="R">R</option>
+              <option value="AR">AR</option>
+              <option value="RR">RR</option>
               <option value="SR">SR</option>
-                        <option value="UR">UR</option>
-                        <option value="ACE">ACE (ACE SPEC)</option>
               <option value="UR">UR</option>
+              <option value="ACESPEC">ACESPEC</option>
             </select>
             <select id="collectionOwnedFilter" class="input">
               <option value="">すべてのカード</option>
@@ -8514,8 +8528,11 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
               <option value="">全レアリティ</option>
               <option value="N">N</option>
               <option value="R">R</option>
+              <option value="AR">AR</option>
+              <option value="RR">RR</option>
               <option value="SR">SR</option>
               <option value="UR">UR</option>
+              <option value="ACESPEC">ACESPEC</option>
             </select>
           </div>
 
@@ -8588,6 +8605,8 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
                         <option value="AR">AR</option>
                         <option value="RR">RR</option>
                         <option value="SR">SR</option>
+                        <option value="UR">UR</option>
+                        <option value="ACESPEC">ACESPEC</option>
                       </select>
                     </label>
                     <label id="aceSpecLabel" class="ace-spec-form-label" style="display: flex; flex-direction: column; justify-content: flex-end;">
@@ -8720,6 +8739,12 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
                     <button id="trainerEffectButton" type="button"
                       class="primary-button compact-btn effect-editor-open">⚙ バトル処理コードを編集</button>
                     <span id="trainerEffectSummary" class="muted effect-summary-text"></span>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
+                    <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer; height: 34px; background: rgba(244, 63, 94, 0.12); border: 1.5px solid rgba(244, 63, 94, 0.4); border-radius: 8px; padding: 0 12px; margin: 0; transition: all 0.2s ease;">
+                      <input id="isAceSpecTrainer" type="checkbox" style="width: 16px; height: 16px; accent-color: #f43f5e; cursor: pointer;">
+                      <span style="font-size: 12px; font-weight: 800; color: #fda4af;">✨ ACE SPEC (デッキ1枚制限)</span>
+                    </label>
                   </div>
                 </div>
 
@@ -12263,7 +12288,92 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           return true;
         }
         return false;
-      }
+      },
+      afterTurns(ctx, turns = 1, callback = null, options = {}) {
+        if (typeof turns === 'function' || typeof turns === 'string') {
+          options = callback || {};
+          callback = turns;
+          turns = 1;
+        }
+        if (!callback) {
+          console.warn('⚠️ [afterTurns] コールバック関数が指定されていません。');
+          return null;
+        }
+
+        const n = Math.max(0, parseInt(turns, 10) || 0);
+        const opt = (options && typeof options === 'object') ? options : {};
+        const timing = (opt.timing === 'end') ? 'end' : 'start';
+        const targetPlayer = String(opt.player || opt.turnOf || opt.countBy || 'self').toLowerCase();
+
+        const bs = window.BattleSystem;
+        let sourcePlayer = 'player';
+        if (ctx?.self) {
+          if (bs?.state) {
+            sourcePlayer = (ctx.self === bs.state.opponent) ? 'opponent' : 'player';
+          } else if (ctx.self.id === 'opponent') {
+            sourcePlayer = 'opponent';
+          }
+        } else if (bs?.state?.turnPlayer) {
+          sourcePlayer = bs.state.turnPlayer;
+        }
+
+        const sourceCard = ctx?.card || ctx?.thisPokemon || (sourcePlayer === 'player' ? bs?.state?.player?.active : bs?.state?.opponent?.active);
+        const label = opt.label || opt.name || (sourceCard?.name ? `【${sourceCard.name}】` : '予約効果');
+
+        const delayedItem = {
+          id: 'delayed_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+          turnsTotal: n,
+          turnsRemaining: n,
+          callback: callback,
+          sourcePlayer: sourcePlayer,
+          targetPlayer: targetPlayer,
+          timing: timing,
+          label: label,
+          card: sourceCard,
+          requireAlive: !!opt.requireAlive,
+          createdTurnNumber: bs?.state?.turnNumber || 1,
+          createdTurnCount: (sourcePlayer === 'player' ? bs?.state?.player?.turnCount : bs?.state?.opponent?.turnCount) || 1,
+          options: opt
+        };
+
+        if (bs && bs.state) {
+          bs.state.delayedEffects = bs.state.delayedEffects || [];
+          bs.state.delayedEffects.push(delayedItem);
+        }
+
+        const whoLabel = (targetPlayer === 'opponent') ? '相手の番' : (targetPlayer === 'any' || targetPlayer === 'both' ? 'ターン' : '自分の番');
+        const timingLabel = timing === 'end' ? 'の終わり' : '';
+        const scheduleMsg = (n === 0 && timing === 'end')
+          ? `⏳ ${label}の効果を予約しました（この番の終わりに発動）。`
+          : `⏳ ${label}の効果を予約しました（${n}${whoLabel}後${timingLabel}に発動）。`;
+
+        if (bs?.log) {
+          bs.log(scheduleMsg);
+        } else if (ctx?.game?.logs) {
+          ctx.game.logs.push(scheduleMsg);
+        }
+
+        return {
+          id: delayedItem.id,
+          cancel: () => {
+            if (bs?.state?.delayedEffects) {
+              const idx = bs.state.delayedEffects.findIndex(d => d.id === delayedItem.id);
+              if (idx >= 0) {
+                bs.state.delayedEffects.splice(idx, 1);
+                if (bs.log) bs.log(`✦ ${label}の予約効果がキャンセルされました。`);
+                return true;
+              }
+            }
+            return false;
+          }
+        };
+      },
+      afterTurn(ctx, turns, cb, opt) { return this.afterTurns(ctx, turns, cb, opt); },
+      delayTurns(ctx, turns, cb, opt) { return this.afterTurns(ctx, turns, cb, opt); },
+      delayTurn(ctx, turns, cb, opt) { return this.afterTurns(ctx, turns, cb, opt); },
+      waitTurns(ctx, turns, cb, opt) { return this.afterTurns(ctx, turns, cb, opt); },
+      waitTurn(ctx, turns, cb, opt) { return this.afterTurns(ctx, turns, cb, opt); },
+      atEndOfTurn(ctx, cb) { return this.afterTurns(ctx, 0, cb, { timing: 'end' }); }
     };
 
     const BILINGUAL_CATEGORY_MAP = {
@@ -12574,7 +12684,14 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         getPreEvolution: (c) => api.getPreEvolution(ctx, c),
         getNextEvolutions: (c, s) => api.getNextEvolutions(ctx, c, s),
         isEvolutionOf: (e, b, s) => api.isEvolutionOf(ctx, e, b, s),
-        rareCandy: (p) => api.rareCandy(ctx, p)
+        rareCandy: (p) => api.rareCandy(ctx, p),
+        afterTurns: (n, fn, opt) => api.afterTurns(ctx, n, fn, opt),
+        afterTurn: (n, fn, opt) => api.afterTurn(ctx, n, fn, opt),
+        delayTurns: (n, fn, opt) => api.delayTurns(ctx, n, fn, opt),
+        delayTurn: (n, fn, opt) => api.delayTurn(ctx, n, fn, opt),
+        waitTurns: (n, fn, opt) => api.waitTurns(ctx, n, fn, opt),
+        waitTurn: (n, fn, opt) => api.waitTurn(ctx, n, fn, opt),
+        atEndOfTurn: (fn) => api.atEndOfTurn(ctx, fn)
       };
 
       const attachGetters = (pk) => {
@@ -12717,6 +12834,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         'rareCandy',
         'hasTool', 'getTool', 'attachTool', 'discardTool',
         'getStadium', 'setStadium', 'discardStadium', 'hasStadium',
+        'afterTurns', 'afterTurn', 'delayTurns', 'delayTurn', 'waitTurns', 'waitTurn', 'atEndOfTurn',
         '{\n' + asyncCode + '\n}'
       );
       try {
@@ -12747,7 +12865,8 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           ctx.isFirstTurn, ctx.isFirstPlayerFirstTurn, ctx.isJustPlayed,
           ctx.getPreEvolution, ctx.getNextEvolutions, ctx.isEvolutionOf,
           ctx.rareCandy,
-          ctx.getStadium, ctx.setStadium, ctx.discardStadium, ctx.hasStadium
+          ctx.getStadium, ctx.setStadium, ctx.discardStadium, ctx.hasStadium,
+          ctx.afterTurns, ctx.afterTurn, ctx.delayTurns, ctx.delayTurn, ctx.waitTurns, ctx.waitTurn, ctx.atEndOfTurn
         );
         if (eventName) await ctx.event.emit(eventName, eventData);
       } catch (e) {
@@ -12813,6 +12932,13 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
     window.blockEvolution = (tgt, opt) => window.ORBITAL_EFFECT_API.blockEvolution(null, tgt, opt);
     window.blockEffect = (tgt, opt) => window.ORBITAL_EFFECT_API.blockEffect(null, tgt, opt);
     window.cant = (r) => window.ORBITAL_EFFECT_API.cant(null, r);
+    window.afterTurns = (n, fn, opt) => window.ORBITAL_EFFECT_API.afterTurns(null, n, fn, opt);
+    window.afterTurn = (n, fn, opt) => window.ORBITAL_EFFECT_API.afterTurn(null, n, fn, opt);
+    window.delayTurns = (n, fn, opt) => window.ORBITAL_EFFECT_API.delayTurns(null, n, fn, opt);
+    window.delayTurn = (n, fn, opt) => window.ORBITAL_EFFECT_API.delayTurn(null, n, fn, opt);
+    window.waitTurns = (n, fn, opt) => window.ORBITAL_EFFECT_API.waitTurns(null, n, fn, opt);
+    window.waitTurn = (n, fn, opt) => window.ORBITAL_EFFECT_API.waitTurn(null, n, fn, opt);
+    window.atEndOfTurn = (fn) => window.ORBITAL_EFFECT_API.atEndOfTurn(null, fn);
     window.useLimit = (n) => window.ORBITAL_EFFECT_API.useLimit(null, n);
     window.limitPerTurn = (n) => window.ORBITAL_EFFECT_API.limitPerTurn(null, n);
     window.timesPerTurn = (n) => window.ORBITAL_EFFECT_API.timesPerTurn(null, n);
@@ -13641,6 +13767,33 @@ var EffectEditor;
       desc: '自分のベンチポケモンを1匹選び、HPを回復する',
       snippet: 'const target = choiceCard(self.bench);\nheal(target, 30);',
       targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'afterTurns',
+      label: 'afterTurns(1, () => { ... });',
+      category: 'action',
+      badge: 'nターン後に実行',
+      desc: '指定ターン数後に() => {}内の効果を実行する（例: 1ターン後に相手バトル場に50ダメージ、カードを2枚引く等）',
+      snippet: 'afterTurns(1, () => {\n  damage(opponent.active, 50);\n});',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'afterTurn',
+      label: 'afterTurn(1, () => { ... });',
+      category: 'action',
+      badge: '1ターン後に実行',
+      desc: '1ターン後（次の自分の番）に() => {}内の効果を実行する（エイリアス）',
+      snippet: 'afterTurn(1, () => {\n  draw(2);\n});',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'atEndOfTurn',
+      label: 'atEndOfTurn(() => { ... });',
+      category: 'action',
+      badge: 'この番の終わりに実行',
+      desc: '現在の番の終了時に() => {}内の効果を実行する',
+      snippet: 'atEndOfTurn(() => {\n  heal(self.active, 30);\n});',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
     },
     {
       keyword: 'nextTurnDamage',
@@ -15360,6 +15513,23 @@ var EffectEditor;
         }
       }
 
+            if (fn === 'afterTurns' || fn === 'afterTurn' || fn === 'delayTurns' || fn === 'delayTurn') {
+        if (idx === 0) {
+          return [
+            { keyword: '1', label: '1 (1ターン後 / 次の自分の番)', category: 'arg', badge: 'ターン数:1', desc: '1ターン後（次の自分の番）に発動', snippet: '1' },
+            { keyword: '2', label: '2 (2ターン後)', category: 'arg', badge: 'ターン数:2', desc: '2ターン後に発動', snippet: '2' },
+            { keyword: '3', label: '3 (3ターン後)', category: 'arg', badge: 'ターン数:3', desc: '3ターン後に発動', snippet: '3' }
+          ];
+        }
+        if (idx === 1) {
+          return [
+            { keyword: '() => {\n  damage(opponent.active, 50);\n}', label: '() => { damage(...) }', category: 'arg', badge: '効果コールバック', desc: 'nターン後に実行する効果', snippet: '() => {\n  damage(opponent.active, 50);\n}' },
+            { keyword: '() => {\n  draw(2);\n}', label: '() => { draw(2) }', category: 'arg', badge: '効果コールバック', desc: 'nターン後に2枚ドロー', snippet: '() => {\n  draw(2);\n}' },
+            { keyword: '() => {\n  heal(self.active, 40);\n}', label: '() => { heal(...) }', category: 'arg', badge: '効果コールバック', desc: 'nターン後にHP回復', snippet: '() => {\n  heal(self.active, 40);\n}' }
+          ];
+        }
+      }
+
       // 2. damage
       if (fn === 'damage') {
         if (idx === 0) {
@@ -16498,7 +16668,7 @@ var CardSystem;
         '無色': 1, '炎': 2, '水': 3, '草': 4, '雷': 5, '超': 6, '闘': 7, '悪': 8, '鋼': 9
       };
       const rarityOrder = {
-        'ACE': 0.5, 'UR': 1, 'SR': 2, 'RR': 3, 'AR': 4, 'R': 5, 'N': 6
+        'ACESPEC': 0.5, 'ACE': 0.5, 'UR': 1, 'SR': 2, 'RR': 3, 'AR': 4, 'R': 5, 'N': 6
       };
 
       return cards.slice().sort((a, b) => {
@@ -16573,7 +16743,7 @@ var CardSystem;
         return (!search || String(card.name).toLowerCase().includes(search)) &&
           matchCat &&
           (!type || card.type === type) &&
-          (!rarity || card.rarity === rarity);
+          (!rarity || (rarity === 'ACESPEC' || rarity === 'ACE' ? (card.rarity === 'ACESPEC' || card.rarity === 'ACE' || card.rarity === 'ACESPEC' || !!card.isAceSpec) : card.rarity === rarity));
       });
 
       const cards = this.sortCards(filtered, sortKey);
@@ -16691,7 +16861,7 @@ var CardSystem;
 
         return (!search || String(card.name).toLowerCase().includes(search)) &&
           matchCat &&
-          (!rarity || card.rarity === rarity);
+          (!rarity || (rarity === 'ACESPEC' || rarity === 'ACE' ? (card.rarity === 'ACESPEC' || card.rarity === 'ACE' || !!card.isAceSpec) : card.rarity === rarity));
       });
 
       const cards = this.sortCards(filtered, sortKey);
@@ -16918,6 +17088,7 @@ var CardSystem;
         card.aceSpec ||
         card.subCategory === 'ACESPEC' ||
         String(card.rarity || '').toUpperCase() === 'ACE' ||
+        String(card.rarity || '').toUpperCase() === 'ACESPEC' ||
         /ACE\s*SPEC|エーススペック/i.test(String(card.category || '')) ||
         /ACE\s*SPEC|エーススペック/i.test(String(card.subCategory || '')) ||
         /ACE\s*SPEC|エーススペック/i.test(String(card.name || '')) ||
@@ -17181,19 +17352,41 @@ var CardSystem;
       if (combatSec) combatSec.style.display = isPokemon ? 'block' : 'none';
       if (trainerSec) trainerSec.style.display = (isTrainer || cat === '特殊エネルギー') ? 'block' : 'none';
 
-      const aceEl = document.getElementById('isAceSpec');
+            const aceEl = document.getElementById('isAceSpec');
       const aceTrainerEl = document.getElementById('isAceSpecTrainer');
+      const rarityEl = document.getElementById('rarity');
+
+      const onAceToggle = (isChecked) => {
+        if (aceEl && aceEl.checked !== isChecked) aceEl.checked = isChecked;
+        if (aceTrainerEl && aceTrainerEl.checked !== isChecked) aceTrainerEl.checked = isChecked;
+        if (rarityEl) {
+          if (isChecked) {
+            rarityEl.value = 'ACESPEC';
+          } else if (rarityEl.value === 'ACESPEC' || rarityEl.value === 'ACE') {
+            rarityEl.value = 'R';
+          }
+        }
+        this.updatePreview();
+      };
+
       if (aceEl && !aceEl._hasAceSync) {
         aceEl._hasAceSync = true;
         aceEl.addEventListener('change', () => {
-          if (aceTrainerEl) aceTrainerEl.checked = aceEl.checked;
-          this.updatePreview();
+          onAceToggle(aceEl.checked);
         });
       }
       if (aceTrainerEl && !aceTrainerEl._hasAceSync) {
         aceTrainerEl._hasAceSync = true;
         aceTrainerEl.addEventListener('change', () => {
-          if (aceEl) aceEl.checked = aceTrainerEl.checked;
+          onAceToggle(aceTrainerEl.checked);
+        });
+      }
+      if (rarityEl && !rarityEl._hasAceRaritySync) {
+        rarityEl._hasAceRaritySync = true;
+        rarityEl.addEventListener('change', () => {
+          const isAce = rarityEl.value === 'ACESPEC' || rarityEl.value === 'ACE';
+          if (aceEl && aceEl.checked !== isAce) aceEl.checked = isAce;
+          if (aceTrainerEl && aceTrainerEl.checked !== isAce) aceTrainerEl.checked = isAce;
           this.updatePreview();
         });
       }
@@ -17208,7 +17401,7 @@ var CardSystem;
       const isAceSpec = !!(
         document.getElementById('isAceSpec')?.checked ||
         document.getElementById('isAceSpecTrainer')?.checked ||
-        val('rarity') === 'ACE'
+        val('rarity') === 'ACE' || val('rarity') === 'ACESPEC'
       );
       const isTrainer = cat === 'グッズ' || cat === 'サポート' || cat === 'トレーナー' || cat === 'スタジアム' || cat === 'ポケモンのどうぐ' || cat === 'どうぐ';
       const isEnergy = cat === 'エネルギー' || cat === '基本エネルギー' || cat === '特殊エネルギー';
@@ -17292,6 +17485,7 @@ var CardSystem;
           weakness: '',
           resistance: '',
           retreat: '',
+          isAceSpec,
           description: val('description') || 'エネルギーをポケモンにつける。'
         };
       }
@@ -17358,6 +17552,8 @@ var CardSystem;
       if (aceEl) aceEl.checked = false;
       const aceTrainerEl = document.getElementById('isAceSpecTrainer');
       if (aceTrainerEl) aceTrainerEl.checked = false;
+      const rarityEl = document.getElementById('rarity');
+      if (rarityEl) rarityEl.value = 'N';
       this.resetImageAdjust();
       this.syncCategoryForm();
       this.updatePreview();
@@ -17439,7 +17635,7 @@ var CardSystem;
       set('category', card.category);
       set('preEvolution', card.preEvolution);
       set('type', card.type);
-      set('rarity', card.rarity);
+      set('rarity', (isAce && (!card.rarity || card.rarity === 'ACE')) ? 'ACESPEC' : (card.rarity || 'N'));
       set('hp', card.hp);
       set('image', card.image);
       set('imageScale', card.imageScale != null && card.imageScale !== '' ? card.imageScale : 100);
@@ -17923,6 +18119,27 @@ var CardSystem;
 
   document.addEventListener('change', function (e) {
     if (e.target && (e.target.closest('#cardForm') || e.target.form?.id === 'cardForm')) {
+      if (e.target.id === 'isAceSpec' || e.target.id === 'isAceSpecTrainer') {
+        const checked = !!e.target.checked;
+        const otherId = e.target.id === 'isAceSpec' ? 'isAceSpecTrainer' : 'isAceSpec';
+        const otherEl = document.getElementById(otherId);
+        if (otherEl && otherEl.checked !== checked) otherEl.checked = checked;
+        const rarityEl = document.getElementById('rarity');
+        if (rarityEl) {
+          if (checked) {
+            rarityEl.value = 'ACESPEC';
+          } else if (rarityEl.value === 'ACESPEC' || rarityEl.value === 'ACE') {
+            rarityEl.value = 'R';
+          }
+        }
+      } else if (e.target.id === 'rarity') {
+        const isAce = e.target.value === 'ACESPEC' || e.target.value === 'ACE';
+        const a1 = document.getElementById('isAceSpec');
+        const a2 = document.getElementById('isAceSpecTrainer');
+        if (a1 && a1.checked !== isAce) a1.checked = isAce;
+        if (a2 && a2.checked !== isAce) a2.checked = isAce;
+      }
+
       if (window.CardSystem && window.CardSystem.updatePreview) {
         window.CardSystem.updatePreview();
       }
@@ -18431,6 +18648,7 @@ window.DeckSystem = function () {
       card.aceSpec ||
       card.subCategory === 'ACESPEC' ||
       String(card.rarity || '').toUpperCase() === 'ACE' ||
+          String(card.rarity || '').toUpperCase() === 'ACESPEC' ||
       /ACE\s*SPEC|エーススペック/i.test(String(card.category || '')) ||
       /ACE\s*SPEC|エーススペック/i.test(String(card.subCategory || '')) ||
       /ACE\s*SPEC|エーススペック/i.test(String(card.name || '')) ||
@@ -19262,7 +19480,8 @@ window.DeckSystem = function () {
         retreated: false
       },
       logs: [],
-      activeStadium: null
+      activeStadium: null,
+      delayedEffects: []
     },
 
     // プリセット・フォールバック用AIデッキ
@@ -19274,7 +19493,7 @@ window.DeckSystem = function () {
           { name: 'ピカチュウ', category: 'たね', type: '雷', hp: 70, image: 'https://images.pokemontcg.io/sv3pt5/25_hires.png', attack1Name: 'でんじは', attack1Damage: 20, attack1Energy: '雷', attack1Code: 'damage(opponent.active, 20);', weakness: '闘', retreat: 1, count: 4 },
           { name: 'ライチュウ', category: '1進化', preEvolution: 'ピカチュウ', type: '雷', hp: 120, image: 'https://images.pokemontcg.io/sv3pt5/26_hires.png', attack1Name: 'ギガボルト', attack1Damage: 120, attack1Energy: '雷,雷,雷', attack1Code: 'damage(opponent.active, 120);', weakness: '闘', retreat: 2, count: 3 },
           { name: 'ミライドンex', category: 'たねex', type: '雷', hp: 220, image: 'https://images.pokemontcg.io/sv1/81_hires.png', attack1Name: 'フォトンレーザー', attack1Damage: 120, attack1Energy: '雷,雷', attack1Code: 'damage(opponent.active, 120);', count: 2, isEx: true, retreat: 1 },
-          { name: 'プライムキャッチャー', category: 'グッズ', isAceSpec: true, rarity: 'ACE', type: '', hp: '', image: 'https://images.pokemontcg.io/sv5/157_hires.png', attack1Code: 'const oppTgt = choiceCard(opponent.bench, {}, 1, "相手のベンチポケモンを1匹選ぶ");\nif (oppTgt) switchActive(opponent, oppTgt);\nconst selfTgt = choiceCard(self.bench, {}, 1, "自分のベンチポケモンを1匹選ぶ");\nif (selfTgt) switchActive(self, selfTgt);', attack1Text: '相手のベンチポケモンを1匹選び、バトルポケモンと入れ替える。その後、自分のバトルポケモンをベンチポケモンと入れ替える。', description: 'ACE SPECルール: ACE SPECカードは、デッキに1枚しか入れられない。\n相手のベンチポケモンを1匹選び、バトルポケモンと入れ替える。その後、自分のバトルポケモンをベンチポケモンと入れ替える。', count: 1 },
+          { name: 'プライムキャッチャー', category: 'グッズ', isAceSpec: true, rarity: 'ACESPEC', type: '', hp: '', image: 'https://images.pokemontcg.io/sv5/157_hires.png', attack1Code: 'const oppTgt = choiceCard(opponent.bench, {}, 1, "相手のベンチポケモンを1匹選ぶ");\nif (oppTgt) switchActive(opponent, oppTgt);\nconst selfTgt = choiceCard(self.bench, {}, 1, "自分のベンチポケモンを1匹選ぶ");\nif (selfTgt) switchActive(self, selfTgt);', attack1Text: '相手のベンチポケモンを1匹選び、バトルポケモンと入れ替える。その後、自分のバトルポケモンをベンチポケモンと入れ替える。', description: 'ACE SPECルール: ACE SPECカードは、デッキに1枚しか入れられない。\n相手のベンチポケモンを1匹選び、バトルポケモンと入れ替える。その後、自分のバトルポケモンをベンチポケモンと入れ替える。', count: 1 },
           { name: '大きなおまもり', category: 'ポケモンのどうぐ', type: '', hp: '', image: 'https://images.pokemontcg.io/swsh1/158_hires.png', hpBonus: 30, description: 'このカードをつけているポケモンの最大HPは「+30」される。', count: 2 },
           { name: 'こだわりベルト', category: 'ポケモンのどうぐ', type: '', hp: '', image: 'https://images.pokemontcg.io/swsh9/135_hires.png', damageBonusEx: 30, description: 'このカードをつけているポケモンが使うワザの、相手の「ポケモンex」へのダメージは「+30」される。', count: 2 },
           { name: 'たべのこし', category: 'ポケモンのどうぐ', type: '', hp: '', image: 'https://images.pokemontcg.io/sv3pt5/163_hires.png', turnEndHeal: 20, description: '自分の番の終わりに、このカードをつけているポケモンのHPを「20」回復する。', count: 2 },
@@ -20829,7 +21048,7 @@ window.DeckSystem = function () {
       this.state.online.isChatOpen = false;
       this.updateChatUnreadBadge();
       this.state.logs = [];
-
+      this.state.delayedEffects = [];
       const myRole = String(this.state.online.role || 'host').toLowerCase();
       const firstRole = String(firstPlayerRole || 'host').toLowerCase();
       const isMyTurn = (firstRole === myRole);
@@ -22059,7 +22278,7 @@ window.DeckSystem = function () {
       this.state.turnNumber = 1;
       this.state.prizeCountRule = prizeCount;
       this.state.logs = [];
-
+      this.state.delayedEffects = [];
       const coin = Math.random() >= 0.5 ? 1 : 0;
       this.state.firstPlayer = coin === 1 ? 'player' : 'opponent';
       this.state.turnPlayer = this.state.firstPlayer;
@@ -22327,6 +22546,111 @@ window.DeckSystem = function () {
       this.state.activeLocks = remainingLocks;
     },
 
+    async processDelayedEffects(timing, curTurnWho) {
+      if (!Array.isArray(this.state.delayedEffects) || this.state.delayedEffects.length === 0) return;
+
+      const remaining = [];
+      const toExecute = [];
+
+      for (let item of this.state.delayedEffects) {
+        if (this.state.phase === 'ended') return;
+
+        // 場を離れたら解除フラグ
+        if (item.requireAlive && item.card) {
+          const p = item.sourcePlayer === 'player' ? this.state.player : this.state.opponent;
+          const alive = (p.active === item.card || (p.bench && p.bench.includes(item.card)));
+          if (!alive) {
+            this.log('✦ 【' + (item.card.name || 'カード') + '】が場を離れたため、予約効果（' + item.label + '）は解除されました。');
+            continue;
+          }
+        }
+
+        const isCreatedTurn = (
+          item.createdTurnNumber === this.state.turnNumber &&
+          curTurnWho === item.sourcePlayer
+        );
+
+        if (item.timing === timing) {
+          // 0ターンの場合は即座に対象タイミングで発動 (例: atEndOfTurn)
+          if (item.turnsRemaining <= 0) {
+            toExecute.push(item);
+            continue;
+          }
+
+          let shouldDecrement = false;
+          if (!isCreatedTurn) {
+            if (item.targetPlayer === 'self' && curTurnWho === item.sourcePlayer) {
+              shouldDecrement = true;
+            } else if (item.targetPlayer === 'opponent' && curTurnWho !== item.sourcePlayer) {
+              shouldDecrement = true;
+            } else if (item.targetPlayer === 'any' || item.targetPlayer === 'both') {
+              shouldDecrement = true;
+            }
+          }
+
+          if (shouldDecrement) {
+            item.turnsRemaining--;
+            if (typeof item.options?.onTick === 'function') {
+              try { item.options.onTick(item.turnsRemaining); } catch (e) { console.warn(e); }
+            }
+            if (item.turnsRemaining <= 0) {
+              toExecute.push(item);
+              continue;
+            }
+          }
+        }
+
+        remaining.push(item);
+      }
+
+      this.state.delayedEffects = remaining;
+
+      for (let item of toExecute) {
+        if (this.state.phase === 'ended') return;
+        this.log('⚡ 【' + item.label + '】の予約効果が発動しました！');
+        await this.executeDelayedEffect(item);
+      }
+    },
+
+    async executeDelayedEffect(item) {
+      const { callback, sourcePlayer, card, label } = item;
+      const self = sourcePlayer === 'player' ? this.state.player : this.state.opponent;
+      const opponent = sourcePlayer === 'player' ? this.state.opponent : this.state.player;
+      const game = { players: [this.state.player, this.state.opponent], logs: this.state.logs, state: this.state };
+
+      let ctx = null;
+      if (window.createCardEffectContext) {
+        ctx = window.createCardEffectContext(game, self);
+      } else {
+        ctx = { self, opponent, game, card: card || self.active, pokemon: card || self.active };
+      }
+      ctx.thisPokemon = card || self.active;
+      ctx.card = card || self.active;
+      ctx.pokemon = card || self.active;
+
+      window._currentExecutionContext = ctx;
+
+      try {
+        if (typeof callback === 'function') {
+          const res = callback(self, opponent, game, ctx);
+          if (res && typeof res.then === 'function') {
+            await res;
+          }
+        } else if (typeof callback === 'string' && window.executeCardEffectCode) {
+          await window.executeCardEffectCode(callback, game, self, 'delayedEffect', { card: card || self.active });
+        }
+      } catch (err) {
+        console.error('Error executing delayed effect (' + label + '):', err);
+        this.log('⚠️ 予約効果の実行中にエラーが発生しました: ' + (err?.message || err));
+      } finally {
+        if (window._currentExecutionContext === ctx) {
+          window._currentExecutionContext = null;
+        }
+        this.render();
+      }
+    },
+
+
     promptPromoteFromBench(victim) {
       if (!victim || !victim.bench || !victim.bench.length) return;
       this.showChoiceModal(victim.bench.map((b) => ({ name: b.name, type: b.type, hp: b.hp, category: 'バトル場へ' })), {
@@ -22373,7 +22697,7 @@ window.DeckSystem = function () {
       }
     },
 
-    startTurn(turnWho) {
+    async startTurn(turnWho) {
       this.state.turnPlayer = turnWho;
       if (this.state.online) this.state.online.attackedThisTurn = false;
       this.showTurnBanner(turnWho);
@@ -22403,6 +22727,7 @@ window.DeckSystem = function () {
       }
 
       this.updateLocksOnTurnChange(turnWho);
+      await this.processDelayedEffects('start', turnWho);
 
       // ターン開始時 (turnStart / start) の自動・強制発動
       // ※ event.on('turnStart', ...) または event.on('start', ...) を明示的に宣言しているコードのみ実行する
@@ -22467,7 +22792,7 @@ window.DeckSystem = function () {
       }
     },
 
-    endTurn() {
+    async endTurn() {
       if (this.state.phase === 'ended') return;
       if (this.state.mode === 'online' && this.state.turnPlayer !== 'player') {
         console.warn('⚠️ [endTurn] スキップされました: 自分のターンではありません。');
@@ -22498,6 +22823,7 @@ window.DeckSystem = function () {
         curEnding.lastKnockedOutPokemon = null;
         curEnding.lastKnockedOutAlly = null;
       }
+      await this.processDelayedEffects('end', this.state.turnPlayer);
       const turnWhoName = this.state.turnPlayer === 'player' ? (this.state.player.name || 'プレイヤー') : (this.state.opponent.name || '対戦相手');
       this.log("【" + turnWhoName + "】がターンを終了しました。");
 
@@ -28226,7 +28552,8 @@ console.log('[ORBITAL] App.js.html started execution');
         'R': 25.0,
         'AR': 11.0,
         'RR': 6.0,
-        'SR': 3.0
+        'SR': 3.0,
+        'ACESPEC': 2.0
       };
 
       const groups = {};
@@ -28238,13 +28565,14 @@ console.log('[ORBITAL] App.js.html started execution');
           else if (r === 'ART RARE') r = 'AR';
           else if (r === 'DOUBLE RARE' || r === 'EX') r = 'RR';
           else if (r === 'SUPER RARE' || r === 'UR' || r === 'ULTRA RARE') r = 'SR';
+          else if (r === 'ACE' || r === 'ACESPEC' || r === 'ACE SPEC') r = 'ACESPEC';
           else r = 'N';
         }
         if (!groups[r]) groups[r] = [];
         groups[r].push(card);
       });
 
-      const rarityKeys = ['N', 'R', 'AR', 'RR', 'SR'];
+      const rarityKeys = ['N', 'R', 'AR', 'RR', 'SR', 'ACESPEC'];
       let activeWeightSum = 0;
       rarityKeys.forEach(r => {
         if (groups[r] && groups[r].length > 0) {
@@ -28320,7 +28648,8 @@ console.log('[ORBITAL] App.js.html started execution');
         'R': '🔷',
         'AR': '🎨',
         'RR': '⚡',
-        'SR': '✨'
+        'SR': '✨',
+        'ACESPEC': '💎'
       };
 
       const chipsHtml = data.raritySummaries.map(s => {
@@ -28598,7 +28927,14 @@ console.log('[ORBITAL] App.js.html started execution');
       inner.classList.add('flipped');
       if (!card) return;
 
-      if (card.rarity === 'SR' || card.rarity === 'UR') {
+      if (card.rarity === 'ACESPEC' || card.rarity === 'ACE' || card.isAceSpec) {
+        const glow = document.createElement('div');
+        glow.className = 'ur-glow-effect';
+        glow.style.background = 'radial-gradient(circle, rgba(244,63,94,0.45) 0%, rgba(217,70,239,0.3) 45%, transparent 75%)';
+        document.body.appendChild(glow);
+        setTimeout(() => { if (glow.parentNode) glow.parentNode.removeChild(glow); }, 1500);
+        this.toast('✨ ACE SPEC！【' + card.name + '】を引き当てました！');
+      } else if (card.rarity === 'SR' || card.rarity === 'UR') {
         const glow = document.createElement('div');
         glow.className = 'ur-glow-effect';
         document.body.appendChild(glow);
