@@ -1436,6 +1436,16 @@ console.log('[ORBITAL] App.js.html started execution');
       if (passInput) passInput.value = savedPass;
       if (nameInput) nameInput.value = curUser.displayName || (savedEmail ? savedEmail.split('@')[0] : 'プレイヤー');
 
+      const dnaUidInput = this.el('accDnaUidInput');
+      const savedDnaUid = (function() {
+        try {
+          return curUser.dnaUid || localStorage.getItem('ORBITAL_USER_DNA_UID_' + savedEmail) || localStorage.getItem('ORBITAL_USER_DNA_UID') || '';
+        } catch(e) { return ''; }
+      })();
+      if (dnaUidInput) dnaUidInput.value = savedDnaUid;
+      this.updateDnaSyncStatusBadge(savedDnaUid);
+      this.loadNmtApiConfigInSettings();
+
       const curAvatar = curUser.avatar || '👤';
       const grid = this.el('avatarSelectorGrid');
       if (grid) {
@@ -1458,6 +1468,7 @@ console.log('[ORBITAL] App.js.html started execution');
       const email = (this.el('accEmailInput')?.value || '').trim().toLowerCase();
       const password = (this.el('accPasswordInput')?.value || '').trim();
       const displayName = (this.el('accDisplayNameInput')?.value || '').trim();
+      const dnaUid = (this.el('accDnaUidInput')?.value || '').trim();
       const activeAvatarBtn = this.el('avatarSelectorGrid')?.querySelector('.avatar-opt.active');
       const avatar = activeAvatarBtn ? (activeAvatarBtn.dataset.avatar || activeAvatarBtn.getAttribute('data-avatar') || activeAvatarBtn.textContent.trim() || '👤') : '👤';
 
@@ -1477,14 +1488,25 @@ console.log('[ORBITAL] App.js.html started execution');
         localStorage.setItem('orbital_mock_user_email', email);
         if (password) localStorage.setItem('orbital_mock_user_password', password);
         localStorage.setItem('ORBITAL_HAS_LOGGED_IN', 'true');
+        if (dnaUid) {
+          localStorage.setItem('ORBITAL_USER_DNA_UID_' + email, dnaUid);
+          localStorage.setItem('ORBITAL_USER_DNA_UID', dnaUid);
+        } else {
+          localStorage.removeItem('ORBITAL_USER_DNA_UID_' + email);
+          localStorage.removeItem('ORBITAL_USER_DNA_UID');
+        }
       } catch (e) {}
 
-      const profileObj = { email, displayName, avatar, password };
+      const profileObj = { email, displayName, avatar, password, dnaUid };
 
       const self = this;
       const applyProfile = (prof) => {
         if (saveBtn) saveBtn.disabled = false;
         self.state.userProfile = prof;
+        if (prof.nmtBalance !== undefined && prof.nmtBalance !== null) {
+          self.setUserNmt(prof.nmtBalance);
+        }
+        self.updateDnaSyncStatusBadge(prof.dnaUid || dnaUid);
         if (window.DeckSystem && window.DeckSystem.state) {
           window.DeckSystem.state.currentUser = prof;
           if (typeof window.DeckSystem.updateUserBadge === 'function') {
@@ -1513,6 +1535,265 @@ console.log('[ORBITAL] App.js.html started execution');
           .saveUserProfile(profileObj);
       } else {
         applyProfile(profileObj);
+      }
+    },
+
+    updateDnaSyncStatusBadge(uid) {
+      const pill = this.el('dnaSyncStatusPill');
+      if (!pill) return;
+      if (uid && String(uid).trim()) {
+        const bal = this.getUserNmt();
+        pill.textContent = '🟢 DNA連携中: ' + bal.toLocaleString() + ' NMT';
+        pill.style.background = 'rgba(34, 197, 94, 0.2)';
+        pill.style.color = '#86efac';
+        pill.style.border = '1px solid rgba(34, 197, 94, 0.4)';
+      } else {
+        pill.textContent = '⚪ 未連携 (ローカル残高)';
+        pill.style.background = 'rgba(255, 255, 255, 0.08)';
+        pill.style.color = '#cbd5e1';
+        pill.style.border = '1px solid rgba(255, 255, 255, 0.1)';
+      }
+    },
+
+    syncDnaBalance() {
+      const email = (this.el('accEmailInput')?.value || this.getUserEmail() || '').trim().toLowerCase();
+      const uid = (this.el('accDnaUidInput')?.value || '').trim();
+      const btn = this.el('syncDnaBalanceBtn');
+      const msgEl = this.el('dnaSyncMessage');
+
+      if (!uid) {
+        this.toast('DNA ユーザーID (Firebase UID) を入力してください', true);
+        if (msgEl) {
+          msgEl.style.display = 'block';
+          msgEl.style.color = '#f87171';
+          msgEl.textContent = '⚠️ Firebase UID が入力されていません。';
+        }
+        return;
+      }
+
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = '🔄 同期中...';
+      }
+
+      const self = this;
+      const onSuccess = (res) => {
+        if (btn) { btn.disabled = false; btn.textContent = '🔄 残高同期'; }
+        if (res && res.ok) {
+          if (res.balance != null) {
+            self.setUserNmt(res.balance);
+          }
+          if (res.profile) {
+            self.state.userProfile = Object.assign(self.state.userProfile || {}, res.profile);
+            try { localStorage.setItem('ORBITAL_LOGGED_IN_USER', JSON.stringify(self.state.userProfile)); } catch(e) {}
+          }
+          self.updateDnaSyncStatusBadge(uid);
+          if (msgEl) {
+            msgEl.style.display = 'block';
+            msgEl.style.color = '#86efac';
+            msgEl.textContent = '✅ DNA残高同期完了: ' + (res.balance != null ? res.balance.toLocaleString() : '') + ' NMT';
+          }
+          self.toast('✨ DNA残高を同期しました (' + (res.balance != null ? res.balance.toLocaleString() : '') + ' NMT)');
+        } else {
+          const errText = (res && res.message) ? res.message : '同期に失敗しました';
+          if (msgEl) {
+            msgEl.style.display = 'block';
+            msgEl.style.color = '#f87171';
+            msgEl.textContent = '❌ ' + errText;
+          }
+          self.toast('DNA同期エラー: ' + errText, true);
+        }
+      };
+
+      const onError = (err) => {
+        if (btn) { btn.disabled = false; btn.textContent = '🔄 残高同期'; }
+        const errMsg = err ? (err.message || err.toString()) : '通信エラー';
+        if (msgEl) {
+          msgEl.style.display = 'block';
+          msgEl.style.color = '#f87171';
+          msgEl.textContent = '❌ 通信エラー: ' + errMsg;
+        }
+        self.toast('DNA同期通信エラー: ' + errMsg, true);
+      };
+
+      if (window.google && google.script && google.script.run && !window._is_mock_gas) {
+        try {
+          google.script.run
+            .withSuccessHandler(onSuccess)
+            .withFailureHandler(onError)
+            .syncUserDnaNmt(email, uid);
+          return;
+        } catch(e) {}
+      }
+
+      // Mock / Local Fallback
+      if (window.google && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(onSuccess)
+          .withFailureHandler(onError)
+          .syncUserDnaNmt(email, uid);
+      } else {
+        setTimeout(() => {
+          onSuccess({ ok: true, balance: self.getUserNmt(), dnaUid: uid });
+        }, 300);
+      }
+    },
+
+    loadNmtApiConfigInSettings() {
+      const urlInput = this.el('accNmtApiUrlInput');
+      const keyInput = this.el('accNmtApiKeyInput');
+      const defaultUrl = 'https://script.google.com/macros/s/AKfycbxmCkiuJdVqgAWCbQPxgTb8RKhen1XuzgQsCxj2dhruIw2d06MjjSG9n6H9xHToHYLNNg/exec';
+      const defaultKey = '6489bfc72f513581ed83c9b48bbf7247d5593af1194c667fbfac3081424ef412';
+
+      const self = this;
+      if (window.google && google.script && google.script.run) {
+        try {
+          google.script.run.withSuccessHandler((res) => {
+            if (res && res.ok) {
+              if (urlInput && res.url) urlInput.value = res.url;
+              if (keyInput && res.rawKey) keyInput.value = res.rawKey;
+            }
+          }).getNmtApiConfig();
+          return;
+        } catch(e) {}
+      }
+
+      try {
+        const localUrl = localStorage.getItem('ORCEIN_NMT_API_URL') || defaultUrl;
+        const localKey = localStorage.getItem('ORCEIN_NMT_API_KEY') || defaultKey;
+        if (urlInput) urlInput.value = localUrl;
+        if (keyInput) keyInput.value = localKey;
+      } catch(e) {}
+    },
+
+    toggleNmtApiKeyVisibility() {
+      const keyInput = this.el('accNmtApiKeyInput');
+      if (!keyInput) return;
+      if (keyInput.type === 'password') {
+        keyInput.type = 'text';
+      } else {
+        keyInput.type = 'password';
+      }
+    },
+
+    saveNmtApiConfig() {
+      const url = (this.el('accNmtApiUrlInput')?.value || '').trim();
+      const apiKey = (this.el('accNmtApiKeyInput')?.value || '').trim();
+      const btn = this.el('saveNmtApiConfigBtn');
+      const resEl = this.el('nmtApiTestResult');
+
+      if (!url || !apiKey) {
+        this.toast('NMT API URL と APIキーを入力してください', true);
+        return;
+      }
+
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = '💾 保存中...';
+      }
+
+      try {
+        localStorage.setItem('ORCEIN_NMT_API_URL', url);
+        localStorage.setItem('ORCEIN_NMT_API_KEY', apiKey);
+      } catch(e) {}
+
+      const self = this;
+      const onDone = (res) => {
+        if (btn) { btn.disabled = false; btn.textContent = '💾 API設定をGASに保存'; }
+        if (res && res.ok) {
+          if (resEl) {
+            resEl.style.display = 'block';
+            resEl.style.background = 'rgba(34, 197, 94, 0.15)';
+            resEl.style.color = '#86efac';
+            resEl.textContent = '✅ NMT API 設定をGASスクリプトプロパティに保存しました。';
+          }
+          self.toast('✅ NMT API 設定を保存しました！');
+        } else {
+          if (resEl) {
+            resEl.style.display = 'block';
+            resEl.style.background = 'rgba(239, 68, 68, 0.15)';
+            resEl.style.color = '#fca5a5';
+            resEl.textContent = '❌ 保存エラー: ' + ((res && res.message) || '保存失敗');
+          }
+        }
+      };
+
+      if (window.google && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(onDone)
+          .withFailureHandler((err) => {
+            if (btn) { btn.disabled = false; btn.textContent = '💾 API設定をGASに保存'; }
+            self.toast('GASプロパティ保存エラー: ' + err.toString(), true);
+          })
+          .saveNmtApiConfig(url, apiKey);
+      } else {
+        setTimeout(() => onDone({ ok: true }), 200);
+      }
+    },
+
+    testNmtApi() {
+      const url = (this.el('accNmtApiUrlInput')?.value || '').trim();
+      const apiKey = (this.el('accNmtApiKeyInput')?.value || '').trim();
+      const uid = (this.el('accDnaUidInput')?.value || 'test_user_conn').trim();
+      const btn = this.el('testNmtApiBtn');
+      const resEl = this.el('nmtApiTestResult');
+
+      if (!url || !apiKey) {
+        this.toast('NMT API URL と APIキーを入力してください', true);
+        return;
+      }
+
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = '🔌 テスト中...';
+      }
+
+      if (resEl) {
+        resEl.style.display = 'block';
+        resEl.style.background = 'rgba(255, 255, 255, 0.05)';
+        resEl.style.color = '#cbd5e1';
+        resEl.textContent = '📡 NMT API エンドポイントに通信テスト中...';
+      }
+
+      const self = this;
+      const onTestResult = (res) => {
+        if (btn) { btn.disabled = false; btn.textContent = '🔌 API接続テスト'; }
+        if (res && res.ok) {
+          if (resEl) {
+            resEl.style.display = 'block';
+            resEl.style.background = 'rgba(34, 197, 94, 0.15)';
+            resEl.style.color = '#86efac';
+            resEl.textContent = res.message || '✅ NMT API との接続に成功しました！(HTTP 200)';
+          }
+          self.toast('✅ NMT API 接続成功！');
+        } else {
+          if (resEl) {
+            resEl.style.display = 'block';
+            resEl.style.background = 'rgba(239, 68, 68, 0.15)';
+            resEl.style.color = '#fca5a5';
+            resEl.textContent = res.message || '❌ API接続失敗';
+          }
+          self.toast('❌ API接続失敗: ' + (res.message || ''), true);
+        }
+      };
+
+      if (window.google && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(onTestResult)
+          .withFailureHandler((err) => {
+            if (btn) { btn.disabled = false; btn.textContent = '🔌 API接続テスト'; }
+            if (resEl) {
+              resEl.style.display = 'block';
+              resEl.style.background = 'rgba(239, 68, 68, 0.15)';
+              resEl.style.color = '#fca5a5';
+              resEl.textContent = '❌ 通信エラー: ' + err.toString();
+            }
+          })
+          .testNmtApiConnection(url, apiKey, uid);
+      } else {
+        setTimeout(() => {
+          onTestResult({ ok: true, message: '✅ [ローカル/モック] NMT API接続テスト成功！' });
+        }, 300);
       }
     },
 
@@ -3197,6 +3478,12 @@ console.log('[ORBITAL] App.js.html started execution');
             if (!prof || !prof.email) return;
             if (prof.lastBonusDate) prof.lastBonusDate = self.normalizeDateStr(prof.lastBonusDate);
             self.state.userProfile = prof;
+            if (prof.dnaUid) {
+              try {
+                localStorage.setItem('ORBITAL_USER_DNA_UID_' + prof.email, prof.dnaUid);
+                localStorage.setItem('ORBITAL_USER_DNA_UID', prof.dnaUid);
+              } catch(e) {}
+            }
             try {
               if (prof.lastBonusDate) {
                 localStorage.setItem('ORBITAL_LAST_DAILY_BONUS', prof.lastBonusDate);
