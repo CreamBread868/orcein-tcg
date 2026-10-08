@@ -65,7 +65,8 @@
       },
       logs: [],
       activeStadium: null,
-      delayedEffects: []
+      delayedEffects: [],
+      extraTurnPlayer: null
     },
 
     // プリセット・フォールバック用AIデッキ
@@ -1633,6 +1634,7 @@
       this.updateChatUnreadBadge();
       this.state.logs = [];
       this.state.delayedEffects = [];
+      this.state.extraTurnPlayer = null;
       const myRole = String(this.state.online.role || 'host').toLowerCase();
       const firstRole = String(firstPlayerRole || 'host').toLowerCase();
       const isMyTurn = (firstRole === myRole);
@@ -2182,12 +2184,24 @@
         }
         case 'end_turn': {
           if (this.state.turnPlayer === 'player') { break; }
-          this.log('相手がターンを終了しました。あなたの番です！');
-          const secondPlayer = this.state.firstPlayer === 'player' ? 'opponent' : 'player';
-          if (this.state.turnPlayer === secondPlayer) {
-            this.state.turnNumber++;
+          let nextPlayer = 'player';
+          if (payload && payload.nextPlayer) {
+            nextPlayer = payload.nextPlayer === 'opponent' ? 'opponent' : 'player';
+          } else if (this.state.extraTurnPlayer) {
+            nextPlayer = this.state.extraTurnPlayer;
+            this.state.extraTurnPlayer = null;
           }
-          this.startTurn('player');
+          if (nextPlayer === 'opponent') {
+            this.log('相手の追加ターン（もう1回相手の番）が始まります！');
+            this.startTurn('opponent');
+          } else {
+            this.log('相手がターンを終了しました。あなたの番です！');
+            const secondPlayer = this.state.firstPlayer === 'player' ? 'opponent' : 'player';
+            if (this.state.turnPlayer === secondPlayer) {
+              this.state.turnNumber++;
+            }
+            this.startTurn('player');
+          }
           break;
         }
         case 'surrender':
@@ -2863,6 +2877,7 @@
       this.state.prizeCountRule = prizeCount;
       this.state.logs = [];
       this.state.delayedEffects = [];
+      this.state.extraTurnPlayer = null;
       const coin = Math.random() >= 0.5 ? 1 : 0;
       this.state.firstPlayer = coin === 1 ? 'player' : 'opponent';
       this.state.turnPlayer = this.state.firstPlayer;
@@ -3149,8 +3164,10 @@
           }
         }
 
+        const curPlayerObj = curTurnWho === 'player' ? this.state.player : this.state.opponent;
         const isCreatedTurn = (
           item.createdTurnNumber === this.state.turnNumber &&
+          item.createdTurnCount === curPlayerObj?.turnCount &&
           curTurnWho === item.sourcePlayer
         );
 
@@ -3420,11 +3437,28 @@
         });
       }
 
-      const secondPlayer = this.state.firstPlayer === 'player' ? 'opponent' : 'player';
-      if (this.state.turnPlayer === secondPlayer) {
-        this.state.turnNumber++;
+      let nextPlayer;
+      if (this.state.extraTurnPlayer) {
+        nextPlayer = this.state.extraTurnPlayer;
+        this.state.extraTurnPlayer = null;
+        this.log("⏳ 【" + (nextPlayer === 'player' ? (this.state.player.name || 'プレイヤー') : (this.state.opponent.name || '対戦相手')) + "】の追加ターン（もう1回自分の番）が始まります！");
+      } else {
+        const secondPlayer = this.state.firstPlayer === 'player' ? 'opponent' : 'player';
+        if (this.state.turnPlayer === secondPlayer) {
+          this.state.turnNumber++;
+        }
+        nextPlayer = this.state.turnPlayer === 'player' ? 'opponent' : 'player';
       }
-      const nextPlayer = this.state.turnPlayer === 'player' ? 'opponent' : 'player';
+
+      if (this.state.turnPlayer === 'player' && this.state.mode === 'online') {
+        this.state.online.pendingEndTurn = true;
+        this.state.online.endTurnSeq = 0;
+        this.broadcastOnlineAction('end_turn', { nextPlayer: nextPlayer }, (r) => {
+          this.state.online.pendingEndTurn = false;
+          this.state.online.endTurnSeq = (r && r.lastSeq) ? Number(r.lastSeq) : 0;
+        });
+      }
+
       this.startTurn(nextPlayer);
     },
 

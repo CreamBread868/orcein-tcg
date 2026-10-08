@@ -798,6 +798,33 @@ var EffectEditor;
       targets: ['attack1', 'attack2', 'ability']
     },
     {
+      keyword: 'extraTurn',
+      label: 'extraTurn();',
+      category: 'action',
+      badge: '追加ターン獲得',
+      desc: 'この番が終わった後、もう一度自分の番を行う（スタークロノス等の追加ターン効果）',
+      snippet: 'extraTurn();',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'lose',
+      label: 'lose("理由");',
+      category: 'action',
+      badge: '敗北する',
+      desc: '対戦に敗北する（特殊敗北条件や代償効果）',
+      snippet: 'lose("効果により敗北しました。");',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'win',
+      label: 'win("理由");',
+      category: 'action',
+      badge: '特殊勝利する',
+      desc: '対戦に勝利する（特殊勝利条件効果）',
+      snippet: 'win("特殊勝利を達成しました！");',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
       keyword: 'afterTurns',
       label: 'afterTurns(1, () => { ... });',
       category: 'action',

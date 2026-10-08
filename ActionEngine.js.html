@@ -2313,7 +2313,62 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
       delayTurn(ctx, turns, cb, opt) { return this.afterTurns(ctx, turns, cb, opt); },
       waitTurns(ctx, turns, cb, opt) { return this.afterTurns(ctx, turns, cb, opt); },
       waitTurn(ctx, turns, cb, opt) { return this.afterTurns(ctx, turns, cb, opt); },
-      atEndOfTurn(ctx, cb) { return this.afterTurns(ctx, 0, cb, { timing: 'end' }); }
+      atEndOfTurn(ctx, cb) { return this.afterTurns(ctx, 0, cb, { timing: 'end' }); },
+      extraTurn(ctx, count = 1, options = {}) {
+        const bs = window.BattleSystem;
+        if (!bs || !bs.state) return false;
+        let target = 'player';
+        if (ctx?.self) {
+          target = (ctx.self === bs.state.opponent) ? 'opponent' : 'player';
+        } else if (bs.state.turnPlayer) {
+          target = bs.state.turnPlayer;
+        }
+        const name = (target === 'player') ? (bs.state.player?.name || 'プレイヤー') : (bs.state.opponent?.name || '対戦相手');
+        bs.state.extraTurnPlayer = target;
+        const msg = `🌀 【${name}】は追加ターンを獲得！この番が終わった後、もう一度自分の番になります。`;
+        if (bs.log) bs.log(msg);
+        else if (ctx?.game?.logs) ctx.game.logs.push(msg);
+        return true;
+      },
+      takeExtraTurn(ctx, count, options) { return this.extraTurn(ctx, count, options); },
+      anotherTurn(ctx, count, options) { return this.extraTurn(ctx, count, options); },
+      repeatTurn(ctx, count, options) { return this.extraTurn(ctx, count, options); },
+      grantExtraTurn(ctx, count, options) { return this.extraTurn(ctx, count, options); },
+
+      loseGame(ctx, reason = '効果により敗北しました。') {
+        const bs = window.BattleSystem;
+        if (!bs) return false;
+        let loser = 'player';
+        if (ctx?.self) {
+          loser = (ctx.self === bs.state.opponent) ? 'opponent' : 'player';
+        } else if (bs.state?.turnPlayer) {
+          loser = bs.state.turnPlayer;
+        }
+        const winnerId = (loser === 'player') ? 'opponent' : 'player';
+        const loserName = (loser === 'player') ? (bs.state.player?.name || 'プレイヤー') : (bs.state.opponent?.name || '対戦相手');
+        bs.log(`💀 【${loserName}】は効果により敗北しました！`);
+        bs.finishBattle(winnerId, reason || `${loserName}が効果により敗北しました。`);
+        return true;
+      },
+      lose(ctx, reason) { return this.loseGame(ctx, reason); },
+      loseMatch(ctx, reason) { return this.loseGame(ctx, reason); },
+
+      winGame(ctx, reason = '効果により特殊勝利を達成しました！') {
+        const bs = window.BattleSystem;
+        if (!bs) return false;
+        let winner = 'player';
+        if (ctx?.self) {
+          winner = (ctx.self === bs.state.opponent) ? 'opponent' : 'player';
+        } else if (bs.state?.turnPlayer) {
+          winner = bs.state.turnPlayer;
+        }
+        const winnerName = (winner === 'player') ? (bs.state.player?.name || 'プレイヤー') : (bs.state.opponent?.name || '対戦相手');
+        bs.log(`🏆 【${winnerName}】は効果により特殊勝利を達成しました！`);
+        bs.finishBattle(winner, reason || `${winnerName}が効果により勝利しました！`);
+        return true;
+      },
+      win(ctx, reason) { return this.winGame(ctx, reason); },
+      winMatch(ctx, reason) { return this.winGame(ctx, reason); },
     };
 
     const BILINGUAL_CATEGORY_MAP = {
@@ -2631,7 +2686,16 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         delayTurn: (n, fn, opt) => api.delayTurn(ctx, n, fn, opt),
         waitTurns: (n, fn, opt) => api.waitTurns(ctx, n, fn, opt),
         waitTurn: (n, fn, opt) => api.waitTurn(ctx, n, fn, opt),
-        atEndOfTurn: (fn) => api.atEndOfTurn(ctx, fn)
+        atEndOfTurn: (fn) => api.atEndOfTurn(ctx, fn),
+        extraTurn: (cnt, opt) => api.extraTurn(ctx, cnt, opt),
+        takeExtraTurn: (cnt, opt) => api.takeExtraTurn(ctx, cnt, opt),
+        anotherTurn: (cnt, opt) => api.anotherTurn(ctx, cnt, opt),
+        repeatTurn: (cnt, opt) => api.repeatTurn(ctx, cnt, opt),
+        grantExtraTurn: (cnt, opt) => api.grantExtraTurn(ctx, cnt, opt),
+        lose: (r) => api.lose(ctx, r),
+        loseGame: (r) => api.loseGame(ctx, r),
+        win: (r) => api.win(ctx, r),
+        winGame: (r) => api.winGame(ctx, r)
       };
 
       const attachGetters = (pk) => {
@@ -2775,6 +2839,8 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         'hasTool', 'getTool', 'attachTool', 'discardTool',
         'getStadium', 'setStadium', 'discardStadium', 'hasStadium',
         'afterTurns', 'afterTurn', 'delayTurns', 'delayTurn', 'waitTurns', 'waitTurn', 'atEndOfTurn',
+        'extraTurn', 'takeExtraTurn', 'anotherTurn', 'repeatTurn', 'grantExtraTurn',
+        'lose', 'loseGame', 'win', 'winGame',
         '{\n' + asyncCode + '\n}'
       );
       try {
@@ -2806,7 +2872,9 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           ctx.getPreEvolution, ctx.getNextEvolutions, ctx.isEvolutionOf,
           ctx.rareCandy,
           ctx.getStadium, ctx.setStadium, ctx.discardStadium, ctx.hasStadium,
-          ctx.afterTurns, ctx.afterTurn, ctx.delayTurns, ctx.delayTurn, ctx.waitTurns, ctx.waitTurn, ctx.atEndOfTurn
+          ctx.afterTurns, ctx.afterTurn, ctx.delayTurns, ctx.delayTurn, ctx.waitTurns, ctx.waitTurn, ctx.atEndOfTurn,
+          ctx.extraTurn, ctx.takeExtraTurn, ctx.anotherTurn, ctx.repeatTurn, ctx.grantExtraTurn,
+          ctx.lose, ctx.loseGame, ctx.win, ctx.winGame
         );
         if (eventName) await ctx.event.emit(eventName, eventData);
       } catch (e) {
@@ -2879,6 +2947,15 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
     window.waitTurns = (n, fn, opt) => window.ORBITAL_EFFECT_API.waitTurns(null, n, fn, opt);
     window.waitTurn = (n, fn, opt) => window.ORBITAL_EFFECT_API.waitTurn(null, n, fn, opt);
     window.atEndOfTurn = (fn) => window.ORBITAL_EFFECT_API.atEndOfTurn(null, fn);
+    window.extraTurn = (cnt, opt) => window.ORBITAL_EFFECT_API.extraTurn(null, cnt, opt);
+    window.takeExtraTurn = (cnt, opt) => window.ORBITAL_EFFECT_API.takeExtraTurn(null, cnt, opt);
+    window.anotherTurn = (cnt, opt) => window.ORBITAL_EFFECT_API.anotherTurn(null, cnt, opt);
+    window.repeatTurn = (cnt, opt) => window.ORBITAL_EFFECT_API.repeatTurn(null, cnt, opt);
+    window.grantExtraTurn = (cnt, opt) => window.ORBITAL_EFFECT_API.grantExtraTurn(null, cnt, opt);
+    window.lose = (r) => window.ORBITAL_EFFECT_API.lose(null, r);
+    window.loseGame = (r) => window.ORBITAL_EFFECT_API.loseGame(null, r);
+    window.win = (r) => window.ORBITAL_EFFECT_API.win(null, r);
+    window.winGame = (r) => window.ORBITAL_EFFECT_API.winGame(null, r);
     window.useLimit = (n) => window.ORBITAL_EFFECT_API.useLimit(null, n);
     window.limitPerTurn = (n) => window.ORBITAL_EFFECT_API.limitPerTurn(null, n);
     window.timesPerTurn = (n) => window.ORBITAL_EFFECT_API.timesPerTurn(null, n);
