@@ -11693,7 +11693,238 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         return false;
       },
       shuffleDeck(ctx, player) { if (!Array.isArray(player?.deck)) return; for (let i = player.deck.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[player.deck[i], player.deck[j]] = [player.deck[j], player.deck[i]]; } },
-      lookAtDeckTop(ctx, player, count = 1) { return (player?.deck || []).slice(0, Math.max(1, Number(count) || 1)); },
+      async lookAtDeckTop(ctx, playerOrCount = null, countOrOpts = 1, options = {}) {
+        let player = playerOrCount;
+        let count = countOrOpts;
+        let opts = options;
+
+        if (typeof player === 'number') {
+          if (typeof count === 'object' && count !== null) opts = count;
+          count = player;
+          player = ctx?.self;
+        } else if (!player) {
+          player = ctx?.self;
+        }
+
+        if (typeof count === 'object' && count !== null && !options) {
+          opts = count;
+          count = opts.count || opts.n || 1;
+        }
+
+        count = Math.max(1, Number(count) || 1);
+        const deck = player?.deck || [];
+        const topCards = deck.slice(0, count);
+
+        const playerName = (player === ctx?.self || player?.id === ctx?.self?.id) ? '自分' : (player?.name || '相手');
+        if (ctx?.game?.logs) {
+          ctx.game.logs.push("👁️ 【" + playerName + "】は山札の上から" + topCards.length + "枚を見た。");
+        }
+
+        const isHuman = (player === ctx?.self && window.BattleSystem?.state?.mode !== 'ai_vs_ai') ||
+                        (window.BattleSystem?.state?.turnPlayer === 'player');
+        if (isHuman && opts.showModal !== false && topCards.length > 0 && window.BattleSystem?.showChoiceModalPromise) {
+          const modalCards = topCards.map((c) => ({
+            name: c.name,
+            category: c.category,
+            type: c.type,
+            hp: c.hp,
+            image: c.image || c.imageUrl,
+            _raw: c
+          }));
+          const title = opts.title || ('👁️ 山札の上から' + topCards.length + '枚を確認');
+          const desc = opts.desc || opts.message || ('山札の上から' + topCards.length + '枚のカードです。確認したら閉じてください。');
+          await window.BattleSystem.showChoiceModalPromise(modalCards, {
+            title: title,
+            desc: desc,
+            viewOnly: true,
+            closeLabel: '確認して閉じる'
+          });
+        }
+
+        return topCards;
+      },
+      lookAtTop(ctx, count = 1, options = {}) {
+        return this.lookAtDeckTop(ctx, ctx?.self, count, options);
+      },
+      lookDeckTop(ctx, count = 1, options = {}) {
+        return this.lookAtDeckTop(ctx, ctx?.self, count, options);
+      },
+
+      async searchTopDeck(ctx, playerOrCount, lookCountOrFilter, filterOrPick, pickCountOrOpts, options = {}) {
+        let player = playerOrCount;
+        let lookCount = lookCountOrFilter;
+        let filter = filterOrPick;
+        let pickCount = pickCountOrOpts;
+        let opts = options;
+
+        if (typeof player === 'number') {
+          opts = (typeof pickCountOrOpts === 'object' && pickCountOrOpts !== null) ? pickCountOrOpts : opts;
+          pickCount = (typeof filterOrPick === 'number') ? filterOrPick : 1;
+          filter = (typeof lookCountOrFilter === 'object' && lookCountOrFilter !== null) ? lookCountOrFilter : {};
+          lookCount = player;
+          player = ctx?.self;
+        } else if (!player) {
+          player = ctx?.self;
+        }
+
+        lookCount = Math.max(1, Number(lookCount) || 1);
+        pickCount = Math.max(1, Number(pickCount) || 1);
+        filter = filter || {};
+        opts = opts || {};
+
+        const deck = player?.deck || [];
+        const topCards = deck.slice(0, lookCount);
+
+        if (!topCards.length) {
+          if (ctx?.game?.logs) {
+            ctx.game.logs.push("⚠️ 山札にカードがありません。");
+          }
+          return [];
+        }
+
+        const playerName = (player === ctx?.self || player?.id === ctx?.self?.id) ? '自分' : (player?.name || '相手');
+        if (ctx?.game?.logs) {
+          ctx.game.logs.push("🔍 【" + playerName + "】は山札の上から" + topCards.length + "枚を見てカードを選択中…");
+        }
+
+        const choiceTitle = opts.title || ("山札の上から" + topCards.length + "枚");
+        const choiceDesc = opts.desc || (opts.message || (pickCount > 1 ? ("手札に加えるカードを最大" + pickCount + "枚選んでください。") : "手札に加えるカードを1枚選んでください。"));
+
+        const chosen = await this.choiceCard(ctx, topCards, filter, pickCount, Object.assign({}, opts, {
+          title: choiceTitle,
+          desc: choiceDesc
+        }));
+
+        const toDest = opts.to || 'hand';
+        if (chosen && chosen.length > 0) {
+          if (toDest === 'hand') {
+            this.toHand(ctx, player, chosen);
+          } else if (toDest === 'bench') {
+            await this.toBench(ctx, player, chosen);
+          } else if (toDest === 'discard') {
+            this.toDiscard(ctx, player, chosen);
+          } else if (toDest === 'active') {
+            if (player?.active) {
+              chosen.forEach((c) => {
+                const idx = player.deck.indexOf(c);
+                if (idx >= 0) player.deck.splice(idx, 1);
+                if (!Array.isArray(player.active.attachedCards)) player.active.attachedCards = [];
+                player.active.attachedCards.push(c);
+                if (c.category === 'Energy' || c.type) {
+                  if (!Array.isArray(player.active.energy)) player.active.energy = [];
+                  player.active.energy.push(c.type || 'Colorless');
+                }
+              });
+              if (ctx?.game?.logs) {
+                ctx.game.logs.push("⚡ 【" + (player.active.name || 'バトル場') + "】に【" + chosen.map(c => c.name).join('、') + "】をつけました。");
+              }
+            } else if (player) {
+              player.active = chosen[0];
+            }
+          } else if (typeof toDest === 'object' && toDest !== null && (toDest.hp !== undefined || toDest.name)) {
+            chosen.forEach((c) => {
+              const idx = player.deck.indexOf(c);
+              if (idx >= 0) player.deck.splice(idx, 1);
+              if (!Array.isArray(toDest.attachedCards)) toDest.attachedCards = [];
+              toDest.attachedCards.push(c);
+              if (c.category === 'Energy' || c.type) {
+                if (!Array.isArray(toDest.energy)) toDest.energy = [];
+                toDest.energy.push(c.type || 'Colorless');
+              }
+            });
+          }
+        }
+
+        const remaining = topCards.filter((c) => !chosen.includes(c));
+
+        if (opts.discardRest === true) {
+          if (remaining.length > 0) {
+            this.toDiscard(ctx, player, remaining);
+          }
+        } else if (opts.bottom === true || opts.toBottom === true || opts.bottomRemaining === true) {
+          remaining.forEach((c) => {
+            const idx = player.deck.indexOf(c);
+            if (idx >= 0) player.deck.splice(idx, 1);
+            player.deck.push(c);
+          });
+          if (ctx?.game?.logs) {
+            ctx.game.logs.push("⬇️ 残りの" + remaining.length + "枚のカードを山札の下に戻しました。");
+          }
+        } else if (opts.shuffle !== false) {
+          this.shuffleDeck(ctx, player);
+          if (ctx?.game?.logs) {
+            ctx.game.logs.push("🔀 残りのカードを山札に戻し、山札を切りました。");
+          }
+        }
+
+        if (window.BattleSystem && typeof window.BattleSystem.render === 'function') {
+          window.BattleSystem.render();
+        }
+
+        return chosen;
+      },
+
+      putBackDeckTop(ctx, player, cardOrCards) {
+        let p = player;
+        let cards = cardOrCards;
+        if (p && (p.hp !== undefined || p.maxHp !== undefined || !p.deck)) {
+          cards = p;
+          p = ctx?.self;
+        }
+        if (!p) p = ctx?.self;
+        if (!p) return;
+        if (!Array.isArray(p.deck)) p.deck = [];
+        const arr = Array.isArray(cards) ? cards : [cards];
+        arr.slice().reverse().forEach((c) => {
+          if (!c) return;
+          [p.hand, p.discard, p.bench].forEach((list) => {
+            if (Array.isArray(list)) {
+              const i = list.indexOf(c);
+              if (i >= 0) list.splice(i, 1);
+            }
+          });
+          const deckIdx = p.deck.indexOf(c);
+          if (deckIdx >= 0) p.deck.splice(deckIdx, 1);
+          p.deck.unshift(c);
+        });
+        if (ctx?.game?.logs) {
+          ctx.game.logs.push("⬆️ 【" + (p.name || 'プレイヤー') + "】はカードを山札の上に戻しました。");
+        }
+        if (window.BattleSystem && typeof window.BattleSystem.render === 'function') {
+          window.BattleSystem.render();
+        }
+      },
+
+      putBackDeckBottom(ctx, player, cardOrCards) {
+        let p = player;
+        let cards = cardOrCards;
+        if (p && (p.hp !== undefined || p.maxHp !== undefined || !p.deck)) {
+          cards = p;
+          p = ctx?.self;
+        }
+        if (!p) p = ctx?.self;
+        if (!p) return;
+        if (!Array.isArray(p.deck)) p.deck = [];
+        const arr = Array.isArray(cards) ? cards : [cards];
+        arr.forEach((c) => {
+          if (!c) return;
+          [p.hand, p.discard, p.bench].forEach((list) => {
+            if (Array.isArray(list)) {
+              const i = list.indexOf(c);
+              if (i >= 0) list.splice(i, 1);
+            }
+          });
+          const deckIdx = p.deck.indexOf(c);
+          if (deckIdx >= 0) p.deck.splice(deckIdx, 1);
+          p.deck.push(c);
+        });
+        if (ctx?.game?.logs) {
+          ctx.game.logs.push("⬇️ 【" + (p.name || 'プレイヤー') + "】はカードを山札の下に戻しました。");
+        }
+        if (window.BattleSystem && typeof window.BattleSystem.render === 'function') {
+          window.BattleSystem.render();
+        }
+      },
       getCards(ctx, target, filter) {
         const p = target || ctx?.self?.active;
         const list = p?.attachedCards || [];
@@ -12574,7 +12805,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           const cCat = String(card.category || '').toLowerCase();
           const isTrainerOrEnergy = ['グッズ', 'サポート', 'トレーナー', 'スタジアム', 'エネルギー', 'item', 'supporter', 'energy'].some((k) => cCat.includes(k));
           if (isTrainerOrEnergy) return false;
-          return card.hp != null || ['たね', '進化', '1進化', '2進化', 'ex'].some((k) => cCat.includes(k));
+          return card.hp != null || ['たね', '進化', '1進化', '2進化', 'ex', 'pokemon', 'ポケモン'].some((k) => cCat.includes(k));
         }
         const catNorm = BILINGUAL_CATEGORY_MAP[q] || [q];
         const typeNorm = BILINGUAL_TYPE_MAP[q] || [q];
@@ -12599,7 +12830,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           const cCat = String(card.category || '').toLowerCase();
           const isTrainerOrEnergy = ['グッズ', 'サポート', 'トレーナー', 'スタジアム', 'エネルギー', 'item', 'supporter', 'energy'].some((k) => cCat.includes(k));
           if (isTrainerOrEnergy) return false;
-          return card.hp != null || ['たね', '進化', '1進化', '2進化', 'ex'].some((k) => cCat.includes(k));
+          return card.hp != null || ['たね', '進化', '1進化', '2進化', 'ex', 'pokemon', 'ポケモン'].some((k) => cCat.includes(k));
         }
         const catEquivs = BILINGUAL_CATEGORY_MAP[fCat] || [fCat];
         const cardCat = String(card.category || (card.hp != null ? 'たね' : '')).toLowerCase();
@@ -12770,7 +13001,12 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         reduceDamage: (t, n) => api.reduceDamage(ctx, t, n),
         increaseDamage: (n) => api.increaseDamage(ctx, n),
         shuffleDeck: (p) => api.shuffleDeck(ctx, p),
-        lookAtDeckTop: (p, n) => api.lookAtDeckTop(ctx, p, n),
+        lookAtDeckTop: (p, n, opt) => api.lookAtDeckTop(ctx, p, n, opt),
+        lookAtTop: (p, n, opt) => api.lookAtDeckTop(ctx, p, n, opt),
+        lookDeckTop: (p, n, opt) => api.lookAtDeckTop(ctx, p, n, opt),
+        searchTopDeck: (...args) => api.searchTopDeck(ctx, ...args),
+        putBackDeckTop: (p, c) => api.putBackDeckTop(ctx, p, c),
+        putBackDeckBottom: (p, c) => api.putBackDeckBottom(ctx, p, c),
         choiceCard: (...args) => api.choiceCard(ctx, ...args),
         choiceCards: (...args) => api.choiceCards(ctx, ...args),
         choicePokemon: (player, filter, msg) => api.choiceCard(ctx, player || ctx.self, "場", filter || {}, 1, msg || "ポケモンを選択してください"),
@@ -12985,7 +13221,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
       // Convert any non-async functions/arrow functions containing async calls (choiceCard, coinFlip, etc.) into async functions
       asyncCode = asyncCode.replace(/(?<!async\s+)(\([^)]*\)\s*=>|[\w$]+\s*=>|function\s*\([^)]*\))\s*\{([^}]*?\b(?:choiceCard|choiceCards|coinFlip|flipCoin|rareCandy)\b[^}]*)\}/g, 'async $1 {$2}');
       // Auto-inject await before async functions
-      asyncCode = asyncCode.replace(/(?<!await\s+)\b(choiceCard|choiceCards|coinFlip|flipCoin|rareCandy|whenAllyKnockedOut|onAllyKnockedOut)\s*\(/g, 'await $1(');
+      asyncCode = asyncCode.replace(/(?<!await\s+)\b(choiceCard|choiceCards|coinFlip|flipCoin|rareCandy|whenAllyKnockedOut|onAllyKnockedOut|lookAtDeckTop|lookAtTop|lookDeckTop|searchTopDeck)\s*\(/g, 'await $1(');
 
       const AsyncFunction = Object.getPrototypeOf(async function () { }).constructor;
       const fn = new AsyncFunction(
@@ -12994,7 +13230,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         'damage', 'heal', 'draw', 'attachEnergy', 'discardEnergy',
         'switchActive', 'toHand', 'toDiscard', 'toDeck', 'toBench', 'moveCard', 'discardCards', 'searchCards',
         'coinFlip', 'flipCoin', 'applyStatus', 'clearStatus', 'benchDamage',
-        'reduceDamage', 'increaseDamage', 'shuffleDeck', 'lookAtDeckTop',
+        'reduceDamage', 'increaseDamage', 'shuffleDeck', 'lookAtDeckTop', 'lookAtTop', 'lookDeckTop', 'searchTopDeck', 'putBackDeckTop', 'putBackDeckBottom',
         'choiceCard', 'choiceCards', 'isKnockedOut', 'isDefeated', 'knockout', 'defeat', 'didKnockout', 'defeatedOpponent',
         'didAllyKnockoutLastTurn', 'wasAllyKnockedOutLastTurn', 'isAllyKnockedOutPreviousTurn', 'allyKnockedOutLastTurn', 'wasKnockedOutPreviousTurn', 'wasKnockedOutLastTurn',
         'wasAllyKnockedOut', 'isAllyKnockedOut', 'didAllyKnockout', 'allyKnockedOut',
@@ -13027,7 +13263,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           ctx.damage, ctx.heal, ctx.draw, ctx.attachEnergy, ctx.discardEnergy,
           ctx.switchActive, ctx.toHand, ctx.toDiscard, ctx.toDeck, ctx.toBench, ctx.moveCard, ctx.discardCards, ctx.searchCards,
           ctx.coinFlip, ctx.flipCoin, ctx.applyStatus, ctx.clearStatus, ctx.benchDamage,
-          ctx.reduceDamage, ctx.increaseDamage, ctx.shuffleDeck, ctx.lookAtDeckTop,
+          ctx.reduceDamage, ctx.increaseDamage, ctx.shuffleDeck, ctx.lookAtDeckTop, ctx.lookAtTop, ctx.lookDeckTop, ctx.searchTopDeck, ctx.putBackDeckTop, ctx.putBackDeckBottom,
           ctx.choiceCard, ctx.choiceCards,
           ctx.isKnockedOut, ctx.isDefeated, ctx.knockout, ctx.defeat, ctx.didKnockout, ctx.defeatedOpponent,
           ctx.didAllyKnockoutLastTurn, ctx.wasAllyKnockedOutLastTurn, ctx.isAllyKnockedOutPreviousTurn, ctx.allyKnockedOutLastTurn, ctx.wasKnockedOutPreviousTurn, ctx.wasKnockedOutLastTurn,
@@ -13094,6 +13330,12 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
     window.cancelDamage = (e) => window.ORBITAL_EFFECT_API.cancelDamage(null, e);
     window.choiceCard = (src, ...args) => window.ORBITAL_EFFECT_API.choiceCard(null, src, ...args);
     window.choiceCards = (src, ...args) => window.ORBITAL_EFFECT_API.choiceCards(null, src, ...args);
+    window.lookAtDeckTop = (p, n, opt) => window.ORBITAL_EFFECT_API.lookAtDeckTop(null, p, n, opt);
+    window.lookAtTop = (p, n, opt) => window.ORBITAL_EFFECT_API.lookAtDeckTop(null, p, n, opt);
+    window.lookDeckTop = (p, n, opt) => window.ORBITAL_EFFECT_API.lookAtDeckTop(null, p, n, opt);
+    window.searchTopDeck = (...args) => window.ORBITAL_EFFECT_API.searchTopDeck(null, ...args);
+    window.putBackDeckTop = (p, c) => window.ORBITAL_EFFECT_API.putBackDeckTop(null, p, c);
+    window.putBackDeckBottom = (p, c) => window.ORBITAL_EFFECT_API.putBackDeckBottom(null, p, c);
     window.toHand = (p, c) => window.ORBITAL_EFFECT_API.toHand(null, p, c);
     window.toDiscard = (p, c) => window.ORBITAL_EFFECT_API.toDiscard(null, p, c);
     window.toDeck = (p, c) => window.ORBITAL_EFFECT_API.toDeck(null, p, c);
@@ -13896,6 +14138,42 @@ var EffectEditor;
       desc: '山札をシャッフルする',
       snippet: 'shuffleDeck(self)',
       targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'lookAtDeckTop',
+      label: 'lookAtDeckTop(self, 7)',
+      category: 'func',
+      badge: '山札確認',
+      desc: '自分の山札を上から指定枚数見る（画面に表示して確認）',
+      snippet: 'lookAtDeckTop(self, 7);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'searchTopDeck',
+      label: 'searchTopDeck(self, 7, { category: "Pokemon" }, 1, { to: "hand", shuffle: true })',
+      category: 'func',
+      badge: '山札上サーチ',
+      desc: '自分の山札を上から指定枚数見て、対象を選んで手札に加え、残りを山札に戻してシャッフルする',
+      snippet: 'searchTopDeck(self, 7, { category: "Pokemon" }, 1, { to: "hand", shuffle: true });',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'putBackDeckTop',
+      label: 'putBackDeckTop(self, cards)',
+      category: 'func',
+      badge: '山札上戻し',
+      desc: '指定したカードを山札の上に戻す',
+      snippet: 'putBackDeckTop(self, cards);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'putBackDeckBottom',
+      label: 'putBackDeckBottom(self, cards)',
+      category: 'func',
+      badge: '山札下戻し',
+      desc: '指定したカードを山札の下に戻す',
+      snippet: 'putBackDeckBottom(self, cards);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
     },
 
     // === 【万能カード選択 (choiceCard)】 ===
@@ -15005,18 +15283,67 @@ var EffectEditor;
       },
       {
         name: 'lookAtDeckTop',
-        signature: 'lookAtDeckTop(player, count?)',
+        signature: 'lookAtDeckTop(player?, count?, options?)',
         category: 'cards',
         catLabel: '手札・山札・トラッシュ',
         badge: '山札確認',
         returns: 'Array [card]',
-        desc: '山札の上から指定枚数を覗き見て配列として返します。',
+        desc: '指定したプレイヤーの山札の上から指定枚数を覗き見て画面に表示し、カード配列として返します。lookAtDeckTop(7) のように枚数のみの指定も可能です。',
         params: [
-          { name: 'player', type: 'player', desc: '対象プレイヤー（self または opponent）' },
-          { name: 'count', type: 'number', desc: '確認する枚数（デフォルト: 1）' }
+          { name: 'player', type: 'player', desc: '対象プレイヤー（self または opponent。省略時は self）' },
+          { name: 'count', type: 'number', desc: '上から見る枚数（デフォルト: 1。例: 7）' },
+          { name: 'options', type: 'object', desc: '{ showModal: true/false, title: "表題", desc: "説明" }' }
         ],
-        example: 'const topCards = lookAtDeckTop(self, 3);',
-        snippet: 'lookAtDeckTop(self, 3);'
+        example: '// 自分の山札を上から7枚見る\nconst topCards = lookAtDeckTop(self, 7);\n// その中からポケモンを1枚選んで手札に加える\nconst chosen = choiceCard(topCards, { category: "Pokemon" }, 1);\nif (chosen.length > 0) toHand(self, chosen);\nshuffleDeck(self);',
+        snippet: 'lookAtDeckTop(self, 7);'
+      },
+      {
+        name: 'searchTopDeck',
+        signature: 'searchTopDeck(player?, lookCount, filter?, pickCount?, options?)',
+        category: 'cards',
+        catLabel: '手札・山札・トラッシュ',
+        badge: '山札上サーチ',
+        returns: 'Array [card]',
+        desc: '【王道効果】山札の上から指定枚数を見て、条件に合うカードを選んで手札に加え、残りを山札に戻してシャッフルする一連の処理を1行で行います。',
+        params: [
+          { name: 'player', type: 'player', desc: '対象プレイヤー（self または opponent。省略時は self）' },
+          { name: 'lookCount', type: 'number', desc: '上から見る枚数（例: 7）' },
+          { name: 'filter', type: 'object', desc: '選ぶ条件（例: { category: "Pokemon" }、{ category: "グッズ" }、{} で全カード）' },
+          { name: 'pickCount', type: 'number', desc: '選ぶ枚数（省略時は 1）' },
+          { name: 'options', type: 'object', desc: '{ to: "hand"|"bench"|"discard", shuffle: true/false }' }
+        ],
+        example: '// 自分の山札を上から7枚見て、好きなカードを1枚選んで手札に加える（残りは山札に戻して切る）\nsearchTopDeck(self, 7, {}, 1, { to: "hand", shuffle: true });',
+        snippet: 'searchTopDeck(self, 7, {}, 1, { to: "hand", shuffle: true });'
+      },
+      {
+        name: 'putBackDeckTop',
+        signature: 'putBackDeckTop(player?, cardOrCards)',
+        category: 'cards',
+        catLabel: '手札・山札・トラッシュ',
+        badge: '山札上戻し',
+        returns: 'void',
+        desc: '指定したカードを山札の一番上に戻します。',
+        params: [
+          { name: 'player', type: 'player', desc: '対象プレイヤー（省略時は self）' },
+          { name: 'cardOrCards', type: 'card | Array', desc: '山札の上に戻すカードオブジェクト' }
+        ],
+        example: 'putBackDeckTop(self, cards);',
+        snippet: 'putBackDeckTop(self, cards);'
+      },
+      {
+        name: 'putBackDeckBottom',
+        signature: 'putBackDeckBottom(player?, cardOrCards)',
+        category: 'cards',
+        catLabel: '手札・山札・トラッシュ',
+        badge: '山札下戻し',
+        returns: 'void',
+        desc: '指定したカードを山札の一番下に戻します。',
+        params: [
+          { name: 'player', type: 'player', desc: '対象プレイヤー（省略時は self）' },
+          { name: 'cardOrCards', type: 'card | Array', desc: '山札の下に戻すカードオブジェクト' }
+        ],
+        example: 'putBackDeckBottom(self, cards);',
+        snippet: 'putBackDeckBottom(self, cards);'
       },
       {
         name: 'takePrize',
@@ -15463,10 +15790,15 @@ var EffectEditor;
         { label: 'きぜつした時', sub: 'onKnockout', code: 'event.on("onKnockout", () => {\n  draw(self, 2);\n});' },
         { label: '被ダメ20軽減', sub: 'reduceDamage', code: 'reduceDamage(self.active, 20);' },
         { label: 'HP30回復', sub: 'heal()', code: 'heal(self.active, 30);' },
-        { label: '1枚ドロー', sub: 'draw()', code: 'draw(self, 1);' }];
+        { label: '1枚ドロー', sub: 'draw()', code: 'draw(self, 1);' },
+        { label: '山札上7枚見てエネ手札', sub: 'searchTopDeck(7)', code: 'useLimit(1);\n// 自分の山札の上から7枚見て、エネルギーを1枚手札に加える（残りは山札に戻して切る）\nsearchTopDeck(self, 7, { category: "Energy" }, 1, { to: "hand", shuffle: true });' },
+        { label: '山札上7枚見る', sub: 'lookAtDeckTop(7)', code: 'useLimit(1);\n// 自分の山札の上から7枚を見る\nlookAtDeckTop(self, 7);' }];
 
       } else if (tab === 'trainer') {
         buttons = [
+        { label: '山札上7枚見て手札へ', sub: 'searchTopDeck(7)', code: '// 自分の山札の上から7枚見て、好きなカードを1枚選んで手札に加える（残りは山札に戻して切る）\nsearchTopDeck(self, 7, {}, 1, { to: "hand", shuffle: true });' },
+        { label: '山札上7枚見る', sub: 'lookAtDeckTop(7)', code: '// 自分の山札の上から7枚見る\nlookAtDeckTop(self, 7);' },
+        { label: '山札上3枚見て好きな順', sub: 'スマホロトム風', code: '// 自分の山札の上から3枚見て、好きな順番で山札の上に戻す\nlookAtDeckTop(self, 3);' },
         { label: '博士の研究 (7ドロー)', sub: '手札全トラッシュ＋7引く', code: 'discardCards(self.hand, self.hand.length);\ndraw(self, 7);' },
         { label: 'ボスの指令 (ベンチ呼出)', sub: '相手ベンチをバトル場へ', code: 'const target = choiceCard(opponent.bench);\nswitchActive(opponent, target);' },
         { label: 'エネ加速 (手札から1枚)', sub: 'attach()', code: 'const card = choiceCard(self, "hand", { category: "Energy" });\nattach(card, self.active);' },
@@ -15488,6 +15820,8 @@ var EffectEditor;
       } else {
         buttons = [
         { label: '30ダメージ', sub: 'damage()', code: 'damage(opponent.active, 30);' },
+        { label: '山札上7枚見てエネ加速', sub: 'searchTopDeck + attach', code: 'damage(opponent.active, 40);\n// 自分の山札の上から7枚見て、エネルギーを1枚選びバトルポケモンにつける\nconst topCards = lookAtDeckTop(self, 7, { showModal: false });\nconst nrg = choiceCard(topCards, { category: "Energy" }, 1);\nif (nrg.length > 0) {\n  attach(nrg[0], self.active);\n}\nshuffleDeck(self);' },
+        { label: '山札上3枚見て手札へ', sub: 'searchTopDeck(3)', code: 'damage(opponent.active, 30);\n// 自分の山札の上から3枚見て、好きなカードを1枚手札に加える\nsearchTopDeck(self, 3, {}, 1, { to: "hand", shuffle: true });' },
         { label: '相手次攻撃力-20', sub: 'reduceOpponentAttackNextTurn', code: 'reduceOpponentAttackNextTurn(20);' },
         { label: '次ターン被ダメ-30', sub: 'reduceDamageNextTurn', code: 'reduceDamageNextTurn(30);' },
         { label: '相手HP直接-20', sub: 'reduceHp', code: 'reduceHp(opponent.active, 20);' },
@@ -16649,11 +16983,35 @@ var EffectEditor;
       }
 
       // APIコール解析
-      const re = /(damage|benchDamage|heal|draw|attachEnergy|discardEnergy|applyStatus|clearStatus|switchActive|discardCards|searchCards|reduceDamage|takePrize|toHand|toDiscard|toDeck|toBench|reduceOpponentAttackNextTurn|nextTurnReduceOpponentAttack|reduceDamageNextTurn|nextTurnReduceDamage|nextTurnDamage|boostDamageNextTurn|reduceHp|reduceOpponentHp|reduceSelfHp|subHp|reduceMaxHp|lowerMaxHp|increaseMaxHp|addMaxHp|setHp|cantAttackNextTurn|nextTurnCantAttack)\s*\(([^)]*)\)/g;
+      const re = /(lookAtDeckTop|lookAtTop|lookDeckTop|searchTopDeck|putBackDeckTop|putBackDeckBottom|shuffleDeck|damage|benchDamage|heal|draw|attachEnergy|discardEnergy|applyStatus|clearStatus|switchActive|discardCards|searchCards|reduceDamage|takePrize|toHand|toDiscard|toDeck|toBench|reduceOpponentAttackNextTurn|nextTurnReduceOpponentAttack|reduceDamageNextTurn|nextTurnReduceDamage|nextTurnDamage|boostDamageNextTurn|reduceHp|reduceOpponentHp|reduceSelfHp|subHp|reduceMaxHp|lowerMaxHp|increaseMaxHp|addMaxHp|setHp|cantAttackNextTurn|nextTurnCantAttack)\s*\(([^)]*)\)/g;
       let m;
       while (m = re.exec(code)) {
         const fn = m[1];
         const args = m[2];
+        if (fn === 'lookAtDeckTop' || fn === 'lookAtTop' || fn === 'lookDeckTop') {
+          const num = this.codeNumber(args) || 7;
+          const firstArg = args.split(',')[0].trim();
+          const target = (firstArg === 'opponent' || firstArg.includes('opponent')) ? '相手' : '自分';
+          lines.push(target + "の山札を上から" + num + "枚見る。");
+        } else
+        if (fn === 'searchTopDeck') {
+          const num = this.codeNumber(args) || 7;
+          let filterDesc = '';
+          const catMatch = args.match(/category\s*:\s*['"]([^'"]+)['"]/);
+          if (catMatch) filterDesc += "「" + catMatch[1] + "」";
+          const typeMatch = args.match(/type\s*:\s*['"]([^'"]+)['"]/);
+          if (typeMatch) filterDesc += "【" + typeMatch[1] + "】";
+          let toDesc = '手札に加える';
+          if (args.includes("'bench'") || args.includes('"bench"')) toDesc = 'ベンチに出す';
+          else if (args.includes("'active'") || args.includes('"active"')) toDesc = 'バトル場につける';
+          else if (args.includes("'discard'") || args.includes('"discard"')) toDesc = 'トラッシュする';
+          const firstArg = args.split(',')[0].trim();
+          const target = (firstArg === 'opponent' || firstArg.includes('opponent')) ? '相手' : '自分';
+          lines.push(target + "の山札を上から" + num + "枚見て、" + (filterDesc ? filterDesc + "カードを選び、" : "") + toDesc + "。残りは山札にもどす。");
+        } else
+        if (fn === 'putBackDeckTop') lines.push("選んだカードを山札の上にもどす。");else
+        if (fn === 'putBackDeckBottom') lines.push("残りのカードを山札の下にもどす。");else
+        if (fn === 'shuffleDeck') lines.push(this.codeTarget(args) + "の山札を切る。");else
         if (fn === 'damage') lines.push(this.codeTarget(args) + "に" + this.codeNumber(args) + "ダメージ。");else
         if (fn === 'benchDamage') lines.push(this.codeTarget(args) + "のベンチ全員に" + this.codeNumber(args) + "ダメージ。");else
         if (fn === 'heal') lines.push(this.codeTarget(args) + "のHPを" + this.codeNumber(args) + "回復する。");else

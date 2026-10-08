@@ -1616,7 +1616,238 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         return false;
       },
       shuffleDeck(ctx, player) { if (!Array.isArray(player?.deck)) return; for (let i = player.deck.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[player.deck[i], player.deck[j]] = [player.deck[j], player.deck[i]]; } },
-      lookAtDeckTop(ctx, player, count = 1) { return (player?.deck || []).slice(0, Math.max(1, Number(count) || 1)); },
+      async lookAtDeckTop(ctx, playerOrCount = null, countOrOpts = 1, options = {}) {
+        let player = playerOrCount;
+        let count = countOrOpts;
+        let opts = options;
+
+        if (typeof player === 'number') {
+          if (typeof count === 'object' && count !== null) opts = count;
+          count = player;
+          player = ctx?.self;
+        } else if (!player) {
+          player = ctx?.self;
+        }
+
+        if (typeof count === 'object' && count !== null && !options) {
+          opts = count;
+          count = opts.count || opts.n || 1;
+        }
+
+        count = Math.max(1, Number(count) || 1);
+        const deck = player?.deck || [];
+        const topCards = deck.slice(0, count);
+
+        const playerName = (player === ctx?.self || player?.id === ctx?.self?.id) ? '自分' : (player?.name || '相手');
+        if (ctx?.game?.logs) {
+          ctx.game.logs.push("👁️ 【" + playerName + "】は山札の上から" + topCards.length + "枚を見た。");
+        }
+
+        const isHuman = (player === ctx?.self && window.BattleSystem?.state?.mode !== 'ai_vs_ai') ||
+                        (window.BattleSystem?.state?.turnPlayer === 'player');
+        if (isHuman && opts.showModal !== false && topCards.length > 0 && window.BattleSystem?.showChoiceModalPromise) {
+          const modalCards = topCards.map((c) => ({
+            name: c.name,
+            category: c.category,
+            type: c.type,
+            hp: c.hp,
+            image: c.image || c.imageUrl,
+            _raw: c
+          }));
+          const title = opts.title || ('👁️ 山札の上から' + topCards.length + '枚を確認');
+          const desc = opts.desc || opts.message || ('山札の上から' + topCards.length + '枚のカードです。確認したら閉じてください。');
+          await window.BattleSystem.showChoiceModalPromise(modalCards, {
+            title: title,
+            desc: desc,
+            viewOnly: true,
+            closeLabel: '確認して閉じる'
+          });
+        }
+
+        return topCards;
+      },
+      lookAtTop(ctx, count = 1, options = {}) {
+        return this.lookAtDeckTop(ctx, ctx?.self, count, options);
+      },
+      lookDeckTop(ctx, count = 1, options = {}) {
+        return this.lookAtDeckTop(ctx, ctx?.self, count, options);
+      },
+
+      async searchTopDeck(ctx, playerOrCount, lookCountOrFilter, filterOrPick, pickCountOrOpts, options = {}) {
+        let player = playerOrCount;
+        let lookCount = lookCountOrFilter;
+        let filter = filterOrPick;
+        let pickCount = pickCountOrOpts;
+        let opts = options;
+
+        if (typeof player === 'number') {
+          opts = (typeof pickCountOrOpts === 'object' && pickCountOrOpts !== null) ? pickCountOrOpts : opts;
+          pickCount = (typeof filterOrPick === 'number') ? filterOrPick : 1;
+          filter = (typeof lookCountOrFilter === 'object' && lookCountOrFilter !== null) ? lookCountOrFilter : {};
+          lookCount = player;
+          player = ctx?.self;
+        } else if (!player) {
+          player = ctx?.self;
+        }
+
+        lookCount = Math.max(1, Number(lookCount) || 1);
+        pickCount = Math.max(1, Number(pickCount) || 1);
+        filter = filter || {};
+        opts = opts || {};
+
+        const deck = player?.deck || [];
+        const topCards = deck.slice(0, lookCount);
+
+        if (!topCards.length) {
+          if (ctx?.game?.logs) {
+            ctx.game.logs.push("⚠️ 山札にカードがありません。");
+          }
+          return [];
+        }
+
+        const playerName = (player === ctx?.self || player?.id === ctx?.self?.id) ? '自分' : (player?.name || '相手');
+        if (ctx?.game?.logs) {
+          ctx.game.logs.push("🔍 【" + playerName + "】は山札の上から" + topCards.length + "枚を見てカードを選択中…");
+        }
+
+        const choiceTitle = opts.title || ("山札の上から" + topCards.length + "枚");
+        const choiceDesc = opts.desc || (opts.message || (pickCount > 1 ? ("手札に加えるカードを最大" + pickCount + "枚選んでください。") : "手札に加えるカードを1枚選んでください。"));
+
+        const chosen = await this.choiceCard(ctx, topCards, filter, pickCount, Object.assign({}, opts, {
+          title: choiceTitle,
+          desc: choiceDesc
+        }));
+
+        const toDest = opts.to || 'hand';
+        if (chosen && chosen.length > 0) {
+          if (toDest === 'hand') {
+            this.toHand(ctx, player, chosen);
+          } else if (toDest === 'bench') {
+            await this.toBench(ctx, player, chosen);
+          } else if (toDest === 'discard') {
+            this.toDiscard(ctx, player, chosen);
+          } else if (toDest === 'active') {
+            if (player?.active) {
+              chosen.forEach((c) => {
+                const idx = player.deck.indexOf(c);
+                if (idx >= 0) player.deck.splice(idx, 1);
+                if (!Array.isArray(player.active.attachedCards)) player.active.attachedCards = [];
+                player.active.attachedCards.push(c);
+                if (c.category === 'Energy' || c.type) {
+                  if (!Array.isArray(player.active.energy)) player.active.energy = [];
+                  player.active.energy.push(c.type || 'Colorless');
+                }
+              });
+              if (ctx?.game?.logs) {
+                ctx.game.logs.push("⚡ 【" + (player.active.name || 'バトル場') + "】に【" + chosen.map(c => c.name).join('、') + "】をつけました。");
+              }
+            } else if (player) {
+              player.active = chosen[0];
+            }
+          } else if (typeof toDest === 'object' && toDest !== null && (toDest.hp !== undefined || toDest.name)) {
+            chosen.forEach((c) => {
+              const idx = player.deck.indexOf(c);
+              if (idx >= 0) player.deck.splice(idx, 1);
+              if (!Array.isArray(toDest.attachedCards)) toDest.attachedCards = [];
+              toDest.attachedCards.push(c);
+              if (c.category === 'Energy' || c.type) {
+                if (!Array.isArray(toDest.energy)) toDest.energy = [];
+                toDest.energy.push(c.type || 'Colorless');
+              }
+            });
+          }
+        }
+
+        const remaining = topCards.filter((c) => !chosen.includes(c));
+
+        if (opts.discardRest === true) {
+          if (remaining.length > 0) {
+            this.toDiscard(ctx, player, remaining);
+          }
+        } else if (opts.bottom === true || opts.toBottom === true || opts.bottomRemaining === true) {
+          remaining.forEach((c) => {
+            const idx = player.deck.indexOf(c);
+            if (idx >= 0) player.deck.splice(idx, 1);
+            player.deck.push(c);
+          });
+          if (ctx?.game?.logs) {
+            ctx.game.logs.push("⬇️ 残りの" + remaining.length + "枚のカードを山札の下に戻しました。");
+          }
+        } else if (opts.shuffle !== false) {
+          this.shuffleDeck(ctx, player);
+          if (ctx?.game?.logs) {
+            ctx.game.logs.push("🔀 残りのカードを山札に戻し、山札を切りました。");
+          }
+        }
+
+        if (window.BattleSystem && typeof window.BattleSystem.render === 'function') {
+          window.BattleSystem.render();
+        }
+
+        return chosen;
+      },
+
+      putBackDeckTop(ctx, player, cardOrCards) {
+        let p = player;
+        let cards = cardOrCards;
+        if (p && (p.hp !== undefined || p.maxHp !== undefined || !p.deck)) {
+          cards = p;
+          p = ctx?.self;
+        }
+        if (!p) p = ctx?.self;
+        if (!p) return;
+        if (!Array.isArray(p.deck)) p.deck = [];
+        const arr = Array.isArray(cards) ? cards : [cards];
+        arr.slice().reverse().forEach((c) => {
+          if (!c) return;
+          [p.hand, p.discard, p.bench].forEach((list) => {
+            if (Array.isArray(list)) {
+              const i = list.indexOf(c);
+              if (i >= 0) list.splice(i, 1);
+            }
+          });
+          const deckIdx = p.deck.indexOf(c);
+          if (deckIdx >= 0) p.deck.splice(deckIdx, 1);
+          p.deck.unshift(c);
+        });
+        if (ctx?.game?.logs) {
+          ctx.game.logs.push("⬆️ 【" + (p.name || 'プレイヤー') + "】はカードを山札の上に戻しました。");
+        }
+        if (window.BattleSystem && typeof window.BattleSystem.render === 'function') {
+          window.BattleSystem.render();
+        }
+      },
+
+      putBackDeckBottom(ctx, player, cardOrCards) {
+        let p = player;
+        let cards = cardOrCards;
+        if (p && (p.hp !== undefined || p.maxHp !== undefined || !p.deck)) {
+          cards = p;
+          p = ctx?.self;
+        }
+        if (!p) p = ctx?.self;
+        if (!p) return;
+        if (!Array.isArray(p.deck)) p.deck = [];
+        const arr = Array.isArray(cards) ? cards : [cards];
+        arr.forEach((c) => {
+          if (!c) return;
+          [p.hand, p.discard, p.bench].forEach((list) => {
+            if (Array.isArray(list)) {
+              const i = list.indexOf(c);
+              if (i >= 0) list.splice(i, 1);
+            }
+          });
+          const deckIdx = p.deck.indexOf(c);
+          if (deckIdx >= 0) p.deck.splice(deckIdx, 1);
+          p.deck.push(c);
+        });
+        if (ctx?.game?.logs) {
+          ctx.game.logs.push("⬇️ 【" + (p.name || 'プレイヤー') + "】はカードを山札の下に戻しました。");
+        }
+        if (window.BattleSystem && typeof window.BattleSystem.render === 'function') {
+          window.BattleSystem.render();
+        }
+      },
       getCards(ctx, target, filter) {
         const p = target || ctx?.self?.active;
         const list = p?.attachedCards || [];
@@ -2497,7 +2728,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           const cCat = String(card.category || '').toLowerCase();
           const isTrainerOrEnergy = ['グッズ', 'サポート', 'トレーナー', 'スタジアム', 'エネルギー', 'item', 'supporter', 'energy'].some((k) => cCat.includes(k));
           if (isTrainerOrEnergy) return false;
-          return card.hp != null || ['たね', '進化', '1進化', '2進化', 'ex'].some((k) => cCat.includes(k));
+          return card.hp != null || ['たね', '進化', '1進化', '2進化', 'ex', 'pokemon', 'ポケモン'].some((k) => cCat.includes(k));
         }
         const catNorm = BILINGUAL_CATEGORY_MAP[q] || [q];
         const typeNorm = BILINGUAL_TYPE_MAP[q] || [q];
@@ -2522,7 +2753,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           const cCat = String(card.category || '').toLowerCase();
           const isTrainerOrEnergy = ['グッズ', 'サポート', 'トレーナー', 'スタジアム', 'エネルギー', 'item', 'supporter', 'energy'].some((k) => cCat.includes(k));
           if (isTrainerOrEnergy) return false;
-          return card.hp != null || ['たね', '進化', '1進化', '2進化', 'ex'].some((k) => cCat.includes(k));
+          return card.hp != null || ['たね', '進化', '1進化', '2進化', 'ex', 'pokemon', 'ポケモン'].some((k) => cCat.includes(k));
         }
         const catEquivs = BILINGUAL_CATEGORY_MAP[fCat] || [fCat];
         const cardCat = String(card.category || (card.hp != null ? 'たね' : '')).toLowerCase();
@@ -2693,7 +2924,12 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         reduceDamage: (t, n) => api.reduceDamage(ctx, t, n),
         increaseDamage: (n) => api.increaseDamage(ctx, n),
         shuffleDeck: (p) => api.shuffleDeck(ctx, p),
-        lookAtDeckTop: (p, n) => api.lookAtDeckTop(ctx, p, n),
+        lookAtDeckTop: (p, n, opt) => api.lookAtDeckTop(ctx, p, n, opt),
+        lookAtTop: (p, n, opt) => api.lookAtDeckTop(ctx, p, n, opt),
+        lookDeckTop: (p, n, opt) => api.lookAtDeckTop(ctx, p, n, opt),
+        searchTopDeck: (...args) => api.searchTopDeck(ctx, ...args),
+        putBackDeckTop: (p, c) => api.putBackDeckTop(ctx, p, c),
+        putBackDeckBottom: (p, c) => api.putBackDeckBottom(ctx, p, c),
         choiceCard: (...args) => api.choiceCard(ctx, ...args),
         choiceCards: (...args) => api.choiceCards(ctx, ...args),
         choicePokemon: (player, filter, msg) => api.choiceCard(ctx, player || ctx.self, "場", filter || {}, 1, msg || "ポケモンを選択してください"),
@@ -2908,7 +3144,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
       // Convert any non-async functions/arrow functions containing async calls (choiceCard, coinFlip, etc.) into async functions
       asyncCode = asyncCode.replace(/(?<!async\s+)(\([^)]*\)\s*=>|[\w$]+\s*=>|function\s*\([^)]*\))\s*\{([^}]*?\b(?:choiceCard|choiceCards|coinFlip|flipCoin|rareCandy)\b[^}]*)\}/g, 'async $1 {$2}');
       // Auto-inject await before async functions
-      asyncCode = asyncCode.replace(/(?<!await\s+)\b(choiceCard|choiceCards|coinFlip|flipCoin|rareCandy|whenAllyKnockedOut|onAllyKnockedOut)\s*\(/g, 'await $1(');
+      asyncCode = asyncCode.replace(/(?<!await\s+)\b(choiceCard|choiceCards|coinFlip|flipCoin|rareCandy|whenAllyKnockedOut|onAllyKnockedOut|lookAtDeckTop|lookAtTop|lookDeckTop|searchTopDeck)\s*\(/g, 'await $1(');
 
       const AsyncFunction = Object.getPrototypeOf(async function () { }).constructor;
       const fn = new AsyncFunction(
@@ -2917,7 +3153,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         'damage', 'heal', 'draw', 'attachEnergy', 'discardEnergy',
         'switchActive', 'toHand', 'toDiscard', 'toDeck', 'toBench', 'moveCard', 'discardCards', 'searchCards',
         'coinFlip', 'flipCoin', 'applyStatus', 'clearStatus', 'benchDamage',
-        'reduceDamage', 'increaseDamage', 'shuffleDeck', 'lookAtDeckTop',
+        'reduceDamage', 'increaseDamage', 'shuffleDeck', 'lookAtDeckTop', 'lookAtTop', 'lookDeckTop', 'searchTopDeck', 'putBackDeckTop', 'putBackDeckBottom',
         'choiceCard', 'choiceCards', 'isKnockedOut', 'isDefeated', 'knockout', 'defeat', 'didKnockout', 'defeatedOpponent',
         'didAllyKnockoutLastTurn', 'wasAllyKnockedOutLastTurn', 'isAllyKnockedOutPreviousTurn', 'allyKnockedOutLastTurn', 'wasKnockedOutPreviousTurn', 'wasKnockedOutLastTurn',
         'wasAllyKnockedOut', 'isAllyKnockedOut', 'didAllyKnockout', 'allyKnockedOut',
@@ -2950,7 +3186,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           ctx.damage, ctx.heal, ctx.draw, ctx.attachEnergy, ctx.discardEnergy,
           ctx.switchActive, ctx.toHand, ctx.toDiscard, ctx.toDeck, ctx.toBench, ctx.moveCard, ctx.discardCards, ctx.searchCards,
           ctx.coinFlip, ctx.flipCoin, ctx.applyStatus, ctx.clearStatus, ctx.benchDamage,
-          ctx.reduceDamage, ctx.increaseDamage, ctx.shuffleDeck, ctx.lookAtDeckTop,
+          ctx.reduceDamage, ctx.increaseDamage, ctx.shuffleDeck, ctx.lookAtDeckTop, ctx.lookAtTop, ctx.lookDeckTop, ctx.searchTopDeck, ctx.putBackDeckTop, ctx.putBackDeckBottom,
           ctx.choiceCard, ctx.choiceCards,
           ctx.isKnockedOut, ctx.isDefeated, ctx.knockout, ctx.defeat, ctx.didKnockout, ctx.defeatedOpponent,
           ctx.didAllyKnockoutLastTurn, ctx.wasAllyKnockedOutLastTurn, ctx.isAllyKnockedOutPreviousTurn, ctx.allyKnockedOutLastTurn, ctx.wasKnockedOutPreviousTurn, ctx.wasKnockedOutLastTurn,
@@ -3017,6 +3253,12 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
     window.cancelDamage = (e) => window.ORBITAL_EFFECT_API.cancelDamage(null, e);
     window.choiceCard = (src, ...args) => window.ORBITAL_EFFECT_API.choiceCard(null, src, ...args);
     window.choiceCards = (src, ...args) => window.ORBITAL_EFFECT_API.choiceCards(null, src, ...args);
+    window.lookAtDeckTop = (p, n, opt) => window.ORBITAL_EFFECT_API.lookAtDeckTop(null, p, n, opt);
+    window.lookAtTop = (p, n, opt) => window.ORBITAL_EFFECT_API.lookAtDeckTop(null, p, n, opt);
+    window.lookDeckTop = (p, n, opt) => window.ORBITAL_EFFECT_API.lookAtDeckTop(null, p, n, opt);
+    window.searchTopDeck = (...args) => window.ORBITAL_EFFECT_API.searchTopDeck(null, ...args);
+    window.putBackDeckTop = (p, c) => window.ORBITAL_EFFECT_API.putBackDeckTop(null, p, c);
+    window.putBackDeckBottom = (p, c) => window.ORBITAL_EFFECT_API.putBackDeckBottom(null, p, c);
     window.toHand = (p, c) => window.ORBITAL_EFFECT_API.toHand(null, p, c);
     window.toDiscard = (p, c) => window.ORBITAL_EFFECT_API.toDiscard(null, p, c);
     window.toDeck = (p, c) => window.ORBITAL_EFFECT_API.toDeck(null, p, c);
