@@ -2390,7 +2390,9 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
       requireTurnsInPlay(ctx, minTurns = 7, options = {}) {
         let turns = minTurns;
         let opt = options;
-        if (typeof minTurns === 'object' && minTurns !== null) {
+        if (typeof options === 'string') {
+          opt = { message: options };
+        } else if (typeof minTurns === 'object' && minTurns !== null) {
           opt = minTurns;
           turns = opt.turns || opt.count || 7;
         }
@@ -2400,7 +2402,8 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         const required = Math.max(1, parseInt(turns, 10) || 7);
         if (elapsed < required) {
           const remaining = required - elapsed;
-          const reason = opt.message || opt.reason || ("このポケモンは場に出てから" + required + "ターン後でなければワザを使えません。（現在: " + elapsed + "/" + required + "ターン、あと" + remaining + "ターン）");
+          const pkName = pk?.name ? "【" + pk.name + "】" : 'このポケモン';
+          const reason = opt.message || opt.reason || (pkName + "は場に出てから" + required + "ターン後でなければ使えません。（現在: " + elapsed + "/" + required + "ターン、あと" + remaining + "ターン）");
           return this.cancelAttack(ctx, reason);
         }
         return true;

@@ -2106,6 +2106,35 @@ var EffectEditor;
         ],
         example: '// 前の番に自分のポケモンがきぜつしていないと使えないサポート\nif (!wasAllyKnockedOutLastTurn()) {\n  cant("前の番に自分のポケモンがきぜつしていません");\n}\n\n// トラッシュから基本エネルギーを1枚つけ、山札から好きなカードを1枚探す\nconst card = choiceCard(self, "discard", { category: "Energy" });\nattach(card, self.active);\nconst target = choiceCard(self, "deck");\ntoHand(self, target);\nshuffleDeck(self);',
         snippet: 'if (!wasAllyKnockedOutLastTurn()) {\n  cant("前の番に自分のポケモンがきぜつしていません");\n}'
+      },
+      {
+        name: 'requireTurns',
+        signature: 'requireTurns(minTurns?, options?)',
+        category: 'battle',
+        catLabel: 'バトル・条件判定',
+        badge: 'ターン制限',
+        returns: 'boolean',
+        desc: 'このポケモンが場に出てから指定ターン以上経過していなければワザや効果の使用を中断します（条件を満たさない場合、番を終了せず安全にキャンセルします）。',
+        params: [
+          { name: 'minTurns', type: 'number', desc: '必要な経過ターン数（例: 7）' },
+          { name: 'options', type: 'object|string', desc: 'カスタム警告メッセージ文字列、または { message: "...", pokemon: card }' }
+        ],
+        example: '// 場に出てから7ターン後でなければワザを使えない\nrequireTurns(7);\ndamage(opponent.active, 150);',
+        snippet: 'requireTurns(7);'
+      },
+      {
+        name: 'getTurnsInPlay',
+        signature: 'getTurnsInPlay(target?)',
+        category: 'battle',
+        catLabel: 'バトル・条件判定',
+        badge: '経過ターン取得',
+        returns: 'number',
+        desc: '対象のポケモン（省略時はこのポケモン）が場に出てから経過したターン数を返します。',
+        params: [
+          { name: 'target', type: 'pokemon', desc: '（省略可）対象ポケモン（省略時は自分バトルポケモン）' }
+        ],
+        example: 'const turns = getTurnsInPlay();\nif (turns < 7) {\n  cant("場に出てから7ターン経過していません（現在" + turns + "ターン）");\n}',
+        snippet: 'getTurnsInPlay()'
       }
     ],
 
@@ -2375,6 +2404,7 @@ var EffectEditor;
         { label: '被ダメ20軽減', sub: 'reduceDamage', code: 'reduceDamage(self.active, 20);' },
         { label: 'HP30回復', sub: 'heal()', code: 'heal(self.active, 30);' },
         { label: '1枚ドロー', sub: 'draw()', code: 'draw(self, 1);' },
+        { label: '場に出て7ターン後のみ', sub: 'requireTurns(7)', code: 'requireTurns(7);\nuseLimit(1);\ndraw(self, 2);' },
         { label: '山札上7枚見てエネ手札', sub: 'searchTopDeck(7)', code: 'useLimit(1);\n// 自分の山札の上から7枚見て、エネルギーを1枚手札に加える（残りは山札に戻して切る）\nsearchTopDeck(self, 7, { category: "Energy" }, 1, { to: "hand", shuffle: true });' },
         { label: '山札上7枚見る', sub: 'lookAtDeckTop(7)', code: 'useLimit(1);\n// 自分の山札の上から7枚を見る\nlookAtDeckTop(self, 7);' }];
 
@@ -2404,6 +2434,7 @@ var EffectEditor;
       } else {
         buttons = [
         { label: '30ダメージ', sub: 'damage()', code: 'damage(opponent.active, 30);' },
+        { label: '場に出て7ターン後のみ', sub: 'requireTurns(7)', code: 'requireTurns(7);\ndamage(opponent.active, 120);' },
         { label: '山札上7枚見てエネ加速', sub: 'searchTopDeck + attach', code: 'damage(opponent.active, 40);\n// 自分の山札の上から7枚見て、エネルギーを1枚選びバトルポケモンにつける\nconst topCards = lookAtDeckTop(self, 7, { showModal: false });\nconst nrg = choiceCard(topCards, { category: "Energy" }, 1);\nif (nrg.length > 0) {\n  attach(nrg[0], self.active);\n}\nshuffleDeck(self);' },
         { label: '山札上3枚見て手札へ', sub: 'searchTopDeck(3)', code: 'damage(opponent.active, 30);\n// 自分の山札の上から3枚見て、好きなカードを1枚手札に加える\nsearchTopDeck(self, 3, {}, 1, { to: "hand", shuffle: true });' },
         { label: '相手次攻撃力-20', sub: 'reduceOpponentAttackNextTurn', code: 'reduceOpponentAttackNextTurn(20);' },
@@ -3567,11 +3598,15 @@ var EffectEditor;
       }
 
       // APIコール解析
-      const re = /(lookAtDeckTop|lookAtTop|lookDeckTop|searchTopDeck|putBackDeckTop|putBackDeckBottom|shuffleDeck|damage|benchDamage|heal|draw|attachEnergy|discardEnergy|applyStatus|clearStatus|switchActive|discardCards|searchCards|reduceDamage|takePrize|toHand|toDiscard|toDeck|toBench|reduceOpponentAttackNextTurn|nextTurnReduceOpponentAttack|reduceDamageNextTurn|nextTurnReduceDamage|nextTurnDamage|boostDamageNextTurn|reduceHp|reduceOpponentHp|reduceSelfHp|subHp|reduceMaxHp|lowerMaxHp|increaseMaxHp|addMaxHp|setHp|cantAttackNextTurn|nextTurnCantAttack)\s*\(([^)]*)\)/g;
+      const re = /(requireTurns|requireTurnsInPlay|lookAtDeckTop|lookAtTop|lookDeckTop|searchTopDeck|putBackDeckTop|putBackDeckBottom|shuffleDeck|damage|benchDamage|heal|draw|attachEnergy|discardEnergy|applyStatus|clearStatus|switchActive|discardCards|searchCards|reduceDamage|takePrize|toHand|toDiscard|toDeck|toBench|reduceOpponentAttackNextTurn|nextTurnReduceOpponentAttack|reduceDamageNextTurn|nextTurnReduceDamage|nextTurnDamage|boostDamageNextTurn|reduceHp|reduceOpponentHp|reduceSelfHp|subHp|reduceMaxHp|lowerMaxHp|increaseMaxHp|addMaxHp|setHp|cantAttackNextTurn|nextTurnCantAttack)\s*\(([^)]*)\)/g;
       let m;
       while (m = re.exec(code)) {
         const fn = m[1];
         const args = m[2];
+        if (fn === 'requireTurns' || fn === 'requireTurnsInPlay') {
+          const reqT = this.codeNumber(args) || '7';
+          lines.push("このポケモンは場に出てから" + reqT + "ターン後でなければワザを使えない。");
+        } else
         if (fn === 'lookAtDeckTop' || fn === 'lookAtTop' || fn === 'lookDeckTop') {
           const num = this.codeNumber(args) || 7;
           const firstArg = args.split(',')[0].trim();
@@ -3621,10 +3656,6 @@ var EffectEditor;
         if (fn === 'increaseMaxHp' || fn === 'addMaxHp') lines.push(this.codeTarget(args) + "の最大HPを" + (this.codeNumber(args) || 30) + "増加させる。");else
         if (fn === 'setHp') lines.push(this.codeTarget(args) + "のHPを" + (this.codeNumber(args) || 100) + "に設定する。");else
         if (fn === 'cantAttackNextTurn' || fn === 'nextTurnCantAttack') lines.push("次の自分の番、このポケモンはワザを使えない。");
-        if (fn === 'requireTurns' || fn === 'requireTurnsInPlay') {
-          const reqT = args[0] ? args[0].trim() : '7';
-          lines.push("このポケモンは場に出てから" + reqT + "ターン後でなければワザを使えない。");
-        }
       }
 
       // choiceCard / choiceCards の解析
