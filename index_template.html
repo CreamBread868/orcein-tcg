@@ -9681,7 +9681,7 @@
                       <span class="deck-count-pill" id="oppDeckCount">22</span>
                       <small>相手山札</small>
                     </div>
-                    <div class="mini-discard-slot" id="oppDiscardSlot" title="相手のトラッシュ (クリックして一覧確認)">
+                    <div class="mini-discard-slot" id="oppDiscardSlot" title="相手のトラッシュ (クリックして一覧確認)" onclick="BattleSystem.openDiscardModal('opponent')">
                       <div class="discard-preview-art" id="oppDiscardArt"></div>
                       <span class="discard-count-pill" id="oppDiscardCount">0</span>
                       <small>相手トラッシュ</small>
@@ -9695,7 +9695,7 @@
                       <span class="deck-count-pill" id="playerDeckCount">22</span>
                       <small>自分山札</small>
                     </div>
-                    <div class="mini-discard-slot" id="playerDiscardSlot" title="あなたのトラッシュ (クリックして一覧確認)">
+                    <div class="mini-discard-slot" id="playerDiscardSlot" title="あなたのトラッシュ (クリックして一覧確認)" onclick="BattleSystem.openDiscardModal('player')">
                       <div class="discard-preview-art" id="playerDiscardArt"></div>
                       <span class="discard-count-pill" id="playerDiscardCount">0</span>
                       <small>自分トラッシュ</small>
@@ -9860,28 +9860,28 @@
 
           <!-- トラッシュ確認モーダル (いつでも自分・相手どちらも閲覧可能) -->
           <div id="battleDiscardModal" class="modal hidden">
-            <div class="modal-backdrop" id="battleDiscardBackdrop"></div>
+            <div class="modal-backdrop" id="battleDiscardBackdrop" onclick="BattleSystem.closeDiscardModal()"></div>
             <div class="modal-card battle-discard-card">
-              <button id="closeBattleDiscardModal" class="modal-close" type="button">×</button>
+              <button id="closeBattleDiscardModal" class="modal-close" type="button" onclick="BattleSystem.closeDiscardModal()">×</button>
               <div class="discard-modal-header">
                 <div class="eyebrow">DISCARD PILE VIEWER</div>
                 <h3 id="discardModalTitle">🗑️ トラッシュ一覧</h3>
                 <!-- タブ切り替え（自分 / 相手をワンクリックで行き来可能） -->
                 <div class="discard-tabs">
-                  <button type="button" class="discard-tab active" id="discardTabPlayer">
+                  <button type="button" class="discard-tab active" id="discardTabPlayer" onclick="BattleSystem.switchDiscardTab('player')">
                     👤 あなたのトラッシュ (<span id="discardTabPlayerCount">0</span>)
                   </button>
-                  <button type="button" class="discard-tab" id="discardTabOpponent">
+                  <button type="button" class="discard-tab" id="discardTabOpponent" onclick="BattleSystem.switchDiscardTab('opponent')">
                     🤖 相手のトラッシュ (<span id="discardTabOppCount">0</span>)
                   </button>
                 </div>
                 <!-- カテゴリ別フィルターバー -->
                 <div class="discard-filter-bar">
                   <div class="discard-filter-group">
-                    <button type="button" class="discard-filter-btn active" data-discard-filter="all">すべて</button>
-                    <button type="button" class="discard-filter-btn" data-discard-filter="pokemon">ポケモン</button>
-                    <button type="button" class="discard-filter-btn" data-discard-filter="trainer">トレーナー</button>
-                    <button type="button" class="discard-filter-btn" data-discard-filter="energy">エネルギー</button>
+                    <button type="button" class="discard-filter-btn active" data-discard-filter="all" onclick="BattleSystem.setDiscardFilter('all')">すべて</button>
+                    <button type="button" class="discard-filter-btn" data-discard-filter="pokemon" onclick="BattleSystem.setDiscardFilter('pokemon')">ポケモン</button>
+                    <button type="button" class="discard-filter-btn" data-discard-filter="trainer" onclick="BattleSystem.setDiscardFilter('trainer')">トレーナー</button>
+                    <button type="button" class="discard-filter-btn" data-discard-filter="energy" onclick="BattleSystem.setDiscardFilter('energy')">エネルギー</button>
                   </div>
                   <span class="discard-count-label muted" id="discardVisibleCount">0枚表示中</span>
                 </div>
@@ -9889,7 +9889,7 @@
               <div id="battleDiscardGrid" class="battle-discard-grid"></div>
               <div class="discard-modal-footer">
                 <small class="muted">※カードをクリックすると拡大プレビューと詳細効果を確認できます</small>
-                <button id="closeBattleDiscardBtn" class="secondary-button" type="button">閉じる</button>
+                <button id="closeBattleDiscardBtn" class="secondary-button" type="button" onclick="BattleSystem.closeDiscardModal()">閉じる</button>
               </div>
             </div>
           </div>
@@ -10164,7 +10164,10 @@
       <div class="modal-card" style="max-width: 750px; width: 90%;">
         <button class="modal-close" onclick="App.closeAdminPackModal()">×</button>
         <div class="eyebrow">ADMINISTRATOR MODE</div>
-        <h2>🎁 パック管理 &amp; 新規追加</h2>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+          <h2 style="margin:0;">🎁 パック管理 &amp; 編集</h2>
+          <span id="adminPackFormStatus" style="font-size:12px; font-weight:700; background:rgba(217,70,239,0.15); color:#d946ef; padding:4px 10px; border-radius:20px; border:1px solid rgba(217,70,239,0.3);">新規作成</span>
+        </div>
         <p class="muted">パックの作成・価格設定・収録カードプールを管理できます。(GASスプレッドシート連動)</p>
 
         <form id="adminPackForm" style="display:flex; flex-direction:column; gap:12px; margin-bottom:20px;"
@@ -10200,9 +10203,17 @@
               </select>
             </label>
           </div>
+          <!-- 収録カード一覧プレビューエリア -->
+          <div id="adminPackPoolPreviewContainer" style="display:none; padding:10px 12px; background:rgba(0,0,0,0.3); border-radius:10px; border:1px solid rgba(255,255,255,0.08); max-height:140px; overflow-y:auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <span style="font-size:12px; font-weight:700; color:var(--accent2, #ec4899);">収録カード一覧 (<span id="adminPackPoolPreviewCount">0</span>枚)</span>
+              <button type="button" class="secondary-button compact-btn" style="font-size:11px; padding:2px 8px;" onclick="App.clearPackCardPool()">すべて解除</button>
+            </div>
+            <div id="adminPackPoolCardChips" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+          </div>
           <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px;">
             <button type="button" class="secondary-button" onclick="App.resetPackForm()">フォームリセット</button>
-            <button type="submit" class="primary-button">💾 パックを保存</button>
+            <button type="submit" class="primary-button" id="adminPackSaveBtn">💾 パックを保存</button>
           </div>
         </form>
 

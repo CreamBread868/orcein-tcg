@@ -4615,6 +4615,12 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   50% { opacity: 1; transform: translateX(-50%) scale(1.02); }
 }
 /* ===== トラッシュ閲覧モーダル ===== */
+#battleDiscardModal {
+  z-index: 99999 !important;
+}
+#detailModal {
+  z-index: 999999 !important;
+}
 .battle-discard-card {
   width: 92%;
   max-width: 860px;
@@ -9189,7 +9195,7 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
                       <span class="deck-count-pill" id="oppDeckCount">22</span>
                       <small>相手山札</small>
                     </div>
-                    <div class="mini-discard-slot" id="oppDiscardSlot" title="相手のトラッシュ (クリックして一覧確認)">
+                    <div class="mini-discard-slot" id="oppDiscardSlot" title="相手のトラッシュ (クリックして一覧確認)" onclick="BattleSystem.openDiscardModal('opponent')">
                       <div class="discard-preview-art" id="oppDiscardArt"></div>
                       <span class="discard-count-pill" id="oppDiscardCount">0</span>
                       <small>相手トラッシュ</small>
@@ -9203,7 +9209,7 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
                       <span class="deck-count-pill" id="playerDeckCount">22</span>
                       <small>自分山札</small>
                     </div>
-                    <div class="mini-discard-slot" id="playerDiscardSlot" title="あなたのトラッシュ (クリックして一覧確認)">
+                    <div class="mini-discard-slot" id="playerDiscardSlot" title="あなたのトラッシュ (クリックして一覧確認)" onclick="BattleSystem.openDiscardModal('player')">
                       <div class="discard-preview-art" id="playerDiscardArt"></div>
                       <span class="discard-count-pill" id="playerDiscardCount">0</span>
                       <small>自分トラッシュ</small>
@@ -9368,28 +9374,28 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
 
           <!-- トラッシュ確認モーダル (いつでも自分・相手どちらも閲覧可能) -->
           <div id="battleDiscardModal" class="modal hidden">
-            <div class="modal-backdrop" id="battleDiscardBackdrop"></div>
+            <div class="modal-backdrop" id="battleDiscardBackdrop" onclick="BattleSystem.closeDiscardModal()"></div>
             <div class="modal-card battle-discard-card">
-              <button id="closeBattleDiscardModal" class="modal-close" type="button">×</button>
+              <button id="closeBattleDiscardModal" class="modal-close" type="button" onclick="BattleSystem.closeDiscardModal()">×</button>
               <div class="discard-modal-header">
                 <div class="eyebrow">DISCARD PILE VIEWER</div>
                 <h3 id="discardModalTitle">🗑️ トラッシュ一覧</h3>
                 <!-- タブ切り替え（自分 / 相手をワンクリックで行き来可能） -->
                 <div class="discard-tabs">
-                  <button type="button" class="discard-tab active" id="discardTabPlayer">
+                  <button type="button" class="discard-tab active" id="discardTabPlayer" onclick="BattleSystem.switchDiscardTab('player')">
                     👤 あなたのトラッシュ (<span id="discardTabPlayerCount">0</span>)
                   </button>
-                  <button type="button" class="discard-tab" id="discardTabOpponent">
+                  <button type="button" class="discard-tab" id="discardTabOpponent" onclick="BattleSystem.switchDiscardTab('opponent')">
                     🤖 相手のトラッシュ (<span id="discardTabOppCount">0</span>)
                   </button>
                 </div>
                 <!-- カテゴリ別フィルターバー -->
                 <div class="discard-filter-bar">
                   <div class="discard-filter-group">
-                    <button type="button" class="discard-filter-btn active" data-discard-filter="all">すべて</button>
-                    <button type="button" class="discard-filter-btn" data-discard-filter="pokemon">ポケモン</button>
-                    <button type="button" class="discard-filter-btn" data-discard-filter="trainer">トレーナー</button>
-                    <button type="button" class="discard-filter-btn" data-discard-filter="energy">エネルギー</button>
+                    <button type="button" class="discard-filter-btn active" data-discard-filter="all" onclick="BattleSystem.setDiscardFilter('all')">すべて</button>
+                    <button type="button" class="discard-filter-btn" data-discard-filter="pokemon" onclick="BattleSystem.setDiscardFilter('pokemon')">ポケモン</button>
+                    <button type="button" class="discard-filter-btn" data-discard-filter="trainer" onclick="BattleSystem.setDiscardFilter('trainer')">トレーナー</button>
+                    <button type="button" class="discard-filter-btn" data-discard-filter="energy" onclick="BattleSystem.setDiscardFilter('energy')">エネルギー</button>
                   </div>
                   <span class="discard-count-label muted" id="discardVisibleCount">0枚表示中</span>
                 </div>
@@ -9397,7 +9403,7 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
               <div id="battleDiscardGrid" class="battle-discard-grid"></div>
               <div class="discard-modal-footer">
                 <small class="muted">※カードをクリックすると拡大プレビューと詳細効果を確認できます</small>
-                <button id="closeBattleDiscardBtn" class="secondary-button" type="button">閉じる</button>
+                <button id="closeBattleDiscardBtn" class="secondary-button" type="button" onclick="BattleSystem.closeDiscardModal()">閉じる</button>
               </div>
             </div>
           </div>
@@ -9672,7 +9678,10 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
       <div class="modal-card" style="max-width: 750px; width: 90%;">
         <button class="modal-close" onclick="App.closeAdminPackModal()">×</button>
         <div class="eyebrow">ADMINISTRATOR MODE</div>
-        <h2>🎁 パック管理 &amp; 新規追加</h2>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+          <h2 style="margin:0;">🎁 パック管理 &amp; 編集</h2>
+          <span id="adminPackFormStatus" style="font-size:12px; font-weight:700; background:rgba(217,70,239,0.15); color:#d946ef; padding:4px 10px; border-radius:20px; border:1px solid rgba(217,70,239,0.3);">新規作成</span>
+        </div>
         <p class="muted">パックの作成・価格設定・収録カードプールを管理できます。(GASスプレッドシート連動)</p>
 
         <form id="adminPackForm" style="display:flex; flex-direction:column; gap:12px; margin-bottom:20px;"
@@ -9708,9 +9717,17 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
               </select>
             </label>
           </div>
+          <!-- 収録カード一覧プレビューエリア -->
+          <div id="adminPackPoolPreviewContainer" style="display:none; padding:10px 12px; background:rgba(0,0,0,0.3); border-radius:10px; border:1px solid rgba(255,255,255,0.08); max-height:140px; overflow-y:auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <span style="font-size:12px; font-weight:700; color:var(--accent2, #ec4899);">収録カード一覧 (<span id="adminPackPoolPreviewCount">0</span>枚)</span>
+              <button type="button" class="secondary-button compact-btn" style="font-size:11px; padding:2px 8px;" onclick="App.clearPackCardPool()">すべて解除</button>
+            </div>
+            <div id="adminPackPoolCardChips" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+          </div>
           <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px;">
             <button type="button" class="secondary-button" onclick="App.resetPackForm()">フォームリセット</button>
-            <button type="submit" class="primary-button">💾 パックを保存</button>
+            <button type="submit" class="primary-button" id="adminPackSaveBtn">💾 パックを保存</button>
           </div>
         </form>
 
@@ -10270,7 +10287,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           };
 
           if (t.abilityCode && window.executeCardEffectCode &&
-              /event\s*\.\s*on\s*\(\s*['"]beforeDamage['"]/.test(t.abilityCode)) {
+              /event\s*\.\s*(?:on|onasync|onAsync)\s*\(\s*['"]beforeDamage['"]/i.test(t.abilityCode)) {
             try {
               window.executeCardEffectCode(
                 t.abilityCode,
@@ -10278,7 +10295,9 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
                 ctx?.opponent || ctx?.self,
                 'beforeDamage',
                 damageEvent
-              );
+              ).catch((err) => {
+                console.error('Defender beforeDamage effect error:', err);
+              });
             } catch (e) {
               console.error('Defender beforeDamage effect error:', e);
             }
@@ -12080,13 +12099,21 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
 
         let chosen = [];
         let isCpu = false;
-        if (ctx?.self) {
-          if (ctx.self.isCpu || ctx.self === window.BattleSystem?.state?.opponent || ctx.self.id === 'opponent' || ctx.self.id === 'cpu') {
-            isCpu = true;
-          }
-        } else if (window.BattleSystem?.state) {
-          if (window.BattleSystem.state.turnPlayer === 'opponent') {
-            isCpu = true;
+        const isOnline = window.BattleSystem?.state?.mode === 'online';
+        if (isOnline) {
+          // オンライン対戦時は両プレイヤーとも人間。
+          // 自身のブラウザで実行されている choiceCard は常にローカルプレイヤーが選択する
+          isCpu = false;
+        } else {
+          // AI戦の場合
+          if (ctx?.self) {
+            if (ctx.self.isCpu || ctx.self === window.BattleSystem?.state?.opponent || ctx.self.id === 'opponent' || ctx.self.id === 'cpu') {
+              isCpu = true;
+            }
+          } else if (window.BattleSystem?.state) {
+            if (window.BattleSystem.state.turnPlayer === 'opponent') {
+              isCpu = true;
+            }
           }
         }
         const isHuman = !isCpu && window.BattleSystem && typeof window.BattleSystem.showChoiceModalPromise === 'function';
@@ -12197,6 +12224,35 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           return target._turnPlayed === curTurn;
         }
         return false;
+      },
+      getTurnsInPlay(ctx, target = null) {
+        const pk = target || ctx?.card || ctx?.thisPokemon || ctx?.self?.active;
+        if (!pk || typeof pk !== 'object') return 0;
+        const game = ctx?.game || window.BattleSystem?.state;
+        const curTurn = game?.turnNumber != null ? game.turnNumber : 1;
+        const playedTurn = pk._turnPlayed != null ? pk._turnPlayed : 1;
+        return Math.max(0, curTurn - playedTurn);
+      },
+      requireTurnsInPlay(ctx, minTurns = 7, options = {}) {
+        let turns = minTurns;
+        let opt = options;
+        if (typeof minTurns === 'object' && minTurns !== null) {
+          opt = minTurns;
+          turns = opt.turns || opt.count || 7;
+        }
+        opt = (opt && typeof opt === 'object') ? opt : {};
+        const pk = opt.pokemon || ctx?.card || ctx?.thisPokemon || ctx?.self?.active;
+        const elapsed = this.getTurnsInPlay(ctx, pk);
+        const required = Math.max(1, parseInt(turns, 10) || 7);
+        if (elapsed < required) {
+          const remaining = required - elapsed;
+          const reason = opt.message || opt.reason || ("このポケモンは場に出てから" + required + "ターン後でなければワザを使えません。（現在: " + elapsed + "/" + required + "ターン、あと" + remaining + "ターン）");
+          return this.cancelAttack(ctx, reason);
+        }
+        return true;
+      },
+      requireTurns(ctx, minTurns = 7, options = {}) {
+        return this.requireTurnsInPlay(ctx, minTurns, options);
       },
       getPreEvolution(ctx, card) {
         if (!card) return null;
@@ -12578,10 +12634,42 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         return n;
       }
       on(name, fn) {
+        if (typeof name === 'function' && !fn) {
+          fn = name;
+          name = 'turnStart';
+        }
         if (typeof fn !== 'function') return;
         const key = this.normalizeName(name);
         if (!this.listeners[key]) this.listeners[key] = [];
         this.listeners[key].push(fn);
+      }
+      onasync(name, fn) {
+        return this.on(name, fn);
+      }
+      onAsync(name, fn) {
+        return this.on(name, fn);
+      }
+      addEventListener(name, fn) {
+        return this.on(name, fn);
+      }
+      addListener(name, fn) {
+        return this.on(name, fn);
+      }
+      once(name, fn) {
+        if (typeof fn !== 'function') return;
+        const wrapper = async (...args) => {
+          this.off(name, wrapper);
+          return await fn(...args);
+        };
+        this.on(name, wrapper);
+      }
+      off(name, fn) {
+        const key = this.normalizeName(name);
+        if (!this.listeners[key]) return;
+        this.listeners[key] = this.listeners[key].filter(f => f !== fn);
+      }
+      removeEventListener(name, fn) {
+        return this.off(name, fn);
       }
       async emit(name, data) {
         const key = this.normalizeName(name);
@@ -12607,7 +12695,24 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
     window.createCardEffectContext = function (game, player) {
       const opponent = (game?.players || []).find((p) => p !== player && (p.id !== player.id || !player.id)) ||
         (game?.opponent && game.opponent !== player ? game.opponent : (game?.player && game.player !== player ? game.player : null));
-      const event = new EffectEvent();
+      const rawEvent = new EffectEvent();
+      const event = new Proxy(rawEvent, {
+        get(target, prop, receiver) {
+          if (prop in target) {
+            const val = Reflect.get(target, prop, receiver);
+            return typeof val === 'function' ? val.bind(target) : val;
+          }
+          if (typeof prop === 'string') {
+            const lower = prop.toLowerCase();
+            if (lower.startsWith('on') || lower.includes('event') || lower.includes('listen')) {
+              return function(name, fn) {
+                return target.on(name, fn);
+              };
+            }
+          }
+          return Reflect.get(target, prop, receiver);
+        }
+      });
       const api = window.ORBITAL_EFFECT_API;
       const ctx = {
         self: player,
@@ -12736,6 +12841,9 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         isFirstTurn: (p) => api.isFirstTurn(ctx, p),
         isFirstPlayerFirstTurn: () => api.isFirstPlayerFirstTurn(ctx),
         isJustPlayed: (t) => api.isJustPlayed(ctx, t),
+        getTurnsInPlay: (t) => api.getTurnsInPlay(ctx, t),
+        requireTurnsInPlay: (n, opt) => api.requireTurnsInPlay(ctx, n, opt),
+        requireTurns: (n, opt) => api.requireTurns(ctx, n, opt),
         getPreEvolution: (c) => api.getPreEvolution(ctx, c),
         getNextEvolutions: (c, s) => api.getNextEvolutions(ctx, c, s),
         isEvolutionOf: (e, b, s) => api.isEvolutionOf(ctx, e, b, s),
@@ -12764,6 +12872,13 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           if (!Object.getOwnPropertyDescriptor(pk, 'isJustPlayed')) {
             Object.defineProperty(pk, 'isJustPlayed', {
               get: () => api.isJustPlayed(ctx, pk),
+              configurable: true,
+              enumerable: false
+            });
+          }
+          if (!Object.getOwnPropertyDescriptor(pk, 'turnsInPlay')) {
+            Object.defineProperty(pk, 'turnsInPlay', {
+              get: () => api.getTurnsInPlay(ctx, pk),
               configurable: true,
               enumerable: false
             });
@@ -12828,11 +12943,11 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
       const EVENT_DISPATCH_NAMES = ['turnStart', 'start', 'beforeDamage', 'onKnockout', 'onKnockoutOpponent', 'onAttach', 'onEvolution', ...ALLY_KO_ALIASES];
       if (eventName && EVENT_DISPATCH_NAMES.includes(eventName)) {
         if (eventName === 'allyKnockedOut' || ALLY_KO_ALIASES.includes(eventName)) {
-          const hasListener = /event\s*\.\s*on\s*\(\s*['"](allyKnockedOut|onAllyKnockout|allyKnockout|ally_knocked_out|allyFainted|味方気絶|仲間気絶|自分のポケモン気絶|自分の仲間が気絶したら|仲間が気絶したら|味方が気絶したら)['"]|whenAllyKnockedOut|onAllyKnockedOut/.test(code);
+          const hasListener = /event\s*\.\s*(?:on|onasync|onAsync)\s*\(\s*['"](allyKnockedOut|onAllyKnockout|allyKnockout|ally_knocked_out|allyFainted|味方気絶|仲間気絶|自分のポケモン気絶|自分の仲間が気絶したら|仲間が気絶したら|味方が気絶したら)['"]|whenAllyKnockedOut|onAllyKnockedOut/i.test(code);
           if (!hasListener) return;
         } else {
           const escapedEvent = eventName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const hasListener = new RegExp('event\\s*\\.\\s*on\\s*\\(\\s*[\'"]' + escapedEvent + '[\'"]').test(code);
+          const hasListener = new RegExp('event\\s*\\.\\s*(?:on|onasync|onAsync)\\s*\\(\\s*[\'"]' + escapedEvent + '[\'"]', 'i').test(code);
           if (!hasListener) return; // このコードはこのイベントをリッスンしていない → スキップ
         }
       }
@@ -12863,6 +12978,8 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
       ctx.isBench = isBench;
 
       let asyncCode = String(code);
+      // Normalize event.onasync and event.onAsync to event.on
+      asyncCode = asyncCode.replace(/\bevent\s*\.\s*(?:onasync|onAsync|on_async)\b/gi, 'event.on');
       // Convert event.on callbacks to async functions so await can be used inside them without SyntaxError
       asyncCode = asyncCode.replace(/(\bevent\s*\.\s*on\s*\(\s*['"][^'"]+['"]\s*,\s*)(?<!async\s+)(function\b|\([^()]*\)\s*=>|[\w$]+\s*=>)/g, '$1async $2');
       // Convert any non-async functions/arrow functions containing async calls (choiceCard, coinFlip, etc.) into async functions
@@ -12883,6 +13000,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         'wasAllyKnockedOut', 'isAllyKnockedOut', 'didAllyKnockout', 'allyKnockedOut',
         'getKnockedOutPokemon', 'getKnockedOutAlly', 'lastKnockedOutPokemon',
         'whenAllyKnockedOut', 'onAllyKnockedOut',
+        'hasTool', 'getTool', 'attachTool', 'discardTool',
         'takePrize', 'takeSide', 'takePrizes', 'drawPrize',
         'getCards', 'kill', 'attach', 'move',
         'getEnergy', 'hasEnergy', 'addEnergy', 'removeEnergy', 'nextTurnDamage', 'cancelDamage', 'preventDamage',
@@ -12893,10 +13011,9 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         'cantAttackNextTurn', 'cannotAttackNextTurn', 'nextTurnCantAttack', 'nextTurnCannotAttack',
         'cant', 'cannot', 'cancelAttack', 'fail', 'abort',
         'useLimit', 'limitPerTurn', 'timesPerTurn',
-        'isFirstTurn', 'isFirstPlayerFirstTurn', 'isJustPlayed',
+        'isFirstTurn', 'isFirstPlayerFirstTurn', 'isJustPlayed', 'requireTurns', 'requireTurnsInPlay', 'getTurnsInPlay',
         'getPreEvolution', 'getNextEvolutions', 'isEvolutionOf',
         'rareCandy',
-        'hasTool', 'getTool', 'attachTool', 'discardTool',
         'getStadium', 'setStadium', 'discardStadium', 'hasStadium',
         'afterTurns', 'afterTurn', 'delayTurns', 'delayTurn', 'waitTurns', 'waitTurn', 'atEndOfTurn',
         'extraTurn', 'takeExtraTurn', 'anotherTurn', 'repeatTurn', 'grantExtraTurn',
@@ -12928,7 +13045,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           ctx.cantAttackNextTurn, ctx.cannotAttackNextTurn, ctx.nextTurnCantAttack, ctx.nextTurnCannotAttack,
           ctx.cant, ctx.cannot, ctx.cancelAttack, ctx.fail, ctx.abort,
           ctx.useLimit, ctx.limitPerTurn, ctx.timesPerTurn,
-          ctx.isFirstTurn, ctx.isFirstPlayerFirstTurn, ctx.isJustPlayed,
+          ctx.isFirstTurn, ctx.isFirstPlayerFirstTurn, ctx.isJustPlayed, ctx.requireTurns, ctx.requireTurnsInPlay, ctx.getTurnsInPlay,
           ctx.getPreEvolution, ctx.getNextEvolutions, ctx.isEvolutionOf,
           ctx.rareCandy,
           ctx.getStadium, ctx.setStadium, ctx.discardStadium, ctx.hasStadium,
@@ -12943,7 +13060,13 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           ctx.cancelReason = e.message ? e.message.replace(/^EFFECT_ABORTED:\s*/, '') : (ctx.cancelReason || '');
           return ctx;
         }
-        throw e;
+        console.error('Error executing card effect code:', e);
+        ctx.hasError = true;
+        ctx.error = e;
+        if (window.App && typeof window.App.toast === 'function') {
+          window.App.toast('効果コード実行エラー: ' + (e?.message || e), true);
+        }
+        return ctx;
       } finally {
         if (window._currentExecutionContext === ctx) {
           window._currentExecutionContext = null;
@@ -13026,6 +13149,9 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
     window.isFirstTurn = (p) => window.ORBITAL_EFFECT_API.isFirstTurn(null, p);
     window.isFirstPlayerFirstTurn = () => window.ORBITAL_EFFECT_API.isFirstPlayerFirstTurn(null);
     window.isJustPlayed = (t) => window.ORBITAL_EFFECT_API.isJustPlayed(null, t);
+    window.requireTurns = (n, opt) => window.ORBITAL_EFFECT_API.requireTurns(null, n, opt);
+    window.requireTurnsInPlay = (n, opt) => window.ORBITAL_EFFECT_API.requireTurnsInPlay(null, n, opt);
+    window.getTurnsInPlay = (t) => window.ORBITAL_EFFECT_API.getTurnsInPlay(null, t);
     window.getPreEvolution = (c) => window.ORBITAL_EFFECT_API.getPreEvolution(null, c);
     window.getNextEvolutions = (c, s) => window.ORBITAL_EFFECT_API.getNextEvolutions(null, c, s);
     window.isEvolutionOf = (e, b, s) => window.ORBITAL_EFFECT_API.isEvolutionOf(null, e, b, s);
@@ -13251,6 +13377,24 @@ var EffectEditor;
       desc: 'そのポケモンがこの番に出したばかりかどうか（Boolean）',
       snippet: 'target.isJustPlayed',
       targets: ['trainer', 'attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'requireTurns',
+      label: 'requireTurns(turns, [options])',
+      category: 'action',
+      badge: '指定ターン待機',
+      desc: '場に出てから指定ターン経過していないとワザを使用不可にする（例: requireTurns(7)）',
+      snippet: 'requireTurns(7);',
+      targets: ['attack1', 'attack2']
+    },
+    {
+      keyword: 'turnsInPlay',
+      label: 'card.turnsInPlay',
+      category: 'prop',
+      badge: '場での経過ターン',
+      desc: 'そのポケモンが場に出てからの経過ターン数（Number）',
+      snippet: 'card.turnsInPlay',
+      targets: ['attack1', 'attack2', 'ability']
     },
     {
       keyword: 'getPreEvolution',
@@ -16535,6 +16679,10 @@ var EffectEditor;
         if (fn === 'increaseMaxHp' || fn === 'addMaxHp') lines.push(this.codeTarget(args) + "の最大HPを" + (this.codeNumber(args) || 30) + "増加させる。");else
         if (fn === 'setHp') lines.push(this.codeTarget(args) + "のHPを" + (this.codeNumber(args) || 100) + "に設定する。");else
         if (fn === 'cantAttackNextTurn' || fn === 'nextTurnCantAttack') lines.push("次の自分の番、このポケモンはワザを使えない。");
+        if (fn === 'requireTurns' || fn === 'requireTurnsInPlay') {
+          const reqT = args[0] ? args[0].trim() : '7';
+          lines.push("このポケモンは場に出てから" + reqT + "ターン後でなければワザを使えない。");
+        }
       }
 
       // choiceCard / choiceCards の解析
@@ -21313,17 +21461,53 @@ window.DeckSystem = function () {
       const cleanAttached = Array.isArray(c.attachedEnergies)
         ? c.attachedEnergies.map(item => (typeof item === 'object' ? { name: item.name, type: item.type } : item))
         : [];
+      const cleanAttachedCards = Array.isArray(c.attachedCards)
+        ? c.attachedCards.map(item => (typeof item === 'object' ? { id: item.id || '', name: item.name || '', category: item.category || '', type: item.type || '' } : item))
+        : [];
+      const cleanTool = c.attachedTool ? {
+        id: c.attachedTool.id || '',
+        name: c.attachedTool.name || '',
+        category: c.attachedTool.category || 'ポケモンのどうぐ',
+        description: c.attachedTool.description || '',
+        attack1Text: c.attachedTool.attack1Text || ''
+      } : null;
+
       return {
         id: c.id || '',
         name: c.name || '',
         category: c.category || '',
         type: c.type || '',
+        stage: c.stage || '',
+        preEvolution: c.preEvolution || '',
         hp: Number(c.hp) || 0,
         maxHp: Number(c.maxHp) || Number(c.hp) || 70,
         energy: Number(c.energy) || 0,
         attachedEnergies: cleanAttached,
+        attachedCards: cleanAttachedCards,
+        attachedTool: cleanTool,
         status: c.status || null,
-        isEx: !!c.isEx
+        isEx: !!c.isEx,
+        isAceSpec: !!c.isAceSpec,
+        retreat: Number(c.retreat) || 0,
+        weakness: c.weakness || null,
+        resistance: c.resistance || null,
+        abilityName: c.abilityName || '',
+        abilityText: c.abilityText || '',
+        abilityCode: c.abilityCode || '',
+        attack1Name: c.attack1Name || '',
+        attack1Damage: c.attack1Damage != null ? c.attack1Damage : '',
+        attack1Energy: c.attack1Energy != null ? c.attack1Energy : '',
+        attack1Text: c.attack1Text || '',
+        attack1Code: c.attack1Code || '',
+        attack2Name: c.attack2Name || '',
+        attack2Damage: c.attack2Damage != null ? c.attack2Damage : '',
+        attack2Energy: c.attack2Energy != null ? c.attack2Energy : '',
+        attack2Text: c.attack2Text || '',
+        attack2Code: c.attack2Code || '',
+        image: (c.image && !c.image.startsWith('data:')) ? c.image : '',
+        description: c.description || '',
+        rarity: c.rarity || '',
+        customEffects: Array.isArray(c.customEffects) ? c.customEffects : []
       };
     },
 
@@ -21358,6 +21542,7 @@ window.DeckSystem = function () {
       return {
         active: sanitizeCard(this.state.player.active),
         bench: (this.state.player.bench || []).map(sanitizeCard),
+        discard: (this.state.player.discard || []).map(sanitizeCard),
         prizesCount: this.state.player.prizes ? this.state.player.prizes.length : 0,
         handCount: this.state.player.hand ? this.state.player.hand.length : 0,
         discardCount: this.state.player.discard ? this.state.player.discard.length : 0
@@ -21378,6 +21563,11 @@ window.DeckSystem = function () {
           opp.active.energy = snapshot.active.energy;
           opp.active.attachedEnergies = snapshot.active.attachedEnergies || [];
           opp.active.status = snapshot.active.status;
+          if (snapshot.active.attachedTool !== undefined) opp.active.attachedTool = snapshot.active.attachedTool;
+          if (Array.isArray(snapshot.active.attachedCards)) opp.active.attachedCards = snapshot.active.attachedCards;
+          if (snapshot.active.abilityName) opp.active.abilityName = snapshot.active.abilityName;
+          if (snapshot.active.abilityText) opp.active.abilityText = snapshot.active.abilityText;
+          if (snapshot.active.abilityCode) opp.active.abilityCode = snapshot.active.abilityCode;
           if (snapshot.active.image) opp.active.image = snapshot.active.image;
         }
       } else {
@@ -21396,9 +21586,22 @@ window.DeckSystem = function () {
           existing.energy = b.energy;
           existing.attachedEnergies = b.attachedEnergies || [];
           existing.status = b.status;
+          if (b.attachedTool !== undefined) existing.attachedTool = b.attachedTool;
+          if (Array.isArray(b.attachedCards)) existing.attachedCards = b.attachedCards;
+          if (b.abilityName) existing.abilityName = b.abilityName;
+          if (b.abilityText) existing.abilityText = b.abilityText;
+          if (b.abilityCode) existing.abilityCode = b.abilityCode;
           if (b.image) existing.image = b.image;
           return existing;
         }).filter(Boolean);
+      }
+
+      if (Array.isArray(snapshot.discard)) {
+        if (snapshot.discard.length > 0) {
+          opp.discard = snapshot.discard.map((d) => this.createRuntimeCard(d));
+        } else if (!opp.discard || opp.discard.length === 0) {
+          opp.discard = [];
+        }
       }
 
       if (typeof snapshot.prizesCount === 'number') {
@@ -21500,7 +21703,7 @@ window.DeckSystem = function () {
         }
         case 'promote_active': {
           const bIdx = Number(payload.benchIdx);
-          if (!payload.boardState && !isNaN(bIdx) && opp.bench && opp.bench[bIdx]) {
+          if (!opp.active && !isNaN(bIdx) && opp.bench && opp.bench[bIdx]) {
             opp.active = opp.bench.splice(bIdx, 1)[0];
           }
           this.log('🔄 相手が【' + (opp.active ? opp.active.name : 'ポケモン') + '】をバトル場に出しました。');
@@ -21508,7 +21711,7 @@ window.DeckSystem = function () {
           const targetSlotEl = document.getElementById('oppActiveSpot');
           if (targetSlotEl) this.animateCardPlacement(targetSlotEl);
           if (this.state.mode === 'online' && this.state.turnPlayer === 'player') {
-            setTimeout(() => this.endTurn(), 500);
+            setTimeout(() => this.endTurn(), 200);
           }
           break;
         }
@@ -21616,6 +21819,10 @@ window.DeckSystem = function () {
               }
             }
             this.state.activeStadium = Object.assign({}, card, { owner: this.state.opponent.id });
+          } else {
+            if (!Array.isArray(opp.discard)) opp.discard = [];
+            const runtimeCard = this.createRuntimeCard(card);
+            opp.discard.push(runtimeCard);
           }
           this.log((isStadium ? '🏟️' : '📜') + ' 相手が【' + (isStadium ? 'スタジアム' : kind) + '】「' + card.name + '」を使用しました！');
           this.animateTrainerCardPlay(card, isStadium ? 'スタジアム' : kind);
@@ -21624,21 +21831,55 @@ window.DeckSystem = function () {
         }
         case 'use_ability': {
           const card = payload.card || { name: '特性ポケモン' };
-          this.log('✨ 相手が【' + card.name + '】の特性「' + (card.abilityName || '特性') + '」を発動しました！');
+          const abName = payload.abilityName || card.abilityName || '特性';
+          this.log('✨ 相手が【' + (card.name || 'ポケモン') + '】の特性「' + abName + '」を発動しました！');
+          if (window.App && typeof window.App.toast === 'function') {
+            window.App.toast('✨ 相手が特性「' + abName + '」を発動しました！');
+          }
           this.render();
           break;
         }
         case 'cancel_trainer': {
           const card = payload.card || { name: 'トレーナーカード' };
           const kind = payload.kind || 'グッズ';
+          if (Array.isArray(opp.discard) && opp.discard.length > 0) {
+            const idx = opp.discard.findLastIndex ? opp.discard.findLastIndex(c => c && (c.name === card.name || c.id === card.id)) : opp.discard.lastIndexOf(card);
+            if (idx >= 0) opp.discard.splice(idx, 1);
+          }
           this.log('↩️ 相手の【' + kind + '】「' + card.name + '」は発動条件を満たさなかったため手札に戻りました。');
           this.render();
           break;
         }
         case 'retreat': {
+          const cost = Number(payload.retreatCost) || 0;
+          if (cost > 0) {
+            if (!Array.isArray(opp.discard)) opp.discard = [];
+            if (opp.active && opp.active.attachedEnergies && opp.active.attachedEnergies.length > 0) {
+              for (let i = 0; i < cost; i++) {
+                const popped = opp.active.attachedEnergies.pop();
+                if (popped) {
+                  const nrgCard = (typeof popped === 'object' && popped !== null)
+                    ? popped
+                    : this.createRuntimeCard({
+                        name: (popped || '基本') + 'エネルギー',
+                        category: 'エネルギー',
+                        type: popped || '無色'
+                      });
+                  opp.discard.push(nrgCard);
+                }
+              }
+            } else {
+              for (let i = 0; i < cost; i++) {
+                opp.discard.push(this.createRuntimeCard({
+                  name: 'エネルギー',
+                  category: 'エネルギー',
+                  type: (opp.active && opp.active.type) || '無色'
+                }));
+              }
+            }
+          }
           if (!payload.boardState && opp.bench.length > 0) {
             const bIdx = Math.max(0, Math.min(opp.bench.length - 1, Number(payload.benchIdx) || 0));
-            const cost = Number(payload.retreatCost) || 0;
             if (opp.active) {
               opp.active.energy = Math.max(0, (opp.active.energy || 0) - cost);
               const nextActive = opp.bench.splice(bIdx, 1)[0];
@@ -21674,13 +21915,13 @@ window.DeckSystem = function () {
             attacker.hp = payload.attackerHp;
           }
 
-          setTimeout(() => {
+          setTimeout(async () => {
             if (defender && defender.hp <= 0) {
-              this.handleKnockout(opp, p);
+              await this.handleKnockout(opp, p);
             } else {
               this.render();
             }
-          }, 500);
+          }, 300);
           break;
         }
         case 'init_board': {
@@ -22774,26 +23015,51 @@ window.DeckSystem = function () {
 
     promptPromoteFromBench(victim) {
       if (!victim || !victim.bench || !victim.bench.length) return;
-      this.showChoiceModal(victim.bench.map((b) => ({ name: b.name, type: b.type, hp: b.hp, category: 'バトル場へ' })), {
+      if (victim === this.state.player && victim.bench.length === 1) {
+        // ベンチが1匹だけの場合は即座にバトル場へ自動昇格
+        this.promoteBenchPokemonToActive(0);
+        return;
+      }
+      this.showChoiceModal(victim.bench.map((b) => ({ name: b.name, type: b.type, hp: b.hp, category: 'バトル場へ', image: b.image })), {
         title: 'バトルポケモン交代',
-        desc: 'バトル場に出すベンチポケモンを選択してください。'
+        desc: 'バトル場に出すベンチポケモンを選択してください。（盤面のベンチポケモンを直接クリックしても出せます）'
       }, (idx) => {
-        victim.active = victim.bench.splice(idx, 1)[0];
-        this.log("🔄 " + (victim.name || 'プレイヤー') + " は " + victim.active.name + " をバトル場に出しました。");
-        if (this.state.mode === 'online') {
-          this.broadcastOnlineAction('promote_active', { benchIdx: idx });
+        if (victim === this.state.player) {
+          this.promoteBenchPokemonToActive(idx);
+        } else {
+          victim.active = victim.bench.splice(idx, 1)[0];
+          this.log("🔄 " + (victim.name || 'プレイヤー') + " は " + victim.active.name + " をバトル場に出しました。");
+          this.render();
         }
-        this.render();
-        // 番を進める: AIの攻撃できぜつ(AI戦) / 自分の番中の自爆きぜつ(オンライン) の交代後はそのまま終了
-        if (victim === this.state.player && this.state.phase === 'battle') {
-          if (this.state.mode === 'ai' && this.state.turnPlayer === 'opponent') {
-            setTimeout(() => this.endTurn(), 600);
-          } else if (this.state.mode === 'online' && this.state.turnPlayer === 'player' && this.state.online.attackedThisTurn) {
-            setTimeout(() => this.endTurn(), 600);
-          }
+      }, () => {
+        if (victim === this.state.player && window.App && typeof window.App.toast === 'function') {
+          App.toast('ベンチのポケモンをクリックしてバトル場に出してください。');
         }
-
       });
+    },
+
+    promoteBenchPokemonToActive(benchIdx) {
+      const p = this.state.player;
+      if (!p || p.active !== null || !p.bench || !p.bench[benchIdx]) return;
+      this.closeChoiceModal();
+      const promoted = p.bench.splice(benchIdx, 1)[0];
+      p.active = promoted;
+      this.log("🔄 " + (p.name || 'プレイヤー') + " は「" + promoted.name + "」をバトル場に出しました。");
+      if (this.state.mode === 'online') {
+        this.broadcastOnlineAction('promote_active', { benchIdx: benchIdx });
+      }
+      this.render();
+      const targetSlotEl = document.getElementById('playerActiveSpot');
+      if (targetSlotEl) this.animateCardPlacement(targetSlotEl);
+
+      // 番を進める: AIの攻撃できぜつ(AI戦) / 自分の番中の自爆きぜつ(オンライン) の交代後はそのまま終了
+      if (this.state.phase === 'battle') {
+        if (this.state.mode === 'ai' && this.state.turnPlayer === 'opponent') {
+          setTimeout(() => this.endTurn(), 600);
+        } else if (this.state.mode === 'online' && this.state.turnPlayer === 'player' && this.state.online.attackedThisTurn) {
+          setTimeout(() => this.endTurn(), 600);
+        }
+      }
     },
 
     showTurnBanner(turnWho) {
@@ -22854,7 +23120,7 @@ window.DeckSystem = function () {
       // ※ event.on('turnStart', ...) または event.on('start', ...) を明示的に宣言しているコードのみ実行する
       // ※ useLimit() 等の起動型特性（上位コードがイベント登録なし）は絶対に自動実行しない
       const activePokemons = [cur.active, ...(cur.bench || [])].filter(Boolean);
-      const TURN_START_EVENT_REGEX = /event\s*\.\s*on\s*\(\s*['"](?:turnStart|start)['"]/;
+      const TURN_START_EVENT_REGEX = /event\s*\.\s*(?:on|onasync|onAsync)\s*\(\s*['"](?:turnStart|start)['"]/i;
       activePokemons.forEach((pk) => {
         const code = String(pk.abilityCode || '');
         if (code && window.executeCardEffectCode && TURN_START_EVENT_REGEX.test(code)) {
@@ -22865,7 +23131,9 @@ window.DeckSystem = function () {
               cur,
               'turnStart',
               { card: pk, pokemon: pk, turnNumber: this.state.turnNumber }
-            );
+            ).catch((err) => {
+              console.error('turnStart ability error:', err);
+            });
           } catch (e) {
             console.error('turnStart ability error:', e);
           }
@@ -22948,14 +23216,6 @@ window.DeckSystem = function () {
       const turnWhoName = this.state.turnPlayer === 'player' ? (this.state.player.name || 'プレイヤー') : (this.state.opponent.name || '対戦相手');
       this.log("【" + turnWhoName + "】がターンを終了しました。");
 
-      if (this.state.turnPlayer === 'player' && this.state.mode === 'online') {
-        this.state.online.pendingEndTurn = true;
-        this.state.online.endTurnSeq = 0;
-        this.broadcastOnlineAction('end_turn', {}, (r) => {
-          this.state.online.pendingEndTurn = false;
-          this.state.online.endTurnSeq = (r && r.lastSeq) ? Number(r.lastSeq) : 0;
-        });
-      }
 
       let nextPlayer;
       if (this.state.extraTurnPlayer) {
@@ -23335,7 +23595,9 @@ window.DeckSystem = function () {
             p,
             'onAttach',
             { card: energyCard, pokemon: targetPokemon }
-          );
+          ).catch((err) => {
+            console.error('Energy attach effect error:', err);
+          });
         } catch(e) { console.error('Energy attach effect error:', e); }
       }
 
@@ -24091,8 +24353,29 @@ window.DeckSystem = function () {
         desc: "エネルギーを" + retreatCost + "個トラッシュして交代します。"
       }, (idx) => {
         p.active.energy -= retreatCost;
-        if (p.active.attachedEnergies) {
-          for (let i = 0; i < retreatCost; i++) p.active.attachedEnergies.pop();
+        if (!Array.isArray(p.discard)) p.discard = [];
+        if (p.active.attachedEnergies && p.active.attachedEnergies.length > 0) {
+          for (let i = 0; i < retreatCost; i++) {
+            const popped = p.active.attachedEnergies.pop();
+            if (popped) {
+              const nrgCard = (typeof popped === 'object' && popped !== null)
+                ? popped
+                : this.createRuntimeCard({
+                    name: (popped || '基本') + 'エネルギー',
+                    category: 'エネルギー',
+                    type: popped || '無色'
+                  });
+              p.discard.push(nrgCard);
+            }
+          }
+        } else {
+          for (let i = 0; i < retreatCost; i++) {
+            p.discard.push(this.createRuntimeCard({
+              name: 'エネルギー',
+              category: 'エネルギー',
+              type: p.active.type || '無色'
+            }));
+          }
         }
         if (p.active) {
           p.active.usedLastTurn = false;
@@ -24225,9 +24508,9 @@ window.DeckSystem = function () {
 
         // きぜつ判定
         if (postDef && postDef.hp <= 0) {
-          this.handleKnockout(this.state.player, this.state.opponent);
+          await this.handleKnockout(this.state.player, this.state.opponent);
         } else if (postAtk && postAtk.hp <= 0) {
-          this.handleKnockout(this.state.opponent, this.state.player);
+          await this.handleKnockout(this.state.opponent, this.state.player);
         } else {
           this.render();
           // 攻撃宣言後はターン終了
@@ -24402,7 +24685,7 @@ window.DeckSystem = function () {
       };
     },
 
-    handleKnockout(scorer, victim) {
+    async handleKnockout(scorer, victim) {
       const koPokemon = victim.active;
       // nullガード: 既にきぜつ処理済み or 状態が変わっていた場合はスキップ
       if (!koPokemon) {
@@ -24441,10 +24724,22 @@ window.DeckSystem = function () {
         this.log("🏆 【" + (scorer.name || '相手') + "】がサイドを1枚獲得！（残りサイド: " + scorer.prizes.length + "枚）");
       }
 
+      // 勝利判定 1: サイドをすべて取り切った
+      if (scorer.prizes.length === 0) {
+        this.finishBattle(scorer.id, 'すべてのサイドカードを取り切りました！');
+        return;
+      }
+
+      // 勝利判定 2: 相手のベンチが全滅
+      if (!victim.bench.length) {
+        this.finishBattle(scorer.id, '相手の場にポケモンがいなくなりました！');
+        return;
+      }
+
       // きぜつしたポケモン自身の onKnockout イベントの発火
       if (koPokemon?.abilityCode && window.executeCardEffectCode) {
         try {
-          window.executeCardEffectCode(koPokemon.abilityCode, { players: [victim, scorer] }, victim, 'onKnockout', { koPokemon, isEx, pokemon: koPokemon, card: koPokemon });
+          await window.executeCardEffectCode(koPokemon.abilityCode, { players: [victim, scorer] }, victim, 'onKnockout', { koPokemon, isEx, pokemon: koPokemon, card: koPokemon });
         } catch (e) {
           console.error('onKnockout ability error:', e);
         }
@@ -24453,7 +24748,7 @@ window.DeckSystem = function () {
       // 相手撃破時イベント onKnockoutOpponent の発火
       if (scorer.active?.abilityCode && window.executeCardEffectCode) {
         try {
-          window.executeCardEffectCode(scorer.active.abilityCode, { players: [scorer, victim] }, scorer, 'onKnockoutOpponent', { koPokemon, isEx });
+          await window.executeCardEffectCode(scorer.active.abilityCode, { players: [scorer, victim] }, scorer, 'onKnockoutOpponent', { koPokemon, isEx });
         } catch (e) {
           console.error('onKnockoutOpponent ability error:', e);
         }
@@ -24463,24 +24758,22 @@ window.DeckSystem = function () {
       const ALLY_KO_REGEX = /event\s*\.\s*on\s*\(\s*['"](allyKnockedOut|onAllyKnockout|allyKnockout|ally_knocked_out|allyFainted|味方気絶|仲間気絶|自分のポケモン気絶|自分の仲間が気絶したら|仲間が気絶したら|味方が気絶したら)['"]|whenAllyKnockedOut|onAllyKnockedOut/;
       const victimAllies = [...(victim.bench || [])];
       if (victim.active) victimAllies.push(victim.active);
-      victimAllies.forEach((allyPk) => {
+      for (const allyPk of victimAllies) {
         if (allyPk?.abilityCode && ALLY_KO_REGEX.test(allyPk.abilityCode) && window.executeCardEffectCode) {
           try {
-            window.executeCardEffectCode(allyPk.abilityCode, { players: [victim, scorer] }, victim, 'allyKnockedOut', { koPokemon, isEx, pokemon: allyPk, card: allyPk });
+            await window.executeCardEffectCode(allyPk.abilityCode, { players: [victim, scorer] }, victim, 'allyKnockedOut', { koPokemon, isEx, pokemon: allyPk, card: allyPk });
           } catch (e) {
             console.error('allyKnockedOut ability error:', e);
           }
         }
-      });
+      }
 
-      // 勝利判定 1: サイドをすべて取り切った
+      // 特性処理後にも勝利判定を再チェック
       if (scorer.prizes.length === 0) {
         this.finishBattle(scorer.id, 'すべてのサイドカードを取り切りました！');
         return;
       }
-
-      // 勝利判定 2: 相手のベンチが全滅
-      if (!victim.bench.length) {
+      if (!victim.bench.length && !victim.active) {
         this.finishBattle(scorer.id, '相手の場にポケモンがいなくなりました！');
         return;
       }
@@ -24776,8 +25069,29 @@ window.DeckSystem = function () {
             await this.wait(800);
           } else if (!ai.retreated && currentEnergy >= retreatCost && activeHp <= 30) {
             ai.active.energy -= retreatCost;
-            if (ai.active.attachedEnergies) {
-              for (let i = 0; i < retreatCost; i++) ai.active.attachedEnergies.pop();
+            if (!Array.isArray(ai.discard)) ai.discard = [];
+            if (ai.active.attachedEnergies && ai.active.attachedEnergies.length > 0) {
+              for (let i = 0; i < retreatCost; i++) {
+                const popped = ai.active.attachedEnergies.pop();
+                if (popped) {
+                  const nrgCard = (typeof popped === 'object' && popped !== null)
+                    ? popped
+                    : this.createRuntimeCard({
+                        name: (popped || '基本') + 'エネルギー',
+                        category: 'エネルギー',
+                        type: popped || '無色'
+                      });
+                  ai.discard.push(nrgCard);
+                }
+              }
+            } else {
+              for (let i = 0; i < retreatCost; i++) {
+                ai.discard.push(this.createRuntimeCard({
+                  name: 'エネルギー',
+                  category: 'エネルギー',
+                  type: (ai.active && ai.active.type) || '無色'
+                }));
+              }
             }
             if (ai.active) ai.active.usedLastTurn = false;
             const prevActive = ai.active;
@@ -25024,14 +25338,20 @@ window.DeckSystem = function () {
       this._activeDiscardFilter = 'all';
 
       const modal = document.getElementById('battleDiscardModal');
-      if (modal) modal.classList.remove('hidden');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.style.display = 'grid';
+      }
 
       this.renderDiscardGrid();
     },
 
     closeDiscardModal() {
       const modal = document.getElementById('battleDiscardModal');
-      if (modal) modal.classList.add('hidden');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+      }
     },
 
     switchDiscardTab(target) {
@@ -25057,6 +25377,11 @@ window.DeckSystem = function () {
       if (tabOCount) tabOCount.textContent = oCount;
 
       const isPlayer = this._activeDiscardTarget !== 'opponent';
+      const modalTitle = document.getElementById('discardModalTitle');
+      if (modalTitle) {
+        modalTitle.textContent = isPlayer ? '🗑️ あなたのトラッシュ' : '🗑️ 相手のトラッシュ';
+      }
+
       const tabP = document.getElementById('discardTabPlayer');
       const tabO = document.getElementById('discardTabOpponent');
 
@@ -25075,8 +25400,8 @@ window.DeckSystem = function () {
         if (!card) return false;
         if (filter === 'all') return true;
         const cat = String(card.category || '');
-        const isTrainer = cat === 'グッズ' || cat === 'サポート' || cat === 'トレーナー';
-        const isEnergy = cat === 'エネルギー' || cat === '基本エネルギー' || cat.includes('エネルギー');
+        const isTrainer = cat === 'グッズ' || cat === 'サポート' || cat === 'トレーナー' || cat === 'スタジアム' || cat === 'ポケモンのどうぐ' || cat.includes('グッズ') || cat.includes('サポート') || cat.includes('トレーナー') || cat.includes('スタジアム') || cat.includes('どうぐ');
+        const isEnergy = cat === 'エネルギー' || cat === '基本エネルギー' || cat === '特殊エネルギー' || cat.includes('エネルギー');
         const isPokemon = !isTrainer && !isEnergy;
 
         if (filter === 'pokemon') return isPokemon;
@@ -25108,9 +25433,14 @@ window.DeckSystem = function () {
       grid.innerHTML = reversedList.map((card, idx) => {
         let cardHtml = '';
         if (window.CardSystem && typeof window.CardSystem.createCardHtml === 'function') {
-          cardHtml = window.CardSystem.createCardHtml(card, { size: 'sm' });
-        } else {
-          cardHtml = '\n            <div class="card-fallback" style="padding:10px; background:#1e293b; border-radius:8px;">\n              <strong>' + (this.escape(card.name)) + '</strong>\n              <div>' + (this.escape(card.category || '')) + '</div>\n            </div>\n          ';
+          try {
+            cardHtml = window.CardSystem.createCardHtml(card, { size: 'sm' });
+          } catch(e) {
+            console.error('Error creating card HTML for discard:', e);
+          }
+        }
+        if (!cardHtml) {
+          cardHtml = '\n            <div class="card-fallback" style="padding:10px; background:#1e293b; border-radius:8px; border:1px solid #475569; min-width:80px; text-align:center;">\n              <strong style="display:block; font-size:12px; color:#f8fafc;">' + (this.escape(card.name || 'カード')) + '</strong>\n              <div style="font-size:10px; color:#94a3b8; margin-top:4px;">' + (this.escape(card.category || card.type || '')) + '</div>\n            </div>\n          ';
         }
 
         return '\n          <div class="discard-grid-item" data-discard-idx="' + (idx) + '" title="クリックして【' + (this.escape(card.name)) + '】の詳細を拡大表示">\n            <span class="discard-grid-zoom-pill">🔍 拡大</span>\n            ' + (cardHtml) + '\n          </div>\n        ';
@@ -25437,7 +25767,23 @@ window.DeckSystem = function () {
       if (!root) return;
 
       if (!card) {
-        root.innerHTML = "\n          <div class=\"battle-card-wrapper\">\n            <div class=\"empty-slot-text\" style=\"width: 170px; aspect-ratio: 5 / 7.4; border: 1.5px dashed rgba(255,255,255,0.15); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 12px;\">\n              なし\n            </div>\n          </div>\n        ";
+        if (isPlayer && this.state.player && this.state.player.bench && this.state.player.bench.length > 0) {
+          root.innerHTML = `
+            <div class="battle-card-wrapper">
+              <div class="empty-slot-promote-active" style="width: 170px; aspect-ratio: 5 / 7.4; border: 2px dashed #f59e0b; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(245, 158, 11, 0.12); cursor: pointer; padding: 12px; text-align: center; transition: all 0.2s;" title="クリックして交代ポケモンを選択">
+                <span style="font-size: 28px; margin-bottom: 6px;">🔄</span>
+                <span style="font-size: 13px; font-weight: 700; color: #fbbf24;">バトル場に出す</span>
+                <span style="font-size: 10px; color: var(--muted); margin-top: 4px;">クリックまたはベンチから選択</span>
+              </div>
+            </div>
+          `;
+          root.onclick = () => {
+            this.promptPromoteFromBench(this.state.player);
+          };
+        } else {
+          root.innerHTML = "\n          <div class=\"battle-card-wrapper\">\n            <div class=\"empty-slot-text\" style=\"width: 170px; aspect-ratio: 5 / 7.4; border: 1.5px dashed rgba(255,255,255,0.15); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 12px;\">\n              なし\n            </div>\n          </div>\n        ";
+          root.onclick = null;
+        }
         if (isPlayer) {
           root.dataset.dropTarget = 'active';
           root.ondragover = (e) => {
@@ -25457,7 +25803,15 @@ window.DeckSystem = function () {
             e.preventDefault();
             e.stopPropagation();
             root.classList.remove('drag-hover');
-            const rawIdx = (this.draggedHandIndex != null) ? this.draggedHandIndex : (e.dataTransfer ? parseInt(e.dataTransfer.getData('text/plain'), 10) : null);
+            const dataStr = e.dataTransfer ? e.dataTransfer.getData('text/plain') : '';
+            if (dataStr && dataStr.startsWith('bench:')) {
+              const bIdx = parseInt(dataStr.replace('bench:', ''), 10);
+              if (!isNaN(bIdx)) {
+                this.promoteBenchPokemonToActive(bIdx);
+                return;
+              }
+            }
+            const rawIdx = (this.draggedHandIndex != null) ? this.draggedHandIndex : (e.dataTransfer ? parseInt(dataStr, 10) : null);
             const idx = (typeof rawIdx === 'number' && !isNaN(rawIdx)) ? rawIdx : null;
             if (idx != null) {
               this.draggedHandIndex = null;
@@ -25619,10 +25973,27 @@ window.DeckSystem = function () {
         const c = benchList[benchIdx];
         if (c) {
           slotEl.style.cursor = 'pointer';
+          if (isPlayer && this.state.player.active === null) {
+            slotEl.style.outline = '2px solid #f59e0b';
+            slotEl.style.boxShadow = '0 0 10px rgba(245, 158, 11, 0.6)';
+            slotEl.title = '【クリックしてバトル場に出す】' + (slotEl.title || '');
+            slotEl.draggable = true;
+            slotEl.ondragstart = (e) => {
+              if (e.dataTransfer) {
+                e.dataTransfer.setData('text/plain', 'bench:' + benchIdx);
+                e.dataTransfer.effectAllowed = 'move';
+              }
+            };
+          }
           slotEl.onclick = () => {
             if (this.draggedHandIndex == null) {
               if (isPlayer) {
-                this.openCardActionModal(c, true, benchIdx);
+                if (this.state.player.active === null) {
+                  // バトル場が空なら、ベンチクリックで即座にバトル場へ昇格！
+                  this.promoteBenchPokemonToActive(benchIdx);
+                } else {
+                  this.openCardActionModal(c, true, benchIdx);
+                }
               } else if (window.CardSystem && window.CardSystem.showDetail) {
                 CardSystem.showDetail(c);
               }
@@ -25822,6 +26193,11 @@ window.DeckSystem = function () {
 
       let itemsHtml = '';
 
+      // 0. バトル場へ昇格 (バトル場が空の場合)
+      if (isBench && p.active === null) {
+        itemsHtml += '\n          <div class="card-act-item is-promote" style="border: 2px solid #f59e0b; background: rgba(245, 158, 11, 0.12); border-radius: 8px; margin-bottom: 8px;">\n            <div class="act-item-content">\n              <div class="act-item-header">\n                <span class="act-badge promote" style="background:#f59e0b; color:#000; font-weight:bold;">交代</span>\n                <span class="act-item-name">「' + this.escape(card.name) + '」をバトル場へ</span>\n              </div>\n              <div class="act-item-text">バトル場が空です。このポケモンをバトル場に出します。</div>\n            </div>\n            <button type="button" class="primary-button card-act-btn promote-btn" data-action="promote_to_active" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; font-weight: 700;">\n              ⚔️ バトル場に出す\n            </button>\n          </div>\n        ';
+      }
+
       // 1. 特性 (バトル場またはベンチ)
       if (card.abilityName) {
         const isAbilityBlocked = this.isBlocked('ability', card, p);
@@ -25963,7 +26339,10 @@ window.DeckSystem = function () {
         btn.onclick = () => {
           const act = btn.dataset.action;
           this.closeCardActionModal();
-          if (act === 'attack1') {
+          if (act === 'promote_to_active') {
+            const actualIdx = benchIdx != null ? benchIdx : p.bench.indexOf(card);
+            if (actualIdx >= 0) this.promoteBenchPokemonToActive(actualIdx);
+          } else if (act === 'attack1') {
             this.declareAttack(1);
           } else if (act === 'attack2') {
             this.declareAttack(2);
@@ -26097,21 +26476,19 @@ window.DeckSystem = function () {
 
       App.toast("特性「" + card.abilityName + "」を発動しました！");
       if (this.state.mode === 'online') {
-        this.broadcastOnlineAction('use_ability', { card: card });
+        this.broadcastOnlineAction('use_ability', {
+          card: card,
+          abilityName: card.abilityName,
+          isBench: isBench,
+          benchIdx: benchIdx
+        });
       }
 
       // もしバトル場が空になった場合（特性で自身をトラッシュした場合など）、ベンチから交代
       if (this.state.player.active === null) {
         if (this.state.player.bench.length > 0) {
           this.log("🔄 バトルポケモンがいなくなったため、ベンチから新しいバトルポケモンを出します。");
-          this.showChoiceModal(this.state.player.bench.map((b) => ({ name: b.name, type: b.type, hp: b.hp, category: 'バトル場へ' })), {
-            title: 'バトルポケモンの交代',
-            desc: '新しいバトルポケモンを選択してください。'
-          }, (idx) => {
-            this.state.player.active = this.state.player.bench.splice(idx, 1)[0];
-            this.log("🔄 プレイヤーは " + this.state.player.active.name + " をバトル場に出しました。");
-            this.render();
-          });
+          this.promptPromoteFromBench(this.state.player);
         } else {
           this.finishBattle(this.state.opponent.id, '自分の場にポケモンがいなくなりました！');
         }
@@ -29113,6 +29490,7 @@ console.log('[ORBITAL] App.js.html started execution');
         return;
       }
       this.populateAdminCardPoolSelect();
+      this.resetPackForm();
       const modal = this.el('adminPackModal');
       if (modal) modal.classList.remove('hidden');
       this.renderAdminPackTable();
@@ -29143,6 +29521,17 @@ console.log('[ORBITAL] App.js.html started execution');
       this.el('adminPackDesc').value = '';
       this.el('adminPackImage').value = '';
       this.el('adminPackCardCount').value = '5';
+      this._tempPackCardPool = [];
+      this.updatePackCardPoolSummary();
+      const saveBtn = this.el('adminPackSaveBtn');
+      if (saveBtn) saveBtn.textContent = '💾 パックを保存';
+      const statusBadge = this.el('adminPackFormStatus');
+      if (statusBadge) {
+        statusBadge.textContent = '新規作成';
+        statusBadge.style.color = '#d946ef';
+        statusBadge.style.borderColor = 'rgba(217,70,239,0.3)';
+        statusBadge.style.background = 'rgba(217,70,239,0.15)';
+      }
       const sel = this.el('adminPackCardPool');
       if (sel) {
         Array.from(sel.options).forEach(o => o.selected = false);
@@ -29158,8 +29547,13 @@ console.log('[ORBITAL] App.js.html started execution');
       const image = this.el('adminPackImage').value.trim();
       const cardCount = Number(this.el('adminPackCardCount').value) || 5;
 
-      const sel = this.el('adminPackCardPool');
-      const cardPool = sel ? Array.from(sel.selectedOptions).map(o => o.value) : [];
+      let cardPool = [];
+      if (Array.isArray(this._tempPackCardPool) && this._tempPackCardPool.length > 0) {
+        cardPool = [...this._tempPackCardPool];
+      } else {
+        const sel = this.el('adminPackCardPool');
+        cardPool = sel ? Array.from(sel.selectedOptions).map(o => o.value) : [];
+      }
 
       if (!title) {
         this.toast('パックタイトルを入力してください', true);
@@ -29248,26 +29642,45 @@ console.log('[ORBITAL] App.js.html started execution');
       this.el('adminPackImage').value = pack.image || '';
       this.el('adminPackCardCount').value = pack.cardCount || 5;
 
+      // 前に収録されていたカードプールを編集対象として引き継ぐ
+      const pool = Array.isArray(pack.cardPool) ? [...pack.cardPool] : [];
+      this._tempPackCardPool = pool;
+
       const sel = this.el('adminPackCardPool');
       if (sel) {
-        const pool = pack.cardPool || [];
         Array.from(sel.options).forEach(o => {
           o.selected = pool.includes(o.value);
         });
       }
+
+      this.updatePackCardPoolSummary();
+
+      const saveBtn = this.el('adminPackSaveBtn');
+      if (saveBtn) saveBtn.textContent = '💾 パックを更新';
+      const statusBadge = this.el('adminPackFormStatus');
+      if (statusBadge) {
+        statusBadge.textContent = '「' + (pack.title || 'パック') + '」を編集中';
+        statusBadge.style.color = '#38bdf8';
+        statusBadge.style.borderColor = 'rgba(56,189,248,0.4)';
+        statusBadge.style.background = 'rgba(56,189,248,0.15)';
+      }
+
+      const form = this.el('adminPackForm');
+      if (form) form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     },
 
     _tempPackCardPool: [],
 
     openCardPickerForPackPool() {
-      const currentSelected = this._tempPackCardPool || [];
+      // 編集時は前に収録されていたカードプール（_tempPackCardPool）を初期選択として開く
+      const currentSelected = Array.isArray(this._tempPackCardPool) ? [...this._tempPackCardPool] : [];
       if (window.CardSystem && CardSystem.openCardPicker) {
         CardSystem.openCardPicker({
           title: '🎁 パック収録カードプール選択',
           mode: 'multi',
           selectedIds: currentSelected,
           onConfirm: (selectedIds) => {
-            App._tempPackCardPool = selectedIds;
+            App._tempPackCardPool = Array.isArray(selectedIds) ? [...selectedIds] : [];
             App.updatePackCardPoolSummary();
           }
         });
@@ -29286,6 +29699,59 @@ console.log('[ORBITAL] App.js.html started execution');
           o.selected = pool.includes(o.value);
         });
       }
+      this.renderPackCardPoolPreviewChips();
+    },
+
+    renderPackCardPoolPreviewChips() {
+      const container = this.el('adminPackPoolPreviewContainer');
+      const chipsEl = this.el('adminPackPoolCardChips');
+      const countEl = this.el('adminPackPoolPreviewCount');
+      if (!container || !chipsEl) return;
+
+      const pool = this._tempPackCardPool || [];
+      if (countEl) countEl.textContent = pool.length;
+
+      if (pool.length === 0) {
+        container.style.display = 'none';
+        chipsEl.innerHTML = '';
+        return;
+      }
+
+      container.style.display = 'block';
+      const allCards = this.getAllCards();
+      const cardMap = new Map(allCards.map(c => [c.id, c]));
+
+      chipsEl.innerHTML = pool.map(cardId => {
+        const card = cardMap.get(cardId);
+        const name = card ? card.name : cardId;
+        const type = card?.type || '無色';
+        const typeColor = this.getCardTypeColor(type);
+        return '<div style="display:inline-flex; align-items:center; gap:5px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12); padding:3px 8px; border-radius:14px; font-size:11px;">' +
+          '<span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:' + typeColor + ';"></span>' +
+          '<span style="font-weight:600; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + this.escapeHtml(name) + '</span>' +
+          '<button type="button" style="background:none; border:none; color:#ef4444; font-size:12px; cursor:pointer; padding:0 2px; line-height:1;" title="除外" onclick="App.removeCardFromPackPool(\'' + this.escapeHtml(cardId) + '\')">×</button>' +
+        '</div>';
+      }).join('');
+    },
+
+    getCardTypeColor(type) {
+      const colors = {
+        '草': '#22c55e', '炎': '#ef4444', '水': '#3b82f6', '雷': '#eab308',
+        '超': '#a855f7', '闘': '#f97316', '悪': '#64748b', '鋼': '#94a3b8',
+        'ドラゴン': '#eab308', '無色': '#a1a1aa'
+      };
+      return colors[type] || '#a1a1aa';
+    },
+
+    removeCardFromPackPool(cardId) {
+      if (!Array.isArray(this._tempPackCardPool)) return;
+      this._tempPackCardPool = this._tempPackCardPool.filter(id => id !== cardId);
+      this.updatePackCardPoolSummary();
+    },
+
+    clearPackCardPool() {
+      this._tempPackCardPool = [];
+      this.updatePackCardPoolSummary();
     },
 
     /* ============================================================

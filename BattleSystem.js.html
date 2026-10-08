@@ -1793,17 +1793,53 @@
       const cleanAttached = Array.isArray(c.attachedEnergies)
         ? c.attachedEnergies.map(item => (typeof item === 'object' ? { name: item.name, type: item.type } : item))
         : [];
+      const cleanAttachedCards = Array.isArray(c.attachedCards)
+        ? c.attachedCards.map(item => (typeof item === 'object' ? { id: item.id || '', name: item.name || '', category: item.category || '', type: item.type || '' } : item))
+        : [];
+      const cleanTool = c.attachedTool ? {
+        id: c.attachedTool.id || '',
+        name: c.attachedTool.name || '',
+        category: c.attachedTool.category || 'ポケモンのどうぐ',
+        description: c.attachedTool.description || '',
+        attack1Text: c.attachedTool.attack1Text || ''
+      } : null;
+
       return {
         id: c.id || '',
         name: c.name || '',
         category: c.category || '',
         type: c.type || '',
+        stage: c.stage || '',
+        preEvolution: c.preEvolution || '',
         hp: Number(c.hp) || 0,
         maxHp: Number(c.maxHp) || Number(c.hp) || 70,
         energy: Number(c.energy) || 0,
         attachedEnergies: cleanAttached,
+        attachedCards: cleanAttachedCards,
+        attachedTool: cleanTool,
         status: c.status || null,
-        isEx: !!c.isEx
+        isEx: !!c.isEx,
+        isAceSpec: !!c.isAceSpec,
+        retreat: Number(c.retreat) || 0,
+        weakness: c.weakness || null,
+        resistance: c.resistance || null,
+        abilityName: c.abilityName || '',
+        abilityText: c.abilityText || '',
+        abilityCode: c.abilityCode || '',
+        attack1Name: c.attack1Name || '',
+        attack1Damage: c.attack1Damage != null ? c.attack1Damage : '',
+        attack1Energy: c.attack1Energy != null ? c.attack1Energy : '',
+        attack1Text: c.attack1Text || '',
+        attack1Code: c.attack1Code || '',
+        attack2Name: c.attack2Name || '',
+        attack2Damage: c.attack2Damage != null ? c.attack2Damage : '',
+        attack2Energy: c.attack2Energy != null ? c.attack2Energy : '',
+        attack2Text: c.attack2Text || '',
+        attack2Code: c.attack2Code || '',
+        image: (c.image && !c.image.startsWith('data:')) ? c.image : '',
+        description: c.description || '',
+        rarity: c.rarity || '',
+        customEffects: Array.isArray(c.customEffects) ? c.customEffects : []
       };
     },
 
@@ -1838,6 +1874,7 @@
       return {
         active: sanitizeCard(this.state.player.active),
         bench: (this.state.player.bench || []).map(sanitizeCard),
+        discard: (this.state.player.discard || []).map(sanitizeCard),
         prizesCount: this.state.player.prizes ? this.state.player.prizes.length : 0,
         handCount: this.state.player.hand ? this.state.player.hand.length : 0,
         discardCount: this.state.player.discard ? this.state.player.discard.length : 0
@@ -1858,6 +1895,11 @@
           opp.active.energy = snapshot.active.energy;
           opp.active.attachedEnergies = snapshot.active.attachedEnergies || [];
           opp.active.status = snapshot.active.status;
+          if (snapshot.active.attachedTool !== undefined) opp.active.attachedTool = snapshot.active.attachedTool;
+          if (Array.isArray(snapshot.active.attachedCards)) opp.active.attachedCards = snapshot.active.attachedCards;
+          if (snapshot.active.abilityName) opp.active.abilityName = snapshot.active.abilityName;
+          if (snapshot.active.abilityText) opp.active.abilityText = snapshot.active.abilityText;
+          if (snapshot.active.abilityCode) opp.active.abilityCode = snapshot.active.abilityCode;
           if (snapshot.active.image) opp.active.image = snapshot.active.image;
         }
       } else {
@@ -1876,9 +1918,22 @@
           existing.energy = b.energy;
           existing.attachedEnergies = b.attachedEnergies || [];
           existing.status = b.status;
+          if (b.attachedTool !== undefined) existing.attachedTool = b.attachedTool;
+          if (Array.isArray(b.attachedCards)) existing.attachedCards = b.attachedCards;
+          if (b.abilityName) existing.abilityName = b.abilityName;
+          if (b.abilityText) existing.abilityText = b.abilityText;
+          if (b.abilityCode) existing.abilityCode = b.abilityCode;
           if (b.image) existing.image = b.image;
           return existing;
         }).filter(Boolean);
+      }
+
+      if (Array.isArray(snapshot.discard)) {
+        if (snapshot.discard.length > 0) {
+          opp.discard = snapshot.discard.map((d) => this.createRuntimeCard(d));
+        } else if (!opp.discard || opp.discard.length === 0) {
+          opp.discard = [];
+        }
       }
 
       if (typeof snapshot.prizesCount === 'number') {
@@ -1980,7 +2035,7 @@
         }
         case 'promote_active': {
           const bIdx = Number(payload.benchIdx);
-          if (!payload.boardState && !isNaN(bIdx) && opp.bench && opp.bench[bIdx]) {
+          if (!opp.active && !isNaN(bIdx) && opp.bench && opp.bench[bIdx]) {
             opp.active = opp.bench.splice(bIdx, 1)[0];
           }
           this.log('🔄 相手が【' + (opp.active ? opp.active.name : 'ポケモン') + '】をバトル場に出しました。');
@@ -1988,7 +2043,7 @@
           const targetSlotEl = document.getElementById('oppActiveSpot');
           if (targetSlotEl) this.animateCardPlacement(targetSlotEl);
           if (this.state.mode === 'online' && this.state.turnPlayer === 'player') {
-            setTimeout(() => this.endTurn(), 500);
+            setTimeout(() => this.endTurn(), 200);
           }
           break;
         }
@@ -2096,6 +2151,10 @@
               }
             }
             this.state.activeStadium = Object.assign({}, card, { owner: this.state.opponent.id });
+          } else {
+            if (!Array.isArray(opp.discard)) opp.discard = [];
+            const runtimeCard = this.createRuntimeCard(card);
+            opp.discard.push(runtimeCard);
           }
           this.log((isStadium ? '🏟️' : '📜') + ' 相手が【' + (isStadium ? 'スタジアム' : kind) + '】「' + card.name + '」を使用しました！');
           this.animateTrainerCardPlay(card, isStadium ? 'スタジアム' : kind);
@@ -2104,21 +2163,55 @@
         }
         case 'use_ability': {
           const card = payload.card || { name: '特性ポケモン' };
-          this.log('✨ 相手が【' + card.name + '】の特性「' + (card.abilityName || '特性') + '」を発動しました！');
+          const abName = payload.abilityName || card.abilityName || '特性';
+          this.log('✨ 相手が【' + (card.name || 'ポケモン') + '】の特性「' + abName + '」を発動しました！');
+          if (window.App && typeof window.App.toast === 'function') {
+            window.App.toast('✨ 相手が特性「' + abName + '」を発動しました！');
+          }
           this.render();
           break;
         }
         case 'cancel_trainer': {
           const card = payload.card || { name: 'トレーナーカード' };
           const kind = payload.kind || 'グッズ';
+          if (Array.isArray(opp.discard) && opp.discard.length > 0) {
+            const idx = opp.discard.findLastIndex ? opp.discard.findLastIndex(c => c && (c.name === card.name || c.id === card.id)) : opp.discard.lastIndexOf(card);
+            if (idx >= 0) opp.discard.splice(idx, 1);
+          }
           this.log('↩️ 相手の【' + kind + '】「' + card.name + '」は発動条件を満たさなかったため手札に戻りました。');
           this.render();
           break;
         }
         case 'retreat': {
+          const cost = Number(payload.retreatCost) || 0;
+          if (cost > 0) {
+            if (!Array.isArray(opp.discard)) opp.discard = [];
+            if (opp.active && opp.active.attachedEnergies && opp.active.attachedEnergies.length > 0) {
+              for (let i = 0; i < cost; i++) {
+                const popped = opp.active.attachedEnergies.pop();
+                if (popped) {
+                  const nrgCard = (typeof popped === 'object' && popped !== null)
+                    ? popped
+                    : this.createRuntimeCard({
+                        name: (popped || '基本') + 'エネルギー',
+                        category: 'エネルギー',
+                        type: popped || '無色'
+                      });
+                  opp.discard.push(nrgCard);
+                }
+              }
+            } else {
+              for (let i = 0; i < cost; i++) {
+                opp.discard.push(this.createRuntimeCard({
+                  name: 'エネルギー',
+                  category: 'エネルギー',
+                  type: (opp.active && opp.active.type) || '無色'
+                }));
+              }
+            }
+          }
           if (!payload.boardState && opp.bench.length > 0) {
             const bIdx = Math.max(0, Math.min(opp.bench.length - 1, Number(payload.benchIdx) || 0));
-            const cost = Number(payload.retreatCost) || 0;
             if (opp.active) {
               opp.active.energy = Math.max(0, (opp.active.energy || 0) - cost);
               const nextActive = opp.bench.splice(bIdx, 1)[0];
@@ -2154,13 +2247,13 @@
             attacker.hp = payload.attackerHp;
           }
 
-          setTimeout(() => {
+          setTimeout(async () => {
             if (defender && defender.hp <= 0) {
-              this.handleKnockout(opp, p);
+              await this.handleKnockout(opp, p);
             } else {
               this.render();
             }
-          }, 500);
+          }, 300);
           break;
         }
         case 'init_board': {
@@ -3254,26 +3347,51 @@
 
     promptPromoteFromBench(victim) {
       if (!victim || !victim.bench || !victim.bench.length) return;
-      this.showChoiceModal(victim.bench.map((b) => ({ name: b.name, type: b.type, hp: b.hp, category: 'バトル場へ' })), {
+      if (victim === this.state.player && victim.bench.length === 1) {
+        // ベンチが1匹だけの場合は即座にバトル場へ自動昇格
+        this.promoteBenchPokemonToActive(0);
+        return;
+      }
+      this.showChoiceModal(victim.bench.map((b) => ({ name: b.name, type: b.type, hp: b.hp, category: 'バトル場へ', image: b.image })), {
         title: 'バトルポケモン交代',
-        desc: 'バトル場に出すベンチポケモンを選択してください。'
+        desc: 'バトル場に出すベンチポケモンを選択してください。（盤面のベンチポケモンを直接クリックしても出せます）'
       }, (idx) => {
-        victim.active = victim.bench.splice(idx, 1)[0];
-        this.log("🔄 " + (victim.name || 'プレイヤー') + " は " + victim.active.name + " をバトル場に出しました。");
-        if (this.state.mode === 'online') {
-          this.broadcastOnlineAction('promote_active', { benchIdx: idx });
+        if (victim === this.state.player) {
+          this.promoteBenchPokemonToActive(idx);
+        } else {
+          victim.active = victim.bench.splice(idx, 1)[0];
+          this.log("🔄 " + (victim.name || 'プレイヤー') + " は " + victim.active.name + " をバトル場に出しました。");
+          this.render();
         }
-        this.render();
-        // 番を進める: AIの攻撃できぜつ(AI戦) / 自分の番中の自爆きぜつ(オンライン) の交代後はそのまま終了
-        if (victim === this.state.player && this.state.phase === 'battle') {
-          if (this.state.mode === 'ai' && this.state.turnPlayer === 'opponent') {
-            setTimeout(() => this.endTurn(), 600);
-          } else if (this.state.mode === 'online' && this.state.turnPlayer === 'player' && this.state.online.attackedThisTurn) {
-            setTimeout(() => this.endTurn(), 600);
-          }
+      }, () => {
+        if (victim === this.state.player && window.App && typeof window.App.toast === 'function') {
+          App.toast('ベンチのポケモンをクリックしてバトル場に出してください。');
         }
-
       });
+    },
+
+    promoteBenchPokemonToActive(benchIdx) {
+      const p = this.state.player;
+      if (!p || p.active !== null || !p.bench || !p.bench[benchIdx]) return;
+      this.closeChoiceModal();
+      const promoted = p.bench.splice(benchIdx, 1)[0];
+      p.active = promoted;
+      this.log("🔄 " + (p.name || 'プレイヤー') + " は「" + promoted.name + "」をバトル場に出しました。");
+      if (this.state.mode === 'online') {
+        this.broadcastOnlineAction('promote_active', { benchIdx: benchIdx });
+      }
+      this.render();
+      const targetSlotEl = document.getElementById('playerActiveSpot');
+      if (targetSlotEl) this.animateCardPlacement(targetSlotEl);
+
+      // 番を進める: AIの攻撃できぜつ(AI戦) / 自分の番中の自爆きぜつ(オンライン) の交代後はそのまま終了
+      if (this.state.phase === 'battle') {
+        if (this.state.mode === 'ai' && this.state.turnPlayer === 'opponent') {
+          setTimeout(() => this.endTurn(), 600);
+        } else if (this.state.mode === 'online' && this.state.turnPlayer === 'player' && this.state.online.attackedThisTurn) {
+          setTimeout(() => this.endTurn(), 600);
+        }
+      }
     },
 
     showTurnBanner(turnWho) {
@@ -3334,7 +3452,7 @@
       // ※ event.on('turnStart', ...) または event.on('start', ...) を明示的に宣言しているコードのみ実行する
       // ※ useLimit() 等の起動型特性（上位コードがイベント登録なし）は絶対に自動実行しない
       const activePokemons = [cur.active, ...(cur.bench || [])].filter(Boolean);
-      const TURN_START_EVENT_REGEX = /event\s*\.\s*on\s*\(\s*['"](?:turnStart|start)['"]/;
+      const TURN_START_EVENT_REGEX = /event\s*\.\s*(?:on|onasync|onAsync)\s*\(\s*['"](?:turnStart|start)['"]/i;
       activePokemons.forEach((pk) => {
         const code = String(pk.abilityCode || '');
         if (code && window.executeCardEffectCode && TURN_START_EVENT_REGEX.test(code)) {
@@ -3345,7 +3463,9 @@
               cur,
               'turnStart',
               { card: pk, pokemon: pk, turnNumber: this.state.turnNumber }
-            );
+            ).catch((err) => {
+              console.error('turnStart ability error:', err);
+            });
           } catch (e) {
             console.error('turnStart ability error:', e);
           }
@@ -3428,14 +3548,6 @@
       const turnWhoName = this.state.turnPlayer === 'player' ? (this.state.player.name || 'プレイヤー') : (this.state.opponent.name || '対戦相手');
       this.log("【" + turnWhoName + "】がターンを終了しました。");
 
-      if (this.state.turnPlayer === 'player' && this.state.mode === 'online') {
-        this.state.online.pendingEndTurn = true;
-        this.state.online.endTurnSeq = 0;
-        this.broadcastOnlineAction('end_turn', {}, (r) => {
-          this.state.online.pendingEndTurn = false;
-          this.state.online.endTurnSeq = (r && r.lastSeq) ? Number(r.lastSeq) : 0;
-        });
-      }
 
       let nextPlayer;
       if (this.state.extraTurnPlayer) {
@@ -3815,7 +3927,9 @@
             p,
             'onAttach',
             { card: energyCard, pokemon: targetPokemon }
-          );
+          ).catch((err) => {
+            console.error('Energy attach effect error:', err);
+          });
         } catch(e) { console.error('Energy attach effect error:', e); }
       }
 
@@ -4571,8 +4685,29 @@
         desc: "エネルギーを" + retreatCost + "個トラッシュして交代します。"
       }, (idx) => {
         p.active.energy -= retreatCost;
-        if (p.active.attachedEnergies) {
-          for (let i = 0; i < retreatCost; i++) p.active.attachedEnergies.pop();
+        if (!Array.isArray(p.discard)) p.discard = [];
+        if (p.active.attachedEnergies && p.active.attachedEnergies.length > 0) {
+          for (let i = 0; i < retreatCost; i++) {
+            const popped = p.active.attachedEnergies.pop();
+            if (popped) {
+              const nrgCard = (typeof popped === 'object' && popped !== null)
+                ? popped
+                : this.createRuntimeCard({
+                    name: (popped || '基本') + 'エネルギー',
+                    category: 'エネルギー',
+                    type: popped || '無色'
+                  });
+              p.discard.push(nrgCard);
+            }
+          }
+        } else {
+          for (let i = 0; i < retreatCost; i++) {
+            p.discard.push(this.createRuntimeCard({
+              name: 'エネルギー',
+              category: 'エネルギー',
+              type: p.active.type || '無色'
+            }));
+          }
         }
         if (p.active) {
           p.active.usedLastTurn = false;
@@ -4705,9 +4840,9 @@
 
         // きぜつ判定
         if (postDef && postDef.hp <= 0) {
-          this.handleKnockout(this.state.player, this.state.opponent);
+          await this.handleKnockout(this.state.player, this.state.opponent);
         } else if (postAtk && postAtk.hp <= 0) {
-          this.handleKnockout(this.state.opponent, this.state.player);
+          await this.handleKnockout(this.state.opponent, this.state.player);
         } else {
           this.render();
           // 攻撃宣言後はターン終了
@@ -4882,7 +5017,7 @@
       };
     },
 
-    handleKnockout(scorer, victim) {
+    async handleKnockout(scorer, victim) {
       const koPokemon = victim.active;
       // nullガード: 既にきぜつ処理済み or 状態が変わっていた場合はスキップ
       if (!koPokemon) {
@@ -4921,10 +5056,22 @@
         this.log("🏆 【" + (scorer.name || '相手') + "】がサイドを1枚獲得！（残りサイド: " + scorer.prizes.length + "枚）");
       }
 
+      // 勝利判定 1: サイドをすべて取り切った
+      if (scorer.prizes.length === 0) {
+        this.finishBattle(scorer.id, 'すべてのサイドカードを取り切りました！');
+        return;
+      }
+
+      // 勝利判定 2: 相手のベンチが全滅
+      if (!victim.bench.length) {
+        this.finishBattle(scorer.id, '相手の場にポケモンがいなくなりました！');
+        return;
+      }
+
       // きぜつしたポケモン自身の onKnockout イベントの発火
       if (koPokemon?.abilityCode && window.executeCardEffectCode) {
         try {
-          window.executeCardEffectCode(koPokemon.abilityCode, { players: [victim, scorer] }, victim, 'onKnockout', { koPokemon, isEx, pokemon: koPokemon, card: koPokemon });
+          await window.executeCardEffectCode(koPokemon.abilityCode, { players: [victim, scorer] }, victim, 'onKnockout', { koPokemon, isEx, pokemon: koPokemon, card: koPokemon });
         } catch (e) {
           console.error('onKnockout ability error:', e);
         }
@@ -4933,7 +5080,7 @@
       // 相手撃破時イベント onKnockoutOpponent の発火
       if (scorer.active?.abilityCode && window.executeCardEffectCode) {
         try {
-          window.executeCardEffectCode(scorer.active.abilityCode, { players: [scorer, victim] }, scorer, 'onKnockoutOpponent', { koPokemon, isEx });
+          await window.executeCardEffectCode(scorer.active.abilityCode, { players: [scorer, victim] }, scorer, 'onKnockoutOpponent', { koPokemon, isEx });
         } catch (e) {
           console.error('onKnockoutOpponent ability error:', e);
         }
@@ -4943,24 +5090,22 @@
       const ALLY_KO_REGEX = /event\s*\.\s*on\s*\(\s*['"](allyKnockedOut|onAllyKnockout|allyKnockout|ally_knocked_out|allyFainted|味方気絶|仲間気絶|自分のポケモン気絶|自分の仲間が気絶したら|仲間が気絶したら|味方が気絶したら)['"]|whenAllyKnockedOut|onAllyKnockedOut/;
       const victimAllies = [...(victim.bench || [])];
       if (victim.active) victimAllies.push(victim.active);
-      victimAllies.forEach((allyPk) => {
+      for (const allyPk of victimAllies) {
         if (allyPk?.abilityCode && ALLY_KO_REGEX.test(allyPk.abilityCode) && window.executeCardEffectCode) {
           try {
-            window.executeCardEffectCode(allyPk.abilityCode, { players: [victim, scorer] }, victim, 'allyKnockedOut', { koPokemon, isEx, pokemon: allyPk, card: allyPk });
+            await window.executeCardEffectCode(allyPk.abilityCode, { players: [victim, scorer] }, victim, 'allyKnockedOut', { koPokemon, isEx, pokemon: allyPk, card: allyPk });
           } catch (e) {
             console.error('allyKnockedOut ability error:', e);
           }
         }
-      });
+      }
 
-      // 勝利判定 1: サイドをすべて取り切った
+      // 特性処理後にも勝利判定を再チェック
       if (scorer.prizes.length === 0) {
         this.finishBattle(scorer.id, 'すべてのサイドカードを取り切りました！');
         return;
       }
-
-      // 勝利判定 2: 相手のベンチが全滅
-      if (!victim.bench.length) {
+      if (!victim.bench.length && !victim.active) {
         this.finishBattle(scorer.id, '相手の場にポケモンがいなくなりました！');
         return;
       }
@@ -5256,8 +5401,29 @@
             await this.wait(800);
           } else if (!ai.retreated && currentEnergy >= retreatCost && activeHp <= 30) {
             ai.active.energy -= retreatCost;
-            if (ai.active.attachedEnergies) {
-              for (let i = 0; i < retreatCost; i++) ai.active.attachedEnergies.pop();
+            if (!Array.isArray(ai.discard)) ai.discard = [];
+            if (ai.active.attachedEnergies && ai.active.attachedEnergies.length > 0) {
+              for (let i = 0; i < retreatCost; i++) {
+                const popped = ai.active.attachedEnergies.pop();
+                if (popped) {
+                  const nrgCard = (typeof popped === 'object' && popped !== null)
+                    ? popped
+                    : this.createRuntimeCard({
+                        name: (popped || '基本') + 'エネルギー',
+                        category: 'エネルギー',
+                        type: popped || '無色'
+                      });
+                  ai.discard.push(nrgCard);
+                }
+              }
+            } else {
+              for (let i = 0; i < retreatCost; i++) {
+                ai.discard.push(this.createRuntimeCard({
+                  name: 'エネルギー',
+                  category: 'エネルギー',
+                  type: (ai.active && ai.active.type) || '無色'
+                }));
+              }
             }
             if (ai.active) ai.active.usedLastTurn = false;
             const prevActive = ai.active;
@@ -5504,14 +5670,20 @@
       this._activeDiscardFilter = 'all';
 
       const modal = document.getElementById('battleDiscardModal');
-      if (modal) modal.classList.remove('hidden');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.style.display = 'grid';
+      }
 
       this.renderDiscardGrid();
     },
 
     closeDiscardModal() {
       const modal = document.getElementById('battleDiscardModal');
-      if (modal) modal.classList.add('hidden');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+      }
     },
 
     switchDiscardTab(target) {
@@ -5537,6 +5709,11 @@
       if (tabOCount) tabOCount.textContent = oCount;
 
       const isPlayer = this._activeDiscardTarget !== 'opponent';
+      const modalTitle = document.getElementById('discardModalTitle');
+      if (modalTitle) {
+        modalTitle.textContent = isPlayer ? '🗑️ あなたのトラッシュ' : '🗑️ 相手のトラッシュ';
+      }
+
       const tabP = document.getElementById('discardTabPlayer');
       const tabO = document.getElementById('discardTabOpponent');
 
@@ -5555,8 +5732,8 @@
         if (!card) return false;
         if (filter === 'all') return true;
         const cat = String(card.category || '');
-        const isTrainer = cat === 'グッズ' || cat === 'サポート' || cat === 'トレーナー';
-        const isEnergy = cat === 'エネルギー' || cat === '基本エネルギー' || cat.includes('エネルギー');
+        const isTrainer = cat === 'グッズ' || cat === 'サポート' || cat === 'トレーナー' || cat === 'スタジアム' || cat === 'ポケモンのどうぐ' || cat.includes('グッズ') || cat.includes('サポート') || cat.includes('トレーナー') || cat.includes('スタジアム') || cat.includes('どうぐ');
+        const isEnergy = cat === 'エネルギー' || cat === '基本エネルギー' || cat === '特殊エネルギー' || cat.includes('エネルギー');
         const isPokemon = !isTrainer && !isEnergy;
 
         if (filter === 'pokemon') return isPokemon;
@@ -5588,9 +5765,14 @@
       grid.innerHTML = reversedList.map((card, idx) => {
         let cardHtml = '';
         if (window.CardSystem && typeof window.CardSystem.createCardHtml === 'function') {
-          cardHtml = window.CardSystem.createCardHtml(card, { size: 'sm' });
-        } else {
-          cardHtml = '\n            <div class="card-fallback" style="padding:10px; background:#1e293b; border-radius:8px;">\n              <strong>' + (this.escape(card.name)) + '</strong>\n              <div>' + (this.escape(card.category || '')) + '</div>\n            </div>\n          ';
+          try {
+            cardHtml = window.CardSystem.createCardHtml(card, { size: 'sm' });
+          } catch(e) {
+            console.error('Error creating card HTML for discard:', e);
+          }
+        }
+        if (!cardHtml) {
+          cardHtml = '\n            <div class="card-fallback" style="padding:10px; background:#1e293b; border-radius:8px; border:1px solid #475569; min-width:80px; text-align:center;">\n              <strong style="display:block; font-size:12px; color:#f8fafc;">' + (this.escape(card.name || 'カード')) + '</strong>\n              <div style="font-size:10px; color:#94a3b8; margin-top:4px;">' + (this.escape(card.category || card.type || '')) + '</div>\n            </div>\n          ';
         }
 
         return '\n          <div class="discard-grid-item" data-discard-idx="' + (idx) + '" title="クリックして【' + (this.escape(card.name)) + '】の詳細を拡大表示">\n            <span class="discard-grid-zoom-pill">🔍 拡大</span>\n            ' + (cardHtml) + '\n          </div>\n        ';
@@ -5917,7 +6099,23 @@
       if (!root) return;
 
       if (!card) {
-        root.innerHTML = "\n          <div class=\"battle-card-wrapper\">\n            <div class=\"empty-slot-text\" style=\"width: 170px; aspect-ratio: 5 / 7.4; border: 1.5px dashed rgba(255,255,255,0.15); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 12px;\">\n              なし\n            </div>\n          </div>\n        ";
+        if (isPlayer && this.state.player && this.state.player.bench && this.state.player.bench.length > 0) {
+          root.innerHTML = `
+            <div class="battle-card-wrapper">
+              <div class="empty-slot-promote-active" style="width: 170px; aspect-ratio: 5 / 7.4; border: 2px dashed #f59e0b; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(245, 158, 11, 0.12); cursor: pointer; padding: 12px; text-align: center; transition: all 0.2s;" title="クリックして交代ポケモンを選択">
+                <span style="font-size: 28px; margin-bottom: 6px;">🔄</span>
+                <span style="font-size: 13px; font-weight: 700; color: #fbbf24;">バトル場に出す</span>
+                <span style="font-size: 10px; color: var(--muted); margin-top: 4px;">クリックまたはベンチから選択</span>
+              </div>
+            </div>
+          `;
+          root.onclick = () => {
+            this.promptPromoteFromBench(this.state.player);
+          };
+        } else {
+          root.innerHTML = "\n          <div class=\"battle-card-wrapper\">\n            <div class=\"empty-slot-text\" style=\"width: 170px; aspect-ratio: 5 / 7.4; border: 1.5px dashed rgba(255,255,255,0.15); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 12px;\">\n              なし\n            </div>\n          </div>\n        ";
+          root.onclick = null;
+        }
         if (isPlayer) {
           root.dataset.dropTarget = 'active';
           root.ondragover = (e) => {
@@ -5937,7 +6135,15 @@
             e.preventDefault();
             e.stopPropagation();
             root.classList.remove('drag-hover');
-            const rawIdx = (this.draggedHandIndex != null) ? this.draggedHandIndex : (e.dataTransfer ? parseInt(e.dataTransfer.getData('text/plain'), 10) : null);
+            const dataStr = e.dataTransfer ? e.dataTransfer.getData('text/plain') : '';
+            if (dataStr && dataStr.startsWith('bench:')) {
+              const bIdx = parseInt(dataStr.replace('bench:', ''), 10);
+              if (!isNaN(bIdx)) {
+                this.promoteBenchPokemonToActive(bIdx);
+                return;
+              }
+            }
+            const rawIdx = (this.draggedHandIndex != null) ? this.draggedHandIndex : (e.dataTransfer ? parseInt(dataStr, 10) : null);
             const idx = (typeof rawIdx === 'number' && !isNaN(rawIdx)) ? rawIdx : null;
             if (idx != null) {
               this.draggedHandIndex = null;
@@ -6099,10 +6305,27 @@
         const c = benchList[benchIdx];
         if (c) {
           slotEl.style.cursor = 'pointer';
+          if (isPlayer && this.state.player.active === null) {
+            slotEl.style.outline = '2px solid #f59e0b';
+            slotEl.style.boxShadow = '0 0 10px rgba(245, 158, 11, 0.6)';
+            slotEl.title = '【クリックしてバトル場に出す】' + (slotEl.title || '');
+            slotEl.draggable = true;
+            slotEl.ondragstart = (e) => {
+              if (e.dataTransfer) {
+                e.dataTransfer.setData('text/plain', 'bench:' + benchIdx);
+                e.dataTransfer.effectAllowed = 'move';
+              }
+            };
+          }
           slotEl.onclick = () => {
             if (this.draggedHandIndex == null) {
               if (isPlayer) {
-                this.openCardActionModal(c, true, benchIdx);
+                if (this.state.player.active === null) {
+                  // バトル場が空なら、ベンチクリックで即座にバトル場へ昇格！
+                  this.promoteBenchPokemonToActive(benchIdx);
+                } else {
+                  this.openCardActionModal(c, true, benchIdx);
+                }
               } else if (window.CardSystem && window.CardSystem.showDetail) {
                 CardSystem.showDetail(c);
               }
@@ -6302,6 +6525,11 @@
 
       let itemsHtml = '';
 
+      // 0. バトル場へ昇格 (バトル場が空の場合)
+      if (isBench && p.active === null) {
+        itemsHtml += '\n          <div class="card-act-item is-promote" style="border: 2px solid #f59e0b; background: rgba(245, 158, 11, 0.12); border-radius: 8px; margin-bottom: 8px;">\n            <div class="act-item-content">\n              <div class="act-item-header">\n                <span class="act-badge promote" style="background:#f59e0b; color:#000; font-weight:bold;">交代</span>\n                <span class="act-item-name">「' + this.escape(card.name) + '」をバトル場へ</span>\n              </div>\n              <div class="act-item-text">バトル場が空です。このポケモンをバトル場に出します。</div>\n            </div>\n            <button type="button" class="primary-button card-act-btn promote-btn" data-action="promote_to_active" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; font-weight: 700;">\n              ⚔️ バトル場に出す\n            </button>\n          </div>\n        ';
+      }
+
       // 1. 特性 (バトル場またはベンチ)
       if (card.abilityName) {
         const isAbilityBlocked = this.isBlocked('ability', card, p);
@@ -6443,7 +6671,10 @@
         btn.onclick = () => {
           const act = btn.dataset.action;
           this.closeCardActionModal();
-          if (act === 'attack1') {
+          if (act === 'promote_to_active') {
+            const actualIdx = benchIdx != null ? benchIdx : p.bench.indexOf(card);
+            if (actualIdx >= 0) this.promoteBenchPokemonToActive(actualIdx);
+          } else if (act === 'attack1') {
             this.declareAttack(1);
           } else if (act === 'attack2') {
             this.declareAttack(2);
@@ -6577,21 +6808,19 @@
 
       App.toast("特性「" + card.abilityName + "」を発動しました！");
       if (this.state.mode === 'online') {
-        this.broadcastOnlineAction('use_ability', { card: card });
+        this.broadcastOnlineAction('use_ability', {
+          card: card,
+          abilityName: card.abilityName,
+          isBench: isBench,
+          benchIdx: benchIdx
+        });
       }
 
       // もしバトル場が空になった場合（特性で自身をトラッシュした場合など）、ベンチから交代
       if (this.state.player.active === null) {
         if (this.state.player.bench.length > 0) {
           this.log("🔄 バトルポケモンがいなくなったため、ベンチから新しいバトルポケモンを出します。");
-          this.showChoiceModal(this.state.player.bench.map((b) => ({ name: b.name, type: b.type, hp: b.hp, category: 'バトル場へ' })), {
-            title: 'バトルポケモンの交代',
-            desc: '新しいバトルポケモンを選択してください。'
-          }, (idx) => {
-            this.state.player.active = this.state.player.bench.splice(idx, 1)[0];
-            this.log("🔄 プレイヤーは " + this.state.player.active.name + " をバトル場に出しました。");
-            this.render();
-          });
+          this.promptPromoteFromBench(this.state.player);
         } else {
           this.finishBattle(this.state.opponent.id, '自分の場にポケモンがいなくなりました！');
         }

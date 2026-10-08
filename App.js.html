@@ -2697,6 +2697,7 @@ console.log('[ORBITAL] App.js.html started execution');
         return;
       }
       this.populateAdminCardPoolSelect();
+      this.resetPackForm();
       const modal = this.el('adminPackModal');
       if (modal) modal.classList.remove('hidden');
       this.renderAdminPackTable();
@@ -2727,6 +2728,17 @@ console.log('[ORBITAL] App.js.html started execution');
       this.el('adminPackDesc').value = '';
       this.el('adminPackImage').value = '';
       this.el('adminPackCardCount').value = '5';
+      this._tempPackCardPool = [];
+      this.updatePackCardPoolSummary();
+      const saveBtn = this.el('adminPackSaveBtn');
+      if (saveBtn) saveBtn.textContent = '💾 パックを保存';
+      const statusBadge = this.el('adminPackFormStatus');
+      if (statusBadge) {
+        statusBadge.textContent = '新規作成';
+        statusBadge.style.color = '#d946ef';
+        statusBadge.style.borderColor = 'rgba(217,70,239,0.3)';
+        statusBadge.style.background = 'rgba(217,70,239,0.15)';
+      }
       const sel = this.el('adminPackCardPool');
       if (sel) {
         Array.from(sel.options).forEach(o => o.selected = false);
@@ -2742,8 +2754,13 @@ console.log('[ORBITAL] App.js.html started execution');
       const image = this.el('adminPackImage').value.trim();
       const cardCount = Number(this.el('adminPackCardCount').value) || 5;
 
-      const sel = this.el('adminPackCardPool');
-      const cardPool = sel ? Array.from(sel.selectedOptions).map(o => o.value) : [];
+      let cardPool = [];
+      if (Array.isArray(this._tempPackCardPool) && this._tempPackCardPool.length > 0) {
+        cardPool = [...this._tempPackCardPool];
+      } else {
+        const sel = this.el('adminPackCardPool');
+        cardPool = sel ? Array.from(sel.selectedOptions).map(o => o.value) : [];
+      }
 
       if (!title) {
         this.toast('パックタイトルを入力してください', true);
@@ -2832,26 +2849,45 @@ console.log('[ORBITAL] App.js.html started execution');
       this.el('adminPackImage').value = pack.image || '';
       this.el('adminPackCardCount').value = pack.cardCount || 5;
 
+      // 前に収録されていたカードプールを編集対象として引き継ぐ
+      const pool = Array.isArray(pack.cardPool) ? [...pack.cardPool] : [];
+      this._tempPackCardPool = pool;
+
       const sel = this.el('adminPackCardPool');
       if (sel) {
-        const pool = pack.cardPool || [];
         Array.from(sel.options).forEach(o => {
           o.selected = pool.includes(o.value);
         });
       }
+
+      this.updatePackCardPoolSummary();
+
+      const saveBtn = this.el('adminPackSaveBtn');
+      if (saveBtn) saveBtn.textContent = '💾 パックを更新';
+      const statusBadge = this.el('adminPackFormStatus');
+      if (statusBadge) {
+        statusBadge.textContent = '「' + (pack.title || 'パック') + '」を編集中';
+        statusBadge.style.color = '#38bdf8';
+        statusBadge.style.borderColor = 'rgba(56,189,248,0.4)';
+        statusBadge.style.background = 'rgba(56,189,248,0.15)';
+      }
+
+      const form = this.el('adminPackForm');
+      if (form) form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     },
 
     _tempPackCardPool: [],
 
     openCardPickerForPackPool() {
-      const currentSelected = this._tempPackCardPool || [];
+      // 編集時は前に収録されていたカードプール（_tempPackCardPool）を初期選択として開く
+      const currentSelected = Array.isArray(this._tempPackCardPool) ? [...this._tempPackCardPool] : [];
       if (window.CardSystem && CardSystem.openCardPicker) {
         CardSystem.openCardPicker({
           title: '🎁 パック収録カードプール選択',
           mode: 'multi',
           selectedIds: currentSelected,
           onConfirm: (selectedIds) => {
-            App._tempPackCardPool = selectedIds;
+            App._tempPackCardPool = Array.isArray(selectedIds) ? [...selectedIds] : [];
             App.updatePackCardPoolSummary();
           }
         });
@@ -2870,6 +2906,59 @@ console.log('[ORBITAL] App.js.html started execution');
           o.selected = pool.includes(o.value);
         });
       }
+      this.renderPackCardPoolPreviewChips();
+    },
+
+    renderPackCardPoolPreviewChips() {
+      const container = this.el('adminPackPoolPreviewContainer');
+      const chipsEl = this.el('adminPackPoolCardChips');
+      const countEl = this.el('adminPackPoolPreviewCount');
+      if (!container || !chipsEl) return;
+
+      const pool = this._tempPackCardPool || [];
+      if (countEl) countEl.textContent = pool.length;
+
+      if (pool.length === 0) {
+        container.style.display = 'none';
+        chipsEl.innerHTML = '';
+        return;
+      }
+
+      container.style.display = 'block';
+      const allCards = this.getAllCards();
+      const cardMap = new Map(allCards.map(c => [c.id, c]));
+
+      chipsEl.innerHTML = pool.map(cardId => {
+        const card = cardMap.get(cardId);
+        const name = card ? card.name : cardId;
+        const type = card?.type || '無色';
+        const typeColor = this.getCardTypeColor(type);
+        return '<div style="display:inline-flex; align-items:center; gap:5px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12); padding:3px 8px; border-radius:14px; font-size:11px;">' +
+          '<span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:' + typeColor + ';"></span>' +
+          '<span style="font-weight:600; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + this.escapeHtml(name) + '</span>' +
+          '<button type="button" style="background:none; border:none; color:#ef4444; font-size:12px; cursor:pointer; padding:0 2px; line-height:1;" title="除外" onclick="App.removeCardFromPackPool(\'' + this.escapeHtml(cardId) + '\')">×</button>' +
+        '</div>';
+      }).join('');
+    },
+
+    getCardTypeColor(type) {
+      const colors = {
+        '草': '#22c55e', '炎': '#ef4444', '水': '#3b82f6', '雷': '#eab308',
+        '超': '#a855f7', '闘': '#f97316', '悪': '#64748b', '鋼': '#94a3b8',
+        'ドラゴン': '#eab308', '無色': '#a1a1aa'
+      };
+      return colors[type] || '#a1a1aa';
+    },
+
+    removeCardFromPackPool(cardId) {
+      if (!Array.isArray(this._tempPackCardPool)) return;
+      this._tempPackCardPool = this._tempPackCardPool.filter(id => id !== cardId);
+      this.updatePackCardPoolSummary();
+    },
+
+    clearPackCardPool() {
+      this._tempPackCardPool = [];
+      this.updatePackCardPoolSummary();
     },
 
     /* ============================================================

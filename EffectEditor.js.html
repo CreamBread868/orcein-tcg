@@ -205,6 +205,24 @@ var EffectEditor;
       targets: ['trainer', 'attack1', 'attack2', 'ability']
     },
     {
+      keyword: 'requireTurns',
+      label: 'requireTurns(turns, [options])',
+      category: 'action',
+      badge: '指定ターン待機',
+      desc: '場に出てから指定ターン経過していないとワザを使用不可にする（例: requireTurns(7)）',
+      snippet: 'requireTurns(7);',
+      targets: ['attack1', 'attack2']
+    },
+    {
+      keyword: 'turnsInPlay',
+      label: 'card.turnsInPlay',
+      category: 'prop',
+      badge: '場での経過ターン',
+      desc: 'そのポケモンが場に出てからの経過ターン数（Number）',
+      snippet: 'card.turnsInPlay',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
       keyword: 'getPreEvolution',
       label: 'getPreEvolution(card)',
       category: 'func',
@@ -3487,6 +3505,10 @@ var EffectEditor;
         if (fn === 'increaseMaxHp' || fn === 'addMaxHp') lines.push(this.codeTarget(args) + "の最大HPを" + (this.codeNumber(args) || 30) + "増加させる。");else
         if (fn === 'setHp') lines.push(this.codeTarget(args) + "のHPを" + (this.codeNumber(args) || 100) + "に設定する。");else
         if (fn === 'cantAttackNextTurn' || fn === 'nextTurnCantAttack') lines.push("次の自分の番、このポケモンはワザを使えない。");
+        if (fn === 'requireTurns' || fn === 'requireTurnsInPlay') {
+          const reqT = args[0] ? args[0].trim() : '7';
+          lines.push("このポケモンは場に出てから" + reqT + "ターン後でなければワザを使えない。");
+        }
       }
 
       // choiceCard / choiceCards の解析

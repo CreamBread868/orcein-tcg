@@ -210,7 +210,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           };
 
           if (t.abilityCode && window.executeCardEffectCode &&
-              /event\s*\.\s*on\s*\(\s*['"]beforeDamage['"]/.test(t.abilityCode)) {
+              /event\s*\.\s*(?:on|onasync|onAsync)\s*\(\s*['"]beforeDamage['"]/i.test(t.abilityCode)) {
             try {
               window.executeCardEffectCode(
                 t.abilityCode,
@@ -218,7 +218,9 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
                 ctx?.opponent || ctx?.self,
                 'beforeDamage',
                 damageEvent
-              );
+              ).catch((err) => {
+                console.error('Defender beforeDamage effect error:', err);
+              });
             } catch (e) {
               console.error('Defender beforeDamage effect error:', e);
             }
@@ -2020,13 +2022,21 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
 
         let chosen = [];
         let isCpu = false;
-        if (ctx?.self) {
-          if (ctx.self.isCpu || ctx.self === window.BattleSystem?.state?.opponent || ctx.self.id === 'opponent' || ctx.self.id === 'cpu') {
-            isCpu = true;
-          }
-        } else if (window.BattleSystem?.state) {
-          if (window.BattleSystem.state.turnPlayer === 'opponent') {
-            isCpu = true;
+        const isOnline = window.BattleSystem?.state?.mode === 'online';
+        if (isOnline) {
+          // オンライン対戦時は両プレイヤーとも人間。
+          // 自身のブラウザで実行されている choiceCard は常にローカルプレイヤーが選択する
+          isCpu = false;
+        } else {
+          // AI戦の場合
+          if (ctx?.self) {
+            if (ctx.self.isCpu || ctx.self === window.BattleSystem?.state?.opponent || ctx.self.id === 'opponent' || ctx.self.id === 'cpu') {
+              isCpu = true;
+            }
+          } else if (window.BattleSystem?.state) {
+            if (window.BattleSystem.state.turnPlayer === 'opponent') {
+              isCpu = true;
+            }
           }
         }
         const isHuman = !isCpu && window.BattleSystem && typeof window.BattleSystem.showChoiceModalPromise === 'function';
@@ -2137,6 +2147,35 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           return target._turnPlayed === curTurn;
         }
         return false;
+      },
+      getTurnsInPlay(ctx, target = null) {
+        const pk = target || ctx?.card || ctx?.thisPokemon || ctx?.self?.active;
+        if (!pk || typeof pk !== 'object') return 0;
+        const game = ctx?.game || window.BattleSystem?.state;
+        const curTurn = game?.turnNumber != null ? game.turnNumber : 1;
+        const playedTurn = pk._turnPlayed != null ? pk._turnPlayed : 1;
+        return Math.max(0, curTurn - playedTurn);
+      },
+      requireTurnsInPlay(ctx, minTurns = 7, options = {}) {
+        let turns = minTurns;
+        let opt = options;
+        if (typeof minTurns === 'object' && minTurns !== null) {
+          opt = minTurns;
+          turns = opt.turns || opt.count || 7;
+        }
+        opt = (opt && typeof opt === 'object') ? opt : {};
+        const pk = opt.pokemon || ctx?.card || ctx?.thisPokemon || ctx?.self?.active;
+        const elapsed = this.getTurnsInPlay(ctx, pk);
+        const required = Math.max(1, parseInt(turns, 10) || 7);
+        if (elapsed < required) {
+          const remaining = required - elapsed;
+          const reason = opt.message || opt.reason || ("このポケモンは場に出てから" + required + "ターン後でなければワザを使えません。（現在: " + elapsed + "/" + required + "ターン、あと" + remaining + "ターン）");
+          return this.cancelAttack(ctx, reason);
+        }
+        return true;
+      },
+      requireTurns(ctx, minTurns = 7, options = {}) {
+        return this.requireTurnsInPlay(ctx, minTurns, options);
       },
       getPreEvolution(ctx, card) {
         if (!card) return null;
@@ -2518,10 +2557,42 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         return n;
       }
       on(name, fn) {
+        if (typeof name === 'function' && !fn) {
+          fn = name;
+          name = 'turnStart';
+        }
         if (typeof fn !== 'function') return;
         const key = this.normalizeName(name);
         if (!this.listeners[key]) this.listeners[key] = [];
         this.listeners[key].push(fn);
+      }
+      onasync(name, fn) {
+        return this.on(name, fn);
+      }
+      onAsync(name, fn) {
+        return this.on(name, fn);
+      }
+      addEventListener(name, fn) {
+        return this.on(name, fn);
+      }
+      addListener(name, fn) {
+        return this.on(name, fn);
+      }
+      once(name, fn) {
+        if (typeof fn !== 'function') return;
+        const wrapper = async (...args) => {
+          this.off(name, wrapper);
+          return await fn(...args);
+        };
+        this.on(name, wrapper);
+      }
+      off(name, fn) {
+        const key = this.normalizeName(name);
+        if (!this.listeners[key]) return;
+        this.listeners[key] = this.listeners[key].filter(f => f !== fn);
+      }
+      removeEventListener(name, fn) {
+        return this.off(name, fn);
       }
       async emit(name, data) {
         const key = this.normalizeName(name);
@@ -2547,7 +2618,24 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
     window.createCardEffectContext = function (game, player) {
       const opponent = (game?.players || []).find((p) => p !== player && (p.id !== player.id || !player.id)) ||
         (game?.opponent && game.opponent !== player ? game.opponent : (game?.player && game.player !== player ? game.player : null));
-      const event = new EffectEvent();
+      const rawEvent = new EffectEvent();
+      const event = new Proxy(rawEvent, {
+        get(target, prop, receiver) {
+          if (prop in target) {
+            const val = Reflect.get(target, prop, receiver);
+            return typeof val === 'function' ? val.bind(target) : val;
+          }
+          if (typeof prop === 'string') {
+            const lower = prop.toLowerCase();
+            if (lower.startsWith('on') || lower.includes('event') || lower.includes('listen')) {
+              return function(name, fn) {
+                return target.on(name, fn);
+              };
+            }
+          }
+          return Reflect.get(target, prop, receiver);
+        }
+      });
       const api = window.ORBITAL_EFFECT_API;
       const ctx = {
         self: player,
@@ -2676,6 +2764,9 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         isFirstTurn: (p) => api.isFirstTurn(ctx, p),
         isFirstPlayerFirstTurn: () => api.isFirstPlayerFirstTurn(ctx),
         isJustPlayed: (t) => api.isJustPlayed(ctx, t),
+        getTurnsInPlay: (t) => api.getTurnsInPlay(ctx, t),
+        requireTurnsInPlay: (n, opt) => api.requireTurnsInPlay(ctx, n, opt),
+        requireTurns: (n, opt) => api.requireTurns(ctx, n, opt),
         getPreEvolution: (c) => api.getPreEvolution(ctx, c),
         getNextEvolutions: (c, s) => api.getNextEvolutions(ctx, c, s),
         isEvolutionOf: (e, b, s) => api.isEvolutionOf(ctx, e, b, s),
@@ -2704,6 +2795,13 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           if (!Object.getOwnPropertyDescriptor(pk, 'isJustPlayed')) {
             Object.defineProperty(pk, 'isJustPlayed', {
               get: () => api.isJustPlayed(ctx, pk),
+              configurable: true,
+              enumerable: false
+            });
+          }
+          if (!Object.getOwnPropertyDescriptor(pk, 'turnsInPlay')) {
+            Object.defineProperty(pk, 'turnsInPlay', {
+              get: () => api.getTurnsInPlay(ctx, pk),
               configurable: true,
               enumerable: false
             });
@@ -2768,11 +2866,11 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
       const EVENT_DISPATCH_NAMES = ['turnStart', 'start', 'beforeDamage', 'onKnockout', 'onKnockoutOpponent', 'onAttach', 'onEvolution', ...ALLY_KO_ALIASES];
       if (eventName && EVENT_DISPATCH_NAMES.includes(eventName)) {
         if (eventName === 'allyKnockedOut' || ALLY_KO_ALIASES.includes(eventName)) {
-          const hasListener = /event\s*\.\s*on\s*\(\s*['"](allyKnockedOut|onAllyKnockout|allyKnockout|ally_knocked_out|allyFainted|味方気絶|仲間気絶|自分のポケモン気絶|自分の仲間が気絶したら|仲間が気絶したら|味方が気絶したら)['"]|whenAllyKnockedOut|onAllyKnockedOut/.test(code);
+          const hasListener = /event\s*\.\s*(?:on|onasync|onAsync)\s*\(\s*['"](allyKnockedOut|onAllyKnockout|allyKnockout|ally_knocked_out|allyFainted|味方気絶|仲間気絶|自分のポケモン気絶|自分の仲間が気絶したら|仲間が気絶したら|味方が気絶したら)['"]|whenAllyKnockedOut|onAllyKnockedOut/i.test(code);
           if (!hasListener) return;
         } else {
           const escapedEvent = eventName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const hasListener = new RegExp('event\\s*\\.\\s*on\\s*\\(\\s*[\'"]' + escapedEvent + '[\'"]').test(code);
+          const hasListener = new RegExp('event\\s*\\.\\s*(?:on|onasync|onAsync)\\s*\\(\\s*[\'"]' + escapedEvent + '[\'"]', 'i').test(code);
           if (!hasListener) return; // このコードはこのイベントをリッスンしていない → スキップ
         }
       }
@@ -2803,6 +2901,8 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
       ctx.isBench = isBench;
 
       let asyncCode = String(code);
+      // Normalize event.onasync and event.onAsync to event.on
+      asyncCode = asyncCode.replace(/\bevent\s*\.\s*(?:onasync|onAsync|on_async)\b/gi, 'event.on');
       // Convert event.on callbacks to async functions so await can be used inside them without SyntaxError
       asyncCode = asyncCode.replace(/(\bevent\s*\.\s*on\s*\(\s*['"][^'"]+['"]\s*,\s*)(?<!async\s+)(function\b|\([^()]*\)\s*=>|[\w$]+\s*=>)/g, '$1async $2');
       // Convert any non-async functions/arrow functions containing async calls (choiceCard, coinFlip, etc.) into async functions
@@ -2823,6 +2923,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         'wasAllyKnockedOut', 'isAllyKnockedOut', 'didAllyKnockout', 'allyKnockedOut',
         'getKnockedOutPokemon', 'getKnockedOutAlly', 'lastKnockedOutPokemon',
         'whenAllyKnockedOut', 'onAllyKnockedOut',
+        'hasTool', 'getTool', 'attachTool', 'discardTool',
         'takePrize', 'takeSide', 'takePrizes', 'drawPrize',
         'getCards', 'kill', 'attach', 'move',
         'getEnergy', 'hasEnergy', 'addEnergy', 'removeEnergy', 'nextTurnDamage', 'cancelDamage', 'preventDamage',
@@ -2833,10 +2934,9 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         'cantAttackNextTurn', 'cannotAttackNextTurn', 'nextTurnCantAttack', 'nextTurnCannotAttack',
         'cant', 'cannot', 'cancelAttack', 'fail', 'abort',
         'useLimit', 'limitPerTurn', 'timesPerTurn',
-        'isFirstTurn', 'isFirstPlayerFirstTurn', 'isJustPlayed',
+        'isFirstTurn', 'isFirstPlayerFirstTurn', 'isJustPlayed', 'requireTurns', 'requireTurnsInPlay', 'getTurnsInPlay',
         'getPreEvolution', 'getNextEvolutions', 'isEvolutionOf',
         'rareCandy',
-        'hasTool', 'getTool', 'attachTool', 'discardTool',
         'getStadium', 'setStadium', 'discardStadium', 'hasStadium',
         'afterTurns', 'afterTurn', 'delayTurns', 'delayTurn', 'waitTurns', 'waitTurn', 'atEndOfTurn',
         'extraTurn', 'takeExtraTurn', 'anotherTurn', 'repeatTurn', 'grantExtraTurn',
@@ -2868,7 +2968,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           ctx.cantAttackNextTurn, ctx.cannotAttackNextTurn, ctx.nextTurnCantAttack, ctx.nextTurnCannotAttack,
           ctx.cant, ctx.cannot, ctx.cancelAttack, ctx.fail, ctx.abort,
           ctx.useLimit, ctx.limitPerTurn, ctx.timesPerTurn,
-          ctx.isFirstTurn, ctx.isFirstPlayerFirstTurn, ctx.isJustPlayed,
+          ctx.isFirstTurn, ctx.isFirstPlayerFirstTurn, ctx.isJustPlayed, ctx.requireTurns, ctx.requireTurnsInPlay, ctx.getTurnsInPlay,
           ctx.getPreEvolution, ctx.getNextEvolutions, ctx.isEvolutionOf,
           ctx.rareCandy,
           ctx.getStadium, ctx.setStadium, ctx.discardStadium, ctx.hasStadium,
@@ -2883,7 +2983,13 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           ctx.cancelReason = e.message ? e.message.replace(/^EFFECT_ABORTED:\s*/, '') : (ctx.cancelReason || '');
           return ctx;
         }
-        throw e;
+        console.error('Error executing card effect code:', e);
+        ctx.hasError = true;
+        ctx.error = e;
+        if (window.App && typeof window.App.toast === 'function') {
+          window.App.toast('効果コード実行エラー: ' + (e?.message || e), true);
+        }
+        return ctx;
       } finally {
         if (window._currentExecutionContext === ctx) {
           window._currentExecutionContext = null;
@@ -2966,6 +3072,9 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
     window.isFirstTurn = (p) => window.ORBITAL_EFFECT_API.isFirstTurn(null, p);
     window.isFirstPlayerFirstTurn = () => window.ORBITAL_EFFECT_API.isFirstPlayerFirstTurn(null);
     window.isJustPlayed = (t) => window.ORBITAL_EFFECT_API.isJustPlayed(null, t);
+    window.requireTurns = (n, opt) => window.ORBITAL_EFFECT_API.requireTurns(null, n, opt);
+    window.requireTurnsInPlay = (n, opt) => window.ORBITAL_EFFECT_API.requireTurnsInPlay(null, n, opt);
+    window.getTurnsInPlay = (t) => window.ORBITAL_EFFECT_API.getTurnsInPlay(null, t);
     window.getPreEvolution = (c) => window.ORBITAL_EFFECT_API.getPreEvolution(null, c);
     window.getNextEvolutions = (c, s) => window.ORBITAL_EFFECT_API.getNextEvolutions(null, c, s);
     window.isEvolutionOf = (e, b, s) => window.ORBITAL_EFFECT_API.isEvolutionOf(null, e, b, s);
