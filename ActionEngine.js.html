@@ -91,6 +91,37 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
             }
           }
 
+          // ポケモンのどうぐによるワザダメージ加算 (attacker.attachedTool)
+          if (attacker && attacker.attachedTool) {
+            const tool = attacker.attachedTool;
+            let toolBonus = 0;
+            if (tool.damageBonus) {
+              toolBonus += Number(tool.damageBonus) || 0;
+            }
+            const isTargetEx = !!(t.isEx || String(t.category || '').includes('ex') || /[\s_・-]ex|ex/i.test(String(t.name || '')) || String(t.rarity || '').toLowerCase() === 'ex');
+            if (isTargetEx) {
+              if (tool.damageBonusEx) {
+                toolBonus += Number(tool.damageBonusEx) || 0;
+              } else if (tool.name && tool.name.includes('こだわりベルト')) {
+                toolBonus += 30;
+              } else if (tool.description && /ポケモンexへのダメージ.*(?:\+|＋)\s*(\d+)/.test(tool.description)) {
+                const m = tool.description.match(/ポケモンexへのダメージ.*(?:\+|＋)\s*(\d+)/);
+                if (m) toolBonus += parseInt(m[1], 10);
+              }
+            }
+            if (tool.name && tool.name.includes('ちからのはちまき')) {
+              toolBonus += 20;
+            } else if (tool.name && tool.name.includes('げんきのハチマキ')) {
+              toolBonus += 10;
+            }
+            if (toolBonus > 0) {
+              actualDamage += toolBonus;
+              if (ctx?.game?.logs) {
+                ctx.game.logs.push('🧰 【' + tool.name + '】発動！ワザの威力が +' + toolBonus + ' された！');
+              }
+            }
+          }
+
           // 次回ターン攻撃力低下デバフ (nextTurnAttackDebuffs) の適用判定 (相手の攻撃力を下げる効果)
           let nextTurnAttackDebuffDmg = 0;
           if (player && Array.isArray(player.nextTurnAttackDebuffs) && player.nextTurnAttackDebuffs.length > 0) {
@@ -157,6 +188,15 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
             if (t.damageReduction) {
               actualDamage = Math.max(0, actualDamage - t.damageReduction);
             }
+            if (t.attachedTool && t.attachedTool.damageReduction) {
+              const toolRed = Number(t.attachedTool.damageReduction) || 0;
+              if (toolRed > 0) {
+                actualDamage = Math.max(0, actualDamage - toolRed);
+                if (ctx?.game?.logs) {
+                  ctx.game.logs.push('🧰 【' + t.attachedTool.name + '】発動！受けるダメージが -' + toolRed + ' 減少された！');
+                }
+              }
+            }
           }
 
           // 被ダメージ直前特性イベント (beforeDamage)
@@ -194,6 +234,14 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
             t.hp -= actualDamage;
             if (ctx?.game?.logs) {
               ctx.game.logs.push('💥 【' + (t.name || 'ポケモン') + '】に ' + actualDamage + ' ダメージ！' + weakText + ' (残りHP: ' + Math.max(0, t.hp) + ')');
+            }
+            // 防御側ポケモンのどうぐの反撃効果 (ゴツゴツメット等)
+            if (actualDamage > 0 && attacker && t.attachedTool && (t.attachedTool.name?.includes('ゴツゴツメット') || t.attachedTool.recoilDamageToAttacker)) {
+              const recoil = Number(t.attachedTool.recoilDamageToAttacker) || 20;
+              attacker.hp -= recoil;
+              if (ctx?.game?.logs) {
+                ctx.game.logs.push('🪖 【' + t.attachedTool.name + '】の反撃！ワザを使った【' + (attacker.name || 'ポケモン') + '】に ' + recoil + ' ダメージ！(残りHP: ' + Math.max(0, attacker.hp) + ')');
+              }
             }
           }
 
@@ -903,9 +951,21 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
       didAllyKnockoutLastTurn(ctx, targetOrPlayer = null) {
         let p = (targetOrPlayer && typeof targetOrPlayer === 'object' && targetOrPlayer.hand) ? targetOrPlayer : this._getPlayer(ctx);
         if (!p) return false;
-        return !!(p.allyKnockedOutLastTurn || p.wasAllyKnockedOutLastTurn || p.allyKnockedOutPreviousTurn || p.allyKnockedOutThisTurn);
+        return !!(p.allyKnockedOutLastTurn || p.wasAllyKnockedOutLastTurn || p.allyKnockedOutPreviousTurn || p.allyKnockedOutThisTurn || p.lastKnockedOutPokemon);
       },
       wasAllyKnockedOutLastTurn(ctx, targetOrPlayer = null) {
+        return this.didAllyKnockoutLastTurn(ctx, targetOrPlayer);
+      },
+      wasAllyKnockedOut(ctx, targetOrPlayer = null) {
+        return this.didAllyKnockoutLastTurn(ctx, targetOrPlayer);
+      },
+      isAllyKnockedOut(ctx, targetOrPlayer = null) {
+        return this.didAllyKnockoutLastTurn(ctx, targetOrPlayer);
+      },
+      didAllyKnockout(ctx, targetOrPlayer = null) {
+        return this.didAllyKnockoutLastTurn(ctx, targetOrPlayer);
+      },
+      allyKnockedOut(ctx, targetOrPlayer = null) {
         return this.didAllyKnockoutLastTurn(ctx, targetOrPlayer);
       },
       isAllyKnockedOutPreviousTurn(ctx, targetOrPlayer = null) {
@@ -920,7 +980,138 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
       wasKnockedOutLastTurn(ctx, targetOrPlayer = null) {
         return this.didAllyKnockoutLastTurn(ctx, targetOrPlayer);
       },
+      getKnockedOutPokemon(ctx, targetOrPlayer = null) {
+        let p = (targetOrPlayer && typeof targetOrPlayer === 'object' && targetOrPlayer.hand) ? targetOrPlayer : this._getPlayer(ctx);
+        const eventKo = ctx?.currentEvent?.koPokemon || ctx?.currentEvent?.pokemon || window._currentExecutionContext?.currentEvent?.koPokemon;
+        if (p?.lastKnockedOutPokemon) return p.lastKnockedOutPokemon;
+        if (p?.lastKnockedOutAlly) return p.lastKnockedOutAlly;
+        if (eventKo) return eventKo;
+        if (Array.isArray(p?.discard) && p.discard.length > 0) {
+          for (let i = p.discard.length - 1; i >= 0; i--) {
+            const card = p.discard[i];
+            if (card && (card.hp || card.attacks || card.type)) {
+              return card;
+            }
+          }
+        }
+        return null;
+      },
+      getKnockedOutAlly(ctx, targetOrPlayer = null) {
+        return this.getKnockedOutPokemon(ctx, targetOrPlayer);
+      },
+      async whenAllyKnockedOut(ctx, optionsOrCallback, callback = null) {
+        let filter = null;
+        let fn = optionsOrCallback;
+        if (typeof optionsOrCallback === 'object' && typeof callback === 'function') {
+          filter = optionsOrCallback;
+          fn = callback;
+        }
+        if (typeof fn !== 'function') return false;
 
+        const checkFilter = (pk) => {
+          if (!filter) return true;
+          if (!pk) return false;
+          if (filter.type && pk.type !== filter.type) return false;
+          if (filter.isEx && !pk.isEx) return false;
+          if (filter.name && !String(pk.name || '').includes(filter.name)) return false;
+          return true;
+        };
+
+        const ALLY_KO_ALIASES = ['allyKnockedOut', 'onAllyKnockout', 'allyKnockout', 'ally_knocked_out', 'allyFainted', '味方気絶', '仲間気絶', '自分のポケモン気絶', '自分の仲間が気絶したら', '仲間が気絶したら', '味方が気絶したら'];
+
+        // 1. 特性・パッシブ等の allyKnockedOut イベント発火時の直接実行
+        if (ctx?.eventName && ALLY_KO_ALIASES.includes(ctx.eventName)) {
+          const koPk = this.getKnockedOutPokemon(ctx);
+          if (!checkFilter(koPk)) return false;
+          return await fn(koPk);
+        }
+
+        // 2. イベント登録（今後きぜつしたときに実行）
+        if (ctx?.event && typeof ctx.event.on === 'function') {
+          ctx.event.on('allyKnockedOut', async (koPk, eventData) => {
+            if (checkFilter(koPk)) {
+              await fn(koPk, eventData);
+            }
+          });
+        }
+
+        // 3. サポート・グッズ・ワザ等で即時発動する場合（直前の相手の番などにきぜつしていたかを判定）
+        if (!ctx?.eventName || !ALLY_KO_ALIASES.includes(ctx.eventName)) {
+          if (!this.wasAllyKnockedOut(ctx)) {
+            return this.cant(ctx, '前の相手の番に自分のポケモンがきぜつしていません。');
+          }
+          const koPk = this.getKnockedOutPokemon(ctx);
+          if (filter && !checkFilter(koPk)) {
+            return this.cant(ctx, '条件に合う味方のポケモンがきぜつしていません。');
+          }
+          return await fn(koPk);
+        }
+      },
+      onAllyKnockedOut(ctx, optionsOrCallback, callback = null) {
+        return this.whenAllyKnockedOut(ctx, optionsOrCallback, callback);
+      },
+
+      
+      getToolHpBonus(tool, pokemon) {
+        if (!tool) return 0;
+        if (tool.hpBonus != null) return Number(tool.hpBonus) || 0;
+        const name = String(tool.name || '');
+        const desc = String(tool.description || '');
+        if (name.includes('大きなおまもり')) return 30;
+        if (name.includes('タフネスマント')) {
+          if (!pokemon || (pokemon.category && pokemon.category.includes('たね'))) return 50;
+          return 0;
+        }
+        if (name.includes('勇気のおまもり')) {
+          if (!pokemon || (pokemon.category && pokemon.category.includes('たね'))) return 50;
+          return 0;
+        }
+        const match = desc.match(/(?:最大\s*HP|HP)(?:が|は)?\s*[「『]?(?:\+|＋)(\d+)[」』]?/);
+        if (match) return parseInt(match[1], 10);
+        return 0;
+      },
+      hasTool(ctx, target) {
+        const tgt = target || this._getPlayer(ctx)?.active;
+        return !!(tgt && tgt.attachedTool);
+      },
+      getTool(ctx, target) {
+        const tgt = target || this._getPlayer(ctx)?.active;
+        return tgt ? tgt.attachedTool : null;
+      },
+      attachTool(ctx, card, target) {
+        const tgt = target || this._getPlayer(ctx)?.active;
+        if (!tgt || !card) return false;
+        if (tgt.attachedTool) return false;
+        tgt.attachedTool = card;
+        const hpBonus = this.getToolHpBonus(card, tgt);
+        if (hpBonus > 0) {
+          tgt.maxHp = (tgt.maxHp || tgt.hp || 70) + hpBonus;
+          tgt.hp = (tgt.hp || 70) + hpBonus;
+        }
+        if (ctx?.game?.logs) {
+          ctx.game.logs.push('🧰 【' + (tgt.name || 'ポケモン') + '】に「' + card.name + '」をつけました！');
+        }
+        return true;
+      },
+      discardTool(ctx, target) {
+        const tgt = target || this._getPlayer(ctx)?.active;
+        if (!tgt || !tgt.attachedTool) return null;
+        const tool = tgt.attachedTool;
+        const owner = this._findCardOwner(ctx, tgt) || ctx?.self;
+        if (owner && Array.isArray(owner.discard)) {
+          owner.discard.push(tool);
+        }
+        const hpBonus = this.getToolHpBonus(tool, tgt);
+        if (hpBonus > 0) {
+          tgt.maxHp = Math.max(10, (tgt.maxHp || 70) - hpBonus);
+          tgt.hp = Math.min(tgt.maxHp, tgt.hp);
+        }
+        tgt.attachedTool = null;
+        if (ctx?.game?.logs) {
+          ctx.game.logs.push('🧰 【' + (tgt.name || 'ポケモン') + '】の「' + tool.name + '」をトラッシュしました。');
+        }
+        return tool;
+      },
       applyStatus(ctx, target, status) { if (target) target.status = String(status || 'どく'); },
       clearStatus(ctx, target) { if (target) target.status = null; },
       benchDamage(ctx, player, amount) { const dmg = Math.max(0, Number(amount) || 0); const p = this._getPlayer(ctx); if (dmg && Array.isArray(p?.bench)) { p.bench.forEach((c) => { if (c) c.hp -= dmg; }); } },
@@ -1466,6 +1657,12 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         }
         if (!owner.discard.includes(pokemon)) {
           owner.discard.push(pokemon);
+        }
+        if (pokemon.attachedTool) {
+          if (!owner.discard.includes(pokemon.attachedTool)) {
+            owner.discard.push(pokemon.attachedTool);
+          }
+          pokemon.attachedTool = null;
         }
         if (Array.isArray(pokemon.attachedCards) && pokemon.attachedCards.length > 0) {
           pokemon.attachedCards.forEach((c) => {
@@ -2191,7 +2388,15 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         const list = this.listeners[key] || [];
         for (const fn of list) {
           try {
-            await fn(data);
+            if (key === 'allyKnockedOut') {
+              const pk = data?.koPokemon || data?.pokemon || data;
+              if (pk && typeof pk === 'object' && !pk.koPokemon) {
+                try { Object.defineProperty(pk, 'koPokemon', { value: pk, configurable: true, writable: true }); } catch(_) {}
+              }
+              await fn(pk, data);
+            } else {
+              await fn(data);
+            }
           } catch (e) {
             console.error('Error in event listener [' + key + ']:', e);
           }
@@ -2233,6 +2438,19 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         defeatedOpponent: (t) => api.defeatedOpponent(ctx, t),
         didAllyKnockoutLastTurn: (t) => api.didAllyKnockoutLastTurn(ctx, t),
         wasAllyKnockedOutLastTurn: (t) => api.wasAllyKnockedOutLastTurn(ctx, t),
+        wasAllyKnockedOut: (t) => api.wasAllyKnockedOut(ctx, t),
+        isAllyKnockedOut: (t) => api.isAllyKnockedOut(ctx, t),
+        didAllyKnockout: (t) => api.didAllyKnockout(ctx, t),
+        allyKnockedOut: (t) => api.didAllyKnockout(ctx, t),
+        getKnockedOutPokemon: (t) => api.getKnockedOutPokemon(ctx, t),
+        getKnockedOutAlly: (t) => api.getKnockedOutAlly(ctx, t),
+        lastKnockedOutPokemon: (t) => api.getKnockedOutPokemon(ctx, t),
+        whenAllyKnockedOut: (opt, cb) => api.whenAllyKnockedOut(ctx, opt, cb),
+        onAllyKnockedOut: (opt, cb) => api.onAllyKnockedOut(ctx, opt, cb),
+        hasTool: (t) => api.hasTool(ctx, t),
+        getTool: (t) => api.getTool(ctx, t),
+        attachTool: (c, t) => api.attachTool(ctx, c, t),
+        discardTool: (t) => api.discardTool(ctx, t),
         isAllyKnockedOutPreviousTurn: (t) => api.isAllyKnockedOutPreviousTurn(ctx, t),
         allyKnockedOutLastTurn: (t) => api.allyKnockedOutLastTurn(ctx, t),
         wasKnockedOutPreviousTurn: (t) => api.wasKnockedOutPreviousTurn(ctx, t),
@@ -2394,7 +2612,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
       const EVENT_DISPATCH_NAMES = ['turnStart', 'start', 'beforeDamage', 'onKnockout', 'onKnockoutOpponent', 'onAttach', 'onEvolution', ...ALLY_KO_ALIASES];
       if (eventName && EVENT_DISPATCH_NAMES.includes(eventName)) {
         if (eventName === 'allyKnockedOut' || ALLY_KO_ALIASES.includes(eventName)) {
-          const hasListener = /event\s*\.\s*on\s*\(\s*['"](allyKnockedOut|onAllyKnockout|allyKnockout|ally_knocked_out|allyFainted|味方気絶|仲間気絶|自分のポケモン気絶|自分の仲間が気絶したら|仲間が気絶したら|味方が気絶したら)['"]/.test(code);
+          const hasListener = /event\s*\.\s*on\s*\(\s*['"](allyKnockedOut|onAllyKnockout|allyKnockout|ally_knocked_out|allyFainted|味方気絶|仲間気絶|自分のポケモン気絶|自分の仲間が気絶したら|仲間が気絶したら|味方が気絶したら)['"]|whenAllyKnockedOut|onAllyKnockedOut/.test(code);
           if (!hasListener) return;
         } else {
           const escapedEvent = eventName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -2432,9 +2650,9 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
       // Convert event.on callbacks to async functions so await can be used inside them without SyntaxError
       asyncCode = asyncCode.replace(/(\bevent\s*\.\s*on\s*\(\s*['"][^'"]+['"]\s*,\s*)(?<!async\s+)(function\b|\([^()]*\)\s*=>|[\w$]+\s*=>)/g, '$1async $2');
       // Convert any non-async functions/arrow functions containing async calls (choiceCard, coinFlip, etc.) into async functions
-      asyncCode = asyncCode.replace(/(?<!async\s+)(\((?:[^()]*|\([^()]*\))*\)\s*=>|[\w$]+\s*=>|function\b[^{]*)\s*\{([^}]*?\b(?:choiceCard|choiceCards|coinFlip|flipCoin|rareCandy)\b[^}]*)\}/g, 'async $1 {$2}');
+      asyncCode = asyncCode.replace(/(?<!async\s+)(\([^)]*\)\s*=>|[\w$]+\s*=>|function\s*\([^)]*\))\s*\{([^}]*?\b(?:choiceCard|choiceCards|coinFlip|flipCoin|rareCandy)\b[^}]*)\}/g, 'async $1 {$2}');
       // Auto-inject await before async functions
-      asyncCode = asyncCode.replace(/(?<!await\s+)\b(choiceCard|choiceCards|coinFlip|flipCoin|rareCandy)\s*\(/g, 'await $1(');
+      asyncCode = asyncCode.replace(/(?<!await\s+)\b(choiceCard|choiceCards|coinFlip|flipCoin|rareCandy|whenAllyKnockedOut|onAllyKnockedOut)\s*\(/g, 'await $1(');
 
       const AsyncFunction = Object.getPrototypeOf(async function () { }).constructor;
       const fn = new AsyncFunction(
@@ -2446,6 +2664,9 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         'reduceDamage', 'increaseDamage', 'shuffleDeck', 'lookAtDeckTop',
         'choiceCard', 'choiceCards', 'isKnockedOut', 'isDefeated', 'knockout', 'defeat', 'didKnockout', 'defeatedOpponent',
         'didAllyKnockoutLastTurn', 'wasAllyKnockedOutLastTurn', 'isAllyKnockedOutPreviousTurn', 'allyKnockedOutLastTurn', 'wasKnockedOutPreviousTurn', 'wasKnockedOutLastTurn',
+        'wasAllyKnockedOut', 'isAllyKnockedOut', 'didAllyKnockout', 'allyKnockedOut',
+        'getKnockedOutPokemon', 'getKnockedOutAlly', 'lastKnockedOutPokemon',
+        'whenAllyKnockedOut', 'onAllyKnockedOut',
         'takePrize', 'takeSide', 'takePrizes', 'drawPrize',
         'getCards', 'kill', 'attach', 'move',
         'getEnergy', 'hasEnergy', 'addEnergy', 'removeEnergy', 'nextTurnDamage', 'cancelDamage', 'preventDamage',
@@ -2459,6 +2680,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         'isFirstTurn', 'isFirstPlayerFirstTurn', 'isJustPlayed',
         'getPreEvolution', 'getNextEvolutions', 'isEvolutionOf',
         'rareCandy',
+        'hasTool', 'getTool', 'attachTool', 'discardTool',
         'getStadium', 'setStadium', 'discardStadium', 'hasStadium',
         '{\n' + asyncCode + '\n}'
       );
@@ -2473,6 +2695,10 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           ctx.choiceCard, ctx.choiceCards,
           ctx.isKnockedOut, ctx.isDefeated, ctx.knockout, ctx.defeat, ctx.didKnockout, ctx.defeatedOpponent,
           ctx.didAllyKnockoutLastTurn, ctx.wasAllyKnockedOutLastTurn, ctx.isAllyKnockedOutPreviousTurn, ctx.allyKnockedOutLastTurn, ctx.wasKnockedOutPreviousTurn, ctx.wasKnockedOutLastTurn,
+          ctx.wasAllyKnockedOut, ctx.isAllyKnockedOut, ctx.didAllyKnockout, ctx.allyKnockedOut,
+          ctx.getKnockedOutPokemon, ctx.getKnockedOutAlly, ctx.lastKnockedOutPokemon,
+          ctx.whenAllyKnockedOut, ctx.onAllyKnockedOut,
+          ctx.hasTool, ctx.getTool, ctx.attachTool, ctx.discardTool,
           ctx.takePrize, ctx.takeSide, ctx.takePrizes, ctx.drawPrize,
           ctx.getCards, ctx.kill, ctx.attach, ctx.move,
           ctx.getEnergy, ctx.hasEnergy, ctx.addEnergy, ctx.removeEnergy, ctx.nextTurnDamage, ctx.cancelDamage, ctx.preventDamage,
@@ -2488,6 +2714,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           ctx.rareCandy,
           ctx.getStadium, ctx.setStadium, ctx.discardStadium, ctx.hasStadium
         );
+        if (eventName) await ctx.event.emit(eventName, eventData);
       } catch (e) {
         if (e && e.isEffectAbort) {
           ctx.isCancelled = true;
@@ -2500,7 +2727,6 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           window._currentExecutionContext = null;
         }
       }
-      if (eventName) await ctx.event.emit(eventName, eventData);
       return ctx;
     };
 
@@ -2568,6 +2794,13 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
     window.rareCandy = (p) => window.ORBITAL_EFFECT_API.rareCandy(null, p);
     window.didAllyKnockoutLastTurn = (p) => window.ORBITAL_EFFECT_API.didAllyKnockoutLastTurn(null, p);
     window.wasAllyKnockedOutLastTurn = (p) => window.ORBITAL_EFFECT_API.wasAllyKnockedOutLastTurn(null, p);
+    window.wasAllyKnockedOut = (p) => window.ORBITAL_EFFECT_API.wasAllyKnockedOut(null, p);
+    window.isAllyKnockedOut = (p) => window.ORBITAL_EFFECT_API.isAllyKnockedOut(null, p);
+    window.didAllyKnockout = (p) => window.ORBITAL_EFFECT_API.didAllyKnockout(null, p);
+    window.getKnockedOutPokemon = (p) => window.ORBITAL_EFFECT_API.getKnockedOutPokemon(null, p);
+    window.getKnockedOutAlly = (p) => window.ORBITAL_EFFECT_API.getKnockedOutAlly(null, p);
+    window.whenAllyKnockedOut = (opt, cb) => window.ORBITAL_EFFECT_API.whenAllyKnockedOut(null, opt, cb);
+    window.onAllyKnockedOut = (opt, cb) => window.ORBITAL_EFFECT_API.onAllyKnockedOut(null, opt, cb);
     window.isAllyKnockedOutPreviousTurn = (p) => window.ORBITAL_EFFECT_API.isAllyKnockedOutPreviousTurn(null, p);
     window.allyKnockedOutLastTurn = (p) => window.ORBITAL_EFFECT_API.allyKnockedOutLastTurn(null, p);
     window.wasKnockedOutPreviousTurn = (p) => window.ORBITAL_EFFECT_API.wasKnockedOutPreviousTurn(null, p);

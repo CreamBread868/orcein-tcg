@@ -8945,7 +8945,8 @@
               <option value="1進化ex">1進化ex</option>
               <option value="2進化ex">2進化ex</option>
               <option value="トレーナー">トレーナー (すべて)</option>
-              <option value="グッズ">グッズ</option>
+              <option value="ポケモンのどうぐ">ポケモンのどうぐ</option>
+                        <option value="グッズ">グッズ</option>
               <option value="サポート">サポート</option>
               <option value="スタジアム">スタジアム</option>
               <option value="エネルギー">エネルギー (すべて)</option>
@@ -8957,6 +8958,8 @@
               <option value="N">N</option>
               <option value="R">R</option>
               <option value="SR">SR</option>
+                        <option value="UR">UR</option>
+                        <option value="ACE">ACE (ACE SPEC)</option>
               <option value="UR">UR</option>
             </select>
             <select id="collectionOwnedFilter" class="input">
@@ -8991,6 +8994,7 @@
               <option value="1進化ex">1進化ex</option>
               <option value="2進化ex">2進化ex</option>
               <option value="トレーナー">トレーナー (すべて)</option>
+              <option value="ポケモンのどうぐ">ポケモンのどうぐ</option>
               <option value="グッズ">グッズ</option>
               <option value="サポート">サポート</option>
               <option value="スタジアム">スタジアム</option>
@@ -9090,6 +9094,13 @@
                         <option value="RR">RR</option>
                         <option value="SR">SR</option>
                       </select>
+                    </label>
+                    <label id="aceSpecLabel" class="ace-spec-form-label" style="display: flex; flex-direction: column; justify-content: flex-end;">
+                      <span style="font-size: 11.5px; font-weight: 700; color: #f43f5e; margin-bottom: 4px;">ACE SPEC属性</span>
+                      <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; height: 38px; background: rgba(244, 63, 94, 0.12); border: 1.5px solid rgba(244, 63, 94, 0.4); border-radius: 8px; padding: 0 12px; margin: 0; transition: all 0.2s ease;">
+                        <input id="isAceSpec" type="checkbox" style="width: 17px; height: 17px; accent-color: #f43f5e; cursor: pointer;">
+                        <span style="font-size: 12px; font-weight: 800; color: #fda4af;">✨ ACE SPEC (デッキ1枚制限)</span>
+                      </label>
                     </label>
                     <label id="pokemonHpLabel">HP<input id="hp" class="input" type="number" min="0"></label>
                     <label>画像URL<input id="image" class="input" placeholder="https://…"></label>
@@ -9423,6 +9434,8 @@
                       <option value="たね">たね</option>
                       <option value="1進化">1進化</option>
                       <option value="2進化">2進化</option>
+                      <option value="acespec">ACE SPEC</option>
+                      <option value="ポケモンのどうぐ">ポケモンのどうぐ</option>
                       <option value="グッズ">グッズ</option>
                       <option value="サポート">サポート</option>
                       <option value="スタジアム">スタジアム</option>
@@ -9485,9 +9498,12 @@
                   <div class="setup-title">🤖 対戦相手 (AIライバル)</div>
                   <label>対戦相手デッキを選択
                     <select id="battle-ai-deck-select" class="input">
-                      <option value="electric">⚡ 電撃ピカチュウデッキ (スピード型)</option>
+                      <option value="electric" selected>⚡ 電撃ピカチュウデッキ (スピード型)</option>
                       <option value="fire">🔥 灼熱リザードデッキ (高火力型)</option>
                       <option value="water">💧 激流水流デッキ (テクニカル型)</option>
+                      <option value="grass">🌿 森林フシギバナデッキ (耐久・回復型)</option>
+                      <option value="stadium_special">🏟️ スタジアム＆特殊エネ戦術デッキ (戦術型)</option>
+                      <option value="player_best">👤 プレイヤー最高勝率デッキ (ミラー対戦)</option>
                     </select>
                   </label>
                   <div id="battle-ai-deck-preview" class="deck-preview-compact muted">AIライバルが相手を務めます</div>
@@ -18744,14 +18760,19 @@ window.DeckSystem = function () {
               ? ("<span class=\"deck-unowned-warning-badge\">" + (ownedCount <= 0 ? '⚠️ 未所持' : '⚠️ 所持:' + ownedCount + '枚') + "</span>")
               : ("<span style=\"font-size:11px; color:#94a3b8; margin-left:6px;\">" + (isEnergy ? '(無制限)' : '所持:' + ownedCount + '枚') + "</span>");
 
-            html += "\n          <div class=\"deck-item-row " + (isOverOwned ? 'is-unowned-deck-item' : '') + "\">\n            <div class="deck-item-info">\n              " +
-              typeBadge + "\n              <span class="deck-item-name" title=\"" +
-              escapeHtml(card.name) + "\">" + escapeHtml(card.name) + "</span>\n              " +
-              warnBadge + "\n            </div>\n            <div class="deck-item-controls">\n              <button class="btn-step" onclick=\"DeckSystem.removeCard('" +
-              card.id + "')\">-</button>\n              <span class="deck-item-count">" +
-              count + "</span>\n              <button class="btn-step" onclick=\"DeckSystem.addCard('" +
-              card.id + "')\" " + (isMaxCount ? 'disabled' : '') + ">+</button>\n              <button class="btn-remove-all" onclick=\"DeckSystem.setCardCount('" +
-              card.id + "', 0)\" title=\"全削除\"><i class="fas fa-trash-alt"></i></button>\n            </div>\n          </div>\n        ";
+            html += '<div class="deck-item-row ' + (isOverOwned ? 'is-unowned-deck-item' : '') + '">' +
+              '<div class="deck-item-info">' +
+              typeBadge +
+              '<span class="deck-item-name" title="' + escapeHtml(card.name) + '">' + escapeHtml(card.name) + '</span>' +
+              warnBadge +
+              '</div>' +
+              '<div class="deck-item-controls">' +
+              '<button class="btn-step" onclick="DeckSystem.removeCard(\'' + card.id + '\')">-</button>' +
+              '<span class="deck-item-count">' + count + '</span>' +
+              '<button class="btn-step" onclick="DeckSystem.addCard(\'' + card.id + '\')" ' + (isMaxCount ? 'disabled' : '') + '>+</button>' +
+              '<button class="btn-remove-all" onclick="DeckSystem.setCardCount(\'' + card.id + '\', 0)" title="全削除"><i class="fas fa-trash-alt"></i></button>' +
+              '</div>' +
+              '</div>';
           });
         });
 

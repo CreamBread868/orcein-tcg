@@ -309,7 +309,21 @@ window.DeckSystem = function () {
         return Math.max(byId, byName);
       }
 
-      function isNormalEnergy(card) {
+      function isAceSpecCard(card) {
+    if (!card) return false;
+    return !!(
+      card.isAceSpec ||
+      card.aceSpec ||
+      card.subCategory === 'ACESPEC' ||
+      String(card.rarity || '').toUpperCase() === 'ACE' ||
+      /ACE\s*SPEC|エーススペック/i.test(String(card.category || '')) ||
+      /ACE\s*SPEC|エーススペック/i.test(String(card.subCategory || '')) ||
+      /ACE\s*SPEC|エーススペック/i.test(String(card.name || '')) ||
+      /ACE\s*SPEC|エーススペック/i.test(String(card.description || ''))
+    );
+  }
+
+  function isNormalEnergy(card) {
     if (!card) return false;
     const cat = String(card.category || '').toLowerCase();
     const name = String(card.name || '').toLowerCase();
@@ -326,6 +340,8 @@ window.DeckSystem = function () {
         const cards = deck && Array.isArray(deck.cards) ? deck.cards : [];
         let totalCount = 0;
         let basicCount = 0;
+        let aceSpecCount = 0;
+        const aceSpecCards = [];
         const errors = [];
         const warnings = [];
         const overLimitCards = [];
@@ -362,12 +378,20 @@ window.DeckSystem = function () {
             errors.push("「" + card.name + "」が" + count + "枚（上限4枚）");
           }
 
+          if (isAceSpecCard(card)) {
+            aceSpecCount += count;
+            aceSpecCards.push({ id: item.id, name: card.name, count: count });
+          }
+
           const cat = String(card.category || '');
           if (cat.includes('たね') || cat.toLowerCase().includes('basic') || (cat.includes('ポケモン') && !cat.includes('進化'))) {
             basicCount += count;
           }
         });
 
+        if (aceSpecCount > 1) {
+          errors.push("ACE SPECカードはデッキに合計1枚までです（現在" + aceSpecCount + "枚: " + aceSpecCards.map(c => c.name).join(', ') + "）");
+        }
         if (totalCount !== 60) {
           errors.push("デッキ枚数が" + totalCount + "枚です（公式ルールは60枚必須）");
         }
@@ -511,6 +535,25 @@ window.DeckSystem = function () {
             window.CardSystem.showMessage('「' + (card.name || 'このカード') + '」の所持枚数（' + ownedCount + '枚）に達しています。', 'warning');
           }
           return;
+        }
+
+        // ACE SPEC チェック (デッキ全体で合計1枚制限)
+        if (isAceSpecCard(card)) {
+          const currentAceItems = state.activeDeck.cards.filter((item) => {
+            const c = (state.cardPool || []).find((x) => String(x.id) === String(item.id)) ||
+                      (window.App && window.App.state && window.App.state.cards || []).find((x) => String(x.id) === String(item.id));
+            return isAceSpecCard(c);
+          });
+          const totalAceInDeck = currentAceItems.reduce((sum, item) => sum + (Number(item.count) || 0), 0);
+          if (totalAceInDeck >= 1) {
+            const existingItem = currentAceItems[0];
+            const existingAce = (state.cardPool || []).find((x) => String(x.id) === String(existingItem?.id));
+            const existingName = existingAce ? existingAce.name : 'ACE SPECカード';
+            if (window.CardSystem && window.CardSystem.showMessage) {
+              window.CardSystem.showMessage('ACE SPECカードはデッキに合計1枚しか入れられません（すでに「' + existingName + '」が入っています）。', 'warning');
+            }
+            return;
+          }
         }
 
         // 同名4枚上限チェック
@@ -934,7 +977,11 @@ window.DeckSystem = function () {
             if (!matchName && !matchEffect) return false;
           }
           if (state.filter.category !== 'all') {
-            if (card.category !== state.filter.category) return false;
+            if (state.filter.category === 'acespec') {
+              if (!isAceSpecCard(card)) return false;
+            } else if (card.category !== state.filter.category) {
+              return false;
+            }
           }
           if (state.filter.type !== 'all') {
             if (card.type !== state.filter.type) return false;
@@ -959,14 +1006,21 @@ window.DeckSystem = function () {
           const isUnowned = !isEnergy && ownedCount <= 0;
           const isAdmin = window.App && typeof window.App.isAdmin === 'function' && window.App.isAdmin();
           const isSampleDeck = state.activeDeck && (state.activeDeck.userEmail === 'sample' || state.activeDeck.isSample);
-          const maxLimit = isEnergy ? 60 : ((isAdmin && isSampleDeck) ? 4 : Math.min(4, ownedCount));
-          const isMax = inDeckCount >= maxLimit;
+          const isAce = isAceSpecCard(card);
+          const currentAceTotal = currentDeckCards.reduce((sum, item) => {
+            const c = (state.cardPool || []).find((x) => String(x.id) === String(item.id));
+            return sum + (isAceSpecCard(c) ? (Number(item.count) || 0) : 0);
+          }, 0);
+          const maxLimit = isAce ? 1 : (isEnergy ? 60 : ((isAdmin && isSampleDeck) ? 4 : Math.min(4, ownedCount)));
+          const isMax = (isAce && currentAceTotal >= 1) || inDeckCount >= maxLimit;
 
           // 所持フィルター適用
           if (state.filter.ownership === 'owned' && isUnowned) return;
           if (state.filter.ownership === 'unowned' && !isUnowned) return;
 
-          const badgeHtml = isEnergy
+          const badgeHtml = isAce
+            ? "<div class=\"pool-in-deck-badge pool-ace-badge\" style=\"top:6px; right:6px; z-index:10; font-size:10px; background:linear-gradient(135deg, #e11d48, #d946ef); color:#fff;\">ACE SPEC (1枚制限)</div>"
+            : isEnergy
             ? "<div class=\"pool-in-deck-badge pool-energy-badge\" style=\"top:6px; right:6px; z-index:10; font-size:10px;\">基本エネ (無制限)</div>"
             : (isUnowned
               ? "<div class=\"pool-in-deck-badge pool-unowned-badge\" style=\"top:6px; right:6px; z-index:10; font-size:10px;\">未所持</div>"
@@ -1018,6 +1072,7 @@ window.DeckSystem = function () {
     renderGallery: renderGallery,
     renderEditor: renderEditor,
     validateDeck: validateDeck,
+    isAceSpecCard: isAceSpecCard,
     getCardOwnedCount: getCardOwnedCount
   };
   console.log('[ORBITAL] DeckSystem.js.html finished execution. window.DeckSystem =', typeof window.DeckSystem);

@@ -160,14 +160,14 @@ var CardSystem;
 
       const categoryOrder = {
         'たね': 1, 'たねex': 2, '1進化': 3, '1進化ex': 4, '2進化': 5, '2進化ex': 6,
-        '進化': 7, 'トレーナー': 8, 'グッズ': 9, 'サポート': 10, 'スタジアム': 11,
+        '進化': 7, 'トレーナー': 8, 'ポケモンのどうぐ': 9, 'どうぐ': 9, 'グッズ': 10, 'サポート': 11, 'スタジアム': 12,
         'エネルギー': 12, '基本エネルギー': 13, '特殊エネルギー': 14
       };
       const typeOrder = {
         '無色': 1, '炎': 2, '水': 3, '草': 4, '雷': 5, '超': 6, '闘': 7, '悪': 8, '鋼': 9
       };
       const rarityOrder = {
-        'SR': 1, 'RR': 2, 'AR': 3, 'R': 4, 'N': 5, 'UR': 1
+        'ACE': 0.5, 'UR': 1, 'SR': 2, 'RR': 3, 'AR': 4, 'R': 5, 'N': 6
       };
 
       return cards.slice().sort((a, b) => {
@@ -431,6 +431,16 @@ var CardSystem;
         'ボスの指令': 'https://images.pokemontcg.io/sv2/172_hires.png',
         'きずぐすり': 'https://images.pokemontcg.io/sv1/182_hires.png',
         'ポケモンいれかえ': 'https://images.pokemontcg.io/sv1/191_hires.png',
+        '大きなおまもり': 'https://images.pokemontcg.io/swsh1/158_hires.png',
+        'こだわりベルト': 'https://images.pokemontcg.io/swsh9/135_hires.png',
+        'たべのこし': 'https://images.pokemontcg.io/sv3pt5/163_hires.png',
+        'ふうせん': 'https://images.pokemontcg.io/swsh1/156_hires.png',
+        '勇気のおまもり': 'https://images.pokemontcg.io/sv2/173_hires.png',
+        'ゴツゴツメット': 'https://images.pokemontcg.io/swsh1/179_hires.png',
+        'プライムキャッチャー': 'https://images.pokemontcg.io/sv5/157_hires.png',
+        'マスターボール': 'https://images.pokemontcg.io/sv3pt5/153_hires.png',
+        'ヒーローマント': 'https://images.pokemontcg.io/sv5/152_hires.png',
+        'アンフェアスタンプ': 'https://images.pokemontcg.io/sv6/93_hires.png',
         '基本雷エネルギー': 'https://images.pokemontcg.io/sve/4_hires.png',
         '基本炎エネルギー': 'https://images.pokemontcg.io/sve/2_hires.png',
         '基本水エネルギー': 'https://images.pokemontcg.io/sve/3_hires.png'
@@ -571,8 +581,22 @@ var CardSystem;
 
       const exRuleHtml = isEx ? '<div class="card-rule-box ex-rule-box"><span class="ex-rule-tag">exルール</span><span class="ex-rule-text">ポケモンexがきぜつしたとき、相手はサイドを2枚とる。</span></div>' : '';
 
+      // ACE SPEC判定
+      const isAceSpec = !!(
+        card.isAceSpec ||
+        card.aceSpec ||
+        card.subCategory === 'ACESPEC' ||
+        String(card.rarity || '').toUpperCase() === 'ACE' ||
+        /ACE\s*SPEC|エーススペック/i.test(String(card.category || '')) ||
+        /ACE\s*SPEC|エーススペック/i.test(String(card.subCategory || '')) ||
+        /ACE\s*SPEC|エーススペック/i.test(String(card.name || '')) ||
+        /ACE\s*SPEC|エーススペック/i.test(String(card.description || ''))
+      );
+      const aceSpecRuleHtml = isAceSpec ? '<div class="card-rule-box ace-spec-rule-box"><span class="ace-spec-rule-tag">ACE SPEC</span><span class="ace-spec-rule-text">ACE SPECカードは、デッキに1枚しか入れられない。</span></div>' : '';
+      const aceSpecBadgeHtml = isAceSpec ? '<span class="card-kind-badge ace-spec-badge">ACE SPEC</span>' : '';
+
       const catStr = String(card.category || '').trim();
-      const isTrainer = catStr === 'グッズ' || catStr === 'サポート' || catStr === 'トレーナー' || catStr === 'スタジアム' || catStr.includes('スタジアム') || catStr.includes('トレーナー') || catStr.includes('グッズ') || catStr.includes('サポート') || catStr.includes('stadium') || catStr.includes('trainer');
+      const isTrainer = catStr === 'グッズ' || catStr === 'サポート' || catStr === 'トレーナー' || catStr === 'スタジアム' || catStr === 'ポケモンのどうぐ' || catStr === 'どうぐ' || catStr.includes('スタジアム') || catStr.includes('トレーナー') || catStr.includes('グッズ') || catStr.includes('サポート') || catStr.includes('ポケモンのどうぐ') || catStr.includes('どうぐ') || catStr.includes('stadium') || catStr.includes('trainer') || catStr.includes('tool');
       const isEnergy = catStr === 'エネルギー' || catStr === '基本エネルギー' || catStr === '特殊エネルギー' || catStr.includes('エネルギー') || catStr.includes('energy');
       const isSpecialEnergy = String(card.category || '').includes('特殊') || String(card.name || '').includes('特殊');
       const isUnlimitedEnergy = isEnergy && !isSpecialEnergy;
@@ -623,7 +647,8 @@ var CardSystem;
       let footerStatsHtml = '';
       if (isTrainer) {
         const catLabel = card.category || (catStr.includes('スタジアム') ? 'スタジアム' : 'トレーナー');
-        footerStatsHtml = '<span>カテゴリ: <strong>' + this.escape(catLabel) + '</strong></span><span>' + (catStr.includes('スタジアム') ? 'STADIUM CARD' : 'TRAINER CARD') + '</span>';
+        const subLabel = (catStr.includes('どうぐ') || catLabel.includes('どうぐ')) ? 'POKÉMON TOOL' : (catStr.includes('スタジアム') ? 'STADIUM CARD' : 'TRAINER CARD');
+        footerStatsHtml = '<span>カテゴリ: <strong>' + this.escape(catLabel) + '</strong></span><span>' + subLabel + '</span>';
       } else if (isEnergy) {
         const catLabel = card.category || (catStr.includes('特殊') ? '特殊エネルギー' : '基本エネルギー');
         footerStatsHtml = '<span>種類: <strong>' + this.escape(catLabel) + '</strong></span><span>ENERGY CARD</span>';
@@ -645,9 +670,9 @@ var CardSystem;
       const textSizeClass = card.textSize === 'lg' ? 'text-size-lg' : card.textSize === 'xl' ? 'text-size-xl' : '';
 
       return "\n        <div class=\"orbital-card card-size-" +
-      size + " " + cardThemeClass + " " + textSizeClass + " " + (isEx ? 'is-card-ex' : '') + " " + (isFullArt ? 'is-full-art' : '') + " " + (isWideArt ? 'is-wide-art' : '') + " " + (isMax ? 'is-max-count' : '') + "\" data-card-id=\"" + this.escape(card.id || '') + "\">\n          <!-- 左上にタイプとHP、右上に種類 -->\n          <div class=\"card-top-header\">\n            <div class=\"card-top-left\">\n              " +
+      size + " " + cardThemeClass + " " + textSizeClass + " " + (isEx ? 'is-card-ex' : '') + " " + (isAceSpec ? 'is-card-ace-spec' : '') + " " + (isFullArt ? 'is-full-art' : '') + " " + (isWideArt ? 'is-wide-art' : '') + " " + (isMax ? 'is-max-count' : '') + "\" data-card-id=\"" + this.escape(card.id || '') + "\">\n          <!-- 左上にタイプとHP、右上に種類 -->\n          <div class=\"card-top-header\">\n            <div class=\"card-top-left\">\n              " +
       typeBadgeHtml + "\n              " +
-      hpBadgeHtml + "\n            </div>\n            <div class=\"card-top-right\">\n              <span class=\"card-kind-badge " + (
+      hpBadgeHtml + "\n            </div>\n            <div class=\"card-top-right\">\n              " + aceSpecBadgeHtml + "<span class=\"card-kind-badge " + (
       isEx ? 'ex-badge' : '') + "\">" + this.escape(card.category || 'たね') + "</span>\n              " +
       rarityBadgeHtml + "\n            </div>\n          </div>\n\n          <!-- 真ん中から上がテクスチャ -->\n          <div class=\"card-art-area\" " +
       heightStyle + ">\n            " +
@@ -660,7 +685,7 @@ var CardSystem;
       attack1Html + "\n            " +
       attack2Html + "\n            " +
       descriptionHtml + "\n            " +
-      exRuleHtml + "\n          </div>\n\n          <!-- フッター: 弱点・抵抗力・にげる (ポケモンの場合) / トレーナー情報 -->\n          <div class=\"card-footer-stats\">\n            " +
+      exRuleHtml + "\n            " + aceSpecRuleHtml + "\n          </div>\n\n          <!-- フッター: 弱点・抵抗力・にげる (ポケモンの場合) / トレーナー情報 -->\n          <div class=\"card-footer-stats\">\n            " +
       footerStatsHtml + "\n          </div>\n        </div>\n      ";
 
 
@@ -708,7 +733,7 @@ var CardSystem;
       }
 
       const catDetailStr = String(card.category || '').trim();
-      const isTrainer = catDetailStr === 'グッズ' || catDetailStr === 'サポート' || catDetailStr === 'トレーナー' || catDetailStr === 'スタジアム' || catDetailStr.includes('スタジアム') || catDetailStr.includes('トレーナー') || catDetailStr.includes('グッズ') || catDetailStr.includes('サポート') || catDetailStr.includes('stadium') || catDetailStr.includes('trainer');
+      const isTrainer = catDetailStr === 'グッズ' || catDetailStr === 'サポート' || catDetailStr === 'トレーナー' || catDetailStr === 'スタジアム' || catDetailStr === 'ポケモンのどうぐ' || catDetailStr === 'どうぐ' || catDetailStr.includes('スタジアム') || catDetailStr.includes('トレーナー') || catDetailStr.includes('グッズ') || catDetailStr.includes('サポート') || catDetailStr.includes('ポケモンのどうぐ') || catDetailStr.includes('どうぐ') || catDetailStr.includes('stadium') || catDetailStr.includes('trainer') || catDetailStr.includes('tool');
       const isEnergy = catDetailStr === 'エネルギー' || catDetailStr === '基本エネルギー' || catDetailStr === '特殊エネルギー' || catDetailStr.includes('エネルギー') || catDetailStr.includes('energy');
       const typePart = (!isTrainer && card.type) ? " / " + this.escape(card.type) : "";
 
@@ -753,7 +778,7 @@ var CardSystem;
         if (!c || !c.name) return false;
         if (currentCardId && String(c.id) === String(currentCardId)) return false;
         const cat = String(c.category || '');
-        return cat !== 'グッズ' && cat !== 'サポート' && cat !== 'トレーナー' && cat !== 'スタジアム' && cat !== 'エネルギー' && cat !== '基本エネルギー' && cat !== '特殊エネルギー';
+        return cat !== 'グッズ' && cat !== 'サポート' && cat !== 'トレーナー' && cat !== 'スタジアム' && cat !== 'ポケモンのどうぐ' && cat !== 'どうぐ' && cat !== 'エネルギー' && cat !== '基本エネルギー' && cat !== '特殊エネルギー';
       });
 
       const groups = {
@@ -804,7 +829,7 @@ var CardSystem;
       const combatSec = document.getElementById('pokemonCombatSection');
       const trainerSec = document.getElementById('trainerEffectSection');
 
-      const isTrainer = cat === 'グッズ' || cat === 'サポート' || cat === 'トレーナー' || cat === 'スタジアム';
+      const isTrainer = cat === 'グッズ' || cat === 'サポート' || cat === 'トレーナー' || cat === 'スタジアム' || cat === 'ポケモンのどうぐ' || cat === 'どうぐ';
       const isEnergy = cat === 'エネルギー' || cat === '基本エネルギー' || cat === '特殊エネルギー';
       const isPokemon = !isTrainer && !isEnergy;
       const isEvo = isPokemon && (cat.includes('進化') || cat.toLowerCase().includes('stage') || cat.toLowerCase().includes('evolution'));
@@ -824,6 +849,23 @@ var CardSystem;
       if (attacksSec) attacksSec.style.display = isPokemon ? 'block' : 'none';
       if (combatSec) combatSec.style.display = isPokemon ? 'block' : 'none';
       if (trainerSec) trainerSec.style.display = (isTrainer || cat === '特殊エネルギー') ? 'block' : 'none';
+
+      const aceEl = document.getElementById('isAceSpec');
+      const aceTrainerEl = document.getElementById('isAceSpecTrainer');
+      if (aceEl && !aceEl._hasAceSync) {
+        aceEl._hasAceSync = true;
+        aceEl.addEventListener('change', () => {
+          if (aceTrainerEl) aceTrainerEl.checked = aceEl.checked;
+          this.updatePreview();
+        });
+      }
+      if (aceTrainerEl && !aceTrainerEl._hasAceSync) {
+        aceTrainerEl._hasAceSync = true;
+        aceTrainerEl.addEventListener('change', () => {
+          if (aceEl) aceEl.checked = aceTrainerEl.checked;
+          this.updatePreview();
+        });
+      }
     },
 
     getFormCard() {
@@ -832,7 +874,12 @@ var CardSystem;
         return el ? el.value : '';
       };
       const cat = val('category') || 'たね';
-      const isTrainer = cat === 'グッズ' || cat === 'サポート' || cat === 'トレーナー' || cat === 'スタジアム';
+      const isAceSpec = !!(
+        document.getElementById('isAceSpec')?.checked ||
+        document.getElementById('isAceSpecTrainer')?.checked ||
+        val('rarity') === 'ACE'
+      );
+      const isTrainer = cat === 'グッズ' || cat === 'サポート' || cat === 'トレーナー' || cat === 'スタジアム' || cat === 'ポケモンのどうぐ' || cat === 'どうぐ';
       const isEnergy = cat === 'エネルギー' || cat === '基本エネルギー' || cat === '特殊エネルギー';
 
       const imageScale = val('imageScale') !== '' ? Number(val('imageScale')) : 100;
@@ -859,6 +906,7 @@ var CardSystem;
           imageHeight,
           artLayout,
           textSize,
+          isAceSpec,
           hp: '',
           abilityName: '',
           abilityText: '',
@@ -932,6 +980,7 @@ var CardSystem;
         imageHeight,
         artLayout,
         textSize,
+        isAceSpec,
         hp: val('hp') || 100,
         abilityName: val('abilityName'),
         abilityText: val('abilityText'),
@@ -974,6 +1023,10 @@ var CardSystem;
       });
       const uploadStatus = document.getElementById('uploadStatus');
       if (uploadStatus) uploadStatus.textContent = '';
+      const aceEl = document.getElementById('isAceSpec');
+      if (aceEl) aceEl.checked = false;
+      const aceTrainerEl = document.getElementById('isAceSpecTrainer');
+      if (aceTrainerEl) aceTrainerEl.checked = false;
       this.resetImageAdjust();
       this.syncCategoryForm();
       this.updatePreview();
@@ -1040,6 +1093,17 @@ var CardSystem;
         if (el) el.value = v == null ? '' : v;
       };
       set('cardId', card.id);
+      const isAce = !!(
+        card.isAceSpec ||
+        card.aceSpec ||
+        card.rarity === 'ACE' ||
+        /ACE\s*SPEC|エーススペック/i.test(String(card.name || '')) ||
+        /ACE\s*SPEC|エーススペック/i.test(String(card.description || ''))
+      );
+      const aceEl = document.getElementById('isAceSpec');
+      if (aceEl) aceEl.checked = isAce;
+      const aceTrainerEl = document.getElementById('isAceSpecTrainer');
+      if (aceTrainerEl) aceTrainerEl.checked = isAce;
       set('name', card.name);
       set('category', card.category);
       set('preEvolution', card.preEvolution);
@@ -1084,7 +1148,7 @@ var CardSystem;
       updateSummary('attack1', card.attack1Text, card.attack1Code);
       updateSummary('attack2', card.attack2Text, card.attack2Code);
 
-      const isTrainer = card.category === 'グッズ' || card.category === 'サポート' || card.category === 'トレーナー' || card.category === 'スタジアム' || card.category === '特殊エネルギー';
+      const isTrainer = card.category === 'グッズ' || card.category === 'サポート' || card.category === 'トレーナー' || card.category === 'スタジアム' || card.category === 'ポケモンのどうぐ' || card.category === 'どうぐ' || card.category === '特殊エネルギー';
       if (isTrainer) {
         const trDisp = card.attack1Text || card.description || this.makeEffectDisplayText(card.attack1Code);
         const trSummary = document.getElementById('trainerEffectSummary');

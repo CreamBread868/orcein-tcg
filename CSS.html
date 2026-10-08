@@ -312,6 +312,7 @@ textarea { resize:vertical; min-height:80px; }
 .card-type-無色, .card-type-無 { border-color: rgba(148, 163, 184, 0.6); box-shadow: 0 10px 28px rgba(148, 163, 184, 0.15); }
 .card-type-サポート { border-color: rgba(162, 155, 254, 0.75); box-shadow: 0 10px 28px rgba(108, 92, 231, 0.25); }
 .card-type-グッズ { border-color: rgba(0, 206, 201, 0.75); box-shadow: 0 10px 28px rgba(0, 206, 201, 0.25); }
+.card-type-ポケモンのどうぐ, .card-type-どうぐ { border-color: rgba(234, 179, 8, 0.75); box-shadow: 0 10px 28px rgba(234, 179, 8, 0.25); }
 .card-type-トレーナー { border-color: rgba(255, 209, 102, 0.75); box-shadow: 0 10px 28px rgba(255, 209, 102, 0.25); }
 /* 旧タイプフォールバック */
 .card-type-風 { border-color: rgba(70, 130, 180, 0.55); }
@@ -2983,6 +2984,49 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   font-family: 'Outfit', sans-serif;
   text-shadow: 0 0 8px rgba(0, 229, 255, 0.5);
 }
+
+.active-tool-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.25), rgba(249, 115, 22, 0.2));
+  color: #fde047;
+  border: 1px solid rgba(234, 179, 8, 0.5);
+  border-radius: 6px;
+  padding: 1.5px 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  box-shadow: 0 0 8px rgba(234, 179, 8, 0.3);
+  margin-top: 3px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.bench-tool-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(234, 179, 8, 0.2);
+  color: #fde047;
+  border: 1px solid rgba(234, 179, 8, 0.4);
+  border-radius: 4px;
+  padding: 0 4px;
+  font-size: 9px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  margin-top: 2px;
+}
+.act-badge.tool {
+  background: #eab308;
+  color: #0f172a;
+  font-weight: 800;
+}
+
 .active-status-badge {
   background: rgba(255, 0, 85, 0.25);
   color: #ff3366;
@@ -7165,4 +7209,83 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   color: #cbd5e1 !important;
   border: 1px solid rgba(148, 163, 184, 0.4) !important;
   font-weight: 800 !important;
+}
+
+
+/* ===================================================
+   ACE SPEC (エーススペック) カードスタイル
+   =================================================== */
+.orbital-card.is-card-ace-spec {
+  border-color: #f43f5e !important;
+  box-shadow: 0 0 18px rgba(244, 63, 94, 0.45), 0 0 35px rgba(217, 70, 239, 0.25) !important;
+  position: relative;
+}
+
+.orbital-card.is-card-ace-spec::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(244, 63, 94, 0.35) 0%, rgba(217, 70, 239, 0.2) 50%, rgba(244, 63, 94, 0.35) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.card-kind-badge.ace-spec-badge {
+  background: linear-gradient(135deg, #e11d48, #d946ef) !important;
+  color: #ffffff !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.5px !important;
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+  box-shadow: 0 0 8px rgba(244, 63, 94, 0.6) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8) !important;
+}
+
+.card-rule-box.ace-spec-rule-box {
+  background: linear-gradient(135deg, rgba(225, 29, 72, 0.2), rgba(217, 70, 239, 0.15));
+  border: 1px solid rgba(244, 63, 94, 0.6);
+  border-radius: 6px;
+  padding: 3px 6px;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 0 8px rgba(244, 63, 94, 0.2);
+}
+
+.ace-spec-rule-tag {
+  background: linear-gradient(135deg, #e11d48, #d946ef);
+  color: #ffffff;
+  font-size: 8.5px;
+  font-weight: 900;
+  padding: 1.5px 5px;
+  border-radius: 3px;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+  box-shadow: 0 0 6px rgba(244, 63, 94, 0.6);
+}
+
+.ace-spec-rule-text {
+  font-size: 9px;
+  font-weight: 700;
+  color: #fecdd3;
+  line-height: 1.25;
+}
+
+.pool-in-deck-badge.pool-ace-badge {
+  background: linear-gradient(135deg, #e11d48, #d946ef) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 8px rgba(244, 63, 94, 0.6) !important;
+}
+
+.card-rarity-badge.rarity-badge-ACE {
+  background: linear-gradient(135deg, #e11d48, #d946ef);
+  color: #ffffff;
+  font-weight: 900;
+  box-shadow: 0 0 6px rgba(244, 63, 94, 0.5);
+}
+
+.card-type-ace-spec {
+  border-color: #f43f5e !important;
+  box-shadow: 0 10px 28px rgba(244, 63, 94, 0.3) !important;
 }

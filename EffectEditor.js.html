@@ -861,6 +861,69 @@ var EffectEditor;
       targets: ['attack1', 'attack2', 'ability', 'trainer']
     },
     {
+      keyword: 'hasTool',
+      label: 'hasTool(target)',
+      category: 'action',
+      badge: 'どうぐ所持判定',
+      desc: '【ポケモンのどうぐ判定】指定ポケモンにポケモンのどうぐがついているか判定します。',
+      snippet: 'if (hasTool(self.active)) {\n  // どうぐ所持時の処理\n}',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'getTool',
+      label: 'getTool(target)',
+      category: 'action',
+      badge: 'どうぐ取得',
+      desc: '【ついているどうぐを取得】指定ポケモンについているポケモンのどうぐカードオブジェクトを取得します。',
+      snippet: 'const tool = getTool(self.active);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'attachTool',
+      label: 'attachTool(card, target)',
+      category: 'action',
+      badge: 'どうぐ装着',
+      desc: '【ポケモンのどうぐ装着】指定ポケモンにポケモンのどうぐをつけます（1匹につき1枚まで）。',
+      snippet: 'attachTool(card, self.active);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'discardTool',
+      label: 'discardTool(target)',
+      category: 'action',
+      badge: 'どうぐトラッシュ',
+      desc: '【ポケモンのどうぐトラッシュ】指定ポケモンについているどうぐをトラッシュに送ります（ツールスクラッパー等）。',
+      snippet: 'discardTool(opponent.active);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'whenAllyKnockedOut',
+      label: 'whenAllyKnockedOut((pokemon) => ...)',
+      category: 'condition',
+      badge: '味方気絶時発動',
+      desc: '【味方気絶時に発動＆気絶ポケモン取得】前の相手の番や現在の番に味方がきぜつしたときに処理を実行。引数pokemonで気絶したポケモンを取得できます。',
+      snippet: 'whenAllyKnockedOut((pokemon) => {\n  draw(self, 3);\n});',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'getKnockedOutPokemon',
+      label: 'getKnockedOutPokemon()',
+      category: 'condition',
+      badge: '気絶ポケモン取得',
+      desc: '【気絶したポケモンを取得】直近できぜつした味方のポケモン（pokemon.name, pokemon.hp, pokemon.type, pokemon.isEx など）を取得します。',
+      snippet: 'const koPokemon = getKnockedOutPokemon();',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'wasAllyKnockedOut',
+      label: 'wasAllyKnockedOut()',
+      category: 'condition',
+      badge: '味方気絶判定',
+      desc: '【味方気絶判定】直近の相手の番または現在のターンに味方のポケモンがきぜつしていたなら true を返します。',
+      snippet: 'if (!wasAllyKnockedOut()) {\n  cant("味方のポケモンがきぜつしていません");\n}',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
       keyword: 'wasAllyKnockedOutLastTurn',
       label: 'wasAllyKnockedOutLastTurn()',
       category: 'condition',
@@ -1831,6 +1894,49 @@ var EffectEditor;
         snippet: 'searchCards(self, { category: "Basic" });'
       },
       {
+        name: 'whenAllyKnockedOut',
+        signature: 'whenAllyKnockedOut(callback) または whenAllyKnockedOut(options, callback)',
+        category: 'battle',
+        catLabel: 'バトル・条件判定',
+        badge: '味方気絶時発動',
+        returns: 'any',
+        desc: '味方のポケモンがきぜつしたとき、または前の相手の番に気絶していたときに効果を発動します。引数に気絶したポケモンオブジェクト（pokemon.name, pokemon.hp, pokemon.type, pokemon.isEx 等）が渡されます。条件を満たしていない場合は cant() で自動キャンセルされます。',
+        params: [
+          { name: 'options', type: 'object', desc: '（省略可）フィルター条件 { type: "雷", isEx: true, name: "ピカチュウ" }' },
+          { name: 'callback', type: 'function', desc: '(pokemon) => void 気絶したポケモンを受け取って実行する処理' }
+        ],
+        example: '// 味方のポケモンが気絶したとき使え、カードを3枚引く\nwhenAllyKnockedOut((pokemon) => {\n  console.log("気絶したポケモン:", pokemon.name);\n  draw(self, 3);\n});',
+        snippet: 'whenAllyKnockedOut((pokemon) => {\n  draw(self, 3);\n});'
+      },
+      {
+        name: 'getKnockedOutPokemon',
+        signature: 'getKnockedOutPokemon(player?)',
+        category: 'battle',
+        catLabel: 'バトル・情報取得',
+        badge: '気絶ポケモン取得',
+        returns: 'card | null',
+        desc: '直近できぜつした味方のポケモンカードオブジェクト（名前、最大HP、タイプ、exフラグ等）を取得します。',
+        params: [
+          { name: 'player', type: 'player', desc: '（省略可）対象プレイヤー（デフォルト: self）' }
+        ],
+        example: 'if (!wasAllyKnockedOut()) {\n  return cant("味方のポケモンがきぜつしていません");\n}\nconst koPokemon = getKnockedOutPokemon();\nif (koPokemon && koPokemon.isEx) {\n  draw(self, 4);\n} else {\n  draw(self, 3);\n}',
+        snippet: 'const koPokemon = getKnockedOutPokemon();'
+      },
+      {
+        name: 'wasAllyKnockedOut',
+        signature: 'wasAllyKnockedOut(player?)',
+        category: 'battle',
+        catLabel: 'バトル・条件判定',
+        badge: '味方気絶判定',
+        returns: 'boolean',
+        desc: '前の相手の番または現在の番に味方のポケモンがきぜつしていたなら true を返します。',
+        params: [
+          { name: 'player', type: 'player', desc: '（省略可）対象プレイヤー（デフォルト: self）' }
+        ],
+        example: 'if (!wasAllyKnockedOut()) {\n  return cant("味方のポケモンがきぜつしていません");\n}\ndraw(self, 3);',
+        snippet: 'if (!wasAllyKnockedOut()) {\n  cant("味方のポケモンがきぜつしていません");\n}'
+      },
+      {
         name: 'wasAllyKnockedOutLastTurn',
         signature: 'wasAllyKnockedOutLastTurn(player?)',
         category: 'battle',
@@ -2124,8 +2230,14 @@ var EffectEditor;
         { label: 'たね手札サーチ', sub: '山札からたねを手札へ', code: 'const card = choiceCard(self, "deck", { category: "Basic" });\ntoHand(self, card);\nshuffleDeck(self);' },
         { label: 'エネ回収 (トラッシュから)', sub: 'エネ手札回収', code: 'const card = choiceCard(self, "discard", { category: "Energy" });\ntoHand(self, card);' },
         { label: '進化サーチ', sub: '山札から進化を手札へ', code: 'const card = choiceCard(self, "deck", { category: "Evolution" });\ntoHand(self, card);\nshuffleDeck(self);' },
+        { label: '味方気絶時: 3枚引く', sub: 'whenAllyKnockedOut()', code: 'whenAllyKnockedOut((pokemon) => {\n  draw(self, 3);\n});' },
         { label: '前番味方きぜつ時のみ', sub: 'wasAllyKnockedOutLastTurn()', code: 'if (!wasAllyKnockedOutLastTurn()) {\n  cant("前の番に自分のポケモンがきぜつしていません");\n}' },
-        { label: '2枚ドロー', sub: 'draw(self, 2)', code: 'draw(self, 2);' }];
+        { label: '2枚ドロー', sub: 'draw(self, 2)', code: 'draw(self, 2);' },
+        { label: '道具: 最大HP+30', sub: '大きなおまもり', code: '// ポケモンのどうぐ\n// このカードをつけているポケモンの最大HPは「+30」される。' },
+        { label: '道具: exへダメ+30', sub: 'こだわりベルト', code: '// ポケモンのどうぐ\n// このカードをつけているポケモンが使うワザの、相手の「ポケモンex」へのダメージは「+30」される。' },
+        { label: '道具: 毎番HP20回復', sub: 'たべのこし', code: '// ポケモンのどうぐ\n// 自分の番の終わりに、このカードをつけているポケモンのHPを「20」回復する。' },
+        { label: '道具: 逃げエネ-2', sub: 'ふうせん', code: '// ポケモンのどうぐ\n// このカードをつけているポケモンのにげるためのエネルギーは、2個分少なくなる。' },
+        { label: '相手の道具トラッシュ', sub: 'discardTool()', code: 'discardTool(opponent.active);' }];
 
       } else {
         buttons = [
@@ -3263,8 +3375,8 @@ var EffectEditor;
       } else if (/if\s*\(\s*(coinFlip|flipCoin)\s*\(/i.test(code)) {
         lines.push('コインを投げ表なら、');
       }
-      if (/wasAllyKnockedOutLastTurn|didAllyKnockoutLastTurn|allyKnockedOutLastTurn/i.test(code)) {
-        lines.push('前の番に自分のポケモンがきぜつしていたなら、');
+      if (/wasAllyKnockedOutLastTurn|didAllyKnockoutLastTurn|allyKnockedOutLastTurn|whenAllyKnockedOut|onAllyKnockedOut|wasAllyKnockedOut|isAllyKnockedOut/i.test(code)) {
+        lines.push('味方のポケモンがきぜつしていたなら、');
       }
       if (/if\s*\([^)]*hp\s*<=/i.test(code)) {
         lines.push('HP条件を満たせば、');

@@ -56,6 +56,7 @@ console.log('[ORBITAL] App.js.html started execution');
         catch (e) {console.error('[App.init] ' + name + ' failed:', e);}
       };
       safe('initStartupLoader', () => this.initStartupLoader());
+      safe('initPresenceTracking', () => this.initPresenceTracking());
       safe('bindNavigation', () => this.bindNavigation());
       safe('initFontSize', () => this.initFontSize());
       safe('initNmtAndPacks', () => this.initNmtAndPacks());
@@ -469,7 +470,26 @@ console.log('[ORBITAL] App.js.html started execution');
     initPresenceTracking() {
       const email = this.state.userProfile?.email || 'player@gmail.com';
       const updateCount = () => {
-        if (window.google && google.script && google.script.run && typeof google.script.run.pingPresence === 'function' && !window._is_mock_gas) {
+        if (window.google && google.script && google.script.run && !window._is_mock_gas) {
+          try {
+            google.script.run
+              .withSuccessHandler((res) => {
+                if (res && res.onlineCount != null) {
+                  const countEl = document.getElementById('onlinePlayerCount');
+                  if (countEl) countEl.textContent = res.onlineCount;
+                }
+              })
+              .withFailureHandler((err) => {
+                console.warn('pingPresence error:', err);
+                const countEl = document.getElementById('onlinePlayerCount');
+                if (countEl && !countEl.textContent) countEl.textContent = '1';
+              })
+              .pingPresence(email);
+          } catch (e) {
+            const countEl = document.getElementById('onlinePlayerCount');
+            if (countEl && !countEl.textContent) countEl.textContent = '1';
+          }
+        } else if (window.google && google.script && google.script.run && window.google.script.run.pingPresence) {
           google.script.run.withSuccessHandler((res) => {
             if (res && res.onlineCount != null) {
               const countEl = document.getElementById('onlinePlayerCount');
@@ -618,7 +638,26 @@ console.log('[ORBITAL] App.js.html started execution');
     initPresenceTracking() {
       const email = this.state.userProfile?.email || 'player@gmail.com';
       const updateCount = () => {
-        if (window.google && google.script && google.script.run && typeof google.script.run.pingPresence === 'function' && !window._is_mock_gas) {
+        if (window.google && google.script && google.script.run && !window._is_mock_gas) {
+          try {
+            google.script.run
+              .withSuccessHandler((res) => {
+                if (res && res.onlineCount != null) {
+                  const countEl = document.getElementById('onlinePlayerCount');
+                  if (countEl) countEl.textContent = res.onlineCount;
+                }
+              })
+              .withFailureHandler((err) => {
+                console.warn('pingPresence error:', err);
+                const countEl = document.getElementById('onlinePlayerCount');
+                if (countEl && !countEl.textContent) countEl.textContent = '1';
+              })
+              .pingPresence(email);
+          } catch (e) {
+            const countEl = document.getElementById('onlinePlayerCount');
+            if (countEl && !countEl.textContent) countEl.textContent = '1';
+          }
+        } else if (window.google && google.script && google.script.run && window.google.script.run.pingPresence) {
           google.script.run.withSuccessHandler((res) => {
             if (res && res.onlineCount != null) {
               const countEl = document.getElementById('onlinePlayerCount');
