@@ -562,6 +562,24 @@ var EffectEditor;
       targets: ['attack1', 'attack2', 'ability']
     },
     {
+      keyword: 'hasStatus',
+      label: 'hasStatus(target, "どく")',
+      category: 'func',
+      badge: '状態判定',
+      desc: '対象が指定の特殊状態にかかっているか判定（true/false）',
+      snippet: 'hasStatus(opponent.active, "どく")',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'getStatuses',
+      label: 'getStatuses(target)',
+      category: 'func',
+      badge: '状態一覧',
+      desc: '対象がかかっているすべての特殊状態の配列を取得する',
+      snippet: 'getStatuses(opponent.active)',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
       keyword: 'heal',
       label: 'heal(target, amount)',
       category: 'func',
@@ -1485,13 +1503,28 @@ var EffectEditor;
         catLabel: 'ダメージ・回復',
         badge: '状態異常',
         returns: 'void',
-        desc: '対象ポケモンに特殊状態（どく、やけど、マヒ、ねむり、こんらん）を付与します。',
+        desc: '対象ポケモンにポケカ公式準拠の特殊状態（どく・やけど・マヒ・ねむり・こんらん）を付与します。\\n\\n【ポケカ公式ルール準拠】\\n・どく: ポケモンチェックごとに10ダメージ\\n・やけど: ポケモンチェックごとに20ダメージ＋コイントス表で回復\\n・ねむり: ワザ・にげる不可＋ポケモンチェックでコイントス表で回復\\n・マヒ: ワザ・にげる不可＋自分の番の終わりに自動回復\\n・こんらん: にげる可。ワザ宣言時にコイントス、裏ならワザ失敗＋自分に30ダメージで番終了\\n※ ねむり・マヒ・こんらんは姿勢重複不可（上書き）。どく・やけどは同時に重複可能。ベンチ移動・進化で全回復。',
         params: [
           { name: 'target', type: 'pokemon', desc: '付与対象のポケモン（opponent.active など）' },
           { name: 'status', type: 'string', desc: '"どく", "やけど", "マヒ", "ねむり", "こんらん"' }
         ],
-        example: 'applyStatus(opponent.active, "どく");',
+        example: 'applyStatus(opponent.active, "どく");\\napplyStatus(opponent.active, "やけど");',
         snippet: 'applyStatus(opponent.active, "どく");'
+      },
+      {
+        name: 'hasStatus',
+        signature: 'hasStatus(target, status)',
+        category: 'battle',
+        catLabel: 'ダメージ・回復',
+        badge: '状態判定',
+        returns: 'boolean',
+        desc: '対象ポケモンが指定の特殊状態（どく・やけど・マヒ・ねむり・こんらん）にかかっているかを判定します。',
+        params: [
+          { name: 'target', type: 'pokemon', desc: '判定対象のポケモン（opponent.active, self.active など）' },
+          { name: 'status', type: 'string', desc: '特殊状態名（"どく", "やけど", "ねむり", "マヒ", "こんらん"）' }
+        ],
+        example: 'if (hasStatus(opponent.active, "どく")) {\\n  damage(opponent.active, 60);\\n}',
+        snippet: 'if (hasStatus(opponent.active, "どく")) {\\n  \\n}'
       },
       {
         name: 'clearStatus',
@@ -2451,6 +2484,11 @@ var EffectEditor;
         { label: '相手倒したら2ドロー', sub: 'didKnockout()', code: 'damage(opponent.active, 50);\nif (didKnockout()) {\n  draw(self, 2);\n}' },
         { label: 'コイン表で+20', sub: 'if (coinFlip)', code: 'if (coinFlip() === 1) {\n  damage(opponent.active, 20);\n}' },
         { label: '相手を「どく」', sub: 'applyStatus', code: 'applyStatus(opponent.active, "どく");' },
+        { label: '相手を「やけど」', sub: 'applyStatus', code: 'applyStatus(opponent.active, "やけど");' },
+        { label: '相手を「ねむり」', sub: 'applyStatus', code: 'applyStatus(opponent.active, "ねむり");' },
+        { label: '相手を「マヒ」', sub: 'applyStatus', code: 'applyStatus(opponent.active, "マヒ");' },
+        { label: '相手を「こんらん」', sub: 'applyStatus', code: 'applyStatus(opponent.active, "こんらん");' },
+        { label: '特殊状態全回復', sub: 'clearStatus', code: 'clearStatus(self.active);' },
         { label: '相手手札破棄', sub: 'choiceCard + toDiscard', code: 'const card = choiceCard(opponent, "hand");\ntoDiscard(opponent, card);' },
         { label: '前番味方きぜつ時のみ', sub: 'wasAllyKnockedOutLastTurn()', code: 'if (!wasAllyKnockedOutLastTurn()) {\n  cant("前の番に自分のポケモンがきぜつしていません");\n}' },
         { label: '山札サーチ', sub: 'choiceCard + toHand', code: 'const card = choiceCard(self, "deck", { category: "Basic" });\ntoHand(self, card);\nshuffleDeck(self);' },

@@ -3036,6 +3036,12 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   font-weight: 800;
 }
 
+.active-status-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
 .active-status-badge {
   background: rgba(255, 0, 85, 0.25);
   color: #ff3366;
@@ -3045,6 +3051,65 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   font-size: 10px;
   font-weight: 800;
   box-shadow: 0 0 8px rgba(255, 0, 85, 0.4);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  letter-spacing: 0.02em;
+}
+.active-status-badge.status-badge-poison {
+  background: rgba(168, 85, 247, 0.25);
+  color: #c084fc;
+  border-color: rgba(168, 85, 247, 0.5);
+  box-shadow: 0 0 8px rgba(168, 85, 247, 0.4);
+}
+.active-status-badge.status-badge-burn {
+  background: rgba(239, 68, 68, 0.25);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.5);
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
+}
+.active-status-badge.status-badge-sleep {
+  background: rgba(59, 130, 246, 0.25);
+  color: #60a5fa;
+  border-color: rgba(59, 130, 246, 0.5);
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
+}
+.active-status-badge.status-badge-paralysis {
+  background: rgba(234, 179, 8, 0.25);
+  color: #facc15;
+  border-color: rgba(234, 179, 8, 0.5);
+  box-shadow: 0 0 8px rgba(234, 179, 8, 0.4);
+}
+.active-status-badge.status-badge-confusion {
+  background: rgba(236, 72, 153, 0.25);
+  color: #f472b6;
+  border-color: rgba(236, 72, 153, 0.5);
+  box-shadow: 0 0 8px rgba(236, 72, 153, 0.4);
+}
+
+/* ポケカ公式準拠のカード姿勢変化・オーラ */
+.battle-active-card.is-asleep .card-item,
+.battle-active-card.is-asleep .card-fallback {
+  transform: rotate(-90deg) scale(0.9);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  filter: brightness(0.85);
+}
+.battle-active-card.is-paralyzed .card-item,
+.battle-active-card.is-paralyzed .card-fallback {
+  transform: rotate(90deg) scale(0.9);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  filter: drop-shadow(0 0 10px rgba(234, 179, 8, 0.6));
+}
+.battle-active-card.is-confused .card-item,
+.battle-active-card.is-confused .card-fallback {
+  transform: rotate(180deg) scale(0.95);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.battle-active-card.is-poisoned {
+  filter: drop-shadow(0 0 8px rgba(168, 85, 247, 0.7));
+}
+.battle-active-card.is-burned {
+  filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.7));
 }
 .active-hp-bar {
   width: 100%;
@@ -10536,6 +10601,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         if (newActive) {
           if (p.active) {
             p.active.usedLastTurn = false;
+            this.clearStatus(ctx, p.active);
           }
           if (Array.isArray(p.bench)) p.bench.push(p.active);
           p.active = newActive;
@@ -11191,8 +11257,104 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         }
         return tool;
       },
-      applyStatus(ctx, target, status) { if (target) target.status = String(status || 'どく'); },
-      clearStatus(ctx, target) { if (target) target.status = null; },
+      normalizeStatusName(status) {
+        if (!status) return 'どく';
+        const s = String(status).trim().toLowerCase();
+        if (['どく', '毒', 'poison', 'poisoned', 'もうどく'].includes(s)) return 'どく';
+        if (['やけど', '火傷', 'burn', 'burned'].includes(s)) return 'やけど';
+        if (['ねむり', '眠り', 'sleep', 'asleep'].includes(s)) return 'ねむり';
+        if (['マヒ', 'まひ', 'paralysis', 'paralyzed', 'paralyze'].includes(s)) return 'マヒ';
+        if (['こんらん', '混乱', 'confusion', 'confused'].includes(s)) return 'こんらん';
+        return String(status).trim();
+      },
+      hasStatus(ctx, target, statusName) {
+        if (!target) return false;
+        const norm = this.normalizeStatusName(statusName);
+        if (Array.isArray(target.statuses)) {
+          if (target.statuses.includes(norm)) return true;
+        }
+        if (target.status) {
+          const s = String(target.status);
+          if (s === norm || s.includes(norm)) return true;
+        }
+        return false;
+      },
+      getStatuses(ctx, target) {
+        if (!target) return [];
+        if (Array.isArray(target.statuses) && target.statuses.length > 0) {
+          return [...target.statuses];
+        }
+        if (target.status) {
+          return String(target.status).split(/[・,\s/]+/).map(s => this.normalizeStatusName(s)).filter(Boolean);
+        }
+        return [];
+      },
+      applyStatus(ctx, target, status) {
+        if (!target) return;
+        const norm = this.normalizeStatusName(status || 'どく');
+        let current = this.getStatuses(ctx, target);
+
+        const EXCLUSIVE_GROUP = ['ねむり', 'マヒ', 'こんらん'];
+        if (EXCLUSIVE_GROUP.includes(norm)) {
+          // 姿勢異常（ねむり・マヒ・こんらん）は最新のもので上書き（ポケカ準拠）
+          current = current.filter(s => !EXCLUSIVE_GROUP.includes(s));
+          current.push(norm);
+        } else {
+          // どく・やけどマーカーは重複付与（既にあれば維持・リフレッシュ）
+          if (!current.includes(norm)) {
+            current.push(norm);
+          }
+        }
+
+        target.statuses = current;
+        target.status = current.join('・');
+
+        const game = ctx?.game || window.BattleSystem?.state;
+        const pkName = target.name || 'ポケモン';
+        const icons = { 'どく': '☠️', 'やけど': '🔥', 'ねむり': '💤', 'マヒ': '⚡', 'こんらん': '💫' };
+        const icon = icons[norm] || '⚠️';
+        const msg = icon + " 【" + pkName + "】は「" + norm + "」状態になった！";
+        if (game?.logs) {
+          game.logs.push(msg);
+        }
+        if (window.BattleSystem && typeof window.BattleSystem.log === 'function') {
+          window.BattleSystem.log(msg);
+        }
+        if (window.App && typeof window.App.toast === 'function') {
+          window.App.toast(icon + " " + pkName + " は「" + norm + "」状態になった！");
+        }
+        if (window.BattleSystem && typeof window.BattleSystem.render === 'function') {
+          window.BattleSystem.render();
+        }
+      },
+      clearStatus(ctx, target, statusName = null) {
+        if (!target) return;
+        if (!statusName) {
+          // すべての特殊状態を回復
+          const hadAny = (target.statuses && target.statuses.length > 0) || !!target.status;
+          target.statuses = [];
+          target.status = null;
+          if (hadAny) {
+            const msg = "✨ 【" + (target.name || 'ポケモン') + "】のすべての特殊状態が回復した！";
+            if (ctx?.game?.logs) ctx.game.logs.push(msg);
+            if (window.BattleSystem?.log) window.BattleSystem.log(msg);
+          }
+        } else {
+          const norm = this.normalizeStatusName(statusName);
+          let current = this.getStatuses(ctx, target);
+          if (current.includes(norm)) {
+            current = current.filter(s => s !== norm);
+            target.statuses = current;
+            target.status = current.length > 0 ? current.join('・') : null;
+            const msg = "✨ 【" + (target.name || 'ポケモン') + "】の「" + norm + "」が回復した！";
+            if (ctx?.game?.logs) ctx.game.logs.push(msg);
+            if (window.BattleSystem?.log) window.BattleSystem.log(msg);
+          }
+        }
+        if (window.BattleSystem && typeof window.BattleSystem.render === 'function') {
+          window.BattleSystem.render();
+        }
+      },
       benchDamage(ctx, player, amount) { const dmg = Math.max(0, Number(amount) || 0); const p = this._getPlayer(ctx); if (dmg && Array.isArray(p?.bench)) { p.bench.forEach((c) => { if (c) c.hp -= dmg; }); } },
       reduceDamage(ctx, target, amount) { const tgt = target || this._getPlayer(ctx)?.active; if (tgt) tgt.damageReduction = (tgt.damageReduction || 0) + Math.max(0, Number(amount) || 0); },
       increaseDamage(ctx, amount) { if (ctx) ctx.bonusDamage = (ctx.bonusDamage || 0) + Math.max(0, Number(amount) || 0); return Number(amount) || 0; },
@@ -12997,9 +13159,10 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         takePrize: (p, n) => api.takePrize(ctx, p, n),
         takeSide: (p, n) => api.takeSide(ctx, p, n),
         takePrizes: (p, n) => api.takePrizes(ctx, p, n),
-        drawPrize: (p, n) => api.drawPrize(ctx, p, n),
         applyStatus: (t, s) => api.applyStatus(ctx, t, s),
-        clearStatus: (t) => api.clearStatus(ctx, t),
+        clearStatus: (t, s) => api.clearStatus(ctx, t, s),
+        hasStatus: (t, s) => api.hasStatus(ctx, t, s),
+        getStatuses: (t) => api.getStatuses(ctx, t),
         benchDamage: (p, n) => api.benchDamage(ctx, p, n),
         reduceDamage: (t, n) => api.reduceDamage(ctx, t, n),
         increaseDamage: (n) => api.increaseDamage(ctx, n),
@@ -13232,7 +13395,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         'thisPokemon', 'card', 'pokemon', 'isActive', 'isBench',
         'damage', 'heal', 'draw', 'attachEnergy', 'discardEnergy',
         'switchActive', 'toHand', 'toDiscard', 'toDeck', 'toBench', 'moveCard', 'discardCards', 'searchCards',
-        'coinFlip', 'flipCoin', 'applyStatus', 'clearStatus', 'benchDamage',
+        'coinFlip', 'flipCoin', 'applyStatus', 'clearStatus', 'hasStatus', 'getStatuses', 'benchDamage',
         'reduceDamage', 'increaseDamage', 'shuffleDeck', 'lookAtDeckTop', 'lookAtTop', 'lookDeckTop', 'searchTopDeck', 'putBackDeckTop', 'putBackDeckBottom',
         'choiceCard', 'choiceCards', 'isKnockedOut', 'isDefeated', 'knockout', 'defeat', 'didKnockout', 'defeatedOpponent',
         'didAllyKnockoutLastTurn', 'wasAllyKnockedOutLastTurn', 'isAllyKnockedOutPreviousTurn', 'allyKnockedOutLastTurn', 'wasKnockedOutPreviousTurn', 'wasKnockedOutLastTurn',
@@ -13265,7 +13428,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           thisPokemon, thisCard, thisPokemon, isActive, isBench,
           ctx.damage, ctx.heal, ctx.draw, ctx.attachEnergy, ctx.discardEnergy,
           ctx.switchActive, ctx.toHand, ctx.toDiscard, ctx.toDeck, ctx.toBench, ctx.moveCard, ctx.discardCards, ctx.searchCards,
-          ctx.coinFlip, ctx.flipCoin, ctx.applyStatus, ctx.clearStatus, ctx.benchDamage,
+          ctx.coinFlip, ctx.flipCoin, ctx.applyStatus, ctx.clearStatus, ctx.hasStatus, ctx.getStatuses, ctx.benchDamage,
           ctx.reduceDamage, ctx.increaseDamage, ctx.shuffleDeck, ctx.lookAtDeckTop, ctx.lookAtTop, ctx.lookDeckTop, ctx.searchTopDeck, ctx.putBackDeckTop, ctx.putBackDeckBottom,
           ctx.choiceCard, ctx.choiceCards,
           ctx.isKnockedOut, ctx.isDefeated, ctx.knockout, ctx.defeat, ctx.didKnockout, ctx.defeatedOpponent,
@@ -13318,6 +13481,10 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
     window.ActionEngine = window.ORBITAL_EFFECT_API;
     window.flipCoin = (n, lim) => window.ORBITAL_EFFECT_API.flipCoin(null, n, lim);
     window.coinFlip = (n, lim) => window.ORBITAL_EFFECT_API.coinFlip(null, n, lim);
+    window.applyStatus = (t, s) => window.ORBITAL_EFFECT_API.applyStatus(null, t, s);
+    window.clearStatus = (t, s) => window.ORBITAL_EFFECT_API.clearStatus(null, t, s);
+    window.hasStatus = (t, s) => window.ORBITAL_EFFECT_API.hasStatus(null, t, s);
+    window.getStatuses = (t) => window.ORBITAL_EFFECT_API.getStatuses(null, t);
     window.isKnockedOut = (t) => window.ORBITAL_EFFECT_API.isKnockedOut(null, t);
     window.didKnockout = (t) => window.ORBITAL_EFFECT_API.didKnockout(null, t);
     window.getEnergy = (t) => window.ORBITAL_EFFECT_API.getEnergy(null, t);
@@ -13978,6 +14145,24 @@ var EffectEditor;
       badge: '状態回復',
       desc: '対象の特殊状態をすべて回復する',
       snippet: 'clearStatus(self.active)',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'hasStatus',
+      label: 'hasStatus(target, "どく")',
+      category: 'func',
+      badge: '状態判定',
+      desc: '対象が指定の特殊状態にかかっているか判定（true/false）',
+      snippet: 'hasStatus(opponent.active, "どく")',
+      targets: ['attack1', 'attack2', 'ability']
+    },
+    {
+      keyword: 'getStatuses',
+      label: 'getStatuses(target)',
+      category: 'func',
+      badge: '状態一覧',
+      desc: '対象がかかっているすべての特殊状態の配列を取得する',
+      snippet: 'getStatuses(opponent.active)',
       targets: ['attack1', 'attack2', 'ability']
     },
     {
@@ -14904,13 +15089,28 @@ var EffectEditor;
         catLabel: 'ダメージ・回復',
         badge: '状態異常',
         returns: 'void',
-        desc: '対象ポケモンに特殊状態（どく、やけど、マヒ、ねむり、こんらん）を付与します。',
+        desc: '対象ポケモンにポケカ公式準拠の特殊状態（どく・やけど・マヒ・ねむり・こんらん）を付与します。\\n\\n【ポケカ公式ルール準拠】\\n・どく: ポケモンチェックごとに10ダメージ\\n・やけど: ポケモンチェックごとに20ダメージ＋コイントス表で回復\\n・ねむり: ワザ・にげる不可＋ポケモンチェックでコイントス表で回復\\n・マヒ: ワザ・にげる不可＋自分の番の終わりに自動回復\\n・こんらん: にげる可。ワザ宣言時にコイントス、裏ならワザ失敗＋自分に30ダメージで番終了\\n※ ねむり・マヒ・こんらんは姿勢重複不可（上書き）。どく・やけどは同時に重複可能。ベンチ移動・進化で全回復。',
         params: [
           { name: 'target', type: 'pokemon', desc: '付与対象のポケモン（opponent.active など）' },
           { name: 'status', type: 'string', desc: '"どく", "やけど", "マヒ", "ねむり", "こんらん"' }
         ],
-        example: 'applyStatus(opponent.active, "どく");',
+        example: 'applyStatus(opponent.active, "どく");\\napplyStatus(opponent.active, "やけど");',
         snippet: 'applyStatus(opponent.active, "どく");'
+      },
+      {
+        name: 'hasStatus',
+        signature: 'hasStatus(target, status)',
+        category: 'battle',
+        catLabel: 'ダメージ・回復',
+        badge: '状態判定',
+        returns: 'boolean',
+        desc: '対象ポケモンが指定の特殊状態（どく・やけど・マヒ・ねむり・こんらん）にかかっているかを判定します。',
+        params: [
+          { name: 'target', type: 'pokemon', desc: '判定対象のポケモン（opponent.active, self.active など）' },
+          { name: 'status', type: 'string', desc: '特殊状態名（"どく", "やけど", "ねむり", "マヒ", "こんらん"）' }
+        ],
+        example: 'if (hasStatus(opponent.active, "どく")) {\\n  damage(opponent.active, 60);\\n}',
+        snippet: 'if (hasStatus(opponent.active, "どく")) {\\n  \\n}'
       },
       {
         name: 'clearStatus',
@@ -15870,6 +16070,11 @@ var EffectEditor;
         { label: '相手倒したら2ドロー', sub: 'didKnockout()', code: 'damage(opponent.active, 50);\nif (didKnockout()) {\n  draw(self, 2);\n}' },
         { label: 'コイン表で+20', sub: 'if (coinFlip)', code: 'if (coinFlip() === 1) {\n  damage(opponent.active, 20);\n}' },
         { label: '相手を「どく」', sub: 'applyStatus', code: 'applyStatus(opponent.active, "どく");' },
+        { label: '相手を「やけど」', sub: 'applyStatus', code: 'applyStatus(opponent.active, "やけど");' },
+        { label: '相手を「ねむり」', sub: 'applyStatus', code: 'applyStatus(opponent.active, "ねむり");' },
+        { label: '相手を「マヒ」', sub: 'applyStatus', code: 'applyStatus(opponent.active, "マヒ");' },
+        { label: '相手を「こんらん」', sub: 'applyStatus', code: 'applyStatus(opponent.active, "こんらん");' },
+        { label: '特殊状態全回復', sub: 'clearStatus', code: 'clearStatus(self.active);' },
         { label: '相手手札破棄', sub: 'choiceCard + toDiscard', code: 'const card = choiceCard(opponent, "hand");\ntoDiscard(opponent, card);' },
         { label: '前番味方きぜつ時のみ', sub: 'wasAllyKnockedOutLastTurn()', code: 'if (!wasAllyKnockedOutLastTurn()) {\n  cant("前の番に自分のポケモンがきぜつしていません");\n}' },
         { label: '山札サーチ', sub: 'choiceCard + toHand', code: 'const card = choiceCard(self, "deck", { category: "Basic" });\ntoHand(self, card);\nshuffleDeck(self);' },
@@ -22616,6 +22821,138 @@ window.DeckSystem = function () {
       return 'たねポケモン';
     },
 
+    hasStatus(target, statusName) {
+      if (!target) return false;
+      if (window.ORBITAL_EFFECT_API && typeof window.ORBITAL_EFFECT_API.hasStatus === 'function') {
+        return window.ORBITAL_EFFECT_API.hasStatus(null, target, statusName);
+      }
+      const norm = String(statusName || '').trim().toLowerCase();
+      if (Array.isArray(target.statuses)) {
+        return target.statuses.some((s) => String(s).toLowerCase() === norm);
+      }
+      return String(target.status || '').includes(statusName);
+    },
+
+    getStatuses(target) {
+      if (!target) return [];
+      if (window.ORBITAL_EFFECT_API && typeof window.ORBITAL_EFFECT_API.getStatuses === 'function') {
+        return window.ORBITAL_EFFECT_API.getStatuses(null, target);
+      }
+      if (Array.isArray(target.statuses)) return target.statuses;
+      return target.status ? [target.status] : [];
+    },
+
+    applyStatus(target, statusName) {
+      if (!target) return;
+      if (window.ORBITAL_EFFECT_API && typeof window.ORBITAL_EFFECT_API.applyStatus === 'function') {
+        window.ORBITAL_EFFECT_API.applyStatus(null, target, statusName);
+      } else {
+        target.status = statusName;
+      }
+      this.render();
+    },
+
+    clearStatus(target, statusName = null) {
+      if (!target) return;
+      if (window.ORBITAL_EFFECT_API && typeof window.ORBITAL_EFFECT_API.clearStatus === 'function') {
+        window.ORBITAL_EFFECT_API.clearStatus(null, target, statusName);
+      } else {
+        target.status = null;
+        target.statuses = [];
+      }
+      this.render();
+    },
+
+    async runPokemonCheckup(endingWho) {
+      if (this.state.phase === 'ended') return;
+
+      const pActive = this.state.player?.active;
+      const oActive = this.state.opponent?.active;
+      const activeTargets = [
+        { pk: pActive, owner: this.state.player, isEnding: endingWho === 'player' },
+        { pk: oActive, owner: this.state.opponent, isEnding: endingWho === 'opponent' }
+      ].filter((t) => t.pk && Number(t.pk.hp) > 0);
+
+      let didAnyCheckupAction = false;
+
+      // 1. どく (Poison): 10ダメージ
+      for (const item of activeTargets) {
+        if (this.hasStatus(item.pk, 'どく') && item.pk.hp > 0) {
+          didAnyCheckupAction = true;
+          item.pk.hp = Math.max(0, item.pk.hp - 10);
+          this.log("☠️ どくのダメージ！【" + item.pk.name + "】は 10 ダメージを受けた。(残りHP: " + item.pk.hp + "/" + item.pk.maxHp + ")");
+        }
+      }
+
+      // 2. やけど (Burn): 20ダメージ ＋ コイントスで表なら回復
+      for (const item of activeTargets) {
+        if (this.hasStatus(item.pk, 'やけど') && item.pk.hp > 0) {
+          didAnyCheckupAction = true;
+          item.pk.hp = Math.max(0, item.pk.hp - 20);
+          this.log("🔥 やけどのダメージ！【" + item.pk.name + "】は 20 ダメージを受けた。(残りHP: " + item.pk.hp + "/" + item.pk.maxHp + ")");
+
+          let isHeads = false;
+          if (window.ORBITAL_EFFECT_API && typeof window.ORBITAL_EFFECT_API.coinFlip === 'function') {
+            const flip = await window.ORBITAL_EFFECT_API.coinFlip(null, 1);
+            isHeads = (flip === 1);
+          } else {
+            isHeads = Math.random() < 0.5;
+          }
+
+          if (isHeads) {
+            this.clearStatus(item.pk, 'やけど');
+            this.log("🔥 やけどの判定: 表！【" + item.pk.name + "】のやけどが治った！");
+          } else {
+            this.log("🔥 やけどの判定: 裏！【" + item.pk.name + "】のやけどは治らなかった…");
+          }
+        }
+      }
+
+      // 3. ねむり (Sleep): コイントスで表なら回復
+      for (const item of activeTargets) {
+        if (this.hasStatus(item.pk, 'ねむり') && item.pk.hp > 0) {
+          didAnyCheckupAction = true;
+          let isHeads = false;
+          if (window.ORBITAL_EFFECT_API && typeof window.ORBITAL_EFFECT_API.coinFlip === 'function') {
+            const flip = await window.ORBITAL_EFFECT_API.coinFlip(null, 1);
+            isHeads = (flip === 1);
+          } else {
+            isHeads = Math.random() < 0.5;
+          }
+
+          if (isHeads) {
+            this.clearStatus(item.pk, 'ねむり');
+            this.log("💤 ねむりの判定: 表！【" + item.pk.name + "】は目を覚ました！");
+          } else {
+            this.log("💤 ねむりの判定: 裏！【" + item.pk.name + "】はまだぐっすり眠っている…");
+          }
+        }
+      }
+
+      // 4. マヒ (Paralysis): マヒしている側のプレイヤーの番が終わった時に回復
+      for (const item of activeTargets) {
+        if (this.hasStatus(item.pk, 'マヒ') && item.pk.hp > 0) {
+          if (item.isEnding) {
+            didAnyCheckupAction = true;
+            this.clearStatus(item.pk, 'マヒ');
+            this.log("⚡ 番の終了により、【" + item.pk.name + "】はマヒから回復した！");
+          }
+        }
+      }
+
+      if (didAnyCheckupAction) {
+        this.render();
+      }
+
+      // 気絶チェック (どくやけどによる気絶)
+      if (oActive && oActive.hp <= 0) {
+        await this.handleKnockout(this.state.player, this.state.opponent);
+      }
+      if (pActive && pActive.hp <= 0) {
+        await this.handleKnockout(this.state.opponent, this.state.player);
+      }
+    },
+
     isFirstPlayerFirstTurn(playerWho) {
       const who = playerWho || this.state.turnPlayer;
       const p = who === 'player' ? this.state.player : this.state.opponent;
@@ -23555,15 +23892,6 @@ window.DeckSystem = function () {
         }
       }
 
-      // 特殊状態処理（どく: 10ダメージ）
-      if (cur.active && cur.active.status === 'どく') {
-        cur.active.hp -= 10;
-        this.log("☠ どくのダメージ！ " + cur.active.name + " は10ダメージを受けた。(残りHP: " + cur.active.hp + ")");
-        if (cur.active.hp <= 0) {
-          this.handleKnockout(cur === this.state.player ? this.state.opponent : this.state.player, cur);
-        }
-      }
-
       this.render();
 
       if (turnWho === 'opponent') {
@@ -23607,6 +23935,10 @@ window.DeckSystem = function () {
       await this.processDelayedEffects('end', this.state.turnPlayer);
       const turnWhoName = this.state.turnPlayer === 'player' ? (this.state.player.name || 'プレイヤー') : (this.state.opponent.name || '対戦相手');
       this.log("【" + turnWhoName + "】がターンを終了しました。");
+
+      // ポケモンチェック (Pokémon Checkup: どく・やけど・ねむり・マヒ)
+      await this.runPokemonCheckup(this.state.turnPlayer);
+      if (this.state.phase === 'ended') return;
 
 
       let nextPlayer;
@@ -24043,6 +24375,7 @@ window.DeckSystem = function () {
       if (newActive) {
         if (p.active) {
           p.active.usedLastTurn = false;
+          this.clearStatus(p.active);
         }
         p.bench.push(p.active);
         p.active = newActive;
@@ -24279,7 +24612,7 @@ window.DeckSystem = function () {
       targetPokemon.weakness = evo.weakness || targetPokemon.weakness;
       targetPokemon.resistance = evo.resistance || targetPokemon.resistance;
       targetPokemon.retreat = evo.retreat != null ? evo.retreat : targetPokemon.retreat;
-      targetPokemon.status = null;
+      this.clearStatus(targetPokemon);
       targetPokemon._turnPlayed = this.state.turnNumber;
 
       this.log('✨ 進化！ ' + targetPokemon.name + ' に進化しました！(HP: ' + targetPokemon.hp + '/' + targetPokemon.maxHp + ')');
@@ -24726,6 +25059,16 @@ window.DeckSystem = function () {
         App.toast('効果によりにげることは禁止されています。', true);
         return;
       }
+      if (this.hasStatus(p.active, 'ねむり')) {
+        App.toast('ねむり状態のため にげることはできません。', true);
+        this.log('💤 ' + p.active.name + 'は ねむっているため にげられない！');
+        return;
+      }
+      if (this.hasStatus(p.active, 'マヒ')) {
+        App.toast('マヒ状態のため にげることはできません。', true);
+        this.log('⚡ ' + p.active.name + 'は マヒしているため にげられない！');
+        return;
+      }
       if (p.retreated) {
         App.toast('にげるは1ターンに1回のみ行えます。', true);
         return;
@@ -24771,6 +25114,7 @@ window.DeckSystem = function () {
         }
         if (p.active) {
           p.active.usedLastTurn = false;
+          this.clearStatus(p.active);
         }
         const nextActive = p.bench.splice(idx, 1)[0];
         p.bench.push(p.active);
@@ -24786,7 +25130,7 @@ window.DeckSystem = function () {
       });
     },
 
-    declareAttack(attackIndex) {
+    async declareAttack(attackIndex) {
       if (this.state.turnPlayer !== 'player') return;
       const attacker = this.state.player.active;
       const defender = this.state.opponent.active;
@@ -24795,6 +25139,17 @@ window.DeckSystem = function () {
 
       if (this.isBlocked('attack', attacker, this.state.player)) {
         App.toast('効果によりワザの使用は禁止されています。', true);
+        return;
+      }
+
+      if (this.hasStatus(attacker, 'ねむり')) {
+        App.toast('ねむり状態のため ワザを使えません。', true);
+        this.log('💤 ' + attacker.name + 'は ねむっているため ワザを使えない！');
+        return;
+      }
+      if (this.hasStatus(attacker, 'マヒ')) {
+        App.toast('マヒ状態のため ワザを使えません。', true);
+        this.log('⚡ ' + attacker.name + 'は マヒしているため ワザを使えない！');
         return;
       }
 
@@ -24818,6 +25173,33 @@ window.DeckSystem = function () {
           App.toast("エネルギーが足りません (必要: " + energyCheck.reqCount + "個 / 現在: " + energyCheck.currentCount + "個)", true);
         }
         return;
+      }
+
+      // こんらん チェック（コイン裏ならワザ失敗＋自分に30ダメージで番終了）
+      if (this.hasStatus(attacker, 'こんらん')) {
+        this.log('💫 ' + attacker.name + 'は こんらん している！ワザ成功のコイントス！');
+        let isHeads = false;
+        if (window.ORBITAL_EFFECT_API && typeof window.ORBITAL_EFFECT_API.coinFlip === 'function') {
+          const flip = await window.ORBITAL_EFFECT_API.coinFlip(null, 1);
+          isHeads = (flip === 1);
+        } else {
+          isHeads = Math.random() < 0.5;
+        }
+
+        if (!isHeads) {
+          this.log('❌ コインは裏！ワザは失敗し、こんらんにより自分に 30 ダメージ！');
+          App.toast('こんらんによりワザ失敗！自分に30ダメージ！', true);
+          attacker.hp = Math.max(0, (Number(attacker.hp) || 0) - 30);
+          this.render();
+          if (attacker.hp <= 0) {
+            await this.handleKnockout(this.state.opponent, this.state.player);
+          } else {
+            setTimeout(() => this.endTurn(), 800);
+          }
+          return;
+        } else {
+          this.log('⭕ コインは表！こんらんを乗り越えてワザを繰り出す！');
+        }
       }
 
       const stadiumTicker = document.getElementById('stadiumTicker');
@@ -25365,7 +25747,7 @@ window.DeckSystem = function () {
           validTarget.weakness = evoCard.weakness || validTarget.weakness;
           validTarget.resistance = evoCard.resistance || validTarget.resistance;
           validTarget.retreat = evoCard.retreat != null ? evoCard.retreat : validTarget.retreat;
-          validTarget.status = null;
+          this.clearStatus(validTarget);
           validTarget._turnPlayed = this.state.turnNumber;
           validTarget._evolvedThisTurn = true;
 
@@ -25459,7 +25841,7 @@ window.DeckSystem = function () {
             if (oppTicker) oppTicker.textContent = "相手: 「ポケモンいれかえ」で " + readyBenchPk.name + " に交代！";
             this.render();
             await this.wait(800);
-          } else if (!ai.retreated && currentEnergy >= retreatCost && activeHp <= 30) {
+          } else if (!ai.retreated && currentEnergy >= retreatCost && activeHp <= 30 && !this.hasStatus(ai.active, 'ねむり') && !this.hasStatus(ai.active, 'マヒ')) {
             ai.active.energy -= retreatCost;
             if (!Array.isArray(ai.discard)) ai.discard = [];
             if (ai.active.attachedEnergies && ai.active.attachedEnergies.length > 0) {
@@ -25487,6 +25869,7 @@ window.DeckSystem = function () {
             }
             if (ai.active) ai.active.usedLastTurn = false;
             const prevActive = ai.active;
+            this.clearStatus(prevActive);
             const benchIdx = ai.bench.indexOf(readyBenchPk);
             ai.bench.splice(benchIdx, 1);
             ai.bench.push(prevActive);
@@ -25559,6 +25942,21 @@ window.DeckSystem = function () {
         return;
       }
 
+      if (this.hasStatus(ai.active, 'ねむり')) {
+        this.log("💤 AIライバルの「" + ai.active.name + "」は ねむっているため ワザを使えません。");
+        if (oppTicker) oppTicker.textContent = '相手: ねむっているためワザ不可…';
+        await this.wait(700);
+        this.endTurn();
+        return;
+      }
+      if (this.hasStatus(ai.active, 'マヒ')) {
+        this.log("⚡ AIライバルの「" + ai.active.name + "」は マヒしているため ワザを使えません。");
+        if (oppTicker) oppTicker.textContent = '相手: マヒしているためワザ不可…';
+        await this.wait(700);
+        this.endTurn();
+        return;
+      }
+
       if (this.isFirstPlayerFirstTurn('opponent')) {
         this.log("🤖 AIライバル: 先攻の最初の番のためワザを使えません。ターン終了します。");
         if (oppTicker) oppTicker.textContent = '相手: 先攻のためワザを使わずターン終了';
@@ -25594,6 +25992,34 @@ window.DeckSystem = function () {
         const atkName = attackChoice === 1 ? ai.active.attack1Name : ai.active.attack2Name;
         const atkDamage = attackChoice === 1 ? ai.active.attack1Damage : ai.active.attack2Damage;
         const atkCode = attackChoice === 1 ? ai.active.attack1Code : ai.active.attack2Code;
+
+        // こんらん チェック（コイン裏ならワザ失敗＋自分に30ダメージで番終了）
+        if (this.hasStatus(ai.active, 'こんらん')) {
+          this.log("💫 AIライバルの「" + ai.active.name + "」は こんらん している！ワザ成功のコイントス！");
+          let isHeads = false;
+          if (window.ORBITAL_EFFECT_API && typeof window.ORBITAL_EFFECT_API.coinFlip === 'function') {
+            const flip = await window.ORBITAL_EFFECT_API.coinFlip(null, 1);
+            isHeads = (flip === 1);
+          } else {
+            isHeads = Math.random() < 0.5;
+          }
+
+          if (!isHeads) {
+            this.log("❌ コインは裏！ワザは失敗し、こんらんによりAIライバルの「" + ai.active.name + "」は自分に 30 ダメージ！");
+            if (oppTicker) oppTicker.textContent = "相手: こんらんで自傷30ダメージ！";
+            ai.active.hp = Math.max(0, (Number(ai.active.hp) || 0) - 30);
+            this.render();
+            await this.wait(800);
+            if (ai.active.hp <= 0) {
+              await this.handleKnockout(this.state.player, this.state.opponent);
+            } else {
+              this.endTurn();
+            }
+            return;
+          } else {
+            this.log("⭕ コインは表！AIライバルはこんらんを乗り越えてワザを繰り出す！");
+          }
+        }
 
         if (oppTicker) oppTicker.textContent = "相手: 「" + atkName + "」を宣言！！";
         await this.wait(400);
@@ -26220,14 +26646,34 @@ window.DeckSystem = function () {
       const energiesHtml = card.attachedEnergies && card.attachedEnergies.length ?
       card.attachedEnergies.map((e) => '<span class="energy-pip type-' + this.escape(e) + '">' + this.escape(e) + '</span>').join('') :
       '';
-      const statusTagHtml = card.status ? '<span class="active-status-badge">【' + this.escape(card.status) + '】</span>' : '';
+      const statuses = this.getStatuses(card);
+      let statusTagHtml = '';
+      if (statuses.length > 0) {
+        statusTagHtml = '<div class="active-status-badges">' + statuses.map((s) => {
+          let badgeClass = 'status-badge-general';
+          let icon = '⚠️';
+          if (s === 'どく') { badgeClass = 'status-badge-poison'; icon = '☠️'; }
+          else if (s === 'やけど') { badgeClass = 'status-badge-burn'; icon = '🔥'; }
+          else if (s === 'ねむり') { badgeClass = 'status-badge-sleep'; icon = '💤'; }
+          else if (s === 'マヒ') { badgeClass = 'status-badge-paralysis'; icon = '⚡'; }
+          else if (s === 'こんらん') { badgeClass = 'status-badge-confusion'; icon = '💫'; }
+          return '<span class="active-status-badge ' + badgeClass + '">' + icon + ' ' + this.escape(s) + '</span>';
+        }).join('') + '</div>';
+      }
+
+      const statusClasses = [];
+      if (this.hasStatus(card, 'ねむり')) statusClasses.push('is-asleep');
+      if (this.hasStatus(card, 'マヒ')) statusClasses.push('is-paralyzed');
+      if (this.hasStatus(card, 'こんらん')) statusClasses.push('is-confused');
+      if (this.hasStatus(card, 'どく')) statusClasses.push('is-poisoned');
+      if (this.hasStatus(card, 'やけど')) statusClasses.push('is-burned');
 
       const displayCard = Object.assign({}, card, { hp: card.hp });
       const cardHtml = window.CardSystem && window.CardSystem.createCardHtml ?
       window.CardSystem.createCardHtml(displayCard, { size: 'battle' }) :
       '<div class="card-fallback">' + this.escape(card.name) + '</div>';
 
-      root.innerHTML = "\n        <div class=\"battle-card-wrapper\">\n          <div class=\"battle-active-card\">\n            " +
+      root.innerHTML = "\n        <div class=\"battle-card-wrapper\">\n          <div class=\"battle-active-card " + statusClasses.join(' ') + "\">\n            " +
 
 
       cardHtml + "\n          </div>\n          <div class=\"battle-card-hp-strip\">\n            <div class=\"battle-card-hp-text\">\n              <span class=\"battle-hp-label\">HP <strong>" +
@@ -26622,14 +27068,19 @@ window.DeckSystem = function () {
         const energyCheck = this.checkEnergyRequirement(card, card.attack1Energy);
         const hasEnergy = energyCheck.canAttack;
         const isAtkBlocked = this.isBlocked('attack', card, p);
-        const canAttack = !isBench && isMyTurn && !isFirstTurnFirstPlayer && hasEnergy && !isAtkBlocked;
+        const isAsleep = this.hasStatus(card, 'ねむり');
+        const isParalyzed = this.hasStatus(card, 'マヒ');
+        const canAttack = !isBench && isMyTurn && !isFirstTurnFirstPlayer && hasEnergy && !isAtkBlocked && !isAsleep && !isParalyzed;
 
         let btnLabel = '⚔ ワザを使う';
         if (isBench) btnLabel = 'バトル場で使用可';else
         if (!isMyTurn) btnLabel = '相手の番です';else
         if (isFirstTurnFirstPlayer) btnLabel = '先攻1ターン目不可';else
+        if (isAsleep) btnLabel = '💤 ねむり (ワザ不可)';else
+        if (isParalyzed) btnLabel = '⚡ マヒ (ワザ不可)';else
         if (isAtkBlocked) btnLabel = '🚫 ワザ使用禁止中';else
         if (!hasEnergy) btnLabel = energyCheck.reason === 'type' ? energyCheck.missingDesc : "エネ不足 (" + energyCount + "/" + energyCheck.reqCount + ")";
+        else if (this.hasStatus(card, 'こんらん')) btnLabel = '⚔ ワザを使う (💫こんらん中)';
 
         itemsHtml += "\n          <div class=\"card-act-item is-attack\">\n            <div class=\"act-item-content\">\n              <div class=\"act-item-header\">\n                <span class=\"act-badge atk\">ワザ1</span>\n                <span class=\"act-item-name\">" +
         this.escape(card.attack1Name) + "</span>\n                <span class=\"act-item-dmg\">" +
@@ -26645,14 +27096,19 @@ window.DeckSystem = function () {
         const energyCheck = this.checkEnergyRequirement(card, card.attack2Energy);
         const hasEnergy = energyCheck.canAttack;
         const isAtkBlocked = this.isBlocked('attack', card, p);
-        const canAttack = !isBench && isMyTurn && !isFirstTurnFirstPlayer && hasEnergy && !isAtkBlocked;
+        const isAsleep = this.hasStatus(card, 'ねむり');
+        const isParalyzed = this.hasStatus(card, 'マヒ');
+        const canAttack = !isBench && isMyTurn && !isFirstTurnFirstPlayer && hasEnergy && !isAtkBlocked && !isAsleep && !isParalyzed;
 
         let btnLabel = '⚔ ワザを使う';
         if (isBench) btnLabel = 'バトル場で使用可';else
         if (!isMyTurn) btnLabel = '相手の番です';else
         if (isFirstTurnFirstPlayer) btnLabel = '先攻1ターン目不可';else
+        if (isAsleep) btnLabel = '💤 ねむり (ワザ不可)';else
+        if (isParalyzed) btnLabel = '⚡ マヒ (ワザ不可)';else
         if (isAtkBlocked) btnLabel = '🚫 ワザ使用禁止中';else
         if (!hasEnergy) btnLabel = energyCheck.reason === 'type' ? energyCheck.missingDesc : "エネ不足 (" + energyCount + "/" + energyCheck.reqCount + ")";
+        else if (this.hasStatus(card, 'こんらん')) btnLabel = '⚔ ワザを使う (💫こんらん中)';
 
         itemsHtml += "\n          <div class=\"card-act-item is-attack\">\n            <div class=\"act-item-content\">\n              <div class=\"act-item-header\">\n                <span class=\"act-badge atk\">ワザ2</span>\n                <span class=\"act-item-name\">" +
         this.escape(card.attack2Name) + "</span>\n                <span class=\"act-item-dmg\">" +
@@ -26669,10 +27125,14 @@ window.DeckSystem = function () {
         const hasBench = p.bench && p.bench.length > 0;
         const hasEnergy = energyCount >= retreatCost;
         const isRetreatBlocked = this.isBlocked('retreat', card, p);
-        const canRetreat = isMyTurn && !p.retreated && hasBench && hasEnergy && !isRetreatBlocked;
+        const isAsleep = this.hasStatus(card, 'ねむり');
+        const isParalyzed = this.hasStatus(card, 'マヒ');
+        const canRetreat = isMyTurn && !p.retreated && hasBench && hasEnergy && !isRetreatBlocked && !isAsleep && !isParalyzed;
 
         let btnLabel = '🏃 にげる (交代)';
         if (!isMyTurn) btnLabel = '相手の番です';else
+        if (isAsleep) btnLabel = '💤 ねむり (にげる不可)';else
+        if (isParalyzed) btnLabel = '⚡ マヒ (にげる不可)';else
         if (isRetreatBlocked) btnLabel = '🚫 にげる禁止中';else
         if (p.retreated) btnLabel = '今番既ににげました';else
         if (!hasBench) btnLabel = '交代ベンチなし';else

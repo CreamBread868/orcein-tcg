@@ -459,6 +459,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         if (newActive) {
           if (p.active) {
             p.active.usedLastTurn = false;
+            this.clearStatus(ctx, p.active);
           }
           if (Array.isArray(p.bench)) p.bench.push(p.active);
           p.active = newActive;
@@ -1114,8 +1115,104 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         }
         return tool;
       },
-      applyStatus(ctx, target, status) { if (target) target.status = String(status || 'どく'); },
-      clearStatus(ctx, target) { if (target) target.status = null; },
+      normalizeStatusName(status) {
+        if (!status) return 'どく';
+        const s = String(status).trim().toLowerCase();
+        if (['どく', '毒', 'poison', 'poisoned', 'もうどく'].includes(s)) return 'どく';
+        if (['やけど', '火傷', 'burn', 'burned'].includes(s)) return 'やけど';
+        if (['ねむり', '眠り', 'sleep', 'asleep'].includes(s)) return 'ねむり';
+        if (['マヒ', 'まひ', 'paralysis', 'paralyzed', 'paralyze'].includes(s)) return 'マヒ';
+        if (['こんらん', '混乱', 'confusion', 'confused'].includes(s)) return 'こんらん';
+        return String(status).trim();
+      },
+      hasStatus(ctx, target, statusName) {
+        if (!target) return false;
+        const norm = this.normalizeStatusName(statusName);
+        if (Array.isArray(target.statuses)) {
+          if (target.statuses.includes(norm)) return true;
+        }
+        if (target.status) {
+          const s = String(target.status);
+          if (s === norm || s.includes(norm)) return true;
+        }
+        return false;
+      },
+      getStatuses(ctx, target) {
+        if (!target) return [];
+        if (Array.isArray(target.statuses) && target.statuses.length > 0) {
+          return [...target.statuses];
+        }
+        if (target.status) {
+          return String(target.status).split(/[・,\s/]+/).map(s => this.normalizeStatusName(s)).filter(Boolean);
+        }
+        return [];
+      },
+      applyStatus(ctx, target, status) {
+        if (!target) return;
+        const norm = this.normalizeStatusName(status || 'どく');
+        let current = this.getStatuses(ctx, target);
+
+        const EXCLUSIVE_GROUP = ['ねむり', 'マヒ', 'こんらん'];
+        if (EXCLUSIVE_GROUP.includes(norm)) {
+          // 姿勢異常（ねむり・マヒ・こんらん）は最新のもので上書き（ポケカ準拠）
+          current = current.filter(s => !EXCLUSIVE_GROUP.includes(s));
+          current.push(norm);
+        } else {
+          // どく・やけどマーカーは重複付与（既にあれば維持・リフレッシュ）
+          if (!current.includes(norm)) {
+            current.push(norm);
+          }
+        }
+
+        target.statuses = current;
+        target.status = current.join('・');
+
+        const game = ctx?.game || window.BattleSystem?.state;
+        const pkName = target.name || 'ポケモン';
+        const icons = { 'どく': '☠️', 'やけど': '🔥', 'ねむり': '💤', 'マヒ': '⚡', 'こんらん': '💫' };
+        const icon = icons[norm] || '⚠️';
+        const msg = icon + " 【" + pkName + "】は「" + norm + "」状態になった！";
+        if (game?.logs) {
+          game.logs.push(msg);
+        }
+        if (window.BattleSystem && typeof window.BattleSystem.log === 'function') {
+          window.BattleSystem.log(msg);
+        }
+        if (window.App && typeof window.App.toast === 'function') {
+          window.App.toast(icon + " " + pkName + " は「" + norm + "」状態になった！");
+        }
+        if (window.BattleSystem && typeof window.BattleSystem.render === 'function') {
+          window.BattleSystem.render();
+        }
+      },
+      clearStatus(ctx, target, statusName = null) {
+        if (!target) return;
+        if (!statusName) {
+          // すべての特殊状態を回復
+          const hadAny = (target.statuses && target.statuses.length > 0) || !!target.status;
+          target.statuses = [];
+          target.status = null;
+          if (hadAny) {
+            const msg = "✨ 【" + (target.name || 'ポケモン') + "】のすべての特殊状態が回復した！";
+            if (ctx?.game?.logs) ctx.game.logs.push(msg);
+            if (window.BattleSystem?.log) window.BattleSystem.log(msg);
+          }
+        } else {
+          const norm = this.normalizeStatusName(statusName);
+          let current = this.getStatuses(ctx, target);
+          if (current.includes(norm)) {
+            current = current.filter(s => s !== norm);
+            target.statuses = current;
+            target.status = current.length > 0 ? current.join('・') : null;
+            const msg = "✨ 【" + (target.name || 'ポケモン') + "】の「" + norm + "」が回復した！";
+            if (ctx?.game?.logs) ctx.game.logs.push(msg);
+            if (window.BattleSystem?.log) window.BattleSystem.log(msg);
+          }
+        }
+        if (window.BattleSystem && typeof window.BattleSystem.render === 'function') {
+          window.BattleSystem.render();
+        }
+      },
       benchDamage(ctx, player, amount) { const dmg = Math.max(0, Number(amount) || 0); const p = this._getPlayer(ctx); if (dmg && Array.isArray(p?.bench)) { p.bench.forEach((c) => { if (c) c.hp -= dmg; }); } },
       reduceDamage(ctx, target, amount) { const tgt = target || this._getPlayer(ctx)?.active; if (tgt) tgt.damageReduction = (tgt.damageReduction || 0) + Math.max(0, Number(amount) || 0); },
       increaseDamage(ctx, amount) { if (ctx) ctx.bonusDamage = (ctx.bonusDamage || 0) + Math.max(0, Number(amount) || 0); return Number(amount) || 0; },
@@ -2920,9 +3017,10 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         takePrize: (p, n) => api.takePrize(ctx, p, n),
         takeSide: (p, n) => api.takeSide(ctx, p, n),
         takePrizes: (p, n) => api.takePrizes(ctx, p, n),
-        drawPrize: (p, n) => api.drawPrize(ctx, p, n),
         applyStatus: (t, s) => api.applyStatus(ctx, t, s),
-        clearStatus: (t) => api.clearStatus(ctx, t),
+        clearStatus: (t, s) => api.clearStatus(ctx, t, s),
+        hasStatus: (t, s) => api.hasStatus(ctx, t, s),
+        getStatuses: (t) => api.getStatuses(ctx, t),
         benchDamage: (p, n) => api.benchDamage(ctx, p, n),
         reduceDamage: (t, n) => api.reduceDamage(ctx, t, n),
         increaseDamage: (n) => api.increaseDamage(ctx, n),
@@ -3155,7 +3253,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         'thisPokemon', 'card', 'pokemon', 'isActive', 'isBench',
         'damage', 'heal', 'draw', 'attachEnergy', 'discardEnergy',
         'switchActive', 'toHand', 'toDiscard', 'toDeck', 'toBench', 'moveCard', 'discardCards', 'searchCards',
-        'coinFlip', 'flipCoin', 'applyStatus', 'clearStatus', 'benchDamage',
+        'coinFlip', 'flipCoin', 'applyStatus', 'clearStatus', 'hasStatus', 'getStatuses', 'benchDamage',
         'reduceDamage', 'increaseDamage', 'shuffleDeck', 'lookAtDeckTop', 'lookAtTop', 'lookDeckTop', 'searchTopDeck', 'putBackDeckTop', 'putBackDeckBottom',
         'choiceCard', 'choiceCards', 'isKnockedOut', 'isDefeated', 'knockout', 'defeat', 'didKnockout', 'defeatedOpponent',
         'didAllyKnockoutLastTurn', 'wasAllyKnockedOutLastTurn', 'isAllyKnockedOutPreviousTurn', 'allyKnockedOutLastTurn', 'wasKnockedOutPreviousTurn', 'wasKnockedOutLastTurn',
@@ -3188,7 +3286,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           thisPokemon, thisCard, thisPokemon, isActive, isBench,
           ctx.damage, ctx.heal, ctx.draw, ctx.attachEnergy, ctx.discardEnergy,
           ctx.switchActive, ctx.toHand, ctx.toDiscard, ctx.toDeck, ctx.toBench, ctx.moveCard, ctx.discardCards, ctx.searchCards,
-          ctx.coinFlip, ctx.flipCoin, ctx.applyStatus, ctx.clearStatus, ctx.benchDamage,
+          ctx.coinFlip, ctx.flipCoin, ctx.applyStatus, ctx.clearStatus, ctx.hasStatus, ctx.getStatuses, ctx.benchDamage,
           ctx.reduceDamage, ctx.increaseDamage, ctx.shuffleDeck, ctx.lookAtDeckTop, ctx.lookAtTop, ctx.lookDeckTop, ctx.searchTopDeck, ctx.putBackDeckTop, ctx.putBackDeckBottom,
           ctx.choiceCard, ctx.choiceCards,
           ctx.isKnockedOut, ctx.isDefeated, ctx.knockout, ctx.defeat, ctx.didKnockout, ctx.defeatedOpponent,
@@ -3241,6 +3339,10 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
     window.ActionEngine = window.ORBITAL_EFFECT_API;
     window.flipCoin = (n, lim) => window.ORBITAL_EFFECT_API.flipCoin(null, n, lim);
     window.coinFlip = (n, lim) => window.ORBITAL_EFFECT_API.coinFlip(null, n, lim);
+    window.applyStatus = (t, s) => window.ORBITAL_EFFECT_API.applyStatus(null, t, s);
+    window.clearStatus = (t, s) => window.ORBITAL_EFFECT_API.clearStatus(null, t, s);
+    window.hasStatus = (t, s) => window.ORBITAL_EFFECT_API.hasStatus(null, t, s);
+    window.getStatuses = (t) => window.ORBITAL_EFFECT_API.getStatuses(null, t);
     window.isKnockedOut = (t) => window.ORBITAL_EFFECT_API.isKnockedOut(null, t);
     window.didKnockout = (t) => window.ORBITAL_EFFECT_API.didKnockout(null, t);
     window.getEnergy = (t) => window.ORBITAL_EFFECT_API.getEnergy(null, t);
