@@ -8547,18 +8547,153 @@
           }, 50);
         };
 
-        MockRunner.prototype.pingPresence = function (userEmail) {
+        MockRunner.prototype.pingPresence = function (userEmail, activity, displayName, avatar) {
           var self = this;
           setTimeout(function () {
-            self._success({ ok: true, onlineCount: Math.floor(Math.random() * 3) + 2 });
-          }, 20);
+            try {
+              var email = String(userEmail || 'player@gmail.com').trim().toLowerCase();
+              var name = String(displayName || email.split('@')[0] || 'プレイヤー').trim();
+              var icon = String(avatar || '⚡').trim();
+              var act = String(activity || '🟢 オンライン').trim();
+              var now = Date.now();
+              var nowIso = new Date(now).toISOString();
+
+              var raw = localStorage.getItem('orbital_presence_list') || '[]';
+              var list = JSON.parse(raw);
+              if (!Array.isArray(list)) list = [];
+
+              var updated = false;
+              for (var i = 0; i < list.length; i++) {
+                if (String(list[i].email).toLowerCase() === email) {
+                  list[i].displayName = name;
+                  list[i].avatar = icon;
+                  list[i].activity = act;
+                  list[i].lastActiveAt = nowIso;
+                  list[i].lastActiveTime = now;
+                  updated = true;
+                  break;
+                }
+              }
+              if (!updated) {
+                list.push({
+                  email: email,
+                  displayName: name,
+                  avatar: icon,
+                  activity: act,
+                  lastActiveAt: nowIso,
+                  lastActiveTime: now
+                });
+              }
+
+              var threshold = 5 * 60 * 1000;
+              list = list.filter(function (u) {
+                var t = u.lastActiveTime || (new Date(u.lastActiveAt).getTime());
+                return (now - t) <= threshold;
+              });
+
+              localStorage.setItem('orbital_presence_list', JSON.stringify(list));
+
+              if (window._orbital_community_bc) {
+                window._orbital_community_bc.postMessage({ type: 'presence_updated', list: list });
+              }
+
+              self._success({ ok: true, onlineCount: Math.max(1, list.length), onlineUsers: list });
+            } catch (e) {
+              self._success({ ok: true, onlineCount: 1, onlineUsers: [] });
+            }
+          }, 30);
         };
 
         MockRunner.prototype.getOnlinePlayerCount = function () {
+          return this.getOnlineUsers();
+        };
+
+        MockRunner.prototype.getOnlineUsers = function () {
           var self = this;
           setTimeout(function () {
-            self._success({ ok: true, onlineCount: Math.floor(Math.random() * 3) + 2 });
-          }, 20);
+            try {
+              var raw = localStorage.getItem('orbital_presence_list') || '[]';
+              var list = JSON.parse(raw);
+              if (!Array.isArray(list)) list = [];
+              var now = Date.now();
+              var threshold = 5 * 60 * 1000;
+              list = list.filter(function (u) {
+                var t = u.lastActiveTime || (new Date(u.lastActiveAt).getTime());
+                return (now - t) <= threshold;
+              });
+              self._success({ ok: true, onlineCount: Math.max(1, list.length), onlineUsers: list });
+            } catch (e) {
+              self._success({ ok: true, onlineCount: 1, onlineUsers: [] });
+            }
+          }, 30);
+        };
+
+        MockRunner.prototype.getGlobalChatMessages = function () {
+          var self = this;
+          setTimeout(function () {
+            try {
+              var raw = localStorage.getItem('orbital_global_chat_messages');
+              var list = raw ? JSON.parse(raw) : null;
+              if (!list || !Array.isArray(list) || list.length === 0) {
+                list = [
+                  {
+                    id: 'msg_welcome_1',
+                    email: 'system@orbital.tcg',
+                    displayName: 'オーキド博士',
+                    avatar: '👨‍🔬',
+                    text: 'オルビタルTCGへようこそ！ここでは全プレイヤーとチャットや対戦募集ができます！',
+                    createdAt: new Date(Date.now() - 3600000).toISOString(),
+                    isSystem: true
+                  },
+                  {
+                    id: 'msg_welcome_2',
+                    email: 'trainer_red@orbital.tcg',
+                    displayName: 'レッド',
+                    avatar: '🧢',
+                    text: 'よろしく！だれかバトルしようぜ！⚔️',
+                    createdAt: new Date(Date.now() - 1800000).toISOString()
+                  }
+                ];
+                localStorage.setItem('orbital_global_chat_messages', JSON.stringify(list));
+              }
+              self._success({ ok: true, messages: list });
+            } catch (e) {
+              self._success({ ok: true, messages: [] });
+            }
+          }, 30);
+        };
+
+        MockRunner.prototype.sendGlobalChatMessage = function (msgData) {
+          var self = this;
+          setTimeout(function () {
+            try {
+              if (!msgData || !msgData.text) throw new Error('メッセージを入力してください。');
+              var raw = localStorage.getItem('orbital_global_chat_messages') || '[]';
+              var list = JSON.parse(raw);
+              if (!Array.isArray(list)) list = [];
+
+              var newMsg = {
+                id: 'msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+                email: String(msgData.email || 'player@gmail.com').trim(),
+                displayName: String(msgData.displayName || 'プレイヤー').trim(),
+                avatar: String(msgData.avatar || '⚡').trim(),
+                text: String(msgData.text).trim(),
+                createdAt: new Date().toISOString()
+              };
+
+              list.push(newMsg);
+              if (list.length > 200) list = list.slice(list.length - 200);
+              localStorage.setItem('orbital_global_chat_messages', JSON.stringify(list));
+
+              if (window._orbital_community_bc) {
+                window._orbital_community_bc.postMessage({ type: 'new_chat_message', message: newMsg });
+              }
+
+              self._success({ ok: true, message: newMsg });
+            } catch (e) {
+              self._failure(e);
+            }
+          }, 40);
         };
 
         MockRunner.prototype.submitFeedback = function (feedbackData) {
@@ -8784,6 +8919,8 @@
         </div>
       </div>
     </div>
+
+    
   </div>
 
   <!-- 偽装Webサイト 初回ログインモーダル -->
@@ -8839,7 +8976,8 @@
           title="GitHubリポジトリからカード・デッキデータを読み込む" onclick="App.promptGitHubSync()">🐙 GitHub同期</button>
         <button id="fontSizeToggleBtn" class="secondary-button small-button" type="button"
           title="文字サイズ変更 (標準 / 大 / 特大)">Aa 文字サイズ: 標準</button>
-        <div class="online-presence-badge" id="onlinePresenceBadge" title="現在オンライン中のプレイヤー数">
+        <div class="online-presence-badge" id="onlinePresenceBadge" title="現在オンライン中のプレイヤー一覧・チャットを開く"
+          onclick="App.openOnlineUsersList()" style="cursor: pointer;">
           <span class="presence-pulse-dot"></span>
           <span class="presence-label">オンライン:</span>
           <strong id="onlinePlayerCount">1</strong>人
@@ -8945,7 +9083,7 @@
               <option value="1進化ex">1進化ex</option>
               <option value="2進化ex">2進化ex</option>
               <option value="トレーナー">トレーナー (すべて)</option>
-              <option value="ポケモンのどうぐ">ポケモンのどうぐ</option>
+              <option value="ポケモンのどうぐ">ポケモンのどうぐ (道具)</option>
                         <option value="グッズ">グッズ</option>
               <option value="サポート">サポート</option>
               <option value="スタジアム">スタジアム</option>
@@ -8995,7 +9133,7 @@
               <option value="1進化ex">1進化ex</option>
               <option value="2進化ex">2進化ex</option>
               <option value="トレーナー">トレーナー (すべて)</option>
-              <option value="ポケモンのどうぐ">ポケモンのどうぐ</option>
+              <option value="ポケモンのどうぐ">ポケモンのどうぐ (道具)</option>
               <option value="グッズ">グッズ</option>
               <option value="サポート">サポート</option>
               <option value="スタジアム">スタジアム</option>
@@ -9063,7 +9201,8 @@
                         <option value="2進化ex">2進化ex (サイド2枚)</option>
                         <option value="ex">ex (サイド2枚)</option>
                         <option value="グッズ">グッズ</option>
-                        <option value="ポケモンのどうぐ">ポケモンのどうぐ</option>
+                        <option value="ポケモンのどうぐ">ポケモンのどうぐ (ポケモンの道具)</option>
+                        <option value="ポケモンの道具">ポケモンの道具</option>
                         <option value="サポート">サポート</option>
                         <option value="スタジアム">スタジアム</option>
                         <option value="トレーナー">トレーナー</option>
@@ -9220,7 +9359,7 @@
                 <!-- グッズ・サポート専用効果セクション -->
                 <div id="trainerEffectSection" class="form-section" style="display:none;">
                   <div class="eyebrow">TRAINER / ITEM EFFECT</div>
-                  <h3>カード効果 (グッズ / サポート)</h3>
+                  <h3>カード効果 (グッズ / サポート / ポケモンのどうぐ)</h3>
                   <p class="muted" style="margin-bottom: 10px; font-size: 13px;">
                     手札から使用した時の効果説明文や、バトルで動くJavaScriptコードを設定します。
                   </p>
@@ -9448,7 +9587,7 @@
                       <option value="1進化">1進化</option>
                       <option value="2進化">2進化</option>
                       <option value="acespec">ACE SPEC</option>
-                      <option value="ポケモンのどうぐ">ポケモンのどうぐ</option>
+                      <option value="ポケモンのどうぐ">ポケモンのどうぐ (道具)</option>
                       <option value="グッズ">グッズ</option>
                       <option value="サポート">サポート</option>
                       <option value="スタジアム">スタジアム</option>
@@ -10558,6 +10697,75 @@
       <div class="modal-card">
         <button id="closeModalButton" class="modal-close">×</button>
         <div id="detailContent"></div>
+      </div>
+    </div>
+
+<!-- ============================================================
+         グローバルチャット & オンラインメンバー Hub ウィジェット
+         ============================================================ -->
+    <div id="globalChatWidget" class="global-chat-widget">
+      <!-- フローティング起動ボタン -->
+      <button id="globalChatFloatBtn" class="global-chat-float-btn" type="button" onclick="App.toggleGlobalChat()" title="グローバルチャット & オンラインプレイヤー一覧">
+        <span class="chat-float-icon">💬</span>
+        <span class="chat-float-label">チャット</span>
+        <span class="chat-online-pill" title="オンライン人数">
+          <span class="presence-pulse-dot mini"></span>
+          <span id="chatFloatOnlineCount">1</span>
+        </span>
+        <span id="chatUnreadBadge" class="chat-unread-badge hidden">0</span>
+      </button>
+
+      <!-- チャット＆オンライン ウィンドウ -->
+      <div id="globalChatWindow" class="global-chat-window hidden">
+        <div class="chat-window-header">
+          <div class="chat-window-tabs">
+            <button id="chatTabMessages" class="chat-tab-btn active" type="button" onclick="App.switchChatTab('messages')">
+              💬 チャット <span id="chatTabUnreadDot" class="chat-tab-unread-dot hidden"></span>
+            </button>
+            <button id="chatTabOnline" class="chat-tab-btn" type="button" onclick="App.switchChatTab('online')">
+              👥 オンライン (<span id="chatWindowOnlineCount">1</span>)
+            </button>
+          </div>
+          <div class="chat-window-actions">
+            <button class="chat-header-btn" type="button" title="最小化" onclick="App.toggleGlobalChat()">—</button>
+          </div>
+        </div>
+
+        <!-- タブ1: チャットメッセージ -->
+        <div id="chatPaneMessages" class="chat-tab-pane active">
+          <div id="globalChatMessagesList" class="chat-messages-container">
+            <div class="chat-loading-placeholder">メッセージを読み込み中...</div>
+          </div>
+          
+          <!-- クイック絵文字パレット -->
+          <div class="chat-quick-emojis">
+            <button type="button" class="quick-emoji-btn" onclick="App.insertChatEmoji('⚔️')">⚔️</button>
+            <button type="button" class="quick-emoji-btn" onclick="App.insertChatEmoji('🔥')">🔥</button>
+            <button type="button" class="quick-emoji-btn" onclick="App.insertChatEmoji('⚡')">⚡</button>
+            <button type="button" class="quick-emoji-btn" onclick="App.insertChatEmoji('🎴')">🎴</button>
+            <button type="button" class="quick-emoji-btn" onclick="App.insertChatEmoji('✨')">✨</button>
+            <button type="button" class="quick-emoji-btn" onclick="App.insertChatEmoji('👏')">👏</button>
+            <button type="button" class="quick-emoji-btn" onclick="App.insertChatEmoji('🎉')">🎉</button>
+            <button type="button" class="quick-emoji-btn" onclick="App.insertChatEmoji('🤣')">🤣</button>
+          </div>
+
+          <!-- チャット入力フォーム -->
+          <form id="globalChatForm" class="chat-input-row" onsubmit="App.handleSendChatMessage(event)">
+            <input type="text" id="globalChatInput" class="chat-input" placeholder="メッセージを入力... (Enterで送信)" maxlength="200" autocomplete="off" />
+            <button type="submit" id="globalChatSendBtn" class="chat-send-btn" title="送信">🚀</button>
+          </form>
+        </div>
+
+        <!-- タブ2: オンラインメンバー一覧 -->
+        <div id="chatPaneOnline" class="chat-tab-pane">
+          <div class="online-members-header">
+            <span class="online-members-title">現在接続中のプレイヤー</span>
+            <button type="button" class="online-refresh-btn" onclick="App.refreshPresence(true)" title="更新">🔄 更新</button>
+          </div>
+          <div id="globalOnlineUsersList" class="online-users-container">
+            <!-- ユーザーリストが動的に描画されます -->
+          </div>
+        </div>
       </div>
     </div>
   </div>

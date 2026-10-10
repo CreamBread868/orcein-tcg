@@ -321,7 +321,7 @@ textarea { resize:vertical; min-height:80px; }
 .card-type-無色, .card-type-無 { border-color: rgba(148, 163, 184, 0.6); box-shadow: 0 10px 28px rgba(148, 163, 184, 0.15); }
 .card-type-サポート { border-color: rgba(162, 155, 254, 0.75); box-shadow: 0 10px 28px rgba(108, 92, 231, 0.25); }
 .card-type-グッズ { border-color: rgba(0, 206, 201, 0.75); box-shadow: 0 10px 28px rgba(0, 206, 201, 0.25); }
-.card-type-ポケモンのどうぐ, .card-type-どうぐ { border-color: rgba(234, 179, 8, 0.75); box-shadow: 0 10px 28px rgba(234, 179, 8, 0.25); }
+.card-type-ポケモンのどうぐ, .card-type-どうぐ, .card-type-ポケモンの道具, .card-type-道具 { border-color: rgba(234, 179, 8, 0.75); box-shadow: 0 10px 28px rgba(234, 179, 8, 0.25); }
 .card-type-トレーナー { border-color: rgba(255, 209, 102, 0.75); box-shadow: 0 10px 28px rgba(255, 209, 102, 0.25); }
 /* 旧タイプフォールバック */
 .card-type-風 { border-color: rgba(70, 130, 180, 0.55); }
@@ -3029,6 +3029,30 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   text-overflow: ellipsis;
   max-width: 100%;
   margin-top: 2px;
+}
+.active-tool-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(234, 179, 8, 0.25);
+  color: #fde047;
+  border: 1px solid rgba(234, 179, 8, 0.55);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  margin-top: 3px;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(234, 179, 8, 0.3);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.active-tool-badge:hover {
+  transform: scale(1.04);
+  background: rgba(234, 179, 8, 0.35);
 }
 .act-badge.tool {
   background: #eab308;
@@ -6439,11 +6463,14 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   color: #34d399;
   box-shadow: 0 0 12px rgba(16, 185, 129, 0.15);
   transition: all 0.25s ease;
+  cursor: pointer;
+  user-select: none;
 }
 
 .online-presence-badge:hover {
   background: rgba(16, 185, 129, 0.22);
-  box-shadow: 0 0 16px rgba(16, 185, 129, 0.3);
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.35);
+  transform: translateY(-1px);
 }
 
 .presence-pulse-dot {
@@ -6455,10 +6482,619 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   animation: presencePulse 1.8s infinite ease-in-out;
 }
 
+.presence-pulse-dot.mini {
+  width: 6px;
+  height: 6px;
+}
+
 @keyframes presencePulse {
   0% { transform: scale(0.95); opacity: 0.8; box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
   70% { transform: scale(1.1); opacity: 1; box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
   100% { transform: scale(0.95); opacity: 0.8; box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+/* ============================================================
+   グローバルチャット & オンラインメンバー Hub ウィジェット スタイル
+   ============================================================ */
+.global-chat-widget {
+  position: fixed;
+  bottom: 22px;
+  right: 22px;
+  z-index: 99999;
+  font-family: inherit;
+}
+
+.global-chat-float-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #1e1b4b, #0f172a);
+  border: 1px solid rgba(129, 140, 248, 0.45);
+  border-radius: 30px;
+  padding: 10px 18px;
+  color: #fff;
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5), 0 0 18px rgba(99, 102, 241, 0.3);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  user-select: none;
+}
+
+.global-chat-float-btn:hover {
+  transform: translateY(-2px) scale(1.03);
+  border-color: #818cf8;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.6), 0 0 24px rgba(99, 102, 241, 0.45);
+}
+
+.global-chat-float-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.chat-float-icon {
+  font-size: 16px;
+}
+
+.chat-float-label {
+  font-size: 13px;
+  letter-spacing: 0.5px;
+}
+
+.chat-online-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(16, 185, 129, 0.18);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  border-radius: 12px;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #34d399;
+}
+
+.chat-unread-badge {
+  position: absolute;
+  top: -6px;
+  right: -4px;
+  background: #f43f5e;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 900;
+  border-radius: 12px;
+  padding: 2px 7px;
+  box-shadow: 0 0 10px rgba(244, 63, 94, 0.7);
+  animation: unreadBounce 1s infinite alternate ease-in-out;
+}
+
+@keyframes unreadBounce {
+  from { transform: translateY(0) scale(1); }
+  to { transform: translateY(-2px) scale(1.08); }
+}
+
+/* ウィンドウ本体 */
+.global-chat-window {
+  position: absolute;
+  bottom: 58px;
+  right: 0;
+  width: 390px;
+  height: 540px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 90px);
+  background: rgba(15, 23, 42, 0.96);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65), 0 0 35px rgba(99, 102, 241, 0.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: bottom right;
+}
+
+.global-chat-window.hidden {
+  display: none !important;
+}
+
+/* ヘッダー */
+.chat-window-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: rgba(30, 41, 59, 0.7);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.chat-window-tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.chat-tab-btn {
+  background: transparent;
+  border: none;
+  border-radius: 12px;
+  padding: 6px 14px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+}
+
+.chat-tab-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.chat-tab-btn.active {
+  color: #fff;
+  background: rgba(99, 102, 241, 0.25);
+  border: 1px solid rgba(129, 140, 248, 0.4);
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.2);
+}
+
+.chat-tab-unread-dot {
+  width: 7px;
+  height: 7px;
+  background: #f43f5e;
+  border-radius: 50%;
+  box-shadow: 0 0 6px #f43f5e;
+}
+
+.chat-window-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.chat-header-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: var(--muted);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.chat-header-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+/* タブペイン */
+.chat-tab-pane {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.chat-tab-pane.active {
+  display: flex;
+}
+
+/* メッセージリスト */
+.chat-messages-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  scroll-behavior: smooth;
+}
+
+.chat-messages-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-messages-container::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 10px;
+}
+
+.chat-loading-placeholder, .chat-empty-hint {
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+  padding: 30px 10px;
+}
+
+/* メッセージアイテム */
+.chat-msg-row {
+  display: flex;
+  gap: 10px;
+  max-width: 86%;
+  animation: chatMsgFadeIn 0.25s ease-out;
+}
+
+@keyframes chatMsgFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.chat-msg-row.chat-msg-other {
+  align-self: flex-start;
+}
+
+.chat-msg-row.chat-msg-self {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.chat-msg-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.chat-msg-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chat-msg-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.chat-msg-self .chat-msg-header {
+  flex-direction: row-reverse;
+}
+
+.chat-msg-sender {
+  font-weight: 700;
+  color: #a5b4fc;
+}
+
+.chat-msg-self .chat-msg-sender {
+  color: #818cf8;
+}
+
+.chat-msg-time {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 10px;
+}
+
+.chat-msg-text {
+  padding: 8px 13px;
+  font-size: 13px;
+  line-height: 1.45;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.chat-msg-other .chat-msg-text {
+  background: rgba(30, 41, 59, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px 14px 14px 14px;
+  color: #f1f5f9;
+}
+
+.chat-msg-self .chat-msg-text {
+  background: linear-gradient(135deg, #4f46e5, #6366f1);
+  border-radius: 14px 4px 14px 14px;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
+}
+
+/* システムメッセージ */
+.chat-msg-system {
+  align-self: center;
+  max-width: 90%;
+  margin: 6px 0;
+}
+
+.chat-msg-system .chat-msg-text {
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 12px;
+  color: #7dd3fc;
+  font-size: 12px;
+  text-align: center;
+  padding: 6px 14px;
+}
+
+/* クイック絵文字パレット */
+.chat-quick-emojis {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  background: rgba(15, 23, 42, 0.6);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  overflow-x: auto;
+}
+
+.chat-quick-emojis::-webkit-scrollbar {
+  display: none;
+}
+
+.quick-emoji-btn {
+  background: transparent;
+  border: none;
+  font-size: 17px;
+  padding: 3px 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1;
+}
+
+.quick-emoji-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(1.2);
+}
+
+/* チャット入力行 */
+.chat-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(15, 23, 42, 0.95);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.chat-input {
+  flex: 1;
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 20px;
+  padding: 9px 16px;
+  color: #fff;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.chat-input:focus {
+  border-color: #818cf8;
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.25);
+}
+
+.chat-send-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4f46e5, #6366f1);
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+
+.chat-send-btn:hover {
+  transform: scale(1.08);
+  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.45);
+}
+
+.chat-send-btn:active {
+  transform: scale(0.95);
+}
+
+/* オンラインメンバー タブ */
+.online-members-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: rgba(30, 41, 59, 0.4);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.online-members-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.online-refresh-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: #cbd5e1;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.online-refresh-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.online-users-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.online-users-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.online-users-container::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 10px;
+}
+
+.online-user-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  transition: all 0.2s ease;
+}
+
+.online-user-card:hover {
+  background: rgba(30, 41, 59, 0.9);
+  border-color: rgba(99, 102, 241, 0.35);
+  transform: translateX(2px);
+}
+
+.online-user-avatar-wrap {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+.online-user-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 19px;
+}
+
+.online-user-status-dot {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 10px;
+  height: 10px;
+  background: #10b981;
+  border: 2px solid #0f172a;
+  border-radius: 50%;
+  box-shadow: 0 0 6px #10b981;
+}
+
+.online-user-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.online-user-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.online-user-name {
+  font-size: 13px;
+  font-weight: 800;
+  color: #f1f5f9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.online-user-you-tag {
+  background: rgba(99, 102, 241, 0.25);
+  border: 1px solid rgba(129, 140, 248, 0.4);
+  color: #a5b4fc;
+  font-size: 10px;
+  font-weight: 800;
+  border-radius: 6px;
+  padding: 1px 5px;
+}
+
+.online-user-activity-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.online-user-activity-badge {
+  color: #38bdf8;
+  font-weight: 600;
+}
+
+.online-user-time {
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 10px;
+}
+
+.online-user-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.online-user-action-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  color: #cbd5e1;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 9px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.online-user-action-btn:hover {
+  background: rgba(99, 102, 241, 0.3);
+  border-color: #818cf8;
+  color: #fff;
+}
+
+/* モバイル対応 */
+@media (max-width: 600px) {
+  .global-chat-widget {
+    bottom: 16px;
+    right: 16px;
+  }
+  .global-chat-window {
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    left: 0;
+    width: 100vw;
+    height: 75vh;
+    max-width: 100vw;
+    max-height: 85vh;
+    border-radius: 20px 20px 0 0;
+  }
 }
 
 .feedback-category-grid {
@@ -8126,18 +8762,153 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
           }, 50);
         };
 
-        MockRunner.prototype.pingPresence = function (userEmail) {
+        MockRunner.prototype.pingPresence = function (userEmail, activity, displayName, avatar) {
           var self = this;
           setTimeout(function () {
-            self._success({ ok: true, onlineCount: Math.floor(Math.random() * 3) + 2 });
-          }, 20);
+            try {
+              var email = String(userEmail || 'player@gmail.com').trim().toLowerCase();
+              var name = String(displayName || email.split('@')[0] || 'プレイヤー').trim();
+              var icon = String(avatar || '⚡').trim();
+              var act = String(activity || '🟢 オンライン').trim();
+              var now = Date.now();
+              var nowIso = new Date(now).toISOString();
+
+              var raw = localStorage.getItem('orbital_presence_list') || '[]';
+              var list = JSON.parse(raw);
+              if (!Array.isArray(list)) list = [];
+
+              var updated = false;
+              for (var i = 0; i < list.length; i++) {
+                if (String(list[i].email).toLowerCase() === email) {
+                  list[i].displayName = name;
+                  list[i].avatar = icon;
+                  list[i].activity = act;
+                  list[i].lastActiveAt = nowIso;
+                  list[i].lastActiveTime = now;
+                  updated = true;
+                  break;
+                }
+              }
+              if (!updated) {
+                list.push({
+                  email: email,
+                  displayName: name,
+                  avatar: icon,
+                  activity: act,
+                  lastActiveAt: nowIso,
+                  lastActiveTime: now
+                });
+              }
+
+              var threshold = 5 * 60 * 1000;
+              list = list.filter(function (u) {
+                var t = u.lastActiveTime || (new Date(u.lastActiveAt).getTime());
+                return (now - t) <= threshold;
+              });
+
+              localStorage.setItem('orbital_presence_list', JSON.stringify(list));
+
+              if (window._orbital_community_bc) {
+                window._orbital_community_bc.postMessage({ type: 'presence_updated', list: list });
+              }
+
+              self._success({ ok: true, onlineCount: Math.max(1, list.length), onlineUsers: list });
+            } catch (e) {
+              self._success({ ok: true, onlineCount: 1, onlineUsers: [] });
+            }
+          }, 30);
         };
 
         MockRunner.prototype.getOnlinePlayerCount = function () {
+          return this.getOnlineUsers();
+        };
+
+        MockRunner.prototype.getOnlineUsers = function () {
           var self = this;
           setTimeout(function () {
-            self._success({ ok: true, onlineCount: Math.floor(Math.random() * 3) + 2 });
-          }, 20);
+            try {
+              var raw = localStorage.getItem('orbital_presence_list') || '[]';
+              var list = JSON.parse(raw);
+              if (!Array.isArray(list)) list = [];
+              var now = Date.now();
+              var threshold = 5 * 60 * 1000;
+              list = list.filter(function (u) {
+                var t = u.lastActiveTime || (new Date(u.lastActiveAt).getTime());
+                return (now - t) <= threshold;
+              });
+              self._success({ ok: true, onlineCount: Math.max(1, list.length), onlineUsers: list });
+            } catch (e) {
+              self._success({ ok: true, onlineCount: 1, onlineUsers: [] });
+            }
+          }, 30);
+        };
+
+        MockRunner.prototype.getGlobalChatMessages = function () {
+          var self = this;
+          setTimeout(function () {
+            try {
+              var raw = localStorage.getItem('orbital_global_chat_messages');
+              var list = raw ? JSON.parse(raw) : null;
+              if (!list || !Array.isArray(list) || list.length === 0) {
+                list = [
+                  {
+                    id: 'msg_welcome_1',
+                    email: 'system@orbital.tcg',
+                    displayName: 'オーキド博士',
+                    avatar: '👨‍🔬',
+                    text: 'オルビタルTCGへようこそ！ここでは全プレイヤーとチャットや対戦募集ができます！',
+                    createdAt: new Date(Date.now() - 3600000).toISOString(),
+                    isSystem: true
+                  },
+                  {
+                    id: 'msg_welcome_2',
+                    email: 'trainer_red@orbital.tcg',
+                    displayName: 'レッド',
+                    avatar: '🧢',
+                    text: 'よろしく！だれかバトルしようぜ！⚔️',
+                    createdAt: new Date(Date.now() - 1800000).toISOString()
+                  }
+                ];
+                localStorage.setItem('orbital_global_chat_messages', JSON.stringify(list));
+              }
+              self._success({ ok: true, messages: list });
+            } catch (e) {
+              self._success({ ok: true, messages: [] });
+            }
+          }, 30);
+        };
+
+        MockRunner.prototype.sendGlobalChatMessage = function (msgData) {
+          var self = this;
+          setTimeout(function () {
+            try {
+              if (!msgData || !msgData.text) throw new Error('メッセージを入力してください。');
+              var raw = localStorage.getItem('orbital_global_chat_messages') || '[]';
+              var list = JSON.parse(raw);
+              if (!Array.isArray(list)) list = [];
+
+              var newMsg = {
+                id: 'msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+                email: String(msgData.email || 'player@gmail.com').trim(),
+                displayName: String(msgData.displayName || 'プレイヤー').trim(),
+                avatar: String(msgData.avatar || '⚡').trim(),
+                text: String(msgData.text).trim(),
+                createdAt: new Date().toISOString()
+              };
+
+              list.push(newMsg);
+              if (list.length > 200) list = list.slice(list.length - 200);
+              localStorage.setItem('orbital_global_chat_messages', JSON.stringify(list));
+
+              if (window._orbital_community_bc) {
+                window._orbital_community_bc.postMessage({ type: 'new_chat_message', message: newMsg });
+              }
+
+              self._success({ ok: true, message: newMsg });
+            } catch (e) {
+              self._failure(e);
+            }
+          }, 40);
         };
 
         MockRunner.prototype.submitFeedback = function (feedbackData) {
@@ -8363,6 +9134,8 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
         </div>
       </div>
     </div>
+
+    
   </div>
 
   <!-- 偽装Webサイト 初回ログインモーダル -->
@@ -8418,7 +9191,8 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
           title="GitHubリポジトリからカード・デッキデータを読み込む" onclick="App.promptGitHubSync()">🐙 GitHub同期</button>
         <button id="fontSizeToggleBtn" class="secondary-button small-button" type="button"
           title="文字サイズ変更 (標準 / 大 / 特大)">Aa 文字サイズ: 標準</button>
-        <div class="online-presence-badge" id="onlinePresenceBadge" title="現在オンライン中のプレイヤー数">
+        <div class="online-presence-badge" id="onlinePresenceBadge" title="現在オンライン中のプレイヤー一覧・チャットを開く"
+          onclick="App.openOnlineUsersList()" style="cursor: pointer;">
           <span class="presence-pulse-dot"></span>
           <span class="presence-label">オンライン:</span>
           <strong id="onlinePlayerCount">1</strong>人
@@ -8524,7 +9298,7 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
               <option value="1進化ex">1進化ex</option>
               <option value="2進化ex">2進化ex</option>
               <option value="トレーナー">トレーナー (すべて)</option>
-              <option value="ポケモンのどうぐ">ポケモンのどうぐ</option>
+              <option value="ポケモンのどうぐ">ポケモンのどうぐ (道具)</option>
                         <option value="グッズ">グッズ</option>
               <option value="サポート">サポート</option>
               <option value="スタジアム">スタジアム</option>
@@ -8574,7 +9348,7 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
               <option value="1進化ex">1進化ex</option>
               <option value="2進化ex">2進化ex</option>
               <option value="トレーナー">トレーナー (すべて)</option>
-              <option value="ポケモンのどうぐ">ポケモンのどうぐ</option>
+              <option value="ポケモンのどうぐ">ポケモンのどうぐ (道具)</option>
               <option value="グッズ">グッズ</option>
               <option value="サポート">サポート</option>
               <option value="スタジアム">スタジアム</option>
@@ -8642,7 +9416,8 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
                         <option value="2進化ex">2進化ex (サイド2枚)</option>
                         <option value="ex">ex (サイド2枚)</option>
                         <option value="グッズ">グッズ</option>
-                        <option value="ポケモンのどうぐ">ポケモンのどうぐ</option>
+                        <option value="ポケモンのどうぐ">ポケモンのどうぐ (ポケモンの道具)</option>
+                        <option value="ポケモンの道具">ポケモンの道具</option>
                         <option value="サポート">サポート</option>
                         <option value="スタジアム">スタジアム</option>
                         <option value="トレーナー">トレーナー</option>
@@ -8799,7 +9574,7 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
                 <!-- グッズ・サポート専用効果セクション -->
                 <div id="trainerEffectSection" class="form-section" style="display:none;">
                   <div class="eyebrow">TRAINER / ITEM EFFECT</div>
-                  <h3>カード効果 (グッズ / サポート)</h3>
+                  <h3>カード効果 (グッズ / サポート / ポケモンのどうぐ)</h3>
                   <p class="muted" style="margin-bottom: 10px; font-size: 13px;">
                     手札から使用した時の効果説明文や、バトルで動くJavaScriptコードを設定します。
                   </p>
@@ -9027,7 +9802,7 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
                       <option value="1進化">1進化</option>
                       <option value="2進化">2進化</option>
                       <option value="acespec">ACE SPEC</option>
-                      <option value="ポケモンのどうぐ">ポケモンのどうぐ</option>
+                      <option value="ポケモンのどうぐ">ポケモンのどうぐ (道具)</option>
                       <option value="グッズ">グッズ</option>
                       <option value="サポート">サポート</option>
                       <option value="スタジアム">スタジアム</option>
@@ -10137,6 +10912,75 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
       <div class="modal-card">
         <button id="closeModalButton" class="modal-close">×</button>
         <div id="detailContent"></div>
+      </div>
+    </div>
+
+<!-- ============================================================
+         グローバルチャット & オンラインメンバー Hub ウィジェット
+         ============================================================ -->
+    <div id="globalChatWidget" class="global-chat-widget">
+      <!-- フローティング起動ボタン -->
+      <button id="globalChatFloatBtn" class="global-chat-float-btn" type="button" onclick="App.toggleGlobalChat()" title="グローバルチャット & オンラインプレイヤー一覧">
+        <span class="chat-float-icon">💬</span>
+        <span class="chat-float-label">チャット</span>
+        <span class="chat-online-pill" title="オンライン人数">
+          <span class="presence-pulse-dot mini"></span>
+          <span id="chatFloatOnlineCount">1</span>
+        </span>
+        <span id="chatUnreadBadge" class="chat-unread-badge hidden">0</span>
+      </button>
+
+      <!-- チャット＆オンライン ウィンドウ -->
+      <div id="globalChatWindow" class="global-chat-window hidden">
+        <div class="chat-window-header">
+          <div class="chat-window-tabs">
+            <button id="chatTabMessages" class="chat-tab-btn active" type="button" onclick="App.switchChatTab('messages')">
+              💬 チャット <span id="chatTabUnreadDot" class="chat-tab-unread-dot hidden"></span>
+            </button>
+            <button id="chatTabOnline" class="chat-tab-btn" type="button" onclick="App.switchChatTab('online')">
+              👥 オンライン (<span id="chatWindowOnlineCount">1</span>)
+            </button>
+          </div>
+          <div class="chat-window-actions">
+            <button class="chat-header-btn" type="button" title="最小化" onclick="App.toggleGlobalChat()">—</button>
+          </div>
+        </div>
+
+        <!-- タブ1: チャットメッセージ -->
+        <div id="chatPaneMessages" class="chat-tab-pane active">
+          <div id="globalChatMessagesList" class="chat-messages-container">
+            <div class="chat-loading-placeholder">メッセージを読み込み中...</div>
+          </div>
+          
+          <!-- クイック絵文字パレット -->
+          <div class="chat-quick-emojis">
+            <button type="button" class="quick-emoji-btn" onclick="App.insertChatEmoji('⚔️')">⚔️</button>
+            <button type="button" class="quick-emoji-btn" onclick="App.insertChatEmoji('🔥')">🔥</button>
+            <button type="button" class="quick-emoji-btn" onclick="App.insertChatEmoji('⚡')">⚡</button>
+            <button type="button" class="quick-emoji-btn" onclick="App.insertChatEmoji('🎴')">🎴</button>
+            <button type="button" class="quick-emoji-btn" onclick="App.insertChatEmoji('✨')">✨</button>
+            <button type="button" class="quick-emoji-btn" onclick="App.insertChatEmoji('👏')">👏</button>
+            <button type="button" class="quick-emoji-btn" onclick="App.insertChatEmoji('🎉')">🎉</button>
+            <button type="button" class="quick-emoji-btn" onclick="App.insertChatEmoji('🤣')">🤣</button>
+          </div>
+
+          <!-- チャット入力フォーム -->
+          <form id="globalChatForm" class="chat-input-row" onsubmit="App.handleSendChatMessage(event)">
+            <input type="text" id="globalChatInput" class="chat-input" placeholder="メッセージを入力... (Enterで送信)" maxlength="200" autocomplete="off" />
+            <button type="submit" id="globalChatSendBtn" class="chat-send-btn" title="送信">🚀</button>
+          </form>
+        </div>
+
+        <!-- タブ2: オンラインメンバー一覧 -->
+        <div id="chatPaneOnline" class="chat-tab-pane">
+          <div class="online-members-header">
+            <span class="online-members-title">現在接続中のプレイヤー</span>
+            <button type="button" class="online-refresh-btn" onclick="App.refreshPresence(true)" title="更新">🔄 更新</button>
+          </div>
+          <div id="globalOnlineUsersList" class="online-users-container">
+            <!-- ユーザーリストが動的に描画されます -->
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -11262,7 +12106,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         if (['どく', '毒', 'poison', 'poisoned', 'もうどく'].includes(s)) return 'どく';
         if (['やけど', '火傷', 'burn', 'burned'].includes(s)) return 'やけど';
         if (['ねむり', '眠り', 'sleep', 'asleep'].includes(s)) return 'ねむり';
-        if (['マヒ', 'まひ', 'paralysis', 'paralyzed', 'paralyze'].includes(s)) return 'マヒ';
+        if (['マヒ', 'まひ', '麻痺', 'paralysis', 'paralyzed', 'paralyze'].includes(s)) return 'マヒ';
         if (['こんらん', '混乱', 'confusion', 'confused'].includes(s)) return 'こんらん';
         return String(status).trim();
       },
@@ -11332,7 +12176,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           // すべての特殊状態を回復
           const hadAny = (target.statuses && target.statuses.length > 0) || !!target.status;
           target.statuses = [];
-          target.status = null;
+          target.status = '';
           if (hadAny) {
             const msg = "✨ 【" + (target.name || 'ポケモン') + "】のすべての特殊状態が回復した！";
             if (ctx?.game?.logs) ctx.game.logs.push(msg);
@@ -11344,7 +12188,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           if (current.includes(norm)) {
             current = current.filter(s => s !== norm);
             target.statuses = current;
-            target.status = current.length > 0 ? current.join('・') : null;
+            target.status = current.length > 0 ? current.join('・') : '';
             const msg = "✨ 【" + (target.name || 'ポケモン') + "】の「" + norm + "」が回復した！";
             if (ctx?.game?.logs) ctx.game.logs.push(msg);
             if (window.BattleSystem?.log) window.BattleSystem.log(msg);
@@ -12899,13 +13743,19 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
       'エネルギー': ['エネルギー', '基本エネルギー', '特殊エネルギー', 'energy'],
       '基本エネルギー': ['エネルギー', '基本エネルギー', 'energy'],
       '特殊エネルギー': ['エネルギー', '特殊エネルギー', 'energy'],
-      'trainer': ['トレーナー', 'トレーナーズ', 'グッズ', 'サポート', 'スタジアム', 'trainer', 'trainers', 'item', 'supporter', 'stadium'],
-      'trainers': ['トレーナー', 'トレーナーズ', 'グッズ', 'サポート', 'スタジアム', 'trainer', 'trainers', 'item', 'supporter', 'stadium'],
-      'トレーナー': ['トレーナー', 'トレーナーズ', 'グッズ', 'サポート', 'スタジアム', 'trainer', 'trainers', 'item', 'supporter', 'stadium'],
-      'トレーナーズ': ['トレーナー', 'トレーナーズ', 'グッズ', 'サポート', 'スタジアム', 'trainer', 'trainers', 'item', 'supporter', 'stadium'],
+      'trainer': ['トレーナー', 'トレーナーズ', 'グッズ', 'サポート', 'スタジアム', 'ポケモンのどうぐ', 'ポケモンの道具', 'どうぐ', '道具', 'trainer', 'trainers', 'item', 'supporter', 'stadium', 'tool'],
+      'trainers': ['トレーナー', 'トレーナーズ', 'グッズ', 'サポート', 'スタジアム', 'ポケモンのどうぐ', 'ポケモンの道具', 'どうぐ', '道具', 'trainer', 'trainers', 'item', 'supporter', 'stadium', 'tool'],
+      'トレーナー': ['トレーナー', 'トレーナーズ', 'グッズ', 'サポート', 'スタジアム', 'ポケモンのどうぐ', 'ポケモンの道具', 'どうぐ', '道具', 'trainer', 'trainers', 'item', 'supporter', 'stadium', 'tool'],
+      'トレーナーズ': ['トレーナー', 'トレーナーズ', 'グッズ', 'サポート', 'スタジアム', 'ポケモンのどうぐ', 'ポケモンの道具', 'どうぐ', '道具', 'trainer', 'trainers', 'item', 'supporter', 'stadium', 'tool'],
       'item': ['グッズ', 'item'],
       'items': ['グッズ', 'item'],
       'グッズ': ['グッズ', 'item'],
+      'tool': ['ポケモンのどうぐ', 'ポケモンの道具', 'どうぐ', '道具', 'tool', 'pokemon tool'],
+      'tools': ['ポケモンのどうぐ', 'ポケモンの道具', 'どうぐ', '道具', 'tool', 'pokemon tool'],
+      'ポケモンのどうぐ': ['ポケモンのどうぐ', 'ポケモンの道具', 'どうぐ', '道具', 'tool', 'pokemon tool'],
+      'ポケモンの道具': ['ポケモンのどうぐ', 'ポケモンの道具', 'どうぐ', '道具', 'tool', 'pokemon tool'],
+      'どうぐ': ['ポケモンのどうぐ', 'ポケモンの道具', 'どうぐ', '道具', 'tool', 'pokemon tool'],
+      '道具': ['ポケモンのどうぐ', 'ポケモンの道具', 'どうぐ', '道具', 'tool', 'pokemon tool'],
       'supporter': ['サポート', 'supporter'],
       'supporters': ['サポート', 'supporter'],
       'サポート': ['サポート', 'supporter'],
@@ -12967,7 +13817,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         const q = filter.toLowerCase().trim();
         if (q === 'pokemon' || q === 'ポケモン') {
           const cCat = String(card.category || '').toLowerCase();
-          const isTrainerOrEnergy = ['グッズ', 'サポート', 'トレーナー', 'スタジアム', 'エネルギー', 'item', 'supporter', 'energy'].some((k) => cCat.includes(k));
+          const isTrainerOrEnergy = ['グッズ', 'サポート', 'トレーナー', 'スタジアム', 'ポケモンのどうぐ', 'ポケモンの道具', 'どうぐ', '道具', 'エネルギー', 'item', 'supporter', 'energy', 'tool'].some((k) => cCat.includes(k));
           if (isTrainerOrEnergy) return false;
           return card.hp != null || ['たね', '進化', '1進化', '2進化', 'ex', 'pokemon', 'ポケモン'].some((k) => cCat.includes(k));
         }
@@ -12992,7 +13842,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         const fCat = String(filter.category).toLowerCase().trim();
         if (fCat === 'pokemon' || fCat === 'ポケモン') {
           const cCat = String(card.category || '').toLowerCase();
-          const isTrainerOrEnergy = ['グッズ', 'サポート', 'トレーナー', 'スタジアム', 'エネルギー', 'item', 'supporter', 'energy'].some((k) => cCat.includes(k));
+          const isTrainerOrEnergy = ['グッズ', 'サポート', 'トレーナー', 'スタジアム', 'ポケモンのどうぐ', 'ポケモンの道具', 'どうぐ', '道具', 'エネルギー', 'item', 'supporter', 'energy', 'tool'].some((k) => cCat.includes(k));
           if (isTrainerOrEnergy) return false;
           return card.hp != null || ['たね', '進化', '1進化', '2進化', 'ex', 'pokemon', 'ポケモン'].some((k) => cCat.includes(k));
         }
@@ -13580,6 +14430,11 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
     window.allyKnockedOutLastTurn = (p) => window.ORBITAL_EFFECT_API.allyKnockedOutLastTurn(null, p);
     window.wasKnockedOutPreviousTurn = (p) => window.ORBITAL_EFFECT_API.wasKnockedOutPreviousTurn(null, p);
     window.wasKnockedOutLastTurn = (p) => window.ORBITAL_EFFECT_API.wasKnockedOutLastTurn(null, p);
+    window.normalizeStatusName = (s) => window.ORBITAL_EFFECT_API.normalizeStatusName(s);
+    window.hasStatus = (t, s) => window.ORBITAL_EFFECT_API.hasStatus(null, t, s);
+    window.getStatuses = (t) => window.ORBITAL_EFFECT_API.getStatuses(null, t);
+    window.applyStatus = (t, s) => window.ORBITAL_EFFECT_API.applyStatus(null, t, s);
+    window.clearStatus = (t, s) => window.ORBITAL_EFFECT_API.clearStatus(null, t, s);
     console.log('[ORBITAL] ActionEngine.js.html finished execution.');
   })();
 </script>
@@ -17578,8 +18433,8 @@ var CardSystem;
             matchCat = card.category === 'ex' || card.category === 'たねex' || card.category === '1進化ex' || card.category === '2進化ex' || !!card.isEx;
           } else if (category === 'トレーナー') {
             matchCat = card.category === 'トレーナー' || card.category === 'グッズ' || card.category === 'サポート' || card.category === 'スタジアム' || card.category === 'ポケモンのどうぐ' || card.category === 'ポケモンの道具' || card.category === 'どうぐ' || card.category === '道具';
-          } else if (category === 'ポケモンのどうぐ') {
-            matchCat = card.category === 'ポケモンのどうぐ' || card.category === 'ポケモンの道具' || card.category === 'どうぐ' || card.category === '道具';
+          } else if (category === 'ポケモンのどうぐ' || category === 'ポケモンの道具' || category === 'どうぐ' || category === '道具' || category.includes('どうぐ') || category.includes('道具')) {
+            matchCat = card.category === 'ポケモンのどうぐ' || card.category === 'ポケモンの道具' || card.category === 'どうぐ' || card.category === '道具' || String(card.category || '').includes('どうぐ') || String(card.category || '').includes('道具') || String(card.category || '').toLowerCase().includes('tool');
           } else if (category === 'エネルギー') {
             matchCat = card.category === 'エネルギー' || card.category === '基本エネルギー' || card.category === '特殊エネルギー';
           } else if (category === '基本エネルギー') {
@@ -17698,8 +18553,8 @@ var CardSystem;
             matchCat = card.category === 'ex' || card.category === 'たねex' || card.category === '1進化ex' || card.category === '2進化ex' || !!card.isEx;
           } else if (category === 'トレーナー') {
             matchCat = card.category === 'トレーナー' || card.category === 'グッズ' || card.category === 'サポート' || card.category === 'スタジアム' || card.category === 'ポケモンのどうぐ' || card.category === 'ポケモンの道具' || card.category === 'どうぐ' || card.category === '道具';
-          } else if (category === 'ポケモンのどうぐ') {
-            matchCat = card.category === 'ポケモンのどうぐ' || card.category === 'ポケモンの道具' || card.category === 'どうぐ' || card.category === '道具';
+          } else if (category === 'ポケモンのどうぐ' || category === 'ポケモンの道具' || category === 'どうぐ' || category === '道具' || category.includes('どうぐ') || category.includes('道具')) {
+            matchCat = card.category === 'ポケモンのどうぐ' || card.category === 'ポケモンの道具' || card.category === 'どうぐ' || card.category === '道具' || String(card.category || '').includes('どうぐ') || String(card.category || '').includes('道具') || String(card.category || '').toLowerCase().includes('tool');
           } else if (category === 'エネルギー') {
             matchCat = card.category === 'エネルギー' || card.category === '基本エネルギー' || card.category === '特殊エネルギー';
           } else if (category === '基本エネルギー') {
@@ -17919,8 +18774,9 @@ var CardSystem;
       // フレーバーテキスト / 説明文 (ワザがあっても説明文があれば必ず表示)
       let descriptionHtml = '';
       const hasMoves = !!(card.abilityName || card.attack1Name || card.attack2Name);
-      if (!hasMoves && card.description) {
-        descriptionHtml = '<div class="card-rule-box desc-box"><div class="rule-text trainer-desc">' + this.escape(card.description) + '</div></div>';
+      const textDesc = card.description || (isTrainer ? (card.attack1Text || card.text) : '');
+      if (!hasMoves && textDesc) {
+        descriptionHtml = '<div class="card-rule-box desc-box"><div class="rule-text trainer-desc">' + this.escape(textDesc) + '</div></div>';
       } else if (hasMoves && card.description) {
         descriptionHtml = '<div class="card-flavor-box"><div class="card-flavor-text">' + this.escape(card.description) + '</div></div>';
       }
@@ -18001,7 +18857,8 @@ var CardSystem;
       let footerStatsHtml = '';
       if (isTrainer) {
         const catLabel = card.category || (catStr.includes('スタジアム') ? 'スタジアム' : 'トレーナー');
-        const subLabel = (catStr.includes('どうぐ') || catLabel.includes('どうぐ')) ? 'POKÉMON TOOL' : (catStr.includes('スタジアム') ? 'STADIUM CARD' : 'TRAINER CARD');
+        const isTool = catStr.includes('どうぐ') || catStr.includes('道具') || catLabel.includes('どうぐ') || catLabel.includes('道具') || catStr.toLowerCase().includes('tool');
+        const subLabel = isTool ? 'POKÉMON TOOL' : (catStr.includes('スタジアム') ? 'STADIUM CARD' : 'TRAINER CARD');
         footerStatsHtml = '<span>カテゴリ: <strong>' + this.escape(catLabel) + '</strong></span><span>' + subLabel + '</span>';
       } else if (isEnergy) {
         const catLabel = card.category || (catStr.includes('特殊') ? '特殊エネルギー' : '基本エネルギー');
@@ -18132,7 +18989,7 @@ var CardSystem;
         if (!c || !c.name) return false;
         if (currentCardId && String(c.id) === String(currentCardId)) return false;
         const cat = String(c.category || '');
-        return cat !== 'グッズ' && cat !== 'サポート' && cat !== 'トレーナー' && cat !== 'スタジアム' && cat !== 'ポケモンのどうぐ' && cat !== 'どうぐ' && cat !== 'エネルギー' && cat !== '基本エネルギー' && cat !== '特殊エネルギー';
+        return cat !== 'グッズ' && cat !== 'サポート' && cat !== 'トレーナー' && cat !== 'スタジアム' && cat !== 'ポケモンのどうぐ' && cat !== 'ポケモンの道具' && cat !== 'どうぐ' && cat !== '道具' && !cat.includes('どうぐ') && !cat.includes('道具') && cat !== 'エネルギー' && cat !== '基本エネルギー' && cat !== '特殊エネルギー';
       });
 
       const groups = {
@@ -20136,6 +20993,7 @@ window.DeckSystem = function () {
           'たね': [],
           '1進化': [],
           '2進化': [],
+          'ポケモンのどうぐ': [],
           'トレーナーズ': [],
           'エネルギー': [],
           'その他': []
@@ -20147,11 +21005,12 @@ window.DeckSystem = function () {
             { id: item.id, name: item.name || '不明なカード', category: item.category || 'その他', type: item.type || '無' };
           let catKey = 'その他';
           const cat = String(card.category || '');
-          if (cat.includes('たね') || cat.includes('ポケモン') && !cat.includes('進化')) catKey = 'たね'; else
-            if (cat.includes('1進化')) catKey = '1進化'; else
-              if (cat.includes('2進化')) catKey = '2進化'; else
-                if (cat.includes('グッズ') || cat.includes('サポート') || cat.includes('スタジアム') || cat.includes('ポケモンのどうぐ')) catKey = 'トレーナーズ'; else
-                  if (cat.includes('エネルギー') || card.type === 'エネルギー') catKey = 'エネルギー';
+          if (cat.includes('どうぐ') || cat.includes('道具') || cat.toLowerCase().includes('tool')) catKey = 'ポケモンのどうぐ'; else
+          if (cat.includes('グッズ') || cat.includes('サポート') || cat.includes('スタジアム') || cat.includes('トレーナー')) catKey = 'トレーナーズ'; else
+          if (cat.includes('1進化')) catKey = '1進化'; else
+          if (cat.includes('2進化')) catKey = '2進化'; else
+          if (cat.includes('たね') || (cat.includes('ポケモン') && !cat.includes('進化'))) catKey = 'たね'; else
+          if (cat.includes('エネルギー') || card.type === 'エネルギー') catKey = 'エネルギー';
 
           groups[catKey].push({ card: card, count: item.count });
         });
@@ -20210,6 +21069,12 @@ window.DeckSystem = function () {
           if (state.filter.category !== 'all') {
             if (state.filter.category === 'acespec') {
               if (!isAceSpecCard(card)) return false;
+            } else if (state.filter.category === 'ポケモンのどうぐ' || state.filter.category === 'ポケモンの道具' || state.filter.category === 'どうぐ' || state.filter.category === '道具' || state.filter.category.includes('どうぐ') || state.filter.category.includes('道具')) {
+              const cat = String(card.category || '');
+              if (!cat.includes('どうぐ') && !cat.includes('道具') && !cat.toLowerCase().includes('tool')) return false;
+            } else if (state.filter.category === 'トレーナー') {
+              const cat = String(card.category || '');
+              if (!cat.includes('トレーナー') && !cat.includes('グッズ') && !cat.includes('サポート') && !cat.includes('スタジアム') && !cat.includes('どうぐ') && !cat.includes('道具') && !cat.toLowerCase().includes('tool')) return false;
             } else if (card.category !== state.filter.category) {
               return false;
             }
@@ -22704,12 +23569,14 @@ window.DeckSystem = function () {
 
     isBasic(c) {
       if (!c) return false;
+      if (this.isPokemonTool(c) || this.isTrainer(c) || this.isEnergy(c)) return false;
       let cat = String(c.category || '');
       if (!cat && window.CardSystem) {
         const master = (c.id && window.CardSystem.findCardById ? window.CardSystem.findCardById(c.id) : null) ||
                        (c.name && window.CardSystem.findCardByName ? window.CardSystem.findCardByName(c.name) : null);
         if (master && master.category) cat = String(master.category);
       }
+      if (cat.includes('どうぐ') || cat.includes('道具') || cat.toLowerCase().includes('tool')) return false;
       if (cat.includes('たね') || cat.toLowerCase().includes('basic')) return true;
       if (cat.includes('ポケモン') && !cat.includes('進化')) return true;
       if ((Number(c.hp) > 0 || c.type) && !this.isEvolution(c) && !this.isTrainer(c) && !this.isEnergy(c)) {
@@ -23184,7 +24051,7 @@ window.DeckSystem = function () {
                        (c.name && window.CardSystem.findCardByName ? window.CardSystem.findCardByName(c.name) : null);
         if (master && master.category) cat = String(master.category);
       }
-      return cat.includes('ポケモンのどうぐ') || cat.includes('どうぐ') || cat.toLowerCase().includes('tool');
+      return cat.includes('ポケモンのどうぐ') || cat.includes('ポケモンの道具') || cat.includes('どうぐ') || cat.includes('道具') || cat.toLowerCase().includes('tool');
     },
 
     isItem(c) {
@@ -23201,7 +24068,7 @@ window.DeckSystem = function () {
     isTrainer(c) {
       if (!c) return false;
       const cat = String(c.category || '');
-      return cat.includes('グッズ') || cat.includes('サポート') || cat.includes('スタジアム') || cat.includes('ポケモンのどうぐ') || cat.includes('どうぐ') || cat.toLowerCase().includes('tool') || cat.toLowerCase().includes('trainer') || this.isStadium(c) || this.isSupporter(c) || this.isItem(c) || this.isPokemonTool(c);
+      return cat.includes('グッズ') || cat.includes('サポート') || cat.includes('スタジアム') || cat.includes('ポケモンのどうぐ') || cat.includes('ポケモンの道具') || cat.includes('どうぐ') || cat.includes('道具') || cat.toLowerCase().includes('tool') || cat.toLowerCase().includes('trainer') || this.isStadium(c) || this.isSupporter(c) || this.isItem(c) || this.isPokemonTool(c);
     },
 
     isPokemon(c) {
@@ -26722,6 +27589,9 @@ window.DeckSystem = function () {
       window.CardSystem.createCardHtml(displayCard, { size: 'battle' }) :
       '<div class="card-fallback">' + this.escape(card.name) + '</div>';
 
+      const toolHtml = card.attachedTool ?
+        ('<div class="active-tool-badge" title="ポケモンのどうぐ: ' + this.escape(card.attachedTool.name) + '">🧰 ' + this.escape(card.attachedTool.name) + '</div>') : '';
+
       root.innerHTML = "\n        <div class=\"battle-card-wrapper\">\n          <div class=\"battle-active-card " + statusClasses.join(' ') + "\">\n            " +
 
 
@@ -26730,7 +27600,8 @@ window.DeckSystem = function () {
 
 
       card.hp + "</strong> / " + card.maxHp + "</span>\n              " +
-      statusTagHtml + "\n            </div>\n            <div class=\"active-hp-bar\">\n              <div class=\"active-hp-fill\" style=\"width: " +
+      statusTagHtml + "\n            </div>\n            " +
+      toolHtml + "\n            <div class=\"active-hp-bar\">\n              <div class=\"active-hp-fill\" style=\"width: " +
 
 
       hpPct + "%; background: " + hpColor + ";\"></div>\n            </div>\n            <div class=\"active-energies-bar\">\n              <span class=\"energies-label\" style=\"font-size:10px; color:var(--muted); font-weight:700;\">エネ:</span>\n              " + (
@@ -26745,6 +27616,16 @@ window.DeckSystem = function () {
 
 
       // クリックでカードアクション（ワザ・特性・にげる）を開く
+      const toolBadgeEl = root.querySelector('.active-tool-badge');
+      if (toolBadgeEl && card.attachedTool) {
+        toolBadgeEl.onclick = (e) => {
+          if (e) { e.preventDefault(); e.stopPropagation(); }
+          if (window.CardSystem && typeof window.CardSystem.showDetail === 'function') {
+            window.CardSystem.showDetail(card.attachedTool);
+          }
+        };
+      }
+
       const activeCardEl = root.querySelector('.battle-active-card');
       if (activeCardEl) {
         activeCardEl.style.cursor = 'pointer';
@@ -27251,6 +28132,10 @@ window.DeckSystem = function () {
             this.activateAbility(card, isBench, benchIdx);
           } else if (act === 'retreat') {
             this.retreatActive();
+          } else if (act === 'view_tool') {
+            if (card.attachedTool && window.CardSystem && typeof window.CardSystem.showDetail === 'function') {
+              window.CardSystem.showDetail(card.attachedTool);
+            }
           } else if (act === 'attach_hand_energy') {
             const targetSlotEl = isBench ?
               document.querySelectorAll('#playerBenchRow .bench-slot-occupied')[benchIdx] :
@@ -27751,6 +28636,7 @@ console.log('[ORBITAL] App.js.html started execution');
       };
       safe('initStartupLoader', () => this.initStartupLoader());
       safe('initPresenceTracking', () => this.initPresenceTracking());
+      safe('initGlobalChat', () => this.initGlobalChat());
       safe('bindNavigation', () => this.bindNavigation());
       safe('initFontSize', () => this.initFontSize());
       safe('initNmtAndPacks', () => this.initNmtAndPacks());
@@ -28161,44 +29047,470 @@ console.log('[ORBITAL] App.js.html started execution');
       return false;
     },
 
+    // ============================================================
+    // オンラインプレゼンス (誰がオンラインか) & グローバルチャット
+    // ============================================================
+    getCurrentActivity() {
+      if (window.BattleSystem && window.BattleSystem.state && window.BattleSystem.state.phase === 'battle') {
+        return '⚔️ バトル対戦中';
+      }
+      const page = this.state.page || 'home';
+      switch (page) {
+        case 'battle': return '⚔️ バトルロビー';
+        case 'deck': return '🎴 デッキ編集中';
+        case 'collection': return '📖 カード図鑑';
+        case 'pack': return '🎁 パック開封中';
+        case 'single-shop': return '🏪 ショップ利用中';
+        case 'trade': return '🔄 トレード中';
+        case 'create': return '🛠️ カード作成中';
+        default: return '🟢 ロビー待機中';
+      }
+    },
+
     initPresenceTracking() {
-      const email = this.state.userProfile?.email || 'player@gmail.com';
-      const updateCount = () => {
-        if (window.google && google.script && google.script.run && !window._is_mock_gas) {
-          try {
-            google.script.run
-              .withSuccessHandler((res) => {
-                if (res && res.onlineCount != null) {
-                  const countEl = document.getElementById('onlinePlayerCount');
-                  if (countEl) countEl.textContent = res.onlineCount;
-                }
-              })
-              .withFailureHandler((err) => {
-                console.warn('pingPresence error:', err);
-                const countEl = document.getElementById('onlinePlayerCount');
-                if (countEl && !countEl.textContent) countEl.textContent = '1';
-              })
-              .pingPresence(email);
-          } catch (e) {
-            const countEl = document.getElementById('onlinePlayerCount');
-            if (countEl && !countEl.textContent) countEl.textContent = '1';
-          }
-        } else if (window.google && google.script && google.script.run && window.google.script.run.pingPresence) {
-          google.script.run.withSuccessHandler((res) => {
-            if (res && res.onlineCount != null) {
-              const countEl = document.getElementById('onlinePlayerCount');
-              if (countEl) countEl.textContent = res.onlineCount;
+      this.refreshPresence();
+      if (this._presenceInterval) clearInterval(this._presenceInterval);
+      this._presenceInterval = setInterval(() => this.refreshPresence(), 30000);
+    },
+
+    refreshPresence(manual) {
+      const email = this.getUserEmail() || 'player@gmail.com';
+      const displayName = this.getUserDisplayName() || 'プレイヤー';
+      const avatar = this.getUserAvatar() || '⚡';
+      const activity = this.getCurrentActivity();
+
+      const applyPresenceRes = (res) => {
+        if (!res) return;
+        const count = res.onlineCount != null ? res.onlineCount : (res.onlineUsers?.length || 1);
+        const countEl = document.getElementById('onlinePlayerCount');
+        const floatCountEl = document.getElementById('chatFloatOnlineCount');
+        const windowCountEl = document.getElementById('chatWindowOnlineCount');
+        if (countEl) countEl.textContent = count;
+        if (floatCountEl) floatCountEl.textContent = count;
+        if (windowCountEl) windowCountEl.textContent = count;
+
+        this.state.onlineUsers = res.onlineUsers || [];
+        this.renderOnlineUsersList();
+
+        if (manual) this.toast('👥 オンライン状態を更新しました');
+      };
+
+      if (window.google && google.script && google.script.run && !window._is_mock_gas) {
+        try {
+          google.script.run
+            .withSuccessHandler(applyPresenceRes)
+            .withFailureHandler((err) => {
+              console.warn('pingPresence error:', err);
+              applyPresenceRes({ ok: true, onlineCount: 1, onlineUsers: [] });
+            })
+            .pingPresence(email, activity, displayName, avatar);
+        } catch (e) {
+          applyPresenceRes({ ok: true, onlineCount: 1, onlineUsers: [] });
+        }
+      } else if (window.google && google.script && google.script.run && window.google.script.run.pingPresence) {
+        google.script.run
+          .withSuccessHandler(applyPresenceRes)
+          .pingPresence(email, activity, displayName, avatar);
+      } else {
+        // Mock fallback
+        try {
+          const raw = localStorage.getItem('orbital_presence_list') || '[]';
+          let list = JSON.parse(raw);
+          if (!Array.isArray(list)) list = [];
+          const now = Date.now();
+          const nowIso = new Date(now).toISOString();
+          let found = false;
+          for (let u of list) {
+            if (String(u.email).toLowerCase() === email.toLowerCase()) {
+              u.displayName = displayName;
+              u.avatar = avatar;
+              u.activity = activity;
+              u.lastActiveAt = nowIso;
+              u.lastActiveTime = now;
+              found = true;
+              break;
             }
-          }).pingPresence(email);
-        } else {
-          const countEl = document.getElementById('onlinePlayerCount');
-          if (countEl) countEl.textContent = Math.floor(Math.random() * 3) + 2;
+          }
+          if (!found) {
+            list.push({ email, displayName, avatar, activity, lastActiveAt: nowIso, lastActiveTime: now });
+          }
+          list = list.filter(u => (now - (u.lastActiveTime || new Date(u.lastActiveAt).getTime())) <= 5 * 60 * 1000);
+          localStorage.setItem('orbital_presence_list', JSON.stringify(list));
+          if (window._orbital_community_bc) {
+            window._orbital_community_bc.postMessage({ type: 'presence_updated', list });
+          }
+          applyPresenceRes({ ok: true, onlineCount: list.length, onlineUsers: list });
+        } catch (e) {
+          applyPresenceRes({ ok: true, onlineCount: 1, onlineUsers: [] });
+        }
+      }
+    },
+
+    renderOnlineUsersList() {
+      const container = document.getElementById('globalOnlineUsersList');
+      if (!container) return;
+      const users = this.state.onlineUsers || [];
+      const currentEmail = (this.getUserEmail() || '').toLowerCase();
+
+      if (users.length === 0) {
+        container.innerHTML = '<div class="chat-empty-hint">接続中のプレイヤーはいません。</div>';
+        return;
+      }
+
+      // Sort: current user first, then active
+      const sorted = [...users].sort((a, b) => {
+        if (a.email?.toLowerCase() === currentEmail) return -1;
+        if (b.email?.toLowerCase() === currentEmail) return 1;
+        return new Date(b.lastActiveAt || 0) - new Date(a.lastActiveAt || 0);
+      });
+
+      container.innerHTML = sorted.map((u) => {
+        const isYou = u.email?.toLowerCase() === currentEmail;
+        const name = this.escapeHtml(u.displayName || u.email?.split('@')[0] || 'プレイヤー');
+        const icon = this.escapeHtml(u.avatar || '⚡');
+        const act = this.escapeHtml(u.activity || '🟢 オンライン');
+        const timeAgo = this.formatRelativeTime(u.lastActiveAt);
+
+        return `
+          <div class="online-user-card ${isYou ? 'is-current-user' : ''}">
+            <div class="online-user-avatar-wrap">
+              <div class="online-user-avatar">${icon}</div>
+              <span class="online-user-status-dot"></span>
+            </div>
+            <div class="online-user-info">
+              <div class="online-user-name-row">
+                <span class="online-user-name">${name}</span>
+                ${isYou ? '<span class="online-user-you-tag">あなた</span>' : ''}
+              </div>
+              <div class="online-user-activity-row">
+                <span class="online-user-activity-badge">${act}</span>
+                <span class="online-user-time">${timeAgo}</span>
+              </div>
+            </div>
+            <div class="online-user-actions">
+              ${!isYou ? `<button type="button" class="online-user-action-btn" onclick="App.mentionUser('${name.replace(/'/g, "\\'")}')" title="チャットでメンション">💬 話しかける</button>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    },
+
+    formatRelativeTime(dateStr) {
+      if (!dateStr) return '今';
+      const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+      if (diff < 60) return 'たった今';
+      if (diff < 3600) return Math.floor(diff / 60) + '分前';
+      return Math.floor(diff / 3600) + '時間前';
+    },
+
+    initGlobalChat() {
+      // 1. Cross-tab BroadcastChannel
+      try {
+        if (typeof BroadcastChannel !== 'undefined') {
+          window._orbital_community_bc = new BroadcastChannel('orbital_global_community_bc');
+          window._orbital_community_bc.onmessage = (ev) => {
+            if (!ev || !ev.data) return;
+            if (ev.data.type === 'new_chat_message') {
+              this.onReceiveNewChatMessage(ev.data.message);
+            } else if (ev.data.type === 'presence_updated' && Array.isArray(ev.data.list)) {
+              this.state.onlineUsers = ev.data.list;
+              const countEl = document.getElementById('onlinePlayerCount');
+              const floatCountEl = document.getElementById('chatFloatOnlineCount');
+              const windowCountEl = document.getElementById('chatWindowOnlineCount');
+              if (countEl) countEl.textContent = ev.data.list.length;
+              if (floatCountEl) floatCountEl.textContent = ev.data.list.length;
+              if (windowCountEl) windowCountEl.textContent = ev.data.list.length;
+              this.renderOnlineUsersList();
+            }
+          };
+        }
+      } catch (e) {
+        console.warn('BroadcastChannel error:', e);
+      }
+
+      // 2. Load initial chat messages
+      this.loadGlobalChatMessages();
+
+      // 3. Periodic chat poll (every 10s)
+      if (this._chatPollInterval) clearInterval(this._chatPollInterval);
+      this._chatPollInterval = setInterval(() => {
+        const win = document.getElementById('globalChatWindow');
+        if (win && !win.classList.contains('hidden')) {
+          this.loadGlobalChatMessages(false);
+        }
+      }, 10000);
+    },
+
+    toggleGlobalChat(forceState) {
+      const win = document.getElementById('globalChatWindow');
+      if (!win) return;
+      const willOpen = forceState !== undefined ? forceState : win.classList.contains('hidden');
+
+      if (willOpen) {
+        win.classList.remove('hidden');
+        this.clearUnreadChatBadge();
+        this.scrollChatToBottom();
+        const input = document.getElementById('globalChatInput');
+        if (input) setTimeout(() => input.focus(), 100);
+        this.loadGlobalChatMessages(false);
+      } else {
+        win.classList.add('hidden');
+      }
+    },
+
+    openOnlineUsersList() {
+      this.toggleGlobalChat(true);
+      this.switchChatTab('online');
+    },
+
+    switchChatTab(tabName) {
+      const messagesTab = document.getElementById('chatTabMessages');
+      const onlineTab = document.getElementById('chatTabOnline');
+      const messagesPane = document.getElementById('chatPaneMessages');
+      const onlinePane = document.getElementById('chatPaneOnline');
+
+      if (tabName === 'online') {
+        if (messagesTab) messagesTab.classList.remove('active');
+        if (onlineTab) onlineTab.classList.add('active');
+        if (messagesPane) messagesPane.classList.remove('active');
+        if (onlinePane) onlinePane.classList.add('active');
+        this.refreshPresence();
+      } else {
+        if (onlineTab) onlineTab.classList.remove('active');
+        if (messagesTab) messagesTab.classList.add('active');
+        if (onlinePane) onlinePane.classList.remove('active');
+        if (messagesPane) messagesPane.classList.add('active');
+        this.clearUnreadChatBadge();
+        this.scrollChatToBottom();
+        const input = document.getElementById('globalChatInput');
+        if (input) input.focus();
+      }
+    },
+
+    loadGlobalChatMessages(showLoading = true) {
+      const listEl = document.getElementById('globalChatMessagesList');
+      if (showLoading && listEl && (!this.state.globalChatMessages || this.state.globalChatMessages.length === 0)) {
+        listEl.innerHTML = '<div class="chat-loading-placeholder">メッセージを読み込み中...</div>';
+      }
+
+      const applyMessages = (res) => {
+        if (res && Array.isArray(res.messages)) {
+          const prevLen = (this.state.globalChatMessages || []).length;
+          this.state.globalChatMessages = res.messages;
+          this.renderGlobalChatMessages();
+          if (res.messages.length > prevLen) {
+            this.scrollChatToBottom();
+          }
         }
       };
 
-      updateCount();
-      if (this._presenceInterval) clearInterval(this._presenceInterval);
-      this._presenceInterval = setInterval(updateCount, 45000);
+      if (window.google && google.script && google.script.run && !window._is_mock_gas && typeof google.script.run.getGlobalChatMessages === 'function') {
+        google.script.run
+          .withSuccessHandler(applyMessages)
+          .withFailureHandler((err) => console.warn('getGlobalChatMessages err:', err))
+          .getGlobalChatMessages(50);
+      } else if (window.google && google.script && google.script.run && window.google.script.run.getGlobalChatMessages) {
+        google.script.run.withSuccessHandler(applyMessages).getGlobalChatMessages(50);
+      } else {
+        try {
+          const raw = localStorage.getItem('orbital_global_chat_messages');
+          let list = raw ? JSON.parse(raw) : [];
+          if (!list || list.length === 0) {
+            list = [
+              {
+                id: 'msg_welcome_1',
+                email: 'system@orbital.tcg',
+                displayName: 'オーキド博士',
+                avatar: '👨‍🔬',
+                text: 'オルビタルTCGへようこそ！ここでは全プレイヤーとチャットや対戦募集ができます！✨',
+                createdAt: new Date(Date.now() - 3600000).toISOString(),
+                isSystem: true
+              },
+              {
+                id: 'msg_welcome_2',
+                email: 'trainer_red@orbital.tcg',
+                displayName: 'レッド',
+                avatar: '🧢',
+                text: 'よろしく！だれかバトルしようぜ！⚔️',
+                createdAt: new Date(Date.now() - 1800000).toISOString()
+              }
+            ];
+            localStorage.setItem('orbital_global_chat_messages', JSON.stringify(list));
+          }
+          applyMessages({ ok: true, messages: list });
+        } catch (e) {
+          applyMessages({ ok: true, messages: [] });
+        }
+      }
+    },
+
+    onReceiveNewChatMessage(msg) {
+      if (!msg || !msg.id) return;
+      if (!this.state.globalChatMessages) this.state.globalChatMessages = [];
+      if (this.state.globalChatMessages.some(m => m.id === msg.id)) return;
+
+      this.state.globalChatMessages.push(msg);
+      this.renderGlobalChatMessages();
+
+      const win = document.getElementById('globalChatWindow');
+      const isChatOpen = win && !win.classList.contains('hidden');
+      const isMessagesTab = document.getElementById('chatPaneMessages')?.classList.contains('active');
+
+      if (isChatOpen && isMessagesTab) {
+        this.scrollChatToBottom();
+      } else {
+        this.incrementUnreadChatBadge();
+      }
+    },
+
+    incrementUnreadChatBadge() {
+      this.state.unreadChatCount = (this.state.unreadChatCount || 0) + 1;
+      const badge = document.getElementById('chatUnreadBadge');
+      const dot = document.getElementById('chatTabUnreadDot');
+      if (badge) {
+        badge.textContent = this.state.unreadChatCount;
+        badge.classList.remove('hidden');
+      }
+      if (dot) dot.classList.remove('hidden');
+    },
+
+    clearUnreadChatBadge() {
+      this.state.unreadChatCount = 0;
+      const badge = document.getElementById('chatUnreadBadge');
+      const dot = document.getElementById('chatTabUnreadDot');
+      if (badge) badge.classList.add('hidden');
+      if (dot) dot.classList.add('hidden');
+    },
+
+    scrollChatToBottom() {
+      requestAnimationFrame(() => {
+        const listEl = document.getElementById('globalChatMessagesList');
+        if (listEl) {
+          listEl.scrollTop = listEl.scrollHeight;
+        }
+      });
+    },
+
+    insertChatEmoji(emoji) {
+      const input = document.getElementById('globalChatInput');
+      if (input) {
+        input.value = (input.value || '') + emoji;
+        input.focus();
+      }
+    },
+
+    mentionUser(displayName) {
+      this.switchChatTab('messages');
+      const input = document.getElementById('globalChatInput');
+      if (input) {
+        input.value = `@${displayName} ` + (input.value || '');
+        input.focus();
+      }
+    },
+
+    handleSendChatMessage(e) {
+      if (e && e.preventDefault) e.preventDefault();
+      const input = document.getElementById('globalChatInput');
+      if (!input) return;
+      const text = input.value.trim();
+      if (!text) return;
+
+      const email = this.getUserEmail() || 'player@gmail.com';
+      const displayName = this.getUserDisplayName() || 'プレイヤー';
+      const avatar = this.getUserAvatar() || '⚡';
+
+      const tempId = 'msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+      const newMsg = {
+        id: tempId,
+        email,
+        displayName,
+        avatar,
+        text,
+        createdAt: new Date().toISOString()
+      };
+
+      // Clear input immediately
+      input.value = '';
+
+      // Optimistically add message
+      if (!this.state.globalChatMessages) this.state.globalChatMessages = [];
+      this.state.globalChatMessages.push(newMsg);
+      this.renderGlobalChatMessages();
+      this.scrollChatToBottom();
+
+      // Broadcast locally
+      if (window._orbital_community_bc) {
+        window._orbital_community_bc.postMessage({ type: 'new_chat_message', message: newMsg });
+      }
+
+      // Send to backend
+      if (window.google && google.script && google.script.run && !window._is_mock_gas && typeof google.script.run.sendGlobalChatMessage === 'function') {
+        google.script.run
+          .withSuccessHandler((res) => {
+            if (res && res.message) {
+              const idx = this.state.globalChatMessages.findIndex(m => m.id === tempId);
+              if (idx !== -1) this.state.globalChatMessages[idx] = res.message;
+              this.renderGlobalChatMessages();
+            }
+          })
+          .withFailureHandler((err) => {
+            this.toast('チャット送信エラー: ' + (err.message || err), true);
+          })
+          .sendGlobalChatMessage(newMsg);
+      } else if (window.google && google.script && google.script.run && window.google.script.run.sendGlobalChatMessage) {
+        google.script.run.sendGlobalChatMessage(newMsg);
+      } else {
+        // Mock save
+        try {
+          const raw = localStorage.getItem('orbital_global_chat_messages') || '[]';
+          let list = JSON.parse(raw);
+          if (!Array.isArray(list)) list = [];
+          list.push(newMsg);
+          if (list.length > 200) list = list.slice(list.length - 200);
+          localStorage.setItem('orbital_global_chat_messages', JSON.stringify(list));
+        } catch (e) {}
+      }
+    },
+
+    renderGlobalChatMessages() {
+      const container = document.getElementById('globalChatMessagesList');
+      if (!container) return;
+      const messages = this.state.globalChatMessages || [];
+      const currentEmail = (this.getUserEmail() || '').toLowerCase();
+
+      if (messages.length === 0) {
+        container.innerHTML = '<div class="chat-empty-hint">チャットメッセージはまだありません。<br>最初のメッセージを送信してみましょう！</div>';
+        return;
+      }
+
+      container.innerHTML = messages.map((m) => {
+        if (m.isSystem) {
+          return `
+            <div class="chat-msg-row chat-msg-system">
+              <div class="chat-msg-text">${this.escapeHtml(m.text)}</div>
+            </div>
+          `;
+        }
+
+        const isSelf = m.email && m.email.toLowerCase() === currentEmail;
+        const name = this.escapeHtml(m.displayName || m.email?.split('@')[0] || 'プレイヤー');
+        const icon = this.escapeHtml(m.avatar || '⚡');
+        const timeStr = m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+        const text = this.escapeHtml(m.text);
+
+        return `
+          <div class="chat-msg-row ${isSelf ? 'chat-msg-self' : 'chat-msg-other'}">
+            <div class="chat-msg-avatar" title="${name}">${icon}</div>
+            <div class="chat-msg-body">
+              <div class="chat-msg-header">
+                <span class="chat-msg-sender">${name}</span>
+                <span class="chat-msg-time">${timeStr}</span>
+              </div>
+              <div class="chat-msg-text">${text}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
     },
 
     openFeedbackModal() {
@@ -28329,173 +29641,7 @@ console.log('[ORBITAL] App.js.html started execution');
       }
     },
 
-    initPresenceTracking() {
-      const email = this.state.userProfile?.email || 'player@gmail.com';
-      const updateCount = () => {
-        if (window.google && google.script && google.script.run && !window._is_mock_gas) {
-          try {
-            google.script.run
-              .withSuccessHandler((res) => {
-                if (res && res.onlineCount != null) {
-                  const countEl = document.getElementById('onlinePlayerCount');
-                  if (countEl) countEl.textContent = res.onlineCount;
-                }
-              })
-              .withFailureHandler((err) => {
-                console.warn('pingPresence error:', err);
-                const countEl = document.getElementById('onlinePlayerCount');
-                if (countEl && !countEl.textContent) countEl.textContent = '1';
-              })
-              .pingPresence(email);
-          } catch (e) {
-            const countEl = document.getElementById('onlinePlayerCount');
-            if (countEl && !countEl.textContent) countEl.textContent = '1';
-          }
-        } else if (window.google && google.script && google.script.run && window.google.script.run.pingPresence) {
-          google.script.run.withSuccessHandler((res) => {
-            if (res && res.onlineCount != null) {
-              const countEl = document.getElementById('onlinePlayerCount');
-              if (countEl) countEl.textContent = res.onlineCount;
-            }
-          }).pingPresence(email);
-        } else {
-          const countEl = document.getElementById('onlinePlayerCount');
-          if (countEl) countEl.textContent = Math.floor(Math.random() * 3) + 2;
-        }
-      };
 
-      updateCount();
-      if (this._presenceInterval) clearInterval(this._presenceInterval);
-      this._presenceInterval = setInterval(updateCount, 45000);
-    },
-
-    openFeedbackModal() {
-      const modal = document.getElementById('feedbackModal');
-      const emailInput = document.getElementById('feedbackEmailInput');
-      const msgInput = document.getElementById('feedbackMessageInput');
-
-      if (emailInput && this.state.userProfile?.email) {
-        emailInput.value = this.state.userProfile.email;
-      }
-      if (msgInput) msgInput.value = '';
-
-      this.selectFeedbackCategory('💡 機能要望');
-
-      if (modal) {
-        modal.classList.remove('hidden');
-        modal.style.display = 'grid';
-      }
-    },
-
-    closeFeedbackModal() {
-      const modal = document.getElementById('feedbackModal');
-      if (modal) {
-        modal.classList.add('hidden');
-        modal.style.display = 'none';
-      }
-    },
-
-    selectFeedbackCategory(category) {
-      this.state.selectedFeedbackCategory = category;
-      document.querySelectorAll('.feedback-cat-btn').forEach((btn) => {
-        btn.classList.toggle('active', btn.dataset.cat === category);
-      });
-    },
-
-    submitFeedback() {
-      const emailInput = document.getElementById('feedbackEmailInput');
-      const msgInput = document.getElementById('feedbackMessageInput');
-      const btn = document.getElementById('submitFeedbackBtn');
-
-      const email = (emailInput ? emailInput.value : '').trim() || (this.state.userProfile?.email || 'player@gmail.com');
-      const message = (msgInput ? msgInput.value : '').trim();
-      const category = this.state.selectedFeedbackCategory || '💡 機能要望';
-
-      if (!message) {
-        this.toast('ご意見・要望の内容を入力してください。', true);
-        return;
-      }
-
-      if (btn) btn.disabled = true;
-
-      const applySuccess = (res) => {
-        if (btn) btn.disabled = false;
-        this.toast('📮 ご意見を受け付けました！貴重なフィードバックありがとうございます。');
-        this.closeFeedbackModal();
-      };
-
-      if (window.google && google.script && google.script.run && typeof google.script.run.submitFeedback === 'function' && !window._is_mock_gas) {
-        google.script.run.withSuccessHandler((res) => {
-          if (!res || !res.ok) {
-            if (btn) btn.disabled = false;
-            this.toast(res?.message || '送信に失敗しました。', true);
-            return;
-          }
-          applySuccess(res);
-        }).withFailureHandler((err) => {
-          if (btn) btn.disabled = false;
-          this.toast('送信エラー: ' + (err.message || err), true);
-        }).submitFeedback({ email, category, message });
-      } else {
-        setTimeout(() => {
-          applySuccess({ ok: true });
-        }, 200);
-      }
-    },
-
-    openAdminFeedbackModal() {
-      const modal = document.getElementById('adminFeedbackModal');
-      const listGrid = document.getElementById('adminFeedbackListGrid');
-      if (!modal) return;
-
-      modal.classList.remove('hidden');
-      modal.style.display = 'grid';
-
-      if (listGrid) listGrid.innerHTML = '<div style="text-align:center; color:var(--muted); padding:30px;">読み込み中...</div>';
-
-      const renderList = (list) => {
-        if (!listGrid) return;
-        if (!list || list.length === 0) {
-          listGrid.innerHTML = '<div style="text-align:center; color:var(--muted); padding:30px;">まだご意見は届いていません。</div>';
-          return;
-        }
-        listGrid.innerHTML = list.map((item) => {
-          const dateStr = item.createdAt ? new Date(item.createdAt).toLocaleString('ja-JP') : '日時不明';
-          return `
-            <div class="feedback-item-card">
-              <div class="feedback-item-header">
-                <span class="feedback-item-category">${this.escape(item.category || 'その他')}</span>
-                <span>👤 ${this.escape(item.email || '匿名')} • ${this.escape(dateStr)}</span>
-              </div>
-              <div class="feedback-item-body">${this.escape(item.message || '')}</div>
-            </div>
-          `;
-        }).join('');
-      };
-
-      if (window.google && google.script && google.script.run && typeof google.script.run.getFeedbackList === 'function' && !window._is_mock_gas) {
-        google.script.run.withSuccessHandler((res) => {
-          renderList(res?.feedbackList || []);
-        }).withFailureHandler((err) => {
-          if (listGrid) listGrid.innerHTML = '<div style="color:#f43f5e; padding:20px;">取得エラー: ' + this.escape(err.message || err) + '</div>';
-        }).getFeedbackList(this.state.adminToken);
-      } else {
-        try {
-          const raw = localStorage.getItem('orbital_mock_feedback_list') || '[]';
-          renderList(JSON.parse(raw));
-        } catch (e) {
-          renderList([]);
-        }
-      }
-    },
-
-    closeAdminFeedbackModal() {
-      const modal = document.getElementById('adminFeedbackModal');
-      if (modal) {
-        modal.classList.add('hidden');
-        modal.style.display = 'none';
-      }
-    },
 
     openAdminLogin() {this.el('adminLoginModal').classList.remove('hidden');this.el('adminPassword').focus();},
     closeAdminLogin() {this.el('adminLoginModal').classList.add('hidden');},
@@ -31141,6 +32287,31 @@ console.log('[ORBITAL] App.js.html started execution');
         if (saved) return saved;
       } catch(e) {}
       return 'player@gmail.com';
+    },
+
+    getUserDisplayName() {
+      try {
+        if (this.state.userProfile && this.state.userProfile.displayName) return this.state.userProfile.displayName;
+        const loggedIn = localStorage.getItem('ORBITAL_LOGGED_IN_USER');
+        if (loggedIn) {
+          const u = JSON.parse(loggedIn);
+          if (u && u.displayName) return u.displayName;
+        }
+      } catch(e) {}
+      const email = this.getUserEmail();
+      return (email && email.includes('@')) ? email.split('@')[0] : 'プレイヤー';
+    },
+
+    getUserAvatar() {
+      try {
+        if (this.state.userProfile && this.state.userProfile.avatar) return this.state.userProfile.avatar;
+        const loggedIn = localStorage.getItem('ORBITAL_LOGGED_IN_USER');
+        if (loggedIn) {
+          const u = JSON.parse(loggedIn);
+          if (u && u.avatar) return u.avatar;
+        }
+      } catch(e) {}
+      return '⚡';
     },
 
     loadUserProfileFromGas(email) {

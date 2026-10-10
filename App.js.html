@@ -57,6 +57,7 @@ console.log('[ORBITAL] App.js.html started execution');
       };
       safe('initStartupLoader', () => this.initStartupLoader());
       safe('initPresenceTracking', () => this.initPresenceTracking());
+      safe('initGlobalChat', () => this.initGlobalChat());
       safe('bindNavigation', () => this.bindNavigation());
       safe('initFontSize', () => this.initFontSize());
       safe('initNmtAndPacks', () => this.initNmtAndPacks());
@@ -467,44 +468,470 @@ console.log('[ORBITAL] App.js.html started execution');
       return false;
     },
 
+    // ============================================================
+    // オンラインプレゼンス (誰がオンラインか) & グローバルチャット
+    // ============================================================
+    getCurrentActivity() {
+      if (window.BattleSystem && window.BattleSystem.state && window.BattleSystem.state.phase === 'battle') {
+        return '⚔️ バトル対戦中';
+      }
+      const page = this.state.page || 'home';
+      switch (page) {
+        case 'battle': return '⚔️ バトルロビー';
+        case 'deck': return '🎴 デッキ編集中';
+        case 'collection': return '📖 カード図鑑';
+        case 'pack': return '🎁 パック開封中';
+        case 'single-shop': return '🏪 ショップ利用中';
+        case 'trade': return '🔄 トレード中';
+        case 'create': return '🛠️ カード作成中';
+        default: return '🟢 ロビー待機中';
+      }
+    },
+
     initPresenceTracking() {
-      const email = this.state.userProfile?.email || 'player@gmail.com';
-      const updateCount = () => {
-        if (window.google && google.script && google.script.run && !window._is_mock_gas) {
-          try {
-            google.script.run
-              .withSuccessHandler((res) => {
-                if (res && res.onlineCount != null) {
-                  const countEl = document.getElementById('onlinePlayerCount');
-                  if (countEl) countEl.textContent = res.onlineCount;
-                }
-              })
-              .withFailureHandler((err) => {
-                console.warn('pingPresence error:', err);
-                const countEl = document.getElementById('onlinePlayerCount');
-                if (countEl && !countEl.textContent) countEl.textContent = '1';
-              })
-              .pingPresence(email);
-          } catch (e) {
-            const countEl = document.getElementById('onlinePlayerCount');
-            if (countEl && !countEl.textContent) countEl.textContent = '1';
-          }
-        } else if (window.google && google.script && google.script.run && window.google.script.run.pingPresence) {
-          google.script.run.withSuccessHandler((res) => {
-            if (res && res.onlineCount != null) {
-              const countEl = document.getElementById('onlinePlayerCount');
-              if (countEl) countEl.textContent = res.onlineCount;
+      this.refreshPresence();
+      if (this._presenceInterval) clearInterval(this._presenceInterval);
+      this._presenceInterval = setInterval(() => this.refreshPresence(), 30000);
+    },
+
+    refreshPresence(manual) {
+      const email = this.getUserEmail() || 'player@gmail.com';
+      const displayName = this.getUserDisplayName() || 'プレイヤー';
+      const avatar = this.getUserAvatar() || '⚡';
+      const activity = this.getCurrentActivity();
+
+      const applyPresenceRes = (res) => {
+        if (!res) return;
+        const count = res.onlineCount != null ? res.onlineCount : (res.onlineUsers?.length || 1);
+        const countEl = document.getElementById('onlinePlayerCount');
+        const floatCountEl = document.getElementById('chatFloatOnlineCount');
+        const windowCountEl = document.getElementById('chatWindowOnlineCount');
+        if (countEl) countEl.textContent = count;
+        if (floatCountEl) floatCountEl.textContent = count;
+        if (windowCountEl) windowCountEl.textContent = count;
+
+        this.state.onlineUsers = res.onlineUsers || [];
+        this.renderOnlineUsersList();
+
+        if (manual) this.toast('👥 オンライン状態を更新しました');
+      };
+
+      if (window.google && google.script && google.script.run && !window._is_mock_gas) {
+        try {
+          google.script.run
+            .withSuccessHandler(applyPresenceRes)
+            .withFailureHandler((err) => {
+              console.warn('pingPresence error:', err);
+              applyPresenceRes({ ok: true, onlineCount: 1, onlineUsers: [] });
+            })
+            .pingPresence(email, activity, displayName, avatar);
+        } catch (e) {
+          applyPresenceRes({ ok: true, onlineCount: 1, onlineUsers: [] });
+        }
+      } else if (window.google && google.script && google.script.run && window.google.script.run.pingPresence) {
+        google.script.run
+          .withSuccessHandler(applyPresenceRes)
+          .pingPresence(email, activity, displayName, avatar);
+      } else {
+        // Mock fallback
+        try {
+          const raw = localStorage.getItem('orbital_presence_list') || '[]';
+          let list = JSON.parse(raw);
+          if (!Array.isArray(list)) list = [];
+          const now = Date.now();
+          const nowIso = new Date(now).toISOString();
+          let found = false;
+          for (let u of list) {
+            if (String(u.email).toLowerCase() === email.toLowerCase()) {
+              u.displayName = displayName;
+              u.avatar = avatar;
+              u.activity = activity;
+              u.lastActiveAt = nowIso;
+              u.lastActiveTime = now;
+              found = true;
+              break;
             }
-          }).pingPresence(email);
-        } else {
-          const countEl = document.getElementById('onlinePlayerCount');
-          if (countEl) countEl.textContent = Math.floor(Math.random() * 3) + 2;
+          }
+          if (!found) {
+            list.push({ email, displayName, avatar, activity, lastActiveAt: nowIso, lastActiveTime: now });
+          }
+          list = list.filter(u => (now - (u.lastActiveTime || new Date(u.lastActiveAt).getTime())) <= 5 * 60 * 1000);
+          localStorage.setItem('orbital_presence_list', JSON.stringify(list));
+          if (window._orbital_community_bc) {
+            window._orbital_community_bc.postMessage({ type: 'presence_updated', list });
+          }
+          applyPresenceRes({ ok: true, onlineCount: list.length, onlineUsers: list });
+        } catch (e) {
+          applyPresenceRes({ ok: true, onlineCount: 1, onlineUsers: [] });
+        }
+      }
+    },
+
+    renderOnlineUsersList() {
+      const container = document.getElementById('globalOnlineUsersList');
+      if (!container) return;
+      const users = this.state.onlineUsers || [];
+      const currentEmail = (this.getUserEmail() || '').toLowerCase();
+
+      if (users.length === 0) {
+        container.innerHTML = '<div class="chat-empty-hint">接続中のプレイヤーはいません。</div>';
+        return;
+      }
+
+      // Sort: current user first, then active
+      const sorted = [...users].sort((a, b) => {
+        if (a.email?.toLowerCase() === currentEmail) return -1;
+        if (b.email?.toLowerCase() === currentEmail) return 1;
+        return new Date(b.lastActiveAt || 0) - new Date(a.lastActiveAt || 0);
+      });
+
+      container.innerHTML = sorted.map((u) => {
+        const isYou = u.email?.toLowerCase() === currentEmail;
+        const name = this.escapeHtml(u.displayName || u.email?.split('@')[0] || 'プレイヤー');
+        const icon = this.escapeHtml(u.avatar || '⚡');
+        const act = this.escapeHtml(u.activity || '🟢 オンライン');
+        const timeAgo = this.formatRelativeTime(u.lastActiveAt);
+
+        return `
+          <div class="online-user-card ${isYou ? 'is-current-user' : ''}">
+            <div class="online-user-avatar-wrap">
+              <div class="online-user-avatar">${icon}</div>
+              <span class="online-user-status-dot"></span>
+            </div>
+            <div class="online-user-info">
+              <div class="online-user-name-row">
+                <span class="online-user-name">${name}</span>
+                ${isYou ? '<span class="online-user-you-tag">あなた</span>' : ''}
+              </div>
+              <div class="online-user-activity-row">
+                <span class="online-user-activity-badge">${act}</span>
+                <span class="online-user-time">${timeAgo}</span>
+              </div>
+            </div>
+            <div class="online-user-actions">
+              ${!isYou ? `<button type="button" class="online-user-action-btn" onclick="App.mentionUser('${name.replace(/'/g, "\\'")}')" title="チャットでメンション">💬 話しかける</button>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    },
+
+    formatRelativeTime(dateStr) {
+      if (!dateStr) return '今';
+      const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+      if (diff < 60) return 'たった今';
+      if (diff < 3600) return Math.floor(diff / 60) + '分前';
+      return Math.floor(diff / 3600) + '時間前';
+    },
+
+    initGlobalChat() {
+      // 1. Cross-tab BroadcastChannel
+      try {
+        if (typeof BroadcastChannel !== 'undefined') {
+          window._orbital_community_bc = new BroadcastChannel('orbital_global_community_bc');
+          window._orbital_community_bc.onmessage = (ev) => {
+            if (!ev || !ev.data) return;
+            if (ev.data.type === 'new_chat_message') {
+              this.onReceiveNewChatMessage(ev.data.message);
+            } else if (ev.data.type === 'presence_updated' && Array.isArray(ev.data.list)) {
+              this.state.onlineUsers = ev.data.list;
+              const countEl = document.getElementById('onlinePlayerCount');
+              const floatCountEl = document.getElementById('chatFloatOnlineCount');
+              const windowCountEl = document.getElementById('chatWindowOnlineCount');
+              if (countEl) countEl.textContent = ev.data.list.length;
+              if (floatCountEl) floatCountEl.textContent = ev.data.list.length;
+              if (windowCountEl) windowCountEl.textContent = ev.data.list.length;
+              this.renderOnlineUsersList();
+            }
+          };
+        }
+      } catch (e) {
+        console.warn('BroadcastChannel error:', e);
+      }
+
+      // 2. Load initial chat messages
+      this.loadGlobalChatMessages();
+
+      // 3. Periodic chat poll (every 10s)
+      if (this._chatPollInterval) clearInterval(this._chatPollInterval);
+      this._chatPollInterval = setInterval(() => {
+        const win = document.getElementById('globalChatWindow');
+        if (win && !win.classList.contains('hidden')) {
+          this.loadGlobalChatMessages(false);
+        }
+      }, 10000);
+    },
+
+    toggleGlobalChat(forceState) {
+      const win = document.getElementById('globalChatWindow');
+      if (!win) return;
+      const willOpen = forceState !== undefined ? forceState : win.classList.contains('hidden');
+
+      if (willOpen) {
+        win.classList.remove('hidden');
+        this.clearUnreadChatBadge();
+        this.scrollChatToBottom();
+        const input = document.getElementById('globalChatInput');
+        if (input) setTimeout(() => input.focus(), 100);
+        this.loadGlobalChatMessages(false);
+      } else {
+        win.classList.add('hidden');
+      }
+    },
+
+    openOnlineUsersList() {
+      this.toggleGlobalChat(true);
+      this.switchChatTab('online');
+    },
+
+    switchChatTab(tabName) {
+      const messagesTab = document.getElementById('chatTabMessages');
+      const onlineTab = document.getElementById('chatTabOnline');
+      const messagesPane = document.getElementById('chatPaneMessages');
+      const onlinePane = document.getElementById('chatPaneOnline');
+
+      if (tabName === 'online') {
+        if (messagesTab) messagesTab.classList.remove('active');
+        if (onlineTab) onlineTab.classList.add('active');
+        if (messagesPane) messagesPane.classList.remove('active');
+        if (onlinePane) onlinePane.classList.add('active');
+        this.refreshPresence();
+      } else {
+        if (onlineTab) onlineTab.classList.remove('active');
+        if (messagesTab) messagesTab.classList.add('active');
+        if (onlinePane) onlinePane.classList.remove('active');
+        if (messagesPane) messagesPane.classList.add('active');
+        this.clearUnreadChatBadge();
+        this.scrollChatToBottom();
+        const input = document.getElementById('globalChatInput');
+        if (input) input.focus();
+      }
+    },
+
+    loadGlobalChatMessages(showLoading = true) {
+      const listEl = document.getElementById('globalChatMessagesList');
+      if (showLoading && listEl && (!this.state.globalChatMessages || this.state.globalChatMessages.length === 0)) {
+        listEl.innerHTML = '<div class="chat-loading-placeholder">メッセージを読み込み中...</div>';
+      }
+
+      const applyMessages = (res) => {
+        if (res && Array.isArray(res.messages)) {
+          const prevLen = (this.state.globalChatMessages || []).length;
+          this.state.globalChatMessages = res.messages;
+          this.renderGlobalChatMessages();
+          if (res.messages.length > prevLen) {
+            this.scrollChatToBottom();
+          }
         }
       };
 
-      updateCount();
-      if (this._presenceInterval) clearInterval(this._presenceInterval);
-      this._presenceInterval = setInterval(updateCount, 45000);
+      if (window.google && google.script && google.script.run && !window._is_mock_gas && typeof google.script.run.getGlobalChatMessages === 'function') {
+        google.script.run
+          .withSuccessHandler(applyMessages)
+          .withFailureHandler((err) => console.warn('getGlobalChatMessages err:', err))
+          .getGlobalChatMessages(50);
+      } else if (window.google && google.script && google.script.run && window.google.script.run.getGlobalChatMessages) {
+        google.script.run.withSuccessHandler(applyMessages).getGlobalChatMessages(50);
+      } else {
+        try {
+          const raw = localStorage.getItem('orbital_global_chat_messages');
+          let list = raw ? JSON.parse(raw) : [];
+          if (!list || list.length === 0) {
+            list = [
+              {
+                id: 'msg_welcome_1',
+                email: 'system@orbital.tcg',
+                displayName: 'オーキド博士',
+                avatar: '👨‍🔬',
+                text: 'オルビタルTCGへようこそ！ここでは全プレイヤーとチャットや対戦募集ができます！✨',
+                createdAt: new Date(Date.now() - 3600000).toISOString(),
+                isSystem: true
+              },
+              {
+                id: 'msg_welcome_2',
+                email: 'trainer_red@orbital.tcg',
+                displayName: 'レッド',
+                avatar: '🧢',
+                text: 'よろしく！だれかバトルしようぜ！⚔️',
+                createdAt: new Date(Date.now() - 1800000).toISOString()
+              }
+            ];
+            localStorage.setItem('orbital_global_chat_messages', JSON.stringify(list));
+          }
+          applyMessages({ ok: true, messages: list });
+        } catch (e) {
+          applyMessages({ ok: true, messages: [] });
+        }
+      }
+    },
+
+    onReceiveNewChatMessage(msg) {
+      if (!msg || !msg.id) return;
+      if (!this.state.globalChatMessages) this.state.globalChatMessages = [];
+      if (this.state.globalChatMessages.some(m => m.id === msg.id)) return;
+
+      this.state.globalChatMessages.push(msg);
+      this.renderGlobalChatMessages();
+
+      const win = document.getElementById('globalChatWindow');
+      const isChatOpen = win && !win.classList.contains('hidden');
+      const isMessagesTab = document.getElementById('chatPaneMessages')?.classList.contains('active');
+
+      if (isChatOpen && isMessagesTab) {
+        this.scrollChatToBottom();
+      } else {
+        this.incrementUnreadChatBadge();
+      }
+    },
+
+    incrementUnreadChatBadge() {
+      this.state.unreadChatCount = (this.state.unreadChatCount || 0) + 1;
+      const badge = document.getElementById('chatUnreadBadge');
+      const dot = document.getElementById('chatTabUnreadDot');
+      if (badge) {
+        badge.textContent = this.state.unreadChatCount;
+        badge.classList.remove('hidden');
+      }
+      if (dot) dot.classList.remove('hidden');
+    },
+
+    clearUnreadChatBadge() {
+      this.state.unreadChatCount = 0;
+      const badge = document.getElementById('chatUnreadBadge');
+      const dot = document.getElementById('chatTabUnreadDot');
+      if (badge) badge.classList.add('hidden');
+      if (dot) dot.classList.add('hidden');
+    },
+
+    scrollChatToBottom() {
+      requestAnimationFrame(() => {
+        const listEl = document.getElementById('globalChatMessagesList');
+        if (listEl) {
+          listEl.scrollTop = listEl.scrollHeight;
+        }
+      });
+    },
+
+    insertChatEmoji(emoji) {
+      const input = document.getElementById('globalChatInput');
+      if (input) {
+        input.value = (input.value || '') + emoji;
+        input.focus();
+      }
+    },
+
+    mentionUser(displayName) {
+      this.switchChatTab('messages');
+      const input = document.getElementById('globalChatInput');
+      if (input) {
+        input.value = `@${displayName} ` + (input.value || '');
+        input.focus();
+      }
+    },
+
+    handleSendChatMessage(e) {
+      if (e && e.preventDefault) e.preventDefault();
+      const input = document.getElementById('globalChatInput');
+      if (!input) return;
+      const text = input.value.trim();
+      if (!text) return;
+
+      const email = this.getUserEmail() || 'player@gmail.com';
+      const displayName = this.getUserDisplayName() || 'プレイヤー';
+      const avatar = this.getUserAvatar() || '⚡';
+
+      const tempId = 'msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+      const newMsg = {
+        id: tempId,
+        email,
+        displayName,
+        avatar,
+        text,
+        createdAt: new Date().toISOString()
+      };
+
+      // Clear input immediately
+      input.value = '';
+
+      // Optimistically add message
+      if (!this.state.globalChatMessages) this.state.globalChatMessages = [];
+      this.state.globalChatMessages.push(newMsg);
+      this.renderGlobalChatMessages();
+      this.scrollChatToBottom();
+
+      // Broadcast locally
+      if (window._orbital_community_bc) {
+        window._orbital_community_bc.postMessage({ type: 'new_chat_message', message: newMsg });
+      }
+
+      // Send to backend
+      if (window.google && google.script && google.script.run && !window._is_mock_gas && typeof google.script.run.sendGlobalChatMessage === 'function') {
+        google.script.run
+          .withSuccessHandler((res) => {
+            if (res && res.message) {
+              const idx = this.state.globalChatMessages.findIndex(m => m.id === tempId);
+              if (idx !== -1) this.state.globalChatMessages[idx] = res.message;
+              this.renderGlobalChatMessages();
+            }
+          })
+          .withFailureHandler((err) => {
+            this.toast('チャット送信エラー: ' + (err.message || err), true);
+          })
+          .sendGlobalChatMessage(newMsg);
+      } else if (window.google && google.script && google.script.run && window.google.script.run.sendGlobalChatMessage) {
+        google.script.run.sendGlobalChatMessage(newMsg);
+      } else {
+        // Mock save
+        try {
+          const raw = localStorage.getItem('orbital_global_chat_messages') || '[]';
+          let list = JSON.parse(raw);
+          if (!Array.isArray(list)) list = [];
+          list.push(newMsg);
+          if (list.length > 200) list = list.slice(list.length - 200);
+          localStorage.setItem('orbital_global_chat_messages', JSON.stringify(list));
+        } catch (e) {}
+      }
+    },
+
+    renderGlobalChatMessages() {
+      const container = document.getElementById('globalChatMessagesList');
+      if (!container) return;
+      const messages = this.state.globalChatMessages || [];
+      const currentEmail = (this.getUserEmail() || '').toLowerCase();
+
+      if (messages.length === 0) {
+        container.innerHTML = '<div class="chat-empty-hint">チャットメッセージはまだありません。<br>最初のメッセージを送信してみましょう！</div>';
+        return;
+      }
+
+      container.innerHTML = messages.map((m) => {
+        if (m.isSystem) {
+          return `
+            <div class="chat-msg-row chat-msg-system">
+              <div class="chat-msg-text">${this.escapeHtml(m.text)}</div>
+            </div>
+          `;
+        }
+
+        const isSelf = m.email && m.email.toLowerCase() === currentEmail;
+        const name = this.escapeHtml(m.displayName || m.email?.split('@')[0] || 'プレイヤー');
+        const icon = this.escapeHtml(m.avatar || '⚡');
+        const timeStr = m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+        const text = this.escapeHtml(m.text);
+
+        return `
+          <div class="chat-msg-row ${isSelf ? 'chat-msg-self' : 'chat-msg-other'}">
+            <div class="chat-msg-avatar" title="${name}">${icon}</div>
+            <div class="chat-msg-body">
+              <div class="chat-msg-header">
+                <span class="chat-msg-sender">${name}</span>
+                <span class="chat-msg-time">${timeStr}</span>
+              </div>
+              <div class="chat-msg-text">${text}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
     },
 
     openFeedbackModal() {
@@ -635,173 +1062,7 @@ console.log('[ORBITAL] App.js.html started execution');
       }
     },
 
-    initPresenceTracking() {
-      const email = this.state.userProfile?.email || 'player@gmail.com';
-      const updateCount = () => {
-        if (window.google && google.script && google.script.run && !window._is_mock_gas) {
-          try {
-            google.script.run
-              .withSuccessHandler((res) => {
-                if (res && res.onlineCount != null) {
-                  const countEl = document.getElementById('onlinePlayerCount');
-                  if (countEl) countEl.textContent = res.onlineCount;
-                }
-              })
-              .withFailureHandler((err) => {
-                console.warn('pingPresence error:', err);
-                const countEl = document.getElementById('onlinePlayerCount');
-                if (countEl && !countEl.textContent) countEl.textContent = '1';
-              })
-              .pingPresence(email);
-          } catch (e) {
-            const countEl = document.getElementById('onlinePlayerCount');
-            if (countEl && !countEl.textContent) countEl.textContent = '1';
-          }
-        } else if (window.google && google.script && google.script.run && window.google.script.run.pingPresence) {
-          google.script.run.withSuccessHandler((res) => {
-            if (res && res.onlineCount != null) {
-              const countEl = document.getElementById('onlinePlayerCount');
-              if (countEl) countEl.textContent = res.onlineCount;
-            }
-          }).pingPresence(email);
-        } else {
-          const countEl = document.getElementById('onlinePlayerCount');
-          if (countEl) countEl.textContent = Math.floor(Math.random() * 3) + 2;
-        }
-      };
 
-      updateCount();
-      if (this._presenceInterval) clearInterval(this._presenceInterval);
-      this._presenceInterval = setInterval(updateCount, 45000);
-    },
-
-    openFeedbackModal() {
-      const modal = document.getElementById('feedbackModal');
-      const emailInput = document.getElementById('feedbackEmailInput');
-      const msgInput = document.getElementById('feedbackMessageInput');
-
-      if (emailInput && this.state.userProfile?.email) {
-        emailInput.value = this.state.userProfile.email;
-      }
-      if (msgInput) msgInput.value = '';
-
-      this.selectFeedbackCategory('💡 機能要望');
-
-      if (modal) {
-        modal.classList.remove('hidden');
-        modal.style.display = 'grid';
-      }
-    },
-
-    closeFeedbackModal() {
-      const modal = document.getElementById('feedbackModal');
-      if (modal) {
-        modal.classList.add('hidden');
-        modal.style.display = 'none';
-      }
-    },
-
-    selectFeedbackCategory(category) {
-      this.state.selectedFeedbackCategory = category;
-      document.querySelectorAll('.feedback-cat-btn').forEach((btn) => {
-        btn.classList.toggle('active', btn.dataset.cat === category);
-      });
-    },
-
-    submitFeedback() {
-      const emailInput = document.getElementById('feedbackEmailInput');
-      const msgInput = document.getElementById('feedbackMessageInput');
-      const btn = document.getElementById('submitFeedbackBtn');
-
-      const email = (emailInput ? emailInput.value : '').trim() || (this.state.userProfile?.email || 'player@gmail.com');
-      const message = (msgInput ? msgInput.value : '').trim();
-      const category = this.state.selectedFeedbackCategory || '💡 機能要望';
-
-      if (!message) {
-        this.toast('ご意見・要望の内容を入力してください。', true);
-        return;
-      }
-
-      if (btn) btn.disabled = true;
-
-      const applySuccess = (res) => {
-        if (btn) btn.disabled = false;
-        this.toast('📮 ご意見を受け付けました！貴重なフィードバックありがとうございます。');
-        this.closeFeedbackModal();
-      };
-
-      if (window.google && google.script && google.script.run && typeof google.script.run.submitFeedback === 'function' && !window._is_mock_gas) {
-        google.script.run.withSuccessHandler((res) => {
-          if (!res || !res.ok) {
-            if (btn) btn.disabled = false;
-            this.toast(res?.message || '送信に失敗しました。', true);
-            return;
-          }
-          applySuccess(res);
-        }).withFailureHandler((err) => {
-          if (btn) btn.disabled = false;
-          this.toast('送信エラー: ' + (err.message || err), true);
-        }).submitFeedback({ email, category, message });
-      } else {
-        setTimeout(() => {
-          applySuccess({ ok: true });
-        }, 200);
-      }
-    },
-
-    openAdminFeedbackModal() {
-      const modal = document.getElementById('adminFeedbackModal');
-      const listGrid = document.getElementById('adminFeedbackListGrid');
-      if (!modal) return;
-
-      modal.classList.remove('hidden');
-      modal.style.display = 'grid';
-
-      if (listGrid) listGrid.innerHTML = '<div style="text-align:center; color:var(--muted); padding:30px;">読み込み中...</div>';
-
-      const renderList = (list) => {
-        if (!listGrid) return;
-        if (!list || list.length === 0) {
-          listGrid.innerHTML = '<div style="text-align:center; color:var(--muted); padding:30px;">まだご意見は届いていません。</div>';
-          return;
-        }
-        listGrid.innerHTML = list.map((item) => {
-          const dateStr = item.createdAt ? new Date(item.createdAt).toLocaleString('ja-JP') : '日時不明';
-          return `
-            <div class="feedback-item-card">
-              <div class="feedback-item-header">
-                <span class="feedback-item-category">${this.escape(item.category || 'その他')}</span>
-                <span>👤 ${this.escape(item.email || '匿名')} • ${this.escape(dateStr)}</span>
-              </div>
-              <div class="feedback-item-body">${this.escape(item.message || '')}</div>
-            </div>
-          `;
-        }).join('');
-      };
-
-      if (window.google && google.script && google.script.run && typeof google.script.run.getFeedbackList === 'function' && !window._is_mock_gas) {
-        google.script.run.withSuccessHandler((res) => {
-          renderList(res?.feedbackList || []);
-        }).withFailureHandler((err) => {
-          if (listGrid) listGrid.innerHTML = '<div style="color:#f43f5e; padding:20px;">取得エラー: ' + this.escape(err.message || err) + '</div>';
-        }).getFeedbackList(this.state.adminToken);
-      } else {
-        try {
-          const raw = localStorage.getItem('orbital_mock_feedback_list') || '[]';
-          renderList(JSON.parse(raw));
-        } catch (e) {
-          renderList([]);
-        }
-      }
-    },
-
-    closeAdminFeedbackModal() {
-      const modal = document.getElementById('adminFeedbackModal');
-      if (modal) {
-        modal.classList.add('hidden');
-        modal.style.display = 'none';
-      }
-    },
 
     openAdminLogin() {this.el('adminLoginModal').classList.remove('hidden');this.el('adminPassword').focus();},
     closeAdminLogin() {this.el('adminLoginModal').classList.add('hidden');},
@@ -3447,6 +3708,31 @@ console.log('[ORBITAL] App.js.html started execution');
         if (saved) return saved;
       } catch(e) {}
       return 'player@gmail.com';
+    },
+
+    getUserDisplayName() {
+      try {
+        if (this.state.userProfile && this.state.userProfile.displayName) return this.state.userProfile.displayName;
+        const loggedIn = localStorage.getItem('ORBITAL_LOGGED_IN_USER');
+        if (loggedIn) {
+          const u = JSON.parse(loggedIn);
+          if (u && u.displayName) return u.displayName;
+        }
+      } catch(e) {}
+      const email = this.getUserEmail();
+      return (email && email.includes('@')) ? email.split('@')[0] : 'プレイヤー';
+    },
+
+    getUserAvatar() {
+      try {
+        if (this.state.userProfile && this.state.userProfile.avatar) return this.state.userProfile.avatar;
+        const loggedIn = localStorage.getItem('ORBITAL_LOGGED_IN_USER');
+        if (loggedIn) {
+          const u = JSON.parse(loggedIn);
+          if (u && u.avatar) return u.avatar;
+        }
+      } catch(e) {}
+      return '⚡';
     },
 
     loadUserProfileFromGas(email) {

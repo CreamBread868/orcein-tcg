@@ -906,6 +906,7 @@ window.DeckSystem = function () {
           'たね': [],
           '1進化': [],
           '2進化': [],
+          'ポケモンのどうぐ': [],
           'トレーナーズ': [],
           'エネルギー': [],
           'その他': []
@@ -917,11 +918,12 @@ window.DeckSystem = function () {
             { id: item.id, name: item.name || '不明なカード', category: item.category || 'その他', type: item.type || '無' };
           let catKey = 'その他';
           const cat = String(card.category || '');
-          if (cat.includes('たね') || cat.includes('ポケモン') && !cat.includes('進化')) catKey = 'たね'; else
-            if (cat.includes('1進化')) catKey = '1進化'; else
-              if (cat.includes('2進化')) catKey = '2進化'; else
-                if (cat.includes('グッズ') || cat.includes('サポート') || cat.includes('スタジアム') || cat.includes('ポケモンのどうぐ')) catKey = 'トレーナーズ'; else
-                  if (cat.includes('エネルギー') || card.type === 'エネルギー') catKey = 'エネルギー';
+          if (cat.includes('どうぐ') || cat.includes('道具') || cat.toLowerCase().includes('tool')) catKey = 'ポケモンのどうぐ'; else
+          if (cat.includes('グッズ') || cat.includes('サポート') || cat.includes('スタジアム') || cat.includes('トレーナー')) catKey = 'トレーナーズ'; else
+          if (cat.includes('1進化')) catKey = '1進化'; else
+          if (cat.includes('2進化')) catKey = '2進化'; else
+          if (cat.includes('たね') || (cat.includes('ポケモン') && !cat.includes('進化'))) catKey = 'たね'; else
+          if (cat.includes('エネルギー') || card.type === 'エネルギー') catKey = 'エネルギー';
 
           groups[catKey].push({ card: card, count: item.count });
         });
@@ -980,6 +982,12 @@ window.DeckSystem = function () {
           if (state.filter.category !== 'all') {
             if (state.filter.category === 'acespec') {
               if (!isAceSpecCard(card)) return false;
+            } else if (state.filter.category === 'ポケモンのどうぐ' || state.filter.category === 'ポケモンの道具' || state.filter.category === 'どうぐ' || state.filter.category === '道具' || state.filter.category.includes('どうぐ') || state.filter.category.includes('道具')) {
+              const cat = String(card.category || '');
+              if (!cat.includes('どうぐ') && !cat.includes('道具') && !cat.toLowerCase().includes('tool')) return false;
+            } else if (state.filter.category === 'トレーナー') {
+              const cat = String(card.category || '');
+              if (!cat.includes('トレーナー') && !cat.includes('グッズ') && !cat.includes('サポート') && !cat.includes('スタジアム') && !cat.includes('どうぐ') && !cat.includes('道具') && !cat.toLowerCase().includes('tool')) return false;
             } else if (card.category !== state.filter.category) {
               return false;
             }

@@ -2390,12 +2390,14 @@
 
     isBasic(c) {
       if (!c) return false;
+      if (this.isPokemonTool(c) || this.isTrainer(c) || this.isEnergy(c)) return false;
       let cat = String(c.category || '');
       if (!cat && window.CardSystem) {
         const master = (c.id && window.CardSystem.findCardById ? window.CardSystem.findCardById(c.id) : null) ||
                        (c.name && window.CardSystem.findCardByName ? window.CardSystem.findCardByName(c.name) : null);
         if (master && master.category) cat = String(master.category);
       }
+      if (cat.includes('どうぐ') || cat.includes('道具') || cat.toLowerCase().includes('tool')) return false;
       if (cat.includes('たね') || cat.toLowerCase().includes('basic')) return true;
       if (cat.includes('ポケモン') && !cat.includes('進化')) return true;
       if ((Number(c.hp) > 0 || c.type) && !this.isEvolution(c) && !this.isTrainer(c) && !this.isEnergy(c)) {
@@ -2870,7 +2872,7 @@
                        (c.name && window.CardSystem.findCardByName ? window.CardSystem.findCardByName(c.name) : null);
         if (master && master.category) cat = String(master.category);
       }
-      return cat.includes('ポケモンのどうぐ') || cat.includes('どうぐ') || cat.toLowerCase().includes('tool');
+      return cat.includes('ポケモンのどうぐ') || cat.includes('ポケモンの道具') || cat.includes('どうぐ') || cat.includes('道具') || cat.toLowerCase().includes('tool');
     },
 
     isItem(c) {
@@ -2887,7 +2889,7 @@
     isTrainer(c) {
       if (!c) return false;
       const cat = String(c.category || '');
-      return cat.includes('グッズ') || cat.includes('サポート') || cat.includes('スタジアム') || cat.includes('ポケモンのどうぐ') || cat.includes('どうぐ') || cat.toLowerCase().includes('tool') || cat.toLowerCase().includes('trainer') || this.isStadium(c) || this.isSupporter(c) || this.isItem(c) || this.isPokemonTool(c);
+      return cat.includes('グッズ') || cat.includes('サポート') || cat.includes('スタジアム') || cat.includes('ポケモンのどうぐ') || cat.includes('ポケモンの道具') || cat.includes('どうぐ') || cat.includes('道具') || cat.toLowerCase().includes('tool') || cat.toLowerCase().includes('trainer') || this.isStadium(c) || this.isSupporter(c) || this.isItem(c) || this.isPokemonTool(c);
     },
 
     isPokemon(c) {
@@ -6408,6 +6410,9 @@
       window.CardSystem.createCardHtml(displayCard, { size: 'battle' }) :
       '<div class="card-fallback">' + this.escape(card.name) + '</div>';
 
+      const toolHtml = card.attachedTool ?
+        ('<div class="active-tool-badge" title="ポケモンのどうぐ: ' + this.escape(card.attachedTool.name) + '">🧰 ' + this.escape(card.attachedTool.name) + '</div>') : '';
+
       root.innerHTML = "\n        <div class=\"battle-card-wrapper\">\n          <div class=\"battle-active-card " + statusClasses.join(' ') + "\">\n            " +
 
 
@@ -6416,7 +6421,8 @@
 
 
       card.hp + "</strong> / " + card.maxHp + "</span>\n              " +
-      statusTagHtml + "\n            </div>\n            <div class=\"active-hp-bar\">\n              <div class=\"active-hp-fill\" style=\"width: " +
+      statusTagHtml + "\n            </div>\n            " +
+      toolHtml + "\n            <div class=\"active-hp-bar\">\n              <div class=\"active-hp-fill\" style=\"width: " +
 
 
       hpPct + "%; background: " + hpColor + ";\"></div>\n            </div>\n            <div class=\"active-energies-bar\">\n              <span class=\"energies-label\" style=\"font-size:10px; color:var(--muted); font-weight:700;\">エネ:</span>\n              " + (
@@ -6431,6 +6437,16 @@
 
 
       // クリックでカードアクション（ワザ・特性・にげる）を開く
+      const toolBadgeEl = root.querySelector('.active-tool-badge');
+      if (toolBadgeEl && card.attachedTool) {
+        toolBadgeEl.onclick = (e) => {
+          if (e) { e.preventDefault(); e.stopPropagation(); }
+          if (window.CardSystem && typeof window.CardSystem.showDetail === 'function') {
+            window.CardSystem.showDetail(card.attachedTool);
+          }
+        };
+      }
+
       const activeCardEl = root.querySelector('.battle-active-card');
       if (activeCardEl) {
         activeCardEl.style.cursor = 'pointer';
@@ -6937,6 +6953,10 @@
             this.activateAbility(card, isBench, benchIdx);
           } else if (act === 'retreat') {
             this.retreatActive();
+          } else if (act === 'view_tool') {
+            if (card.attachedTool && window.CardSystem && typeof window.CardSystem.showDetail === 'function') {
+              window.CardSystem.showDetail(card.attachedTool);
+            }
           } else if (act === 'attach_hand_energy') {
             const targetSlotEl = isBench ?
               document.querySelectorAll('#playerBenchRow .bench-slot-occupied')[benchIdx] :

@@ -1119,7 +1119,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         if (['どく', '毒', 'poison', 'poisoned', 'もうどく'].includes(s)) return 'どく';
         if (['やけど', '火傷', 'burn', 'burned'].includes(s)) return 'やけど';
         if (['ねむり', '眠り', 'sleep', 'asleep'].includes(s)) return 'ねむり';
-        if (['マヒ', 'まひ', 'paralysis', 'paralyzed', 'paralyze'].includes(s)) return 'マヒ';
+        if (['マヒ', 'まひ', '麻痺', 'paralysis', 'paralyzed', 'paralyze'].includes(s)) return 'マヒ';
         if (['こんらん', '混乱', 'confusion', 'confused'].includes(s)) return 'こんらん';
         return String(status).trim();
       },
@@ -1189,7 +1189,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           // すべての特殊状態を回復
           const hadAny = (target.statuses && target.statuses.length > 0) || !!target.status;
           target.statuses = [];
-          target.status = null;
+          target.status = '';
           if (hadAny) {
             const msg = "✨ 【" + (target.name || 'ポケモン') + "】のすべての特殊状態が回復した！";
             if (ctx?.game?.logs) ctx.game.logs.push(msg);
@@ -1201,7 +1201,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           if (current.includes(norm)) {
             current = current.filter(s => s !== norm);
             target.statuses = current;
-            target.status = current.length > 0 ? current.join('・') : null;
+            target.status = current.length > 0 ? current.join('・') : '';
             const msg = "✨ 【" + (target.name || 'ポケモン') + "】の「" + norm + "」が回復した！";
             if (ctx?.game?.logs) ctx.game.logs.push(msg);
             if (window.BattleSystem?.log) window.BattleSystem.log(msg);
@@ -2756,13 +2756,19 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
       'エネルギー': ['エネルギー', '基本エネルギー', '特殊エネルギー', 'energy'],
       '基本エネルギー': ['エネルギー', '基本エネルギー', 'energy'],
       '特殊エネルギー': ['エネルギー', '特殊エネルギー', 'energy'],
-      'trainer': ['トレーナー', 'トレーナーズ', 'グッズ', 'サポート', 'スタジアム', 'trainer', 'trainers', 'item', 'supporter', 'stadium'],
-      'trainers': ['トレーナー', 'トレーナーズ', 'グッズ', 'サポート', 'スタジアム', 'trainer', 'trainers', 'item', 'supporter', 'stadium'],
-      'トレーナー': ['トレーナー', 'トレーナーズ', 'グッズ', 'サポート', 'スタジアム', 'trainer', 'trainers', 'item', 'supporter', 'stadium'],
-      'トレーナーズ': ['トレーナー', 'トレーナーズ', 'グッズ', 'サポート', 'スタジアム', 'trainer', 'trainers', 'item', 'supporter', 'stadium'],
+      'trainer': ['トレーナー', 'トレーナーズ', 'グッズ', 'サポート', 'スタジアム', 'ポケモンのどうぐ', 'ポケモンの道具', 'どうぐ', '道具', 'trainer', 'trainers', 'item', 'supporter', 'stadium', 'tool'],
+      'trainers': ['トレーナー', 'トレーナーズ', 'グッズ', 'サポート', 'スタジアム', 'ポケモンのどうぐ', 'ポケモンの道具', 'どうぐ', '道具', 'trainer', 'trainers', 'item', 'supporter', 'stadium', 'tool'],
+      'トレーナー': ['トレーナー', 'トレーナーズ', 'グッズ', 'サポート', 'スタジアム', 'ポケモンのどうぐ', 'ポケモンの道具', 'どうぐ', '道具', 'trainer', 'trainers', 'item', 'supporter', 'stadium', 'tool'],
+      'トレーナーズ': ['トレーナー', 'トレーナーズ', 'グッズ', 'サポート', 'スタジアム', 'ポケモンのどうぐ', 'ポケモンの道具', 'どうぐ', '道具', 'trainer', 'trainers', 'item', 'supporter', 'stadium', 'tool'],
       'item': ['グッズ', 'item'],
       'items': ['グッズ', 'item'],
       'グッズ': ['グッズ', 'item'],
+      'tool': ['ポケモンのどうぐ', 'ポケモンの道具', 'どうぐ', '道具', 'tool', 'pokemon tool'],
+      'tools': ['ポケモンのどうぐ', 'ポケモンの道具', 'どうぐ', '道具', 'tool', 'pokemon tool'],
+      'ポケモンのどうぐ': ['ポケモンのどうぐ', 'ポケモンの道具', 'どうぐ', '道具', 'tool', 'pokemon tool'],
+      'ポケモンの道具': ['ポケモンのどうぐ', 'ポケモンの道具', 'どうぐ', '道具', 'tool', 'pokemon tool'],
+      'どうぐ': ['ポケモンのどうぐ', 'ポケモンの道具', 'どうぐ', '道具', 'tool', 'pokemon tool'],
+      '道具': ['ポケモンのどうぐ', 'ポケモンの道具', 'どうぐ', '道具', 'tool', 'pokemon tool'],
       'supporter': ['サポート', 'supporter'],
       'supporters': ['サポート', 'supporter'],
       'サポート': ['サポート', 'supporter'],
@@ -2824,7 +2830,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         const q = filter.toLowerCase().trim();
         if (q === 'pokemon' || q === 'ポケモン') {
           const cCat = String(card.category || '').toLowerCase();
-          const isTrainerOrEnergy = ['グッズ', 'サポート', 'トレーナー', 'スタジアム', 'エネルギー', 'item', 'supporter', 'energy'].some((k) => cCat.includes(k));
+          const isTrainerOrEnergy = ['グッズ', 'サポート', 'トレーナー', 'スタジアム', 'ポケモンのどうぐ', 'ポケモンの道具', 'どうぐ', '道具', 'エネルギー', 'item', 'supporter', 'energy', 'tool'].some((k) => cCat.includes(k));
           if (isTrainerOrEnergy) return false;
           return card.hp != null || ['たね', '進化', '1進化', '2進化', 'ex', 'pokemon', 'ポケモン'].some((k) => cCat.includes(k));
         }
@@ -2849,7 +2855,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         const fCat = String(filter.category).toLowerCase().trim();
         if (fCat === 'pokemon' || fCat === 'ポケモン') {
           const cCat = String(card.category || '').toLowerCase();
-          const isTrainerOrEnergy = ['グッズ', 'サポート', 'トレーナー', 'スタジアム', 'エネルギー', 'item', 'supporter', 'energy'].some((k) => cCat.includes(k));
+          const isTrainerOrEnergy = ['グッズ', 'サポート', 'トレーナー', 'スタジアム', 'ポケモンのどうぐ', 'ポケモンの道具', 'どうぐ', '道具', 'エネルギー', 'item', 'supporter', 'energy', 'tool'].some((k) => cCat.includes(k));
           if (isTrainerOrEnergy) return false;
           return card.hp != null || ['たね', '進化', '1進化', '2進化', 'ex', 'pokemon', 'ポケモン'].some((k) => cCat.includes(k));
         }
@@ -3437,6 +3443,11 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
     window.allyKnockedOutLastTurn = (p) => window.ORBITAL_EFFECT_API.allyKnockedOutLastTurn(null, p);
     window.wasKnockedOutPreviousTurn = (p) => window.ORBITAL_EFFECT_API.wasKnockedOutPreviousTurn(null, p);
     window.wasKnockedOutLastTurn = (p) => window.ORBITAL_EFFECT_API.wasKnockedOutLastTurn(null, p);
+    window.normalizeStatusName = (s) => window.ORBITAL_EFFECT_API.normalizeStatusName(s);
+    window.hasStatus = (t, s) => window.ORBITAL_EFFECT_API.hasStatus(null, t, s);
+    window.getStatuses = (t) => window.ORBITAL_EFFECT_API.getStatuses(null, t);
+    window.applyStatus = (t, s) => window.ORBITAL_EFFECT_API.applyStatus(null, t, s);
+    window.clearStatus = (t, s) => window.ORBITAL_EFFECT_API.clearStatus(null, t, s);
     console.log('[ORBITAL] ActionEngine.js.html finished execution.');
   })();
 </script>
