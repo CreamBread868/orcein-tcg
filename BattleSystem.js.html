@@ -4983,7 +4983,7 @@
           // 効果コード未設定カードのフォールバック（表示用ダメージ文字列から数値を抽出）
           const numericDmg = parseInt(String(atkDamage || '').replace(/[^\d]/g, ''), 10) || 0;
           if (numericDmg > 0 && window.ORBITAL_EFFECT_API) {
-            window.ORBITAL_EFFECT_API.damage(
+            await window.ORBITAL_EFFECT_API.damage(
               { self: this.state.player, opponent: this.state.opponent, game: this.state },
               currentDefender,
               numericDmg
@@ -5791,7 +5791,7 @@
           if (numericDmg > 0 && window.ORBITAL_EFFECT_API) {
             const currentDefender = this.state.player?.active;
             if (currentDefender) {
-              window.ORBITAL_EFFECT_API.damage(
+              await window.ORBITAL_EFFECT_API.damage(
                 { self: this.state.opponent, opponent: this.state.player, game: this.state },
                 currentDefender,
                 numericDmg

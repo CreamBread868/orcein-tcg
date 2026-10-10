@@ -9053,7 +9053,7 @@
                   <div class="form-grid">
                     <label>カード名<input id="name" class="input" required></label>
                     <label>カテゴリ
-                      <select id="category" class="input">
+                      <select id="category" class="input" onchange="if(window.CardSystem){CardSystem.syncCategoryForm(); CardSystem.updatePreview();}">
                         <option value="たね">たね</option>
                         <option value="1進化">1進化</option>
                         <option value="2進化">2進化</option>
@@ -9063,6 +9063,7 @@
                         <option value="2進化ex">2進化ex (サイド2枚)</option>
                         <option value="ex">ex (サイド2枚)</option>
                         <option value="グッズ">グッズ</option>
+                        <option value="ポケモンのどうぐ">ポケモンのどうぐ</option>
                         <option value="サポート">サポート</option>
                         <option value="スタジアム">スタジアム</option>
                         <option value="トレーナー">トレーナー</option>

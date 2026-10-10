@@ -31,13 +31,13 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
     }
 
     window.ORBITAL_EFFECT_API = {
-      damage(ctx, target, amount) {
+      async damage(ctx, target, amount) {
         const n = Math.max(0, Number(amount) || 0);
         const targets = Array.isArray(target) ? target : [target];
         const attacker = ctx?.self?.active;
 
-        targets.forEach((t) => {
-          if (!t || typeof t !== 'object') return;
+        for (const t of targets) {
+          if (!t || typeof t !== 'object') continue;
           let actualDamage = n;
           let isWeakness = false;
           let weakText = '';
@@ -212,15 +212,13 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           if (t.abilityCode && window.executeCardEffectCode &&
               /event\s*\.\s*(?:on|onasync|onAsync)\s*\(\s*['"]beforeDamage['"]/i.test(t.abilityCode)) {
             try {
-              window.executeCardEffectCode(
+              await window.executeCardEffectCode(
                 t.abilityCode,
                 { players: [ctx?.opponent, ctx?.self].filter(Boolean), logs: ctx?.game?.logs },
                 ctx?.opponent || ctx?.self,
                 'beforeDamage',
                 damageEvent
-              ).catch((err) => {
-                console.error('Defender beforeDamage effect error:', err);
-              });
+              );
             } catch (e) {
               console.error('Defender beforeDamage effect error:', e);
             }
@@ -232,7 +230,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
               ctx.game.logs.push('🛡️ 【特性発動！】' + (t.name || 'ポケモン') + ' はワザのダメージを受けない！（無効化）');
             }
           } else {
-            actualDamage = Math.max(0, Number(damageEvent.damage) || 0);
+            actualDamage = Math.max(0, Math.round(Number(damageEvent.damage) || 0));
             t.hp -= actualDamage;
             if (ctx?.game?.logs) {
               ctx.game.logs.push('💥 【' + (t.name || 'ポケモン') + '】に ' + actualDamage + ' ダメージ！' + weakText + ' (残りHP: ' + Math.max(0, t.hp) + ')');
@@ -262,7 +260,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
               setTimeout(() => dmgEl.remove(), 1050);
             }
           }
-        });
+        }
       },
       heal(ctx, target, amount) {
         const n = Math.max(0, Number(amount) || 0);
@@ -3245,7 +3243,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
       // Convert any non-async functions/arrow functions containing async calls (choiceCard, coinFlip, etc.) into async functions
       asyncCode = asyncCode.replace(/(?<!async\s+)(\([^)]*\)\s*=>|[\w$]+\s*=>|function\s*\([^)]*\))\s*\{([^}]*?\b(?:choiceCard|choiceCards|coinFlip|flipCoin|rareCandy)\b[^}]*)\}/g, 'async $1 {$2}');
       // Auto-inject await before async functions
-      asyncCode = asyncCode.replace(/(?<!await\s+)\b(choiceCard|choiceCards|coinFlip|flipCoin|rareCandy|whenAllyKnockedOut|onAllyKnockedOut|lookAtDeckTop|lookAtTop|lookDeckTop|searchTopDeck)\s*\(/g, 'await $1(');
+      asyncCode = asyncCode.replace(/(?<!await\s+)\b(choiceCard|choiceCards|coinFlip|flipCoin|rareCandy|whenAllyKnockedOut|onAllyKnockedOut|lookAtDeckTop|lookAtTop|lookDeckTop|searchTopDeck|damage|benchDamage)\s*\(/g, 'await $1(');
 
       const AsyncFunction = Object.getPrototypeOf(async function () { }).constructor;
       const fn = new AsyncFunction(

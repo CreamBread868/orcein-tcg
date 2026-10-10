@@ -1185,7 +1185,7 @@ console.log('[ORBITAL] App.js.html started execution');
         }
 
         const category = String(c.category || 'たね');
-        const isTrainerCategory = category === 'グッズ' || category === 'サポート' || category === 'トレーナー' || category === 'スタジアム';
+        const isTrainerCategory = category === 'グッズ' || category === 'サポート' || category === 'トレーナー' || category === 'スタジアム' || category === 'ポケモンのどうぐ' || category === 'ポケモンの道具' || category.includes('どうぐ') || category.includes('道具');
         const cardType = isTrainerCategory ? '' : String(c.type || '無');
 
         return {
@@ -3050,8 +3050,8 @@ console.log('[ORBITAL] App.js.html started execution');
         const card = allCards.find(c => c.id === item.cardId) || { id: item.cardId, name: item.cardId, category: 'ポケモン' };
         if (catFilter !== 'all') {
           const cat = (card.category || '').toLowerCase();
-          if (catFilter === 'pokemon' && !cat.includes('ポケモン')) return false;
-          if (catFilter === 'trainer' && !cat.includes('トレーナー') && !cat.includes('サポート') && !cat.includes('グッズ')) return false;
+          if (catFilter === 'pokemon' && (cat.includes('トレーナー') || cat.includes('サポート') || cat.includes('グッズ') || cat.includes('どうぐ') || cat.includes('道具') || cat.includes('スタジアム') || cat.includes('エネルギー'))) return false;
+          if (catFilter === 'trainer' && !cat.includes('トレーナー') && !cat.includes('サポート') && !cat.includes('グッズ') && !cat.includes('どうぐ') && !cat.includes('道具') && !cat.includes('スタジアム')) return false;
           if (catFilter === 'energy' && !cat.includes('エネルギー')) return false;
         }
         if (query) {
@@ -3832,8 +3832,8 @@ console.log('[ORBITAL] App.js.html started execution');
         const card = allCards.find(c => c.id === item.cardId) || { id: item.cardId, name: item.cardId, category: 'ポケモン' };
         if (catFilter !== 'all') {
           const cat = (card.category || '').toLowerCase();
-          if (catFilter === 'pokemon' && !cat.includes('ポケモン')) return false;
-          if (catFilter === 'trainer' && !cat.includes('トレーナー') && !cat.includes('サポート') && !cat.includes('グッズ')) return false;
+          if (catFilter === 'pokemon' && (cat.includes('トレーナー') || cat.includes('サポート') || cat.includes('グッズ') || cat.includes('どうぐ') || cat.includes('道具') || cat.includes('スタジアム') || cat.includes('エネルギー'))) return false;
+          if (catFilter === 'trainer' && !cat.includes('トレーナー') && !cat.includes('サポート') && !cat.includes('グッズ') && !cat.includes('どうぐ') && !cat.includes('道具') && !cat.includes('スタジアム')) return false;
           if (catFilter === 'energy' && !cat.includes('エネルギー')) return false;
         }
         if (query) {
