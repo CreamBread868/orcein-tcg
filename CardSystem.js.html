@@ -468,36 +468,16 @@ var CardSystem;
     createCardHtml(cardInput, options = {}) {
       if (!cardInput) cardInput = {};
       let card = cardInput;
-      const pool = [
-        ...(window.App?.state?.cards || []),
-        ...(window.CardSystem?.state?.cards || []),
-        ...(window.DeckSystem?.state?.cardPool || [])
-      ];
-      if (pool.length > 0) {
-        const master = pool.find(c => c && ((c.id && cardInput.id && String(c.id) === String(cardInput.id)) || (c.name && cardInput.name && String(c.name).trim() === String(cardInput.name).trim())));
+      // cardInput が ID のみ等で名前やカテゴリが不足している場合のみ、マスタから補完
+      if (cardInput.id && (!cardInput.name || !cardInput.category)) {
+        const pool = [
+          ...(window.App?.state?.cards || []),
+          ...(window.CardSystem?.state?.cards || []),
+          ...(window.DeckSystem?.state?.cardPool || [])
+        ];
+        const master = pool.find(c => c && c.id && String(c.id) === String(cardInput.id));
         if (master) {
-          card = Object.assign({}, master, cardInput, {
-            image: cardInput.image || master.image,
-            hp: cardInput.hp != null && cardInput.hp !== '' ? cardInput.hp : master.hp,
-            maxHp: master.hp || cardInput.maxHp || cardInput.hp || 100,
-            abilityName: master.abilityName || cardInput.abilityName,
-            abilityText: master.abilityText || cardInput.abilityText,
-            attack1Name: master.attack1Name || cardInput.attack1Name,
-            attack1Damage: master.attack1Damage != null && master.attack1Damage !== '' ? master.attack1Damage : cardInput.attack1Damage,
-            attack1Text: master.attack1Text || cardInput.attack1Text,
-            attack1Energy: master.attack1Energy || cardInput.attack1Energy,
-            attack2Name: master.attack2Name || cardInput.attack2Name,
-            attack2Damage: master.attack2Damage != null && master.attack2Damage !== '' ? master.attack2Damage : cardInput.attack2Damage,
-            attack2Text: master.attack2Text || cardInput.attack2Text,
-            attack2Energy: master.attack2Energy || cardInput.attack2Energy,
-            description: master.description || cardInput.description,
-            preEvolution: master.preEvolution || cardInput.preEvolution,
-            artLayout: master.artLayout || cardInput.artLayout || 'standard',
-            imageFit: master.imageFit || cardInput.imageFit || 'cover',
-            imageScale: master.imageScale != null ? master.imageScale : cardInput.imageScale,
-            imageX: master.imageX != null ? master.imageX : cardInput.imageX,
-            imageY: master.imageY != null ? master.imageY : cardInput.imageY
-          });
+          card = Object.assign({}, master, cardInput);
         }
       }
 
@@ -718,25 +698,11 @@ var CardSystem;
       if (!cardInput) return;
 
       let card = cardInput;
-      const allCards = (window.App && window.App.state && Array.isArray(window.App.state.cards)) ? window.App.state.cards : (window.CardSystem && Array.isArray(window.CardSystem.state?.cards) ? window.CardSystem.state.cards : []);
-      if (allCards.length > 0) {
-        const master = allCards.find(c => String(c.id) === String(cardInput.id) || String(c.name) === String(cardInput.name));
+      if (cardInput.id && (!cardInput.name || !cardInput.category)) {
+        const allCards = (window.App && window.App.state && Array.isArray(window.App.state.cards)) ? window.App.state.cards : (window.CardSystem && Array.isArray(window.CardSystem.state?.cards) ? window.CardSystem.state.cards : []);
+        const master = allCards.find(c => c && c.id && String(c.id) === String(cardInput.id));
         if (master) {
-          card = Object.assign({}, master, cardInput, {
-            hp: cardInput.hp != null ? cardInput.hp : master.hp,
-            maxHp: master.hp || cardInput.maxHp || cardInput.hp || 100,
-            abilityName: master.abilityName || cardInput.abilityName,
-            abilityText: master.abilityText || cardInput.abilityText || master.description,
-            attack1Name: master.attack1Name || cardInput.attack1Name,
-            attack1Damage: master.attack1Damage != null ? master.attack1Damage : cardInput.attack1Damage,
-            attack1Text: master.attack1Text || cardInput.attack1Text,
-            attack1Energy: master.attack1Energy || cardInput.attack1Energy,
-            attack2Name: master.attack2Name || cardInput.attack2Name,
-            attack2Damage: master.attack2Damage != null ? master.attack2Damage : cardInput.attack2Damage,
-            attack2Text: master.attack2Text || cardInput.attack2Text,
-            attack2Energy: master.attack2Energy || cardInput.attack2Energy,
-            description: master.description || cardInput.description || cardInput.text
-          });
+          card = Object.assign({}, master, cardInput);
         }
       }
 

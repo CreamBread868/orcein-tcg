@@ -18948,36 +18948,16 @@ var CardSystem;
     createCardHtml(cardInput, options = {}) {
       if (!cardInput) cardInput = {};
       let card = cardInput;
-      const pool = [
-        ...(window.App?.state?.cards || []),
-        ...(window.CardSystem?.state?.cards || []),
-        ...(window.DeckSystem?.state?.cardPool || [])
-      ];
-      if (pool.length > 0) {
-        const master = pool.find(c => c && ((c.id && cardInput.id && String(c.id) === String(cardInput.id)) || (c.name && cardInput.name && String(c.name).trim() === String(cardInput.name).trim())));
+      // cardInput が ID のみ等で名前やカテゴリが不足している場合のみ、マスタから補完
+      if (cardInput.id && (!cardInput.name || !cardInput.category)) {
+        const pool = [
+          ...(window.App?.state?.cards || []),
+          ...(window.CardSystem?.state?.cards || []),
+          ...(window.DeckSystem?.state?.cardPool || [])
+        ];
+        const master = pool.find(c => c && c.id && String(c.id) === String(cardInput.id));
         if (master) {
-          card = Object.assign({}, master, cardInput, {
-            image: cardInput.image || master.image,
-            hp: cardInput.hp != null && cardInput.hp !== '' ? cardInput.hp : master.hp,
-            maxHp: master.hp || cardInput.maxHp || cardInput.hp || 100,
-            abilityName: master.abilityName || cardInput.abilityName,
-            abilityText: master.abilityText || cardInput.abilityText,
-            attack1Name: master.attack1Name || cardInput.attack1Name,
-            attack1Damage: master.attack1Damage != null && master.attack1Damage !== '' ? master.attack1Damage : cardInput.attack1Damage,
-            attack1Text: master.attack1Text || cardInput.attack1Text,
-            attack1Energy: master.attack1Energy || cardInput.attack1Energy,
-            attack2Name: master.attack2Name || cardInput.attack2Name,
-            attack2Damage: master.attack2Damage != null && master.attack2Damage !== '' ? master.attack2Damage : cardInput.attack2Damage,
-            attack2Text: master.attack2Text || cardInput.attack2Text,
-            attack2Energy: master.attack2Energy || cardInput.attack2Energy,
-            description: master.description || cardInput.description,
-            preEvolution: master.preEvolution || cardInput.preEvolution,
-            artLayout: master.artLayout || cardInput.artLayout || 'standard',
-            imageFit: master.imageFit || cardInput.imageFit || 'cover',
-            imageScale: master.imageScale != null ? master.imageScale : cardInput.imageScale,
-            imageX: master.imageX != null ? master.imageX : cardInput.imageX,
-            imageY: master.imageY != null ? master.imageY : cardInput.imageY
-          });
+          card = Object.assign({}, master, cardInput);
         }
       }
 
@@ -19198,25 +19178,11 @@ var CardSystem;
       if (!cardInput) return;
 
       let card = cardInput;
-      const allCards = (window.App && window.App.state && Array.isArray(window.App.state.cards)) ? window.App.state.cards : (window.CardSystem && Array.isArray(window.CardSystem.state?.cards) ? window.CardSystem.state.cards : []);
-      if (allCards.length > 0) {
-        const master = allCards.find(c => String(c.id) === String(cardInput.id) || String(c.name) === String(cardInput.name));
+      if (cardInput.id && (!cardInput.name || !cardInput.category)) {
+        const allCards = (window.App && window.App.state && Array.isArray(window.App.state.cards)) ? window.App.state.cards : (window.CardSystem && Array.isArray(window.CardSystem.state?.cards) ? window.CardSystem.state.cards : []);
+        const master = allCards.find(c => c && c.id && String(c.id) === String(cardInput.id));
         if (master) {
-          card = Object.assign({}, master, cardInput, {
-            hp: cardInput.hp != null ? cardInput.hp : master.hp,
-            maxHp: master.hp || cardInput.maxHp || cardInput.hp || 100,
-            abilityName: master.abilityName || cardInput.abilityName,
-            abilityText: master.abilityText || cardInput.abilityText || master.description,
-            attack1Name: master.attack1Name || cardInput.attack1Name,
-            attack1Damage: master.attack1Damage != null ? master.attack1Damage : cardInput.attack1Damage,
-            attack1Text: master.attack1Text || cardInput.attack1Text,
-            attack1Energy: master.attack1Energy || cardInput.attack1Energy,
-            attack2Name: master.attack2Name || cardInput.attack2Name,
-            attack2Damage: master.attack2Damage != null ? master.attack2Damage : cardInput.attack2Damage,
-            attack2Text: master.attack2Text || cardInput.attack2Text,
-            attack2Energy: master.attack2Energy || cardInput.attack2Energy,
-            description: master.description || cardInput.description || cardInput.text
-          });
+          card = Object.assign({}, master, cardInput);
         }
       }
 
@@ -30419,18 +30385,32 @@ console.log('[ORBITAL] App.js.html started execution');
           description = '';
         }
 
-        const category = String(c.category || 'たね');
+        const name = String(getVal(['name', 'Name', 'カード名', '名前', '名称']) || c.name || ('カード_' + (i + 1))).trim();
+        const category = String(getVal(['category', 'Category', 'カテゴリ', '区分', '種別', '分類']) || c.category || 'たね').trim();
         const isTrainerCategory = category === 'グッズ' || category === 'サポート' || category === 'トレーナー' || category === 'スタジアム' || category === 'ポケモンのどうぐ' || category === 'ポケモンの道具' || category.includes('どうぐ') || category.includes('道具');
-        const cardType = isTrainerCategory ? '' : String(c.type || '無');
+        const cardType = isTrainerCategory ? '' : String(getVal(['type', 'Type', 'タイプ', '属性']) || c.type || '無').trim();
+        const rarity = String(getVal(['rarity', 'Rarity', 'レアリティ', 'レア', 'R']) || c.rarity || 'C').trim();
+        const hpVal = getVal(['hp', 'HP', 'たいりょく', '体力']);
+        const hp = hpVal !== '' && hpVal != null ? Number(hpVal) : (c.hp !== '' && c.hp != null ? Number(c.hp) : '');
+        const preEvolution = String(getVal(['preEvolution', '進化前', '進化元']) || c.preEvolution || '').trim();
+        const artLayout = String(getVal(['artLayout', 'アートレイアウト', 'レイアウト']) || c.artLayout || 'standard').trim();
+        const imageFit = String(getVal(['imageFit', '画像フィット']) || c.imageFit || 'cover').trim();
+        const imageScale = getVal(['imageScale', '画像拡大']) !== '' ? Number(getVal(['imageScale', '画像拡大'])) : (c.imageScale != null ? Number(c.imageScale) : 100);
+        const imageX = getVal(['imageX', '画像位置X']) !== '' ? Number(getVal(['imageX', '画像位置X'])) : (c.imageX != null ? Number(c.imageX) : 50);
+        const imageY = getVal(['imageY', '画像位置Y']) !== '' ? Number(getVal(['imageY', '画像位置Y'])) : (c.imageY != null ? Number(c.imageY) : 50);
+        const imageHeight = getVal(['imageHeight', '画像高さ']) !== '' ? Number(getVal(['imageHeight', '画像高さ'])) : (c.imageHeight != null ? Number(c.imageHeight) : '');
+        const subCategory = String(getVal(['subCategory', 'サブカテゴリ']) || c.subCategory || '').trim();
+        const isEx = !!(c.isEx || getVal(['isEx', 'ex', 'EX']) || (name && /[\s_・-]ex|ex$/i.test(name)));
+        const isAceSpec = !!(c.isAceSpec || c.aceSpec || getVal(['isAceSpec', 'aceSpec', 'ACESPEC', 'エーススペック']));
 
         return {
           ...c,
-          id: String(c.id || 'card_' + (i + 1)),
-          name: String(c.name || 'カード'),
+          id: String(getVal(['id', 'ID', 'カードID', 'コード']) || c.id || ('card_' + (i + 1))),
+          name: name,
           type: cardType,
           category: category,
-          rarity: String(c.rarity || 'C'),
-          hp: c.hp !== '' && c.hp != null ? Number(c.hp) : '',
+          rarity: rarity,
+          hp: hp,
           image: image,
           abilityName: abilityName,
           abilityText: abilityText,
@@ -30445,7 +30425,17 @@ console.log('[ORBITAL] App.js.html started execution');
           weakness: weakness,
           resistance: resistance,
           retreat: retreat !== '' && retreat != null ? Number(retreat) : '',
-          description: description
+          description: description,
+          preEvolution: preEvolution,
+          artLayout: artLayout,
+          imageFit: imageFit,
+          imageScale: imageScale,
+          imageX: imageX,
+          imageY: imageY,
+          imageHeight: imageHeight,
+          subCategory: subCategory,
+          isEx: isEx,
+          isAceSpec: isAceSpec
         };
       });
     },
