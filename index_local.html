@@ -9228,7 +9228,7 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
         <button class="nav-button" data-page="pack">🎁 <span>パック開封</span></button>
         <button class="nav-button" data-page="single-shop">🛍️ <span>ショップ</span></button>
         <button class="nav-button" type="button" onclick="App.openFeedbackModal()">📮 <span>ご意見箱</span></button>
-        <button class="nav-button" data-page="cards">▣ <span>カード管理</span></button>
+        <button class="nav-button admin-only-ui hidden" data-page="cards">▣ <span>カード管理</span></button>
         <button class="nav-button admin-only-ui hidden" data-page="create">＋ <span>カード作成</span></button>
         <button class="nav-button admin-only-ui hidden" id="adminPackNavBtn" data-page="admin-pack"
           onclick="App.openAdminPackModal()">⚙️ <span>パック管理</span></button>
@@ -29059,6 +29059,9 @@ console.log('[ORBITAL] App.js.html started execution');
             window.location.hash.replace('#', '') ||
             'home';
         } catch (e) { initialPage = 'home'; }
+        if ((initialPage === 'cards' || initialPage === 'create') && !this.isAdmin()) {
+          initialPage = 'home';
+        }
         this.showPage(initialPage);
       });
       try {
@@ -29227,7 +29230,7 @@ console.log('[ORBITAL] App.js.html started execution');
         return;
       }
 
-      if (page === 'create' && !this.isAdmin()) {
+      if ((page === 'create' || page === 'cards') && !this.isAdmin()) {
         this.requireAdmin();
         return;
       }
@@ -30098,7 +30101,7 @@ console.log('[ORBITAL] App.js.html started execution');
         if (pubBtn) pubBtn.classList.add('hidden');
         adminUis.forEach((el) => el.classList.add('hidden'));
 
-        if (this.state.page === 'create') {
+        if (this.state.page === 'create' || this.state.page === 'cards') {
           this.showPage('home');
         }
       }

@@ -91,6 +91,9 @@ console.log('[ORBITAL] App.js.html started execution');
             window.location.hash.replace('#', '') ||
             'home';
         } catch (e) { initialPage = 'home'; }
+        if ((initialPage === 'cards' || initialPage === 'create') && !this.isAdmin()) {
+          initialPage = 'home';
+        }
         this.showPage(initialPage);
       });
       try {
@@ -259,7 +262,7 @@ console.log('[ORBITAL] App.js.html started execution');
         return;
       }
 
-      if (page === 'create' && !this.isAdmin()) {
+      if ((page === 'create' || page === 'cards') && !this.isAdmin()) {
         this.requireAdmin();
         return;
       }
@@ -1130,7 +1133,7 @@ console.log('[ORBITAL] App.js.html started execution');
         if (pubBtn) pubBtn.classList.add('hidden');
         adminUis.forEach((el) => el.classList.add('hidden'));
 
-        if (this.state.page === 'create') {
+        if (this.state.page === 'create' || this.state.page === 'cards') {
           this.showPage('home');
         }
       }
