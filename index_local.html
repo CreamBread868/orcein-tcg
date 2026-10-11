@@ -12402,6 +12402,161 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         }
         return tgt.hp;
       },
+
+      modifyRetreatCost(ctx, target = 'allActive', amount = 1, opt = {}) {
+        const amt = Number(amount) || 0;
+        const game = ctx?.game || window.BattleSystem?.state;
+
+        let targets = [];
+        const isAllActive = (
+          target === 'allActive' || target === 'active' || target === 'all' || target === 'both' ||
+          target === 'bothActive' || target === 'バトルポケモン' || target === 'すべてのバトルポケモン' ||
+          target === 'すべてのバトル場のポケモン' || target === 'お互いのバトルポケモン'
+        );
+
+        if (isAllActive) {
+          const p1 = ctx?.self?.active || game?.player?.active;
+          const p2 = ctx?.opponent?.active || game?.opponent?.active;
+          if (p1) targets.push(p1);
+          if (p2 && p2 !== p1) targets.push(p2);
+
+          // スタジアムカードまたは場全体の効果として記録
+          if (game && game.activeStadium) {
+            game.activeStadium.allActiveRetreatModifier = (Number(game.activeStadium.allActiveRetreatModifier) || 0) + amt;
+          } else if (game) {
+            game.allActiveRetreatModifier = (Number(game.allActiveRetreatModifier) || 0) + amt;
+          }
+          if (ctx?.card && ctx.card !== game?.activeStadium && (String(ctx.card.category || '').includes('スタジアム') || String(ctx.card.category || '').toLowerCase().includes('stadium'))) {
+            ctx.card.allActiveRetreatModifier = (Number(ctx.card.allActiveRetreatModifier) || 0) + amt;
+          }
+        } else if (target === 'selfActive' || target === 'myActive' || target === '自分のバトルポケモン') {
+          const p1 = ctx?.self?.active || game?.player?.active;
+          if (p1) targets.push(p1);
+        } else if (target === 'oppActive' || target === 'opponentActive' || target === '相手のバトルポケモン') {
+          const p2 = ctx?.opponent?.active || game?.opponent?.active;
+          if (p2) targets.push(p2);
+        } else if (Array.isArray(target)) {
+          targets = target;
+        } else if (target && typeof target === 'object') {
+          targets = [target];
+        } else {
+          const p1 = ctx?.self?.active || game?.player?.active;
+          const p2 = ctx?.opponent?.active || game?.opponent?.active;
+          if (p1) targets.push(p1);
+          if (p2 && p2 !== p1) targets.push(p2);
+        }
+
+        if (!isAllActive) {
+          targets.forEach((t) => {
+            if (!t || typeof t !== 'object') return;
+            t.retreatModifier = (Number(t.retreatModifier) || 0) + amt;
+            t.statModifiers = t.statModifiers || {};
+            t.statModifiers.retreatCost = (Number(t.statModifiers.retreatCost) || 0) + amt;
+          });
+        }
+
+        const sign = amt >= 0 ? ('+' + amt + ' 個多く') : (amt + ' 個少なく');
+        const targetLabel = isAllActive ? 'すべてのバトルポケモン' : targets.map(t => t.name || 'ポケモン').join('・');
+
+        const logs = this._getLogs(ctx);
+        if (logs) {
+          logs.push('👟 【' + targetLabel + '】のにげるためのエネルギーが ' + sign + ' なりました！');
+        }
+        if (window.App && typeof window.App.toast === 'function' && amt !== 0) {
+          window.App.toast('👟 ' + targetLabel + ' のにげるエネルギー: ' + sign);
+        }
+        return targets;
+      },
+
+      increaseRetreatCost(ctx, target = 'allActive', amount = 1) {
+        return this.modifyRetreatCost(ctx, target, Math.abs(Number(amount) || 1));
+      },
+
+      reduceRetreatCost(ctx, target = 'allActive', amount = 1) {
+        return this.modifyRetreatCost(ctx, target, -Math.abs(Number(amount) || 1));
+      },
+
+      decreaseRetreatCost(ctx, target = 'allActive', amount = 1) {
+        return this.modifyRetreatCost(ctx, target, -Math.abs(Number(amount) || 1));
+      },
+
+      setRetreatCost(ctx, target = null, cost = 0) {
+        const fixed = Math.max(0, Number(cost) || 0);
+        let targets = [];
+        if (target === 'allActive' || target === 'active' || target === 'all' || target === 'bothActive') {
+          const p1 = ctx?.self?.active || window.BattleSystem?.state?.player?.active;
+          const p2 = ctx?.opponent?.active || window.BattleSystem?.state?.opponent?.active;
+          if (p1) targets.push(p1);
+          if (p2 && p2 !== p1) targets.push(p2);
+        } else if (Array.isArray(target)) {
+          targets = target;
+        } else if (target && typeof target === 'object') {
+          targets = [target];
+        } else {
+          const p = ctx?.self?.active || window.BattleSystem?.state?.player?.active;
+          if (p) targets.push(p);
+        }
+        targets.forEach((t) => {
+          if (!t || typeof t !== 'object') return;
+          t.fixedRetreatCost = fixed;
+          t.retreatModifier = 0;
+          t.statModifiers = t.statModifiers || {};
+          t.statModifiers.fixedRetreatCost = fixed;
+        });
+        const logs = this._getLogs(ctx);
+        if (logs) {
+          logs.push('👟 対象ポケモンのにげるエネルギーが ' + fixed + ' 個に設定されました！');
+        }
+        return targets;
+      },
+
+      resetRetreatCost(ctx, target = null) {
+        let targets = [];
+        if (!target || target === 'all' || target === 'allActive') {
+          const p1 = ctx?.self?.active || window.BattleSystem?.state?.player?.active;
+          const p2 = ctx?.opponent?.active || window.BattleSystem?.state?.opponent?.active;
+          if (p1) targets.push(p1);
+          if (p2 && p2 !== p1) targets.push(p2);
+        } else if (Array.isArray(target)) {
+          targets = target;
+        } else if (target && typeof target === 'object') {
+          targets = [target];
+        }
+        targets.forEach((t) => {
+          if (!t || typeof t !== 'object') return;
+          delete t.retreatModifier;
+          delete t.fixedRetreatCost;
+          if (t.statModifiers) {
+            delete t.statModifiers.retreatCost;
+            delete t.statModifiers.fixedRetreatCost;
+          }
+        });
+        return targets;
+      },
+
+      getRetreatCost(ctx, target = null) {
+        const tgt = target || ctx?.thisPokemon || ctx?.self?.active || window.BattleSystem?.state?.player?.active;
+        if (!tgt) return 0;
+        if (window.BattleSystem && typeof window.BattleSystem.getRetreatCost === 'function') {
+          return window.BattleSystem.getRetreatCost(tgt);
+        }
+        let cost = Math.max(0, Number(tgt.retreat) || 0);
+        if (tgt.fixedRetreatCost != null) cost = Number(tgt.fixedRetreatCost) || 0;
+        if (tgt.retreatModifier != null) cost += Number(tgt.retreatModifier) || 0;
+        return Math.max(0, cost);
+      },
+
+      modifyStat(ctx, target, statName, value, opt = {}) {
+        const s = String(statName || '').toLowerCase();
+        if (s.includes('retreat') || s.includes('にげる')) {
+          return this.modifyRetreatCost(ctx, target, value, opt);
+        }
+        if (s.includes('maxhp') || s.includes('hp')) {
+          return value >= 0 ? this.increaseMaxHp(ctx, target, value) : this.reduceMaxHp(ctx, target, Math.abs(value));
+        }
+        return null;
+      },
+
       block(ctx, actionType, target = null, optionsOrTurns = 1) {
         let turns = 1;
         let countBy = 'opponent';
@@ -13870,11 +14025,23 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
     window.matchesCardFilter = matchesCardFilter;
 
     class EffectEvent {
-      constructor() { this.listeners = {}; }
+      constructor() {
+        this.listeners = {};
+        this.passiveRules = [];
+      }
       normalizeName(name) {
         const n = String(name || '').trim();
         if (['allyKnockedOut', 'onAllyKnockout', 'allyKnockout', 'ally_knocked_out', 'allyFainted', '味方気絶', '仲間気絶', '自分のポケモン気絶', '自分の仲間が気絶したら', '仲間が気絶したら', '味方が気絶したら'].includes(n)) {
           return 'allyKnockedOut';
+        }
+        if (['calcRetreatCost', 'calcRetreat', 'retreatCost', 'modifyRetreatCost', 'にげるエネルギー', 'にげるコスト', 'にげるエネ'].includes(n)) {
+          return 'calcRetreatCost';
+        }
+        if (['calcMaxHp', 'maxHp', 'modifyMaxHp', '最大HP'].includes(n)) {
+          return 'calcMaxHp';
+        }
+        if (['passive', 'continuous', 'always', 'rule', '常時', 'パッシブ', '常時効果', '常時特性'].includes(n)) {
+          return 'passive';
         }
         return n;
       }
@@ -13888,6 +14055,39 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         if (!this.listeners[key]) this.listeners[key] = [];
         this.listeners[key].push(fn);
       }
+      passive(fn, opt) {
+        if (typeof fn === 'function') {
+          this.on('passive', fn);
+          const game = window._currentExecutionContext?.game || window.BattleSystem?.state;
+          if (game) {
+            game.passiveRules = game.passiveRules || [];
+            const card = window._currentExecutionContext?.card;
+            const ruleWrapper = (e) => fn(e || window._currentExecutionContext);
+            ruleWrapper.sourceCard = card;
+            ruleWrapper.sourceStadiumId = card?.id;
+            game.passiveRules.push(ruleWrapper);
+          }
+          try {
+            const ctx = window._currentExecutionContext;
+            if (ctx) fn(ctx);
+          } catch(e) {
+            console.warn('passive execution error:', e);
+          }
+        } else if (typeof fn === 'string' && typeof opt === 'function') {
+          const stat = String(fn).toLowerCase();
+          const modFn = opt;
+          if (stat.includes('retreat') || stat.includes('にげる')) {
+            this.on('calcRetreatCost', (e) => {
+              const res = modFn(e.target, e.cost, e);
+              if (typeof res === 'number') e.cost = res;
+            });
+          }
+        }
+      }
+      continuous(fn, opt) { return this.passive(fn, opt); }
+      always(fn, opt) { return this.passive(fn, opt); }
+      rule(fn, opt) { return this.passive(fn, opt); }
+      modify(statName, fn) { return this.passive(statName, fn); }
       onasync(name, fn) {
         return this.on(name, fn);
       }
@@ -14112,9 +14312,19 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         repeatTurn: (cnt, opt) => api.repeatTurn(ctx, cnt, opt),
         grantExtraTurn: (cnt, opt) => api.grantExtraTurn(ctx, cnt, opt),
         lose: (r) => api.lose(ctx, r),
-        loseGame: (r) => api.loseGame(ctx, r),
         win: (r) => api.win(ctx, r),
-        winGame: (r) => api.winGame(ctx, r)
+        winGame: (r) => api.winGame(ctx, r),
+        modifyRetreatCost: (t, n, o) => api.modifyRetreatCost(ctx, t, n, o),
+        increaseRetreatCost: (t, n) => api.increaseRetreatCost(ctx, t, n),
+        reduceRetreatCost: (t, n) => api.reduceRetreatCost(ctx, t, n),
+        decreaseRetreatCost: (t, n) => api.decreaseRetreatCost(ctx, t, n),
+        setRetreatCost: (t, c) => api.setRetreatCost(ctx, t, c),
+        resetRetreatCost: (t) => api.resetRetreatCost(ctx, t),
+        getRetreatCost: (t) => api.getRetreatCost(ctx, t),
+        modifyStat: (t, s, v, o) => api.modifyStat(ctx, t, s, v, o),
+        passive: (fn, opt) => rawEvent.passive(fn, opt),
+        continuous: (fn, opt) => rawEvent.continuous(fn, opt),
+        modify: (s, fn) => rawEvent.modify(s, fn)
       };
 
       const attachGetters = (pk) => {
@@ -14191,10 +14401,14 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
       // 安全装置: イベントディスパッチ系の場合、コードにevent.on(eventName, ...) がなければスキップ
       // （起動型特性が turnStart/beforeDamage 等で意図せず自動実行されることを防ぐ）
       const ALLY_KO_ALIASES = ['allyKnockedOut', 'onAllyKnockout', 'allyKnockout', 'ally_knocked_out', 'allyFainted', '味方気絶', '仲間気絶', '自分のポケモン気絶', '自分の仲間が気絶したら', '仲間が気絶したら', '味方が気絶したら'];
-      const EVENT_DISPATCH_NAMES = ['turnStart', 'start', 'beforeDamage', 'onKnockout', 'onKnockoutOpponent', 'onAttach', 'onEvolution', ...ALLY_KO_ALIASES];
+      const PASSIVE_ALIASES = ['passive', 'continuous', 'calcRetreatCost', 'calcMaxHp'];
+      const EVENT_DISPATCH_NAMES = ['turnStart', 'start', 'beforeDamage', 'onKnockout', 'onKnockoutOpponent', 'onAttach', 'onEvolution', ...ALLY_KO_ALIASES, ...PASSIVE_ALIASES];
       if (eventName && EVENT_DISPATCH_NAMES.includes(eventName)) {
         if (eventName === 'allyKnockedOut' || ALLY_KO_ALIASES.includes(eventName)) {
           const hasListener = /event\s*\.\s*(?:on|onasync|onAsync)\s*\(\s*['"](allyKnockedOut|onAllyKnockout|allyKnockout|ally_knocked_out|allyFainted|味方気絶|仲間気絶|自分のポケモン気絶|自分の仲間が気絶したら|仲間が気絶したら|味方が気絶したら)['"]|whenAllyKnockedOut|onAllyKnockedOut/i.test(code);
+          if (!hasListener) return;
+        } else if (PASSIVE_ALIASES.includes(eventName)) {
+          const hasListener = /(?:event\s*\.\s*(?:passive|continuous|modify|on)|modifyRetreatCost|increaseRetreatCost|reduceRetreatCost|setRetreatCost)/i.test(code);
           if (!hasListener) return;
         } else {
           const escapedEvent = eventName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -14269,6 +14483,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         'afterTurns', 'afterTurn', 'delayTurns', 'delayTurn', 'waitTurns', 'waitTurn', 'atEndOfTurn',
         'extraTurn', 'takeExtraTurn', 'anotherTurn', 'repeatTurn', 'grantExtraTurn',
         'lose', 'loseGame', 'win', 'winGame',
+        'modifyRetreatCost', 'increaseRetreatCost', 'reduceRetreatCost', 'decreaseRetreatCost', 'setRetreatCost', 'resetRetreatCost', 'getRetreatCost', 'modifyStat', 'passive', 'continuous',
         '{\n' + asyncCode + '\n}'
       );
       try {
@@ -14302,7 +14517,8 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           ctx.getStadium, ctx.setStadium, ctx.discardStadium, ctx.hasStadium,
           ctx.afterTurns, ctx.afterTurn, ctx.delayTurns, ctx.delayTurn, ctx.waitTurns, ctx.waitTurn, ctx.atEndOfTurn,
           ctx.extraTurn, ctx.takeExtraTurn, ctx.anotherTurn, ctx.repeatTurn, ctx.grantExtraTurn,
-          ctx.lose, ctx.loseGame, ctx.win, ctx.winGame
+          ctx.lose, ctx.loseGame, ctx.win, ctx.winGame,
+          ctx.modifyRetreatCost, ctx.increaseRetreatCost, ctx.reduceRetreatCost, ctx.decreaseRetreatCost, ctx.setRetreatCost, ctx.resetRetreatCost, ctx.getRetreatCost, ctx.modifyStat, ctx.passive, ctx.continuous
         );
         if (eventName) await ctx.event.emit(eventName, eventData);
       } catch (e) {
@@ -14435,6 +14651,14 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
     window.getStatuses = (t) => window.ORBITAL_EFFECT_API.getStatuses(null, t);
     window.applyStatus = (t, s) => window.ORBITAL_EFFECT_API.applyStatus(null, t, s);
     window.clearStatus = (t, s) => window.ORBITAL_EFFECT_API.clearStatus(null, t, s);
+    window.modifyRetreatCost = (t, n, o) => window.ORBITAL_EFFECT_API.modifyRetreatCost(null, t, n, o);
+    window.increaseRetreatCost = (t, n) => window.ORBITAL_EFFECT_API.increaseRetreatCost(null, t, n);
+    window.reduceRetreatCost = (t, n) => window.ORBITAL_EFFECT_API.reduceRetreatCost(null, t, n);
+    window.decreaseRetreatCost = (t, n) => window.ORBITAL_EFFECT_API.decreaseRetreatCost(null, t, n);
+    window.setRetreatCost = (t, c) => window.ORBITAL_EFFECT_API.setRetreatCost(null, t, c);
+    window.resetRetreatCost = (t) => window.ORBITAL_EFFECT_API.resetRetreatCost(null, t);
+    window.getRetreatCost = (t) => window.ORBITAL_EFFECT_API.getRetreatCost(null, t);
+    window.modifyStat = (t, s, v, o) => window.ORBITAL_EFFECT_API.modifyStat(null, t, s, v, o);
     console.log('[ORBITAL] ActionEngine.js.html finished execution.');
   })();
 </script>
@@ -16468,11 +16692,55 @@ var EffectEditor;
         returns: 'void',
         desc: '特性のトリガーイベントリスナーを登録します。turnStart / start は自分のターン開始時に強制（自動）で発動します。',
         params: [
-          { name: 'eventName', type: 'string', desc: '"start" / "turnStart" (ターン開始時自動強制発動), "turnEnd" (ターン終了), "enterBattle" (バトル場登場), "enterBench" (ベンチ登場), "beforeDamage" (被ダメ直前), "onDamage" (被ダメ後), "onKnockout" (きぜつ時), "onKnockoutOpponent" (相手撃破時)' },
+          { name: 'eventName', type: 'string', desc: '"start" / "turnStart" (ターン開始時自動強制発動), "turnEnd" (ターン終了), "enterBattle" (バトル場登場), "enterBench" (ベンチ登場), "beforeDamage" (被ダメ直前), "onDamage" (被ダメ後), "onKnockout" (きぜつ時), "onKnockoutOpponent" (相手撃破時), "calcRetreatCost" (にげるコスト計算時)' },
           { name: 'callback', type: 'function', desc: '発動時に実行されるコールバック関数' }
         ],
         example: 'event.on("start", () => {\n  draw(self, 1);\n});',
         snippet: 'event.on("start", () => {\n  draw(self, 1);\n});'
+      },
+      {
+        name: 'event.passive',
+        signature: 'event.passive(callback)',
+        category: 'event',
+        catLabel: '特性・常時イベント',
+        badge: '常時パッシブ',
+        returns: 'void',
+        desc: '場に出ている間ずっと有効な常時効果・パッシブ効果（スタジアムカードやポケモンの常時特性）を登録します。バトルポケモンのにげるエネルギー増減や最大HPの補正など、ルール変更に最適です。event.continuous() も同様に使用できます。',
+        params: [
+          { name: 'callback', type: 'function', desc: '常時効果を適用するコールバック関数' }
+        ],
+        example: '// すべてのバトルポケモンのにげるエネルギーを1個多くする（ガラル鉱山等のスタジアム）\nevent.passive(() => {\n  modifyRetreatCost("allActive", 1);\n});',
+        snippet: 'event.passive(() => {\n  modifyRetreatCost("allActive", 1);\n});'
+      },
+      {
+        name: 'modifyRetreatCost',
+        signature: 'modifyRetreatCost(target?, amount?)',
+        category: 'battle',
+        catLabel: 'ステータス・バトル',
+        badge: 'にげる増減',
+        returns: 'Array [pokemon]',
+        desc: '対象ポケモン（または "allActive" でお互いのバトルポケモン全員）のにげるためのエネルギーを増減させます（+1で1個多く、-1で1個少なく）。スタジアムや特性によるにげるコスト操作に対応しています。increaseRetreatCost / reduceRetreatCost も使用可能。',
+        params: [
+          { name: 'target', type: 'string | pokemon | Array', desc: '"allActive" (すべてのバトルポケモン), self.active, opponent.active, またはポケモン配列（デフォルト: "allActive"）' },
+          { name: 'amount', type: 'number', desc: '増減するエネルギー個数（正の値で増加、負の値で減少。デフォルト: 1）' }
+        ],
+        example: '// スタジアム: お互いのバトルポケモンのにげるエネルギーを1個多くする\nmodifyRetreatCost("allActive", 1);',
+        snippet: 'modifyRetreatCost("allActive", 1);'
+      },
+      {
+        name: 'setRetreatCost',
+        signature: 'setRetreatCost(target?, cost?)',
+        category: 'battle',
+        catLabel: 'ステータス・バトル',
+        badge: 'にげる固定',
+        returns: 'Array [pokemon]',
+        desc: '対象ポケモンのにげるためのエネルギーを指定した値に固定します（例: 0 でにげるエネルギーをすべてなくす）。',
+        params: [
+          { name: 'target', type: 'string | pokemon | Array', desc: '対象ポケモンまたは "allActive"' },
+          { name: 'cost', type: 'number', desc: '固定するエネルギー数（0でゼロにげる。デフォルト: 0）' }
+        ],
+        example: '// 自分のバトルポケモンのにげるエネルギーをすべてなくす\nsetRetreatCost(self.active, 0);',
+        snippet: 'setRetreatCost(self.active, 0);'
       },
       {
         name: 'discardCards',
@@ -16932,7 +17200,10 @@ var EffectEditor;
         { label: '相手手札破棄', sub: 'choiceCard + toDiscard', code: 'const card = choiceCard(opponent, "hand");\ntoDiscard(opponent, card);' },
         { label: '前番味方きぜつ時のみ', sub: 'wasAllyKnockedOutLastTurn()', code: 'if (!wasAllyKnockedOutLastTurn()) {\n  cant("前の番に自分のポケモンがきぜつしていません");\n}' },
         { label: '山札サーチ', sub: 'choiceCard + toHand', code: 'const card = choiceCard(self, "deck", { category: "Basic" });\ntoHand(self, card);\nshuffleDeck(self);' },
-        { label: '相手ベンチ全員10', sub: 'benchDamage', code: 'benchDamage(opponent, 10);' }];
+        { label: '相手ベンチ全員10', sub: 'benchDamage', code: 'benchDamage(opponent, 10);' },
+        { label: 'にげるエネ+1 (スタジアム)', sub: 'modifyRetreatCost', code: 'modifyRetreatCost("allActive", 1);' },
+        { label: '常時パッシブ効果', sub: 'event.passive', code: 'event.passive(() => {\n  modifyRetreatCost("allActive", 1);\n});' },
+        { label: 'にげるエネ0固定', sub: 'setRetreatCost', code: 'setRetreatCost(self.active, 0);' }];
 
       }
 
@@ -17018,6 +17289,9 @@ var EffectEditor;
       // 4. eventオブジェクト (特性イベントリスナー登録)
       if (cleanPath === 'event') {
         return [
+          { keyword: 'passive', label: 'passive(() => { ... })', category: 'event', badge: '常時パッシブ', desc: '【常時効果】場にいる間ずっと有効なパッシブ効果（スタジアム・常時特性）', snippet: 'passive(() => {\n  modifyRetreatCost("allActive", 1);\n});' },
+          { keyword: 'continuous', label: 'continuous(() => { ... })', category: 'event', badge: '常時効果', desc: '【常時効果】場にいる間ずっと有効なルール・ステータス変更効果', snippet: 'continuous(() => {\n  modifyRetreatCost("allActive", 1);\n});' },
+          { keyword: 'on', label: 'on("calcRetreatCost", (e) => { ... })', category: 'event', badge: 'にげる計算時', desc: '【にげる計算フック】にげるエネルギー計算時に割り込み（e.cost += 1 等）', snippet: 'on("calcRetreatCost", (e) => {\n  if (e.isActive) e.cost += 1;\n});' },
           { keyword: 'on', label: 'on("turnStart", () => { ... })', category: 'event', badge: 'ターン開始時', desc: '【毎ターン1回】自分のターン開始時に発動', snippet: 'on("turnStart", () => {\n  draw(self, 1);\n});' },
           { keyword: 'on', label: 'on("turnEnd", () => { ... })', category: 'event', badge: 'ターン終了時', desc: '自分のターン終了時に発動', snippet: 'on("turnEnd", () => {\n  \n});' },
           { keyword: 'on', label: 'on("enterBattle", () => { ... })', category: 'event', badge: 'バトル場登場', desc: 'バトル場に出た時に発動', snippet: 'on("enterBattle", () => {\n  heal(self.active, 30);\n});' },
@@ -17032,6 +17306,8 @@ var EffectEditor;
       // 5. イベント引数オブジェクト (e)
       if (cleanPath === 'e') {
         return [
+          { keyword: 'cost', label: 'cost', category: 'prop', badge: 'にげる必要エネ', desc: 'calcRetreatCostイベント時の現在のにげるエネルギー数値', snippet: 'cost' },
+          { keyword: 'isActive', label: 'isActive', category: 'prop', badge: 'バトル場判定', desc: 'calcRetreatCostイベント時の対象がバトル場かどうかの真偽値', snippet: 'isActive' },
           { keyword: 'cancel', label: 'cancel = true', category: 'func', badge: '完全無効化', desc: '受けるワザのダメージを完全にキャンセル（無効化）する', snippet: 'cancel = true;' },
           { keyword: 'preventDamage', label: 'preventDamage()', category: 'func', badge: '無効化', desc: '受けるワザのダメージを無効化するメソッド', snippet: 'preventDamage();' },
           { keyword: 'damage', label: 'damage', category: 'prop', badge: '受けるダメ値', desc: '受けようとしているダメージ量数値', snippet: 'damage' },
@@ -25054,6 +25330,13 @@ window.DeckSystem = function () {
     getRetreatCost(pokemon) {
       if (!pokemon) return 0;
       let cost = Math.max(0, Number(pokemon.retreat) || 0);
+
+      // 1. ポケモンへの直接固定指定 (fixedRetreatCost)
+      if (pokemon.fixedRetreatCost != null) {
+        cost = Number(pokemon.fixedRetreatCost) || 0;
+      }
+
+      // 2. ポケモンのどうぐ (attachedTool)
       if (pokemon.attachedTool) {
         const tool = pokemon.attachedTool;
         if (tool.retreatDiscount != null) {
@@ -25066,6 +25349,96 @@ window.DeckSystem = function () {
           cost = Math.max(0, cost - 1);
         }
       }
+
+      // 3. ポケモン自身の動的ステータス変更モディファイア
+      if (pokemon.retreatModifier != null) {
+        cost += Number(pokemon.retreatModifier) || 0;
+      }
+      if (pokemon.retreatCostModifier != null) {
+        cost += Number(pokemon.retreatCostModifier) || 0;
+      }
+      if (pokemon.statModifiers && pokemon.statModifiers.retreatCost != null) {
+        cost += Number(pokemon.statModifiers.retreatCost) || 0;
+      }
+
+      const isPlayerActive = this.state.player && this.state.player.active === pokemon;
+      const isOpponentActive = this.state.opponent && this.state.opponent.active === pokemon;
+      const isActive = isPlayerActive || isOpponentActive;
+
+      // 4. スタジアム効果 (Active Stadium)
+      const stadium = this.state.activeStadium;
+      if (stadium && isActive) {
+        if (stadium.allActiveRetreatModifier != null) {
+          cost += Number(stadium.allActiveRetreatModifier) || 0;
+        } else if (stadium.retreatCostModifier != null) {
+          cost += Number(stadium.retreatCostModifier) || 0;
+        } else {
+          // スタジアム効果テキスト自動解析（コード未設定スタジアム用フォールバック）
+          const desc = String(stadium.description || stadium.text || stadium.effect || stadium.abilityText || '');
+          if (desc) {
+            if (/にげる.*エネルギー.*(?:すべて|お互い|それぞれ|両方|すべてのバトルポケモン)?.*(\d+|[１-２一二])個.*(?:多く|増|重)/.test(desc)) {
+              const m = desc.match(/にげる.*エネルギー.*(?:すべて|お互い|それぞれ|両方|すべてのバトルポケモン)?.*(\d+|[１-２一二])個.*(?:多く|増|重)/);
+              const val = m ? (parseInt(m[1].replace('１','1').replace('２','2').replace('一','1').replace('二','2'), 10) || 1) : 1;
+              cost += val;
+            } else if (/にげる.*エネルギー.*(?:多く|増|重)/.test(desc)) {
+              cost += 1;
+            } else if (/にげる.*エネルギー.*(?:すべて|0|ゼロ|なくなる)/.test(desc)) {
+              cost = 0;
+            } else if (/にげる.*エネルギー.*(?:すべて|お互い|それぞれ|両方)?.*(\d+|[１-２一二])個.*(?:少なく|減|軽)/.test(desc)) {
+              const m = desc.match(/にげる.*エネルギー.*(?:すべて|お互い|それぞれ|両方)?.*(\d+|[１-２一二])個.*(?:少なく|減|軽)/);
+              const val = m ? (parseInt(m[1].replace('１','1').replace('２','2').replace('一','1').replace('二','2'), 10) || 1) : 1;
+              cost = Math.max(0, cost - val);
+            }
+          }
+        }
+      } else if (this.state.allActiveRetreatModifier != null && isActive) {
+        cost += Number(this.state.allActiveRetreatModifier) || 0;
+      }
+
+      // 5. 場のポケモンの常時特性 (Passive Abilities)
+      const inPlay = [];
+      if (this.state.player?.active) inPlay.push({ pk: this.state.player.active, isOwner: isPlayerActive });
+      if (Array.isArray(this.state.player?.bench)) this.state.player.bench.forEach(b => b && inPlay.push({ pk: b, isOwner: isPlayerActive }));
+      if (this.state.opponent?.active) inPlay.push({ pk: this.state.opponent.active, isOwner: isOpponentActive });
+      if (Array.isArray(this.state.opponent?.bench)) this.state.opponent.bench.forEach(b => b && inPlay.push({ pk: b, isOwner: isOpponentActive }));
+
+      for (const item of inPlay) {
+        const pk = item.pk;
+        if (pk && pk.abilityText && !this.isBlocked('ability', pk, item.isOwner ? this.state.player : this.state.opponent)) {
+          const atxt = pk.abilityText;
+          if (!item.isOwner && isActive && /相手.*バトルポケモン.*にげる.*エネルギー.*(\d+|[１-２一二])個.*(?:多く|増|重)/.test(atxt)) {
+            const m = atxt.match(/相手.*バトルポケモン.*にげる.*エネルギー.*(\d+|[１-２一二])個.*(?:多く|増|重)/);
+            cost += m ? (parseInt(m[1].replace('１','1').replace('２','2'), 10) || 1) : 1;
+          }
+          if (item.isOwner && isActive && /自分.*バトルポケモン.*にげる.*エネルギー.*(?:すべて|0|なくなる)/.test(atxt)) {
+            cost = 0;
+          }
+        }
+      }
+
+      // 6. ActionEngine の常時イベントルール (event.passive / event.on('calcRetreatCost'))
+      if (this.state.passiveRules && Array.isArray(this.state.passiveRules)) {
+        for (const rule of this.state.passiveRules) {
+          if (typeof rule === 'function') {
+            try {
+              const res = rule({ target: pokemon, cost: cost, isActive: isActive });
+              if (typeof res === 'number') cost = res;
+            } catch(e) {
+              console.warn('passiveRule execution error:', e);
+            }
+          }
+        }
+      // 7. 最終的な固定値・ゼロ化オーバーライド (freeRetreat, fixedRetreatCost, かるいし等)
+      if (pokemon.attachedTool && (pokemon.attachedTool.freeRetreat || (pokemon.attachedTool.name && pokemon.attachedTool.name.includes('かるいし')))) {
+        cost = 0;
+      }
+      if (pokemon.freeRetreat) {
+        cost = 0;
+      }
+      if (pokemon.fixedRetreatCost != null) {
+        cost = Math.max(0, Number(pokemon.fixedRetreatCost) || 0);
+      }
+
       return Math.max(0, cost);
     },
 
@@ -25866,6 +26239,9 @@ window.DeckSystem = function () {
           const oldOwner = (oldStadium.owner === this.state.opponent.id) ? this.state.opponent : this.state.player;
           if (oldOwner && Array.isArray(oldOwner.discard)) {
             oldOwner.discard.push(oldStadium);
+          }
+          if (Array.isArray(this.state.passiveRules)) {
+            this.state.passiveRules = this.state.passiveRules.filter(r => !r.sourceStadiumId || r.sourceStadiumId !== oldStadium.id);
           }
         }
         this.state.activeStadium = Object.assign({}, card, { owner: p.id });

@@ -2028,11 +2028,55 @@ var EffectEditor;
         returns: 'void',
         desc: '特性のトリガーイベントリスナーを登録します。turnStart / start は自分のターン開始時に強制（自動）で発動します。',
         params: [
-          { name: 'eventName', type: 'string', desc: '"start" / "turnStart" (ターン開始時自動強制発動), "turnEnd" (ターン終了), "enterBattle" (バトル場登場), "enterBench" (ベンチ登場), "beforeDamage" (被ダメ直前), "onDamage" (被ダメ後), "onKnockout" (きぜつ時), "onKnockoutOpponent" (相手撃破時)' },
+          { name: 'eventName', type: 'string', desc: '"start" / "turnStart" (ターン開始時自動強制発動), "turnEnd" (ターン終了), "enterBattle" (バトル場登場), "enterBench" (ベンチ登場), "beforeDamage" (被ダメ直前), "onDamage" (被ダメ後), "onKnockout" (きぜつ時), "onKnockoutOpponent" (相手撃破時), "calcRetreatCost" (にげるコスト計算時)' },
           { name: 'callback', type: 'function', desc: '発動時に実行されるコールバック関数' }
         ],
         example: 'event.on("start", () => {\n  draw(self, 1);\n});',
         snippet: 'event.on("start", () => {\n  draw(self, 1);\n});'
+      },
+      {
+        name: 'event.passive',
+        signature: 'event.passive(callback)',
+        category: 'event',
+        catLabel: '特性・常時イベント',
+        badge: '常時パッシブ',
+        returns: 'void',
+        desc: '場に出ている間ずっと有効な常時効果・パッシブ効果（スタジアムカードやポケモンの常時特性）を登録します。バトルポケモンのにげるエネルギー増減や最大HPの補正など、ルール変更に最適です。event.continuous() も同様に使用できます。',
+        params: [
+          { name: 'callback', type: 'function', desc: '常時効果を適用するコールバック関数' }
+        ],
+        example: '// すべてのバトルポケモンのにげるエネルギーを1個多くする（ガラル鉱山等のスタジアム）\nevent.passive(() => {\n  modifyRetreatCost("allActive", 1);\n});',
+        snippet: 'event.passive(() => {\n  modifyRetreatCost("allActive", 1);\n});'
+      },
+      {
+        name: 'modifyRetreatCost',
+        signature: 'modifyRetreatCost(target?, amount?)',
+        category: 'battle',
+        catLabel: 'ステータス・バトル',
+        badge: 'にげる増減',
+        returns: 'Array [pokemon]',
+        desc: '対象ポケモン（または "allActive" でお互いのバトルポケモン全員）のにげるためのエネルギーを増減させます（+1で1個多く、-1で1個少なく）。スタジアムや特性によるにげるコスト操作に対応しています。increaseRetreatCost / reduceRetreatCost も使用可能。',
+        params: [
+          { name: 'target', type: 'string | pokemon | Array', desc: '"allActive" (すべてのバトルポケモン), self.active, opponent.active, またはポケモン配列（デフォルト: "allActive"）' },
+          { name: 'amount', type: 'number', desc: '増減するエネルギー個数（正の値で増加、負の値で減少。デフォルト: 1）' }
+        ],
+        example: '// スタジアム: お互いのバトルポケモンのにげるエネルギーを1個多くする\nmodifyRetreatCost("allActive", 1);',
+        snippet: 'modifyRetreatCost("allActive", 1);'
+      },
+      {
+        name: 'setRetreatCost',
+        signature: 'setRetreatCost(target?, cost?)',
+        category: 'battle',
+        catLabel: 'ステータス・バトル',
+        badge: 'にげる固定',
+        returns: 'Array [pokemon]',
+        desc: '対象ポケモンのにげるためのエネルギーを指定した値に固定します（例: 0 でにげるエネルギーをすべてなくす）。',
+        params: [
+          { name: 'target', type: 'string | pokemon | Array', desc: '対象ポケモンまたは "allActive"' },
+          { name: 'cost', type: 'number', desc: '固定するエネルギー数（0でゼロにげる。デフォルト: 0）' }
+        ],
+        example: '// 自分のバトルポケモンのにげるエネルギーをすべてなくす\nsetRetreatCost(self.active, 0);',
+        snippet: 'setRetreatCost(self.active, 0);'
       },
       {
         name: 'discardCards',
@@ -2492,7 +2536,10 @@ var EffectEditor;
         { label: '相手手札破棄', sub: 'choiceCard + toDiscard', code: 'const card = choiceCard(opponent, "hand");\ntoDiscard(opponent, card);' },
         { label: '前番味方きぜつ時のみ', sub: 'wasAllyKnockedOutLastTurn()', code: 'if (!wasAllyKnockedOutLastTurn()) {\n  cant("前の番に自分のポケモンがきぜつしていません");\n}' },
         { label: '山札サーチ', sub: 'choiceCard + toHand', code: 'const card = choiceCard(self, "deck", { category: "Basic" });\ntoHand(self, card);\nshuffleDeck(self);' },
-        { label: '相手ベンチ全員10', sub: 'benchDamage', code: 'benchDamage(opponent, 10);' }];
+        { label: '相手ベンチ全員10', sub: 'benchDamage', code: 'benchDamage(opponent, 10);' },
+        { label: 'にげるエネ+1 (スタジアム)', sub: 'modifyRetreatCost', code: 'modifyRetreatCost("allActive", 1);' },
+        { label: '常時パッシブ効果', sub: 'event.passive', code: 'event.passive(() => {\n  modifyRetreatCost("allActive", 1);\n});' },
+        { label: 'にげるエネ0固定', sub: 'setRetreatCost', code: 'setRetreatCost(self.active, 0);' }];
 
       }
 
@@ -2578,6 +2625,9 @@ var EffectEditor;
       // 4. eventオブジェクト (特性イベントリスナー登録)
       if (cleanPath === 'event') {
         return [
+          { keyword: 'passive', label: 'passive(() => { ... })', category: 'event', badge: '常時パッシブ', desc: '【常時効果】場にいる間ずっと有効なパッシブ効果（スタジアム・常時特性）', snippet: 'passive(() => {\n  modifyRetreatCost("allActive", 1);\n});' },
+          { keyword: 'continuous', label: 'continuous(() => { ... })', category: 'event', badge: '常時効果', desc: '【常時効果】場にいる間ずっと有効なルール・ステータス変更効果', snippet: 'continuous(() => {\n  modifyRetreatCost("allActive", 1);\n});' },
+          { keyword: 'on', label: 'on("calcRetreatCost", (e) => { ... })', category: 'event', badge: 'にげる計算時', desc: '【にげる計算フック】にげるエネルギー計算時に割り込み（e.cost += 1 等）', snippet: 'on("calcRetreatCost", (e) => {\n  if (e.isActive) e.cost += 1;\n});' },
           { keyword: 'on', label: 'on("turnStart", () => { ... })', category: 'event', badge: 'ターン開始時', desc: '【毎ターン1回】自分のターン開始時に発動', snippet: 'on("turnStart", () => {\n  draw(self, 1);\n});' },
           { keyword: 'on', label: 'on("turnEnd", () => { ... })', category: 'event', badge: 'ターン終了時', desc: '自分のターン終了時に発動', snippet: 'on("turnEnd", () => {\n  \n});' },
           { keyword: 'on', label: 'on("enterBattle", () => { ... })', category: 'event', badge: 'バトル場登場', desc: 'バトル場に出た時に発動', snippet: 'on("enterBattle", () => {\n  heal(self.active, 30);\n});' },
@@ -2592,6 +2642,8 @@ var EffectEditor;
       // 5. イベント引数オブジェクト (e)
       if (cleanPath === 'e') {
         return [
+          { keyword: 'cost', label: 'cost', category: 'prop', badge: 'にげる必要エネ', desc: 'calcRetreatCostイベント時の現在のにげるエネルギー数値', snippet: 'cost' },
+          { keyword: 'isActive', label: 'isActive', category: 'prop', badge: 'バトル場判定', desc: 'calcRetreatCostイベント時の対象がバトル場かどうかの真偽値', snippet: 'isActive' },
           { keyword: 'cancel', label: 'cancel = true', category: 'func', badge: '完全無効化', desc: '受けるワザのダメージを完全にキャンセル（無効化）する', snippet: 'cancel = true;' },
           { keyword: 'preventDamage', label: 'preventDamage()', category: 'func', badge: '無効化', desc: '受けるワザのダメージを無効化するメソッド', snippet: 'preventDamage();' },
           { keyword: 'damage', label: 'damage', category: 'prop', badge: '受けるダメ値', desc: '受けようとしているダメージ量数値', snippet: 'damage' },

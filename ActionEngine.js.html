@@ -1415,6 +1415,161 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         }
         return tgt.hp;
       },
+
+      modifyRetreatCost(ctx, target = 'allActive', amount = 1, opt = {}) {
+        const amt = Number(amount) || 0;
+        const game = ctx?.game || window.BattleSystem?.state;
+
+        let targets = [];
+        const isAllActive = (
+          target === 'allActive' || target === 'active' || target === 'all' || target === 'both' ||
+          target === 'bothActive' || target === 'バトルポケモン' || target === 'すべてのバトルポケモン' ||
+          target === 'すべてのバトル場のポケモン' || target === 'お互いのバトルポケモン'
+        );
+
+        if (isAllActive) {
+          const p1 = ctx?.self?.active || game?.player?.active;
+          const p2 = ctx?.opponent?.active || game?.opponent?.active;
+          if (p1) targets.push(p1);
+          if (p2 && p2 !== p1) targets.push(p2);
+
+          // スタジアムカードまたは場全体の効果として記録
+          if (game && game.activeStadium) {
+            game.activeStadium.allActiveRetreatModifier = (Number(game.activeStadium.allActiveRetreatModifier) || 0) + amt;
+          } else if (game) {
+            game.allActiveRetreatModifier = (Number(game.allActiveRetreatModifier) || 0) + amt;
+          }
+          if (ctx?.card && ctx.card !== game?.activeStadium && (String(ctx.card.category || '').includes('スタジアム') || String(ctx.card.category || '').toLowerCase().includes('stadium'))) {
+            ctx.card.allActiveRetreatModifier = (Number(ctx.card.allActiveRetreatModifier) || 0) + amt;
+          }
+        } else if (target === 'selfActive' || target === 'myActive' || target === '自分のバトルポケモン') {
+          const p1 = ctx?.self?.active || game?.player?.active;
+          if (p1) targets.push(p1);
+        } else if (target === 'oppActive' || target === 'opponentActive' || target === '相手のバトルポケモン') {
+          const p2 = ctx?.opponent?.active || game?.opponent?.active;
+          if (p2) targets.push(p2);
+        } else if (Array.isArray(target)) {
+          targets = target;
+        } else if (target && typeof target === 'object') {
+          targets = [target];
+        } else {
+          const p1 = ctx?.self?.active || game?.player?.active;
+          const p2 = ctx?.opponent?.active || game?.opponent?.active;
+          if (p1) targets.push(p1);
+          if (p2 && p2 !== p1) targets.push(p2);
+        }
+
+        if (!isAllActive) {
+          targets.forEach((t) => {
+            if (!t || typeof t !== 'object') return;
+            t.retreatModifier = (Number(t.retreatModifier) || 0) + amt;
+            t.statModifiers = t.statModifiers || {};
+            t.statModifiers.retreatCost = (Number(t.statModifiers.retreatCost) || 0) + amt;
+          });
+        }
+
+        const sign = amt >= 0 ? ('+' + amt + ' 個多く') : (amt + ' 個少なく');
+        const targetLabel = isAllActive ? 'すべてのバトルポケモン' : targets.map(t => t.name || 'ポケモン').join('・');
+
+        const logs = this._getLogs(ctx);
+        if (logs) {
+          logs.push('👟 【' + targetLabel + '】のにげるためのエネルギーが ' + sign + ' なりました！');
+        }
+        if (window.App && typeof window.App.toast === 'function' && amt !== 0) {
+          window.App.toast('👟 ' + targetLabel + ' のにげるエネルギー: ' + sign);
+        }
+        return targets;
+      },
+
+      increaseRetreatCost(ctx, target = 'allActive', amount = 1) {
+        return this.modifyRetreatCost(ctx, target, Math.abs(Number(amount) || 1));
+      },
+
+      reduceRetreatCost(ctx, target = 'allActive', amount = 1) {
+        return this.modifyRetreatCost(ctx, target, -Math.abs(Number(amount) || 1));
+      },
+
+      decreaseRetreatCost(ctx, target = 'allActive', amount = 1) {
+        return this.modifyRetreatCost(ctx, target, -Math.abs(Number(amount) || 1));
+      },
+
+      setRetreatCost(ctx, target = null, cost = 0) {
+        const fixed = Math.max(0, Number(cost) || 0);
+        let targets = [];
+        if (target === 'allActive' || target === 'active' || target === 'all' || target === 'bothActive') {
+          const p1 = ctx?.self?.active || window.BattleSystem?.state?.player?.active;
+          const p2 = ctx?.opponent?.active || window.BattleSystem?.state?.opponent?.active;
+          if (p1) targets.push(p1);
+          if (p2 && p2 !== p1) targets.push(p2);
+        } else if (Array.isArray(target)) {
+          targets = target;
+        } else if (target && typeof target === 'object') {
+          targets = [target];
+        } else {
+          const p = ctx?.self?.active || window.BattleSystem?.state?.player?.active;
+          if (p) targets.push(p);
+        }
+        targets.forEach((t) => {
+          if (!t || typeof t !== 'object') return;
+          t.fixedRetreatCost = fixed;
+          t.retreatModifier = 0;
+          t.statModifiers = t.statModifiers || {};
+          t.statModifiers.fixedRetreatCost = fixed;
+        });
+        const logs = this._getLogs(ctx);
+        if (logs) {
+          logs.push('👟 対象ポケモンのにげるエネルギーが ' + fixed + ' 個に設定されました！');
+        }
+        return targets;
+      },
+
+      resetRetreatCost(ctx, target = null) {
+        let targets = [];
+        if (!target || target === 'all' || target === 'allActive') {
+          const p1 = ctx?.self?.active || window.BattleSystem?.state?.player?.active;
+          const p2 = ctx?.opponent?.active || window.BattleSystem?.state?.opponent?.active;
+          if (p1) targets.push(p1);
+          if (p2 && p2 !== p1) targets.push(p2);
+        } else if (Array.isArray(target)) {
+          targets = target;
+        } else if (target && typeof target === 'object') {
+          targets = [target];
+        }
+        targets.forEach((t) => {
+          if (!t || typeof t !== 'object') return;
+          delete t.retreatModifier;
+          delete t.fixedRetreatCost;
+          if (t.statModifiers) {
+            delete t.statModifiers.retreatCost;
+            delete t.statModifiers.fixedRetreatCost;
+          }
+        });
+        return targets;
+      },
+
+      getRetreatCost(ctx, target = null) {
+        const tgt = target || ctx?.thisPokemon || ctx?.self?.active || window.BattleSystem?.state?.player?.active;
+        if (!tgt) return 0;
+        if (window.BattleSystem && typeof window.BattleSystem.getRetreatCost === 'function') {
+          return window.BattleSystem.getRetreatCost(tgt);
+        }
+        let cost = Math.max(0, Number(tgt.retreat) || 0);
+        if (tgt.fixedRetreatCost != null) cost = Number(tgt.fixedRetreatCost) || 0;
+        if (tgt.retreatModifier != null) cost += Number(tgt.retreatModifier) || 0;
+        return Math.max(0, cost);
+      },
+
+      modifyStat(ctx, target, statName, value, opt = {}) {
+        const s = String(statName || '').toLowerCase();
+        if (s.includes('retreat') || s.includes('にげる')) {
+          return this.modifyRetreatCost(ctx, target, value, opt);
+        }
+        if (s.includes('maxhp') || s.includes('hp')) {
+          return value >= 0 ? this.increaseMaxHp(ctx, target, value) : this.reduceMaxHp(ctx, target, Math.abs(value));
+        }
+        return null;
+      },
+
       block(ctx, actionType, target = null, optionsOrTurns = 1) {
         let turns = 1;
         let countBy = 'opponent';
@@ -2883,11 +3038,23 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
     window.matchesCardFilter = matchesCardFilter;
 
     class EffectEvent {
-      constructor() { this.listeners = {}; }
+      constructor() {
+        this.listeners = {};
+        this.passiveRules = [];
+      }
       normalizeName(name) {
         const n = String(name || '').trim();
         if (['allyKnockedOut', 'onAllyKnockout', 'allyKnockout', 'ally_knocked_out', 'allyFainted', '味方気絶', '仲間気絶', '自分のポケモン気絶', '自分の仲間が気絶したら', '仲間が気絶したら', '味方が気絶したら'].includes(n)) {
           return 'allyKnockedOut';
+        }
+        if (['calcRetreatCost', 'calcRetreat', 'retreatCost', 'modifyRetreatCost', 'にげるエネルギー', 'にげるコスト', 'にげるエネ'].includes(n)) {
+          return 'calcRetreatCost';
+        }
+        if (['calcMaxHp', 'maxHp', 'modifyMaxHp', '最大HP'].includes(n)) {
+          return 'calcMaxHp';
+        }
+        if (['passive', 'continuous', 'always', 'rule', '常時', 'パッシブ', '常時効果', '常時特性'].includes(n)) {
+          return 'passive';
         }
         return n;
       }
@@ -2901,6 +3068,39 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         if (!this.listeners[key]) this.listeners[key] = [];
         this.listeners[key].push(fn);
       }
+      passive(fn, opt) {
+        if (typeof fn === 'function') {
+          this.on('passive', fn);
+          const game = window._currentExecutionContext?.game || window.BattleSystem?.state;
+          if (game) {
+            game.passiveRules = game.passiveRules || [];
+            const card = window._currentExecutionContext?.card;
+            const ruleWrapper = (e) => fn(e || window._currentExecutionContext);
+            ruleWrapper.sourceCard = card;
+            ruleWrapper.sourceStadiumId = card?.id;
+            game.passiveRules.push(ruleWrapper);
+          }
+          try {
+            const ctx = window._currentExecutionContext;
+            if (ctx) fn(ctx);
+          } catch(e) {
+            console.warn('passive execution error:', e);
+          }
+        } else if (typeof fn === 'string' && typeof opt === 'function') {
+          const stat = String(fn).toLowerCase();
+          const modFn = opt;
+          if (stat.includes('retreat') || stat.includes('にげる')) {
+            this.on('calcRetreatCost', (e) => {
+              const res = modFn(e.target, e.cost, e);
+              if (typeof res === 'number') e.cost = res;
+            });
+          }
+        }
+      }
+      continuous(fn, opt) { return this.passive(fn, opt); }
+      always(fn, opt) { return this.passive(fn, opt); }
+      rule(fn, opt) { return this.passive(fn, opt); }
+      modify(statName, fn) { return this.passive(statName, fn); }
       onasync(name, fn) {
         return this.on(name, fn);
       }
@@ -3125,9 +3325,19 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         repeatTurn: (cnt, opt) => api.repeatTurn(ctx, cnt, opt),
         grantExtraTurn: (cnt, opt) => api.grantExtraTurn(ctx, cnt, opt),
         lose: (r) => api.lose(ctx, r),
-        loseGame: (r) => api.loseGame(ctx, r),
         win: (r) => api.win(ctx, r),
-        winGame: (r) => api.winGame(ctx, r)
+        winGame: (r) => api.winGame(ctx, r),
+        modifyRetreatCost: (t, n, o) => api.modifyRetreatCost(ctx, t, n, o),
+        increaseRetreatCost: (t, n) => api.increaseRetreatCost(ctx, t, n),
+        reduceRetreatCost: (t, n) => api.reduceRetreatCost(ctx, t, n),
+        decreaseRetreatCost: (t, n) => api.decreaseRetreatCost(ctx, t, n),
+        setRetreatCost: (t, c) => api.setRetreatCost(ctx, t, c),
+        resetRetreatCost: (t) => api.resetRetreatCost(ctx, t),
+        getRetreatCost: (t) => api.getRetreatCost(ctx, t),
+        modifyStat: (t, s, v, o) => api.modifyStat(ctx, t, s, v, o),
+        passive: (fn, opt) => rawEvent.passive(fn, opt),
+        continuous: (fn, opt) => rawEvent.continuous(fn, opt),
+        modify: (s, fn) => rawEvent.modify(s, fn)
       };
 
       const attachGetters = (pk) => {
@@ -3204,10 +3414,14 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
       // 安全装置: イベントディスパッチ系の場合、コードにevent.on(eventName, ...) がなければスキップ
       // （起動型特性が turnStart/beforeDamage 等で意図せず自動実行されることを防ぐ）
       const ALLY_KO_ALIASES = ['allyKnockedOut', 'onAllyKnockout', 'allyKnockout', 'ally_knocked_out', 'allyFainted', '味方気絶', '仲間気絶', '自分のポケモン気絶', '自分の仲間が気絶したら', '仲間が気絶したら', '味方が気絶したら'];
-      const EVENT_DISPATCH_NAMES = ['turnStart', 'start', 'beforeDamage', 'onKnockout', 'onKnockoutOpponent', 'onAttach', 'onEvolution', ...ALLY_KO_ALIASES];
+      const PASSIVE_ALIASES = ['passive', 'continuous', 'calcRetreatCost', 'calcMaxHp'];
+      const EVENT_DISPATCH_NAMES = ['turnStart', 'start', 'beforeDamage', 'onKnockout', 'onKnockoutOpponent', 'onAttach', 'onEvolution', ...ALLY_KO_ALIASES, ...PASSIVE_ALIASES];
       if (eventName && EVENT_DISPATCH_NAMES.includes(eventName)) {
         if (eventName === 'allyKnockedOut' || ALLY_KO_ALIASES.includes(eventName)) {
           const hasListener = /event\s*\.\s*(?:on|onasync|onAsync)\s*\(\s*['"](allyKnockedOut|onAllyKnockout|allyKnockout|ally_knocked_out|allyFainted|味方気絶|仲間気絶|自分のポケモン気絶|自分の仲間が気絶したら|仲間が気絶したら|味方が気絶したら)['"]|whenAllyKnockedOut|onAllyKnockedOut/i.test(code);
+          if (!hasListener) return;
+        } else if (PASSIVE_ALIASES.includes(eventName)) {
+          const hasListener = /(?:event\s*\.\s*(?:passive|continuous|modify|on)|modifyRetreatCost|increaseRetreatCost|reduceRetreatCost|setRetreatCost)/i.test(code);
           if (!hasListener) return;
         } else {
           const escapedEvent = eventName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -3282,6 +3496,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         'afterTurns', 'afterTurn', 'delayTurns', 'delayTurn', 'waitTurns', 'waitTurn', 'atEndOfTurn',
         'extraTurn', 'takeExtraTurn', 'anotherTurn', 'repeatTurn', 'grantExtraTurn',
         'lose', 'loseGame', 'win', 'winGame',
+        'modifyRetreatCost', 'increaseRetreatCost', 'reduceRetreatCost', 'decreaseRetreatCost', 'setRetreatCost', 'resetRetreatCost', 'getRetreatCost', 'modifyStat', 'passive', 'continuous',
         '{\n' + asyncCode + '\n}'
       );
       try {
@@ -3315,7 +3530,8 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           ctx.getStadium, ctx.setStadium, ctx.discardStadium, ctx.hasStadium,
           ctx.afterTurns, ctx.afterTurn, ctx.delayTurns, ctx.delayTurn, ctx.waitTurns, ctx.waitTurn, ctx.atEndOfTurn,
           ctx.extraTurn, ctx.takeExtraTurn, ctx.anotherTurn, ctx.repeatTurn, ctx.grantExtraTurn,
-          ctx.lose, ctx.loseGame, ctx.win, ctx.winGame
+          ctx.lose, ctx.loseGame, ctx.win, ctx.winGame,
+          ctx.modifyRetreatCost, ctx.increaseRetreatCost, ctx.reduceRetreatCost, ctx.decreaseRetreatCost, ctx.setRetreatCost, ctx.resetRetreatCost, ctx.getRetreatCost, ctx.modifyStat, ctx.passive, ctx.continuous
         );
         if (eventName) await ctx.event.emit(eventName, eventData);
       } catch (e) {
@@ -3448,6 +3664,14 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
     window.getStatuses = (t) => window.ORBITAL_EFFECT_API.getStatuses(null, t);
     window.applyStatus = (t, s) => window.ORBITAL_EFFECT_API.applyStatus(null, t, s);
     window.clearStatus = (t, s) => window.ORBITAL_EFFECT_API.clearStatus(null, t, s);
+    window.modifyRetreatCost = (t, n, o) => window.ORBITAL_EFFECT_API.modifyRetreatCost(null, t, n, o);
+    window.increaseRetreatCost = (t, n) => window.ORBITAL_EFFECT_API.increaseRetreatCost(null, t, n);
+    window.reduceRetreatCost = (t, n) => window.ORBITAL_EFFECT_API.reduceRetreatCost(null, t, n);
+    window.decreaseRetreatCost = (t, n) => window.ORBITAL_EFFECT_API.decreaseRetreatCost(null, t, n);
+    window.setRetreatCost = (t, c) => window.ORBITAL_EFFECT_API.setRetreatCost(null, t, c);
+    window.resetRetreatCost = (t) => window.ORBITAL_EFFECT_API.resetRetreatCost(null, t);
+    window.getRetreatCost = (t) => window.ORBITAL_EFFECT_API.getRetreatCost(null, t);
+    window.modifyStat = (t, s, v, o) => window.ORBITAL_EFFECT_API.modifyStat(null, t, s, v, o);
     console.log('[ORBITAL] ActionEngine.js.html finished execution.');
   })();
 </script>

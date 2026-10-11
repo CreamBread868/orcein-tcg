@@ -3875,6 +3875,13 @@
     getRetreatCost(pokemon) {
       if (!pokemon) return 0;
       let cost = Math.max(0, Number(pokemon.retreat) || 0);
+
+      // 1. ポケモンへの直接固定指定 (fixedRetreatCost)
+      if (pokemon.fixedRetreatCost != null) {
+        cost = Number(pokemon.fixedRetreatCost) || 0;
+      }
+
+      // 2. ポケモンのどうぐ (attachedTool)
       if (pokemon.attachedTool) {
         const tool = pokemon.attachedTool;
         if (tool.retreatDiscount != null) {
@@ -3887,6 +3894,96 @@
           cost = Math.max(0, cost - 1);
         }
       }
+
+      // 3. ポケモン自身の動的ステータス変更モディファイア
+      if (pokemon.retreatModifier != null) {
+        cost += Number(pokemon.retreatModifier) || 0;
+      }
+      if (pokemon.retreatCostModifier != null) {
+        cost += Number(pokemon.retreatCostModifier) || 0;
+      }
+      if (pokemon.statModifiers && pokemon.statModifiers.retreatCost != null) {
+        cost += Number(pokemon.statModifiers.retreatCost) || 0;
+      }
+
+      const isPlayerActive = this.state.player && this.state.player.active === pokemon;
+      const isOpponentActive = this.state.opponent && this.state.opponent.active === pokemon;
+      const isActive = isPlayerActive || isOpponentActive;
+
+      // 4. スタジアム効果 (Active Stadium)
+      const stadium = this.state.activeStadium;
+      if (stadium && isActive) {
+        if (stadium.allActiveRetreatModifier != null) {
+          cost += Number(stadium.allActiveRetreatModifier) || 0;
+        } else if (stadium.retreatCostModifier != null) {
+          cost += Number(stadium.retreatCostModifier) || 0;
+        } else {
+          // スタジアム効果テキスト自動解析（コード未設定スタジアム用フォールバック）
+          const desc = String(stadium.description || stadium.text || stadium.effect || stadium.abilityText || '');
+          if (desc) {
+            if (/にげる.*エネルギー.*(?:すべて|お互い|それぞれ|両方|すべてのバトルポケモン)?.*(\d+|[１-２一二])個.*(?:多く|増|重)/.test(desc)) {
+              const m = desc.match(/にげる.*エネルギー.*(?:すべて|お互い|それぞれ|両方|すべてのバトルポケモン)?.*(\d+|[１-２一二])個.*(?:多く|増|重)/);
+              const val = m ? (parseInt(m[1].replace('１','1').replace('２','2').replace('一','1').replace('二','2'), 10) || 1) : 1;
+              cost += val;
+            } else if (/にげる.*エネルギー.*(?:多く|増|重)/.test(desc)) {
+              cost += 1;
+            } else if (/にげる.*エネルギー.*(?:すべて|0|ゼロ|なくなる)/.test(desc)) {
+              cost = 0;
+            } else if (/にげる.*エネルギー.*(?:すべて|お互い|それぞれ|両方)?.*(\d+|[１-２一二])個.*(?:少なく|減|軽)/.test(desc)) {
+              const m = desc.match(/にげる.*エネルギー.*(?:すべて|お互い|それぞれ|両方)?.*(\d+|[１-２一二])個.*(?:少なく|減|軽)/);
+              const val = m ? (parseInt(m[1].replace('１','1').replace('２','2').replace('一','1').replace('二','2'), 10) || 1) : 1;
+              cost = Math.max(0, cost - val);
+            }
+          }
+        }
+      } else if (this.state.allActiveRetreatModifier != null && isActive) {
+        cost += Number(this.state.allActiveRetreatModifier) || 0;
+      }
+
+      // 5. 場のポケモンの常時特性 (Passive Abilities)
+      const inPlay = [];
+      if (this.state.player?.active) inPlay.push({ pk: this.state.player.active, isOwner: isPlayerActive });
+      if (Array.isArray(this.state.player?.bench)) this.state.player.bench.forEach(b => b && inPlay.push({ pk: b, isOwner: isPlayerActive }));
+      if (this.state.opponent?.active) inPlay.push({ pk: this.state.opponent.active, isOwner: isOpponentActive });
+      if (Array.isArray(this.state.opponent?.bench)) this.state.opponent.bench.forEach(b => b && inPlay.push({ pk: b, isOwner: isOpponentActive }));
+
+      for (const item of inPlay) {
+        const pk = item.pk;
+        if (pk && pk.abilityText && !this.isBlocked('ability', pk, item.isOwner ? this.state.player : this.state.opponent)) {
+          const atxt = pk.abilityText;
+          if (!item.isOwner && isActive && /相手.*バトルポケモン.*にげる.*エネルギー.*(\d+|[１-２一二])個.*(?:多く|増|重)/.test(atxt)) {
+            const m = atxt.match(/相手.*バトルポケモン.*にげる.*エネルギー.*(\d+|[１-２一二])個.*(?:多く|増|重)/);
+            cost += m ? (parseInt(m[1].replace('１','1').replace('２','2'), 10) || 1) : 1;
+          }
+          if (item.isOwner && isActive && /自分.*バトルポケモン.*にげる.*エネルギー.*(?:すべて|0|なくなる)/.test(atxt)) {
+            cost = 0;
+          }
+        }
+      }
+
+      // 6. ActionEngine の常時イベントルール (event.passive / event.on('calcRetreatCost'))
+      if (this.state.passiveRules && Array.isArray(this.state.passiveRules)) {
+        for (const rule of this.state.passiveRules) {
+          if (typeof rule === 'function') {
+            try {
+              const res = rule({ target: pokemon, cost: cost, isActive: isActive });
+              if (typeof res === 'number') cost = res;
+            } catch(e) {
+              console.warn('passiveRule execution error:', e);
+            }
+          }
+        }
+      // 7. 最終的な固定値・ゼロ化オーバーライド (freeRetreat, fixedRetreatCost, かるいし等)
+      if (pokemon.attachedTool && (pokemon.attachedTool.freeRetreat || (pokemon.attachedTool.name && pokemon.attachedTool.name.includes('かるいし')))) {
+        cost = 0;
+      }
+      if (pokemon.freeRetreat) {
+        cost = 0;
+      }
+      if (pokemon.fixedRetreatCost != null) {
+        cost = Math.max(0, Number(pokemon.fixedRetreatCost) || 0);
+      }
+
       return Math.max(0, cost);
     },
 
@@ -4687,6 +4784,9 @@
           const oldOwner = (oldStadium.owner === this.state.opponent.id) ? this.state.opponent : this.state.player;
           if (oldOwner && Array.isArray(oldOwner.discard)) {
             oldOwner.discard.push(oldStadium);
+          }
+          if (Array.isArray(this.state.passiveRules)) {
+            this.state.passiveRules = this.state.passiveRules.filter(r => !r.sourceStadiumId || r.sourceStadiumId !== oldStadium.id);
           }
         }
         this.state.activeStadium = Object.assign({}, card, { owner: p.id });
