@@ -18986,6 +18986,13 @@ var CardSystem;
       const isMax = !!options.isMax;
       const symbol = this.typeSymbols[card.type] || '✦';
 
+      const catStr = String(card.category || '').trim();
+      const isTrainer = catStr === 'グッズ' || catStr === 'サポート' || catStr === 'トレーナー' || catStr === 'スタジアム' || catStr === 'ポケモンのどうぐ' || catStr === 'どうぐ' || catStr === 'ポケモンの道具' || catStr === '道具' || catStr.includes('スタジアム') || catStr.includes('トレーナー') || catStr.includes('グッズ') || catStr.includes('サポート') || catStr.includes('どうぐ') || catStr.includes('道具') || catStr.includes('stadium') || catStr.includes('trainer') || catStr.includes('tool');
+      const isEnergy = catStr === 'エネルギー' || catStr === '基本エネルギー' || catStr === '特殊エネルギー' || catStr.includes('エネルギー') || catStr.includes('energy');
+      const isSpecialEnergy = String(card.category || '').includes('特殊') || String(card.name || '').includes('特殊');
+      const isUnlimitedEnergy = isEnergy && !isSpecialEnergy;
+      const isPokemon = !isTrainer && !isEnergy;
+
       // エネルギー記号の描画
       const renderEnergy = (energyStr) => {
         const list = this.parseEnergyList(energyStr);
@@ -19093,15 +19100,7 @@ var CardSystem;
       const aceSpecRuleHtml = isAceSpec ? '<div class="card-rule-box ace-spec-rule-box"><span class="ace-spec-rule-tag">ACE SPEC</span><span class="ace-spec-rule-text">ACE SPECカードは、デッキに1枚しか入れられない。</span></div>' : '';
       const aceSpecBadgeHtml = isAceSpec ? '<span class="card-kind-badge ace-spec-badge">ACE SPEC</span>' : '';
 
-      const catStr = String(card.category || '').trim();
-      const isTrainer = catStr === 'グッズ' || catStr === 'サポート' || catStr === 'トレーナー' || catStr === 'スタジアム' || catStr === 'ポケモンのどうぐ' || catStr === 'どうぐ' || catStr === 'ポケモンの道具' || catStr === '道具' || catStr.includes('スタジアム') || catStr.includes('トレーナー') || catStr.includes('グッズ') || catStr.includes('サポート') || catStr.includes('どうぐ') || catStr.includes('道具') || catStr.includes('stadium') || catStr.includes('trainer') || catStr.includes('tool');
-      const isEnergy = catStr === 'エネルギー' || catStr === '基本エネルギー' || catStr === '特殊エネルギー' || catStr.includes('エネルギー') || catStr.includes('energy');
-      const isSpecialEnergy = String(card.category || '').includes('特殊') || String(card.name || '').includes('特殊');
-      const isUnlimitedEnergy = isEnergy && !isSpecialEnergy;
-
       const inDeckBadge = inDeckCount > 0 ? ('<div class="pool-in-deck-badge">' + inDeckCount + (isUnlimitedEnergy ? '枚' : '/4') + '</div>') : '';
-
-      const isPokemon = !isTrainer && !isEnergy;
       const hpBadgeHtml = isPokemon && card.hp != null && card.hp !== '' && Number(card.hp) > 0 ? '<span class="card-hp-badge">HP <strong>' + this.escape(card.hp) + '</strong></span>' : '';
       const rarityBadgeHtml = card.rarity ? '<span class="card-rarity-badge rarity-badge-' + this.escape(card.rarity) + '">' + this.escape(card.rarity) + '</span>' : '';
 
