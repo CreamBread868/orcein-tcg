@@ -26526,7 +26526,7 @@ window.DeckSystem = function () {
             window.CardSystem.updatePreview();
           }
           // 直接テキスト反映フォールバック (万一CardSystemが遅延・エラーでもプレビューに反映)
-          if (e.target.id === 'name') {
+          if (e.target.id === 'name' || e.target.id === 'cardName') {
             document.querySelectorAll('#cardPreview .card-name-text, #cardPreview .texture-name').forEach(function (el) {
               el.textContent = e.target.value || 'カード名';
             });

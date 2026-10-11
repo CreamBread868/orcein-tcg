@@ -468,8 +468,8 @@ var CardSystem;
     createCardHtml(cardInput, options = {}) {
       if (!cardInput) cardInput = {};
       let card = cardInput;
-      // cardInput が ID のみ等で名前やカテゴリが不足している場合のみ、マスタから補完
-      if (cardInput.id && (!cardInput.name || !cardInput.category)) {
+      // cardInput が ID を持っている場合、マスタカードから不足・空のプロパティを安全に補完（空値でmasterを上書きしない）
+      if (cardInput.id) {
         const pool = [
           ...(window.App?.state?.cards || []),
           ...(window.CardSystem?.state?.cards || []),
@@ -477,7 +477,12 @@ var CardSystem;
         ];
         const master = pool.find(c => c && c.id && String(c.id) === String(cardInput.id));
         if (master) {
-          card = Object.assign({}, master, cardInput);
+          card = { ...master, ...cardInput };
+          for (const key of Object.keys(master)) {
+            if (cardInput[key] === undefined || cardInput[key] === null || cardInput[key] === '') {
+              card[key] = master[key];
+            }
+          }
         }
       }
 
@@ -698,11 +703,16 @@ var CardSystem;
       if (!cardInput) return;
 
       let card = cardInput;
-      if (cardInput.id && (!cardInput.name || !cardInput.category)) {
+      if (cardInput.id) {
         const allCards = (window.App && window.App.state && Array.isArray(window.App.state.cards)) ? window.App.state.cards : (window.CardSystem && Array.isArray(window.CardSystem.state?.cards) ? window.CardSystem.state.cards : []);
         const master = allCards.find(c => c && c.id && String(c.id) === String(cardInput.id));
         if (master) {
-          card = Object.assign({}, master, cardInput);
+          card = { ...master, ...cardInput };
+          for (const key of Object.keys(master)) {
+            if (cardInput[key] === undefined || cardInput[key] === null || cardInput[key] === '') {
+              card[key] = master[key];
+            }
+          }
         }
       }
 
@@ -924,6 +934,7 @@ var CardSystem;
         const el = document.getElementById(id);
         return el ? el.value : '';
       };
+      const cardName = String(val('name') || val('cardName') || '').trim();
       const cat = val('category') || 'たね';
       const isTrainer = cat === 'グッズ' || cat === 'サポート' || cat === 'トレーナー' || cat === 'スタジアム' || cat === 'ポケモンのどうぐ' || cat === 'どうぐ' || cat === 'ポケモンの道具' || cat === '道具' || cat.includes('どうぐ') || cat.includes('道具');
       const isEnergy = cat === 'エネルギー' || cat === '基本エネルギー' || cat === '特殊エネルギー';
@@ -942,10 +953,12 @@ var CardSystem;
       const artLayout = val('artLayout') || 'standard';
       const textSize = val('textSize') || 'standard';
 
+      let resCard = null;
+
       if (isTrainer) {
-        return {
+        resCard = {
           id: val('cardId'),
-          name: val('name') || 'カード名',
+          name: cardName || 'カード名',
           category: cat,
           preEvolution: '',
           type: '',
@@ -981,9 +994,9 @@ var CardSystem;
       }
 
       if (isEnergy) {
-        return {
+        resCard = {
           id: val('cardId'),
-          name: val('name') || 'カード名',
+          name: cardName || 'カード名',
           category: cat,
           preEvolution: '',
           type: val('type') || '無',
@@ -1018,9 +1031,10 @@ var CardSystem;
         };
       }
 
-      return {
-        id: val('cardId'),
-        name: val('name') || 'カード名',
+      if (!resCard) {
+        resCard = {
+          id: val('cardId'),
+          name: cardName || 'カード名',
         category: cat,
         preEvolution: val('preEvolution'),
         type: val('type') || '草',
@@ -1053,6 +1067,31 @@ var CardSystem;
         retreat: val('retreat'),
         description: val('description')
       };
+      }
+
+      // 日本語ヘッダー名のスプレッドシートへの保存互換性を完全保証
+      resCard['カード名'] = resCard.name;
+      resCard['カードID'] = resCard.id;
+      resCard['カテゴリ'] = resCard.category;
+      resCard['タイプ'] = resCard.type;
+      resCard['HP'] = resCard.hp;
+      resCard['ワザ1名'] = resCard.attack1Name;
+      resCard['ワザ1ダメージ'] = resCard.attack1Damage;
+      resCard['ワザ1エネルギー'] = resCard.attack1Energy;
+      resCard['ワザ1説明'] = resCard.attack1Text;
+      resCard['ワザ2名'] = resCard.attack2Name;
+      resCard['ワザ2ダメージ'] = resCard.attack2Damage;
+      resCard['ワザ2エネルギー'] = resCard.attack2Energy;
+      resCard['ワザ2説明'] = resCard.attack2Text;
+      resCard['説明文'] = resCard.description;
+      resCard['にげる'] = resCard.retreat;
+      resCard['弱点'] = resCard.weakness;
+      resCard['抵抗力'] = resCard.resistance;
+      resCard['特性名'] = resCard.abilityName;
+      resCard['特性説明'] = resCard.abilityText;
+      resCard['進化前'] = resCard.preEvolution;
+
+      return resCard;
     },
 
     resetEditor() {
@@ -1255,6 +1294,18 @@ var CardSystem;
           return;
         }
         App.toast(res.mode === 'created' ? 'カードを作成しました。' : 'カードを更新しました。');
+        // ローカルキャッシュにも即時反映
+        try {
+          const list = (window.App && Array.isArray(window.App.state?.cards)) ? window.App.state.cards : [];
+          const idx = list.findIndex(c => c && String(c.id) === String(card.id));
+          if (idx >= 0) {
+            list[idx] = Object.assign({}, list[idx], card);
+          } else {
+            list.push(card);
+          }
+          if (window.App && window.App.state) window.App.state.cards = list;
+          localStorage.setItem('orbital_cards', JSON.stringify(list));
+        } catch(e) {}
         this.resetEditor();
         App.loadCards();
         App.showPage('cards');
