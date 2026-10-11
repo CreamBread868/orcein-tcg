@@ -9228,7 +9228,7 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
         <button class="nav-button" data-page="pack">🎁 <span>パック開封</span></button>
         <button class="nav-button" data-page="single-shop">🛍️ <span>ショップ</span></button>
         <button class="nav-button" type="button" onclick="App.openFeedbackModal()">📮 <span>ご意見箱</span></button>
-        <button class="nav-button admin-only-ui hidden" data-page="cards">▣ <span>カード管理</span></button>
+        <button class="nav-button" data-page="cards">▣ <span>カード管理</span></button>
         <button class="nav-button admin-only-ui hidden" data-page="create">＋ <span>カード作成</span></button>
         <button class="nav-button admin-only-ui hidden" id="adminPackNavBtn" data-page="admin-pack"
           onclick="App.openAdminPackModal()">⚙️ <span>パック管理</span></button>
@@ -18730,6 +18730,14 @@ var CardSystem;
       const cards = this.sortCards(filtered, sortKey);
 
       if (!cards.length) {
+        const allCards = (window.App && window.App.state && Array.isArray(window.App.state.cards)) ? window.App.state.cards : [];
+        if (allCards.length === 0) {
+          root.innerHTML = '<div class="empty-page"><div><div class="spinner" style="margin: 0 auto 16px;"></div><h2>カードデータを読み込み中…</h2><p>しばらくお待ちください。</p></div></div>';
+          if (window.App && typeof App.loadCards === 'function') {
+            setTimeout(() => App.loadCards(), 50);
+          }
+          return;
+        }
         root.innerHTML = '<div class="empty-page"><div><h2>カードがありません</h2><p>条件を変えるか、新しいカードを作成してください。</p></div></div>';
         return;
       }
@@ -18738,10 +18746,14 @@ var CardSystem;
 
       root.querySelectorAll('[data-card-id]').forEach((tile) => {
         tile.addEventListener('click', () => {
-          const card = App.state.cards.find((c) => String(c.id) === String(tile.dataset.cardId));
+          const card = (window.App?.state?.cards || []).find((c) => String(c.id) === String(tile.dataset.cardId));
           if (card) this.showDetail(card);
         });
       });
+    },
+
+    renderCardList() {
+      return this.renderList();
     },
 
     getUserCollection() {
@@ -25428,6 +25440,8 @@ window.DeckSystem = function () {
             }
           }
         }
+      }
+
       // 7. 最終的な固定値・ゼロ化オーバーライド (freeRetreat, fixedRetreatCost, かるいし等)
       if (pokemon.attachedTool && (pokemon.attachedTool.freeRetreat || (pokemon.attachedTool.name && pokemon.attachedTool.name.includes('かるいし')))) {
         cost = 0;
@@ -29237,6 +29251,9 @@ console.log('[ORBITAL] App.js.html started execution');
       const sidebar = this.el('sidebar');
       if (sidebar) sidebar.classList.remove('open');
 
+      if (page === 'cards' && window.CardSystem) {
+        if (typeof CardSystem.renderList === 'function') CardSystem.renderList();
+      }
       if (page === 'deck' && window.DeckSystem) {
         DeckSystem.init();
         DeckSystem.loadDecks();

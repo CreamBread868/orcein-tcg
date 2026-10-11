@@ -282,6 +282,9 @@ console.log('[ORBITAL] App.js.html started execution');
       const sidebar = this.el('sidebar');
       if (sidebar) sidebar.classList.remove('open');
 
+      if (page === 'cards' && window.CardSystem) {
+        if (typeof CardSystem.renderList === 'function') CardSystem.renderList();
+      }
       if (page === 'deck' && window.DeckSystem) {
         DeckSystem.init();
         DeckSystem.loadDecks();
