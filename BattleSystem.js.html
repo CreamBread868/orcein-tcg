@@ -5204,8 +5204,18 @@
     checkEnergyRequirement(attacker, energyReq) {
       const currentCount = Number(attacker?.energy || 0);
       const reqList = this.parseEnergyList(energyReq);
-      const reqCount = reqList.length;
+      const baseReqCount = reqList.length;
 
+      if (baseReqCount === 0) {
+        return { canAttack: true, reason: '', reqCount: 0, currentCount: currentCount, reqList: [], missingTypes: [], missingDesc: '' };
+      }
+
+      // ワザエネルギー補正値 (attackCostModifier) の合算
+      const costMod = (attacker?.statModifiers?.attackCost != null ? Number(attacker.statModifiers.attackCost) : Number(attacker?.attackCostModifier || 0)) +
+        (Number(this.state?.allActiveAttackCostModifier) || 0) +
+        (Number(this.state?.activeStadium?.allActiveAttackCostModifier) || 0);
+
+      const reqCount = Math.max(0, baseReqCount + costMod);
       if (reqCount === 0) {
         return { canAttack: true, reason: '', reqCount: 0, currentCount: currentCount, reqList: [], missingTypes: [], missingDesc: '' };
       }
@@ -5249,6 +5259,20 @@
           reqSpecific.push(norm);
         }
       });
+
+      // ワザコスト増減の属性別適用 (マイナス時は無色エネ要求を優先軽減)
+      if (costMod < 0) {
+        let discount = Math.abs(costMod);
+        const colorlessDiscount = Math.min(reqColorlessCount, discount);
+        reqColorlessCount -= colorlessDiscount;
+        discount -= colorlessDiscount;
+        while (discount > 0 && reqSpecific.length > 0) {
+          reqSpecific.pop();
+          discount--;
+        }
+      } else if (costMod > 0) {
+        reqColorlessCount += costMod;
+      }
 
       const remainingAvail = [...avail];
       const missingTypes = [];

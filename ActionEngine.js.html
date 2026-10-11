@@ -91,6 +91,18 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
             }
           }
 
+          // ポケモン自身・ステータス修正によるワザ威力補正 (damageModifier / statModifiers.damage)
+          const atkStatMod = (attacker?.statModifiers?.damage != null ? Number(attacker.statModifiers.damage) : Number(attacker?.damageModifier || 0)) +
+            (Number(ctx?.game?.allActiveDamageModifier) || 0) +
+            (Number(ctx?.game?.activeStadium?.allActiveDamageModifier) || 0);
+          if (atkStatMod !== 0) {
+            actualDamage = Math.max(0, actualDamage + atkStatMod);
+            if (ctx?.game?.logs) {
+              const sign = atkStatMod > 0 ? ('+' + atkStatMod) : String(atkStatMod);
+              ctx.game.logs.push('⚔️ 威力補正発動！ワザの威力が ' + sign + ' された！');
+            }
+          }
+
           // ポケモンのどうぐによるワザダメージ加算 (attacker.attachedTool)
           if (attacker && attacker.attachedTool) {
             const tool = attacker.attachedTool;
@@ -1559,15 +1571,151 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         return Math.max(0, cost);
       },
 
+      modifyStats(ctx, target = 'selfActive', statsOrKey = {}, value = undefined, opt = {}) {
+        let statsObj = {};
+        let effectiveTarget = target;
+
+        // パターンB (最優先): modifyStats(target, { damage: 30, hp: 50 })
+        if (statsOrKey && typeof statsOrKey === 'object' && !Array.isArray(statsOrKey) && Object.keys(statsOrKey).length > 0) {
+          statsObj = statsOrKey;
+          effectiveTarget = target;
+        }
+        // パターンC: modifyStats(target, "damage", 30)
+        else if (typeof statsOrKey === 'string' && value !== undefined) {
+          statsObj[statsOrKey] = value;
+          effectiveTarget = target;
+        }
+        // パターンD: modifyStats("damage", 30)
+        else if (typeof target === 'string' && typeof statsOrKey === 'number') {
+          statsObj[target] = statsOrKey;
+          effectiveTarget = ctx?.thisPokemon || ctx?.self?.active || 'selfActive';
+        }
+        // パターンA: modifyStats({ damage: 30, hp: 50, attackCost: -1 }) (単一オブジェクト引数で、ポケモンカード自身ではない場合)
+        else if (target && typeof target === 'object' && !Array.isArray(target) && !target.name && !target.category && !target.attacks) {
+          statsObj = target;
+          effectiveTarget = ctx?.thisPokemon || ctx?.self?.active || 'selfActive';
+        }
+
+        const game = ctx?.game || window.BattleSystem?.state;
+
+        // 対象ポケモンの解決
+        let targets = [];
+        const isAllActive = (
+          effectiveTarget === 'allActive' || effectiveTarget === 'active' || effectiveTarget === 'all' || effectiveTarget === 'both' ||
+          effectiveTarget === 'bothActive' || effectiveTarget === 'バトルポケモン' || effectiveTarget === 'すべてのバトルポケモン' ||
+          effectiveTarget === 'すべてのバトル場のポケモン' || effectiveTarget === 'お互いのバトルポケモン'
+        );
+
+        if (isAllActive) {
+          const p1 = ctx?.self?.active || game?.player?.active;
+          const p2 = ctx?.opponent?.active || game?.opponent?.active;
+          if (p1) targets.push(p1);
+          if (p2 && p2 !== p1) targets.push(p2);
+        } else if (effectiveTarget === 'selfActive' || effectiveTarget === 'myActive' || effectiveTarget === '自分のバトルポケモン') {
+          const p1 = ctx?.self?.active || game?.player?.active;
+          if (p1) targets.push(p1);
+        } else if (effectiveTarget === 'oppActive' || effectiveTarget === 'opponentActive' || effectiveTarget === '相手のバトルポケモン') {
+          const p2 = ctx?.opponent?.active || game?.opponent?.active;
+          if (p2) targets.push(p2);
+        } else if (Array.isArray(effectiveTarget)) {
+          targets = effectiveTarget;
+        } else if (effectiveTarget && typeof effectiveTarget === 'object') {
+          targets = [effectiveTarget];
+        } else {
+          const p1 = ctx?.self?.active || game?.player?.active;
+          if (p1) targets.push(p1);
+        }
+
+        const logs = this._getLogs(ctx);
+        const logMessages = [];
+
+        for (const [rawKey, rawVal] of Object.entries(statsObj)) {
+          if (rawVal === undefined || rawVal === null) continue;
+          const key = String(rawKey).trim().toLowerCase();
+          const val = Number(rawVal) || 0;
+          if (val === 0) continue;
+
+          // 1. 技の威力 / ダメージ増減 (damage, power, atk, 威力, 攻撃力, etc.)
+          if (['damage', 'power', 'atk', 'attack', 'damagebuff', 'damagebonus', '威力', '攻撃力', 'ダメージ', 'ワザ威力'].includes(key)) {
+            if (isAllActive) {
+              if (game?.activeStadium) game.activeStadium.allActiveDamageModifier = (Number(game.activeStadium.allActiveDamageModifier) || 0) + val;
+              if (game) game.allActiveDamageModifier = (Number(game.allActiveDamageModifier) || 0) + val;
+            }
+            targets.forEach(t => {
+              if (!t || typeof t !== 'object') return;
+              t.damageModifier = (Number(t.damageModifier) || 0) + val;
+              t.statModifiers = t.statModifiers || {};
+              t.statModifiers.damage = (Number(t.statModifiers.damage) || 0) + val;
+            });
+            const sign = val > 0 ? ('+' + val) : String(val);
+            logMessages.push('⚔️ ワザ威力 ' + sign);
+          }
+
+          // 2. 技を使うためのエネルギー増減 (attackCost, energyCost, cost, 技エネルギー, ワザエネ, etc.)
+          else if (['attackcost', 'energycost', 'cost', 'attackenergy', 'atkcost', '技エネルギー', 'ワザエネ', '技コスト', 'エネコスト', '技を使うためのエネルギー'].includes(key)) {
+            if (isAllActive) {
+              if (game?.activeStadium) game.activeStadium.allActiveAttackCostModifier = (Number(game.activeStadium.allActiveAttackCostModifier) || 0) + val;
+              if (game) game.allActiveAttackCostModifier = (Number(game.allActiveAttackCostModifier) || 0) + val;
+            }
+            targets.forEach(t => {
+              if (!t || typeof t !== 'object') return;
+              t.attackCostModifier = (Number(t.attackCostModifier) || 0) + val;
+              t.statModifiers = t.statModifiers || {};
+              t.statModifiers.attackCost = (Number(t.statModifiers.attackCost) || 0) + val;
+            });
+            const sign = val >= 0 ? ('+' + val + ' 個多く') : (val + ' 個少なく');
+            logMessages.push('⚡ 技エネ ' + sign);
+          }
+
+          // 3. HP / 最大HP増減 (hp, maxHp, HP, 最大HP, 体力, etc.)
+          else if (['hp', 'maxhp', '体力', 'たいりょく', '最大hp'].includes(key)) {
+            targets.forEach(t => {
+              if (!t || typeof t !== 'object') return;
+              const curMax = Number(t.maxHp) || Number(t.hp) || 70;
+              t.maxHp = Math.max(10, curMax + val);
+              t.hp = Math.min(t.maxHp, Math.max(1, (Number(t.hp) || 70) + val));
+              t.statModifiers = t.statModifiers || {};
+              t.statModifiers.hp = (Number(t.statModifiers.hp) || 0) + val;
+            });
+            const sign = val >= 0 ? ('+' + val) : String(val);
+            logMessages.push('💚 最大HP ' + sign);
+          }
+
+          // 4. にげるエネルギー増減 (retreat, retreatCost, にげる, 逃げ, etc.)
+          else if (['retreat', 'retreatcost', 'にげる', '逃げ', 'にげるエネルギー', 'にげるコスト', '逃げエネ'].includes(key)) {
+            this.modifyRetreatCost(ctx, effectiveTarget, val, opt);
+          }
+
+          // 5. 被ダメージ軽減 (damageReduction, defense, shield, 軽減, 防御, etc.)
+          else if (['damagereduction', 'defense', 'shield', '軽減', 'ダメージ軽減', '防御'].includes(key)) {
+            targets.forEach(t => {
+              if (!t || typeof t !== 'object') return;
+              t.nextTurnDamageReduction = (Number(t.nextTurnDamageReduction) || 0) + val;
+              t.damageReduction = (Number(t.damageReduction) || 0) + val;
+              t.statModifiers = t.statModifiers || {};
+              t.statModifiers.damageReduction = (Number(t.statModifiers.damageReduction) || 0) + val;
+            });
+            logMessages.push('🛡️ 被ダメージ -' + val);
+          }
+        }
+
+        const targetNames = isAllActive ? 'すべてのバトルポケモン' : targets.map(t => t.name || 'ポケモン').join('・');
+        if (logMessages.length > 0) {
+          const fullMsg = '✨ 【' + targetNames + '】 ' + logMessages.join(' / ');
+          if (logs) logs.push(fullMsg);
+          if (window.App && typeof window.App.toast === 'function') {
+            window.App.toast(fullMsg);
+          }
+          if (window.BattleSystem && typeof window.BattleSystem.render === 'function') {
+            try { window.BattleSystem.render(); } catch(e) {}
+          }
+        }
+
+        return targets;
+      },
+
       modifyStat(ctx, target, statName, value, opt = {}) {
-        const s = String(statName || '').toLowerCase();
-        if (s.includes('retreat') || s.includes('にげる')) {
-          return this.modifyRetreatCost(ctx, target, value, opt);
-        }
-        if (s.includes('maxhp') || s.includes('hp')) {
-          return value >= 0 ? this.increaseMaxHp(ctx, target, value) : this.reduceMaxHp(ctx, target, Math.abs(value));
-        }
-        return null;
+        return this.modifyStats(ctx, target, statName, value, opt);
       },
 
       block(ctx, actionType, target = null, optionsOrTurns = 1) {
@@ -3335,6 +3483,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         resetRetreatCost: (t) => api.resetRetreatCost(ctx, t),
         getRetreatCost: (t) => api.getRetreatCost(ctx, t),
         modifyStat: (t, s, v, o) => api.modifyStat(ctx, t, s, v, o),
+        modifyStats: (t, s, v, o) => api.modifyStats(ctx, t, s, v, o),
         passive: (fn, opt) => rawEvent.passive(fn, opt),
         continuous: (fn, opt) => rawEvent.continuous(fn, opt),
         modify: (s, fn) => rawEvent.modify(s, fn)
@@ -3496,7 +3645,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         'afterTurns', 'afterTurn', 'delayTurns', 'delayTurn', 'waitTurns', 'waitTurn', 'atEndOfTurn',
         'extraTurn', 'takeExtraTurn', 'anotherTurn', 'repeatTurn', 'grantExtraTurn',
         'lose', 'loseGame', 'win', 'winGame',
-        'modifyRetreatCost', 'increaseRetreatCost', 'reduceRetreatCost', 'decreaseRetreatCost', 'setRetreatCost', 'resetRetreatCost', 'getRetreatCost', 'modifyStat', 'passive', 'continuous',
+        'modifyRetreatCost', 'increaseRetreatCost', 'reduceRetreatCost', 'decreaseRetreatCost', 'setRetreatCost', 'resetRetreatCost', 'getRetreatCost', 'modifyStat', 'modifyStats', 'passive', 'continuous',
         '{\n' + asyncCode + '\n}'
       );
       try {
@@ -3531,7 +3680,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           ctx.afterTurns, ctx.afterTurn, ctx.delayTurns, ctx.delayTurn, ctx.waitTurns, ctx.waitTurn, ctx.atEndOfTurn,
           ctx.extraTurn, ctx.takeExtraTurn, ctx.anotherTurn, ctx.repeatTurn, ctx.grantExtraTurn,
           ctx.lose, ctx.loseGame, ctx.win, ctx.winGame,
-          ctx.modifyRetreatCost, ctx.increaseRetreatCost, ctx.reduceRetreatCost, ctx.decreaseRetreatCost, ctx.setRetreatCost, ctx.resetRetreatCost, ctx.getRetreatCost, ctx.modifyStat, ctx.passive, ctx.continuous
+          ctx.modifyRetreatCost, ctx.increaseRetreatCost, ctx.reduceRetreatCost, ctx.decreaseRetreatCost, ctx.setRetreatCost, ctx.resetRetreatCost, ctx.getRetreatCost, ctx.modifyStat, ctx.modifyStats, ctx.passive, ctx.continuous
         );
         if (eventName) await ctx.event.emit(eventName, eventData);
       } catch (e) {
@@ -3672,6 +3821,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
     window.resetRetreatCost = (t) => window.ORBITAL_EFFECT_API.resetRetreatCost(null, t);
     window.getRetreatCost = (t) => window.ORBITAL_EFFECT_API.getRetreatCost(null, t);
     window.modifyStat = (t, s, v, o) => window.ORBITAL_EFFECT_API.modifyStat(null, t, s, v, o);
+    window.modifyStats = (t, s, v, o) => window.ORBITAL_EFFECT_API.modifyStats(null, t, s, v, o);
     console.log('[ORBITAL] ActionEngine.js.html finished execution.');
   })();
 </script>

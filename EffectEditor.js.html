@@ -2049,6 +2049,21 @@ var EffectEditor;
         snippet: 'event.passive(() => {\n  modifyRetreatCost("allActive", 1);\n});'
       },
       {
+        name: 'modifyStats',
+        signature: 'modifyStats(target?, stats)',
+        category: 'battle',
+        catLabel: 'ステータス・バトル',
+        badge: '能力一括変更',
+        returns: 'Array [pokemon]',
+        desc: 'ポケモンの「ワザの威力」「技を使うためのエネルギー」「HP・最大HP」「にげるエネルギー」「被ダメージ軽減」を一括で増減・変更します。単体指定 (modifyStat) や、お互いのバトル場全員 ("allActive") への適用も可能です。',
+        params: [
+          { name: 'target', type: 'string | pokemon | Array', desc: '"selfActive", "oppActive", "allActive", または対象ポケモン（省略時は自身のバトル場）' },
+          { name: 'stats', type: 'object', desc: '{ damage: +30, attackCost: -1, hp: +50, retreat: -1 } のように変更したい項目をまとめて指定' }
+        ],
+        example: '// 技威力+30、技エネ-1、HP+50、にげるエネ-1 をまとめて適用\nmodifyStats(self.active, {\n  damage: 30,\n  attackCost: -1,\n  hp: 50,\n  retreat: -1\n});',
+        snippet: 'modifyStats(self.active, {\n  damage: 30,\n  attackCost: -1,\n  hp: 50,\n  retreat: -1\n});'
+      },
+      {
         name: 'modifyRetreatCost',
         signature: 'modifyRetreatCost(target?, amount?)',
         category: 'battle',
@@ -2537,6 +2552,8 @@ var EffectEditor;
         { label: '前番味方きぜつ時のみ', sub: 'wasAllyKnockedOutLastTurn()', code: 'if (!wasAllyKnockedOutLastTurn()) {\n  cant("前の番に自分のポケモンがきぜつしていません");\n}' },
         { label: '山札サーチ', sub: 'choiceCard + toHand', code: 'const card = choiceCard(self, "deck", { category: "Basic" });\ntoHand(self, card);\nshuffleDeck(self);' },
         { label: '相手ベンチ全員10', sub: 'benchDamage', code: 'benchDamage(opponent, 10);' },
+        { label: '能力一括強化 (威力/技エネ/HP)', sub: 'modifyStats', code: 'modifyStats(self.active, {\n  damage: 30,\n  attackCost: -1,\n  hp: 50\n});' },
+        { label: '技エネ軽減 -1', sub: 'modifyStats', code: 'modifyStats(self.active, { attackCost: -1 });' },
         { label: 'にげるエネ+1 (スタジアム)', sub: 'modifyRetreatCost', code: 'modifyRetreatCost("allActive", 1);' },
         { label: '常時パッシブ効果', sub: 'event.passive', code: 'event.passive(() => {\n  modifyRetreatCost("allActive", 1);\n});' },
         { label: 'にげるエネ0固定', sub: 'setRetreatCost', code: 'setRetreatCost(self.active, 0);' }];
