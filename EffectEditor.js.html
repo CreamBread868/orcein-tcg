@@ -544,6 +544,42 @@ var EffectEditor;
       targets: ['attack1', 'attack2', 'ability']
     },
     {
+      keyword: 'modifyStat',
+      label: 'modifyStat(target, statName, value)',
+      category: 'func',
+      badge: '能力単体変更',
+      desc: 'ポケモンのステータス（威力・技エネ・HP・にげるエネ・被ダメ軽減）を1項目指定して変更・増減',
+      snippet: 'modifyStat(self.active, "damage", 30);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'modifyStats',
+      label: 'modifyStats(target, stats)',
+      category: 'func',
+      badge: '能力一括変更',
+      desc: 'ポケモンのステータス（威力・技エネ・HP・にげるエネ）をオブジェクトで一括変更・増減',
+      snippet: 'modifyStats(self.active, {\n  damage: 30,\n  attackCost: -1,\n  hp: 50\n});',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'modifyStatDamage',
+      label: 'modifyStat(self.active, "damage", 30)',
+      category: 'func',
+      badge: '技威力強化',
+      desc: 'ワザの威力を+30加算する',
+      snippet: 'modifyStat(self.active, "damage", 30);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'modifyStatCost',
+      label: 'modifyStat(self.active, "attackCost", -1)',
+      category: 'func',
+      badge: '技エネ軽減',
+      desc: '技を使うのに必要なエネルギーを1個少なくする',
+      snippet: 'modifyStat(self.active, "attackCost", -1);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
       keyword: 'applyStatus',
       label: 'applyStatus(target, "どく")',
       category: 'func',
@@ -2049,6 +2085,22 @@ var EffectEditor;
         snippet: 'event.passive(() => {\n  modifyRetreatCost("allActive", 1);\n});'
       },
       {
+        name: 'modifyStat',
+        signature: 'modifyStat(target?, statName, value)',
+        category: 'battle',
+        catLabel: 'ステータス・バトル',
+        badge: '能力単体変更',
+        returns: 'Array [pokemon]',
+        desc: 'ポケモンのステータス（"damage", "attackCost", "hp", "retreat", "damageReduction"）を1項目指定して増減・変更します。日本語キー（"威力", "技エネルギー", "HP", "にげる"）も使用可能です。',
+        params: [
+          { name: 'target', type: 'string | pokemon | Array', desc: '"selfActive", "oppActive", "allActive", または対象ポケモン（省略時は自身のバトル場）' },
+          { name: 'statName', type: 'string', desc: '変更する項目名（"damage", "attackCost", "hp", "retreat", "damageReduction", "威力", "技エネルギー", "HP", "にげる"）' },
+          { name: 'value', type: 'number', desc: '変更・増減する数値（正の値で増加、負の値で減少）' }
+        ],
+        example: '// 自分のバトルポケモンのワザの威力を+30する\nmodifyStat(self.active, "damage", 30);\n\n// 自分のバトルポケモンの技エネルギー必要数を1個少なくする\nmodifyStat(self.active, "attackCost", -1);',
+        snippet: 'modifyStat(self.active, "damage", 30);'
+      },
+      {
         name: 'modifyStats',
         signature: 'modifyStats(target?, stats)',
         category: 'battle',
@@ -3106,6 +3158,64 @@ var EffectEditor;
             { keyword: '1', label: '1 (1ターンに1回)', category: 'arg', badge: '回数:1', desc: '自分の番に1回使える', snippet: '1' },
             { keyword: '2', label: '2 (1ターンに2回)', category: 'arg', badge: '回数:2', desc: '自分の番に2回使える', snippet: '2' },
             { keyword: 'Infinity', label: 'Infinity (何度でも)', category: 'arg', badge: '無制限', desc: '自分の番に何度でも使える', snippet: 'Infinity' }
+          ];
+        }
+      }
+
+      // 14. modifyStat
+      if (fn === 'modifyStat') {
+        if (idx === 0) {
+          return [
+            { keyword: 'self.active', label: 'self.active (自分のバトル場)', category: 'arg', badge: '引数1:対象', desc: '自分のバトルポケモンのステータスを変更', snippet: 'self.active' },
+            { keyword: 'opponent.active', label: 'opponent.active (相手バトル場)', category: 'arg', badge: '引数1:対象', desc: '相手のバトルポケモンのステータスを変更', snippet: 'opponent.active' },
+            { keyword: '"allActive"', label: '"allActive" (お互いのバトル場全員)', category: 'arg', badge: '引数1:スタジアム等', desc: 'お互いのバトルポケモン全員を対象', snippet: '"allActive"' },
+            { keyword: 'target', label: 'target (選択した対象)', category: 'arg', badge: '引数1:対象', desc: 'choiceCard等で選んだ対象ポケモン', snippet: 'target' }
+          ];
+        }
+        if (idx === 1) {
+          return [
+            { keyword: '"damage"', label: '"damage" (ワザの威力)', category: 'arg', badge: '引数2:項目', desc: 'ワザの威力を増減 (+30, -20等)', snippet: '"damage"' },
+            { keyword: '"attackCost"', label: '"attackCost" (技エネルギー必要数)', category: 'arg', badge: '引数2:項目', desc: '技を使うためのエネルギーを増減 (-1で1個軽減, +1で重く)', snippet: '"attackCost"' },
+            { keyword: '"hp"', label: '"hp" (最大HP・現在HP)', category: 'arg', badge: '引数2:項目', desc: '最大HPおよび現在HPを増減 (+50等)', snippet: '"hp"' },
+            { keyword: '"retreat"', label: '"retreat" (にげるエネルギー)', category: 'arg', badge: '引数2:項目', desc: 'にげるためのエネルギーを増減 (-1等)', snippet: '"retreat"' },
+            { keyword: '"damageReduction"', label: '"damageReduction" (被ダメージ軽減)', category: 'arg', badge: '引数2:項目', desc: '受けるダメージを軽減 (+20等)', snippet: '"damageReduction"' },
+            { keyword: '"威力"', label: '"威力"', category: 'arg', badge: '引数2:日本語', desc: 'ワザの威力を増減', snippet: '"威力"' },
+            { keyword: '"技エネルギー"', label: '"技エネルギー"', category: 'arg', badge: '引数2:日本語', desc: '技エネルギー必要数を増減', snippet: '"技エネルギー"' },
+            { keyword: '"HP"', label: '"HP"', category: 'arg', badge: '引数2:日本語', desc: '最大HP・現在HPを増減', snippet: '"HP"' },
+            { keyword: '"にげる"', label: '"にげる"', category: 'arg', badge: '引数2:日本語', desc: 'にげるエネルギーを増減', snippet: '"にげる"' }
+          ];
+        }
+        if (idx === 2) {
+          return [
+            { keyword: '30', label: '30 (威力+30 / HP+30)', category: 'arg', badge: '引数3:数値', desc: '30加算', snippet: '30' },
+            { keyword: '50', label: '50 (威力+50 / HP+50)', category: 'arg', badge: '引数3:数値', desc: '50加算', snippet: '50' },
+            { keyword: '-1', label: '-1 (技エネ-1 / にげる-1)', category: 'arg', badge: '引数3:数値', desc: '1個軽減', snippet: '-1' },
+            { keyword: '1', label: '1 (技エネ+1 / にげる+1)', category: 'arg', badge: '引数3:数値', desc: '1個増加', snippet: '1' },
+            { keyword: '20', label: '20 (軽減+20)', category: 'arg', badge: '引数3:数値', desc: '20加算', snippet: '20' },
+            { keyword: '-20', label: '-20 (弱体化-20)', category: 'arg', badge: '引数3:数値', desc: '20減算', snippet: '-20' }
+          ];
+        }
+      }
+
+      // 15. modifyStats
+      if (fn === 'modifyStats') {
+        if (idx === 0) {
+          return [
+            { keyword: 'self.active', label: 'self.active (自分のバトル場)', category: 'arg', badge: '引数1:対象', desc: '自分のバトルポケモン', snippet: 'self.active' },
+            { keyword: 'opponent.active', label: 'opponent.active (相手バトル場)', category: 'arg', badge: '引数1:対象', desc: '相手のバトルポケモン', snippet: 'opponent.active' },
+            { keyword: '"allActive"', label: '"allActive" (お互いのバトル場全員)', category: 'arg', badge: '引数1:スタジアム等', desc: 'お互いのバトルポケモン全員を対象', snippet: '"allActive"' },
+            { keyword: 'target', label: 'target (選択した対象)', category: 'arg', badge: '引数1:対象', desc: 'choiceCard等で選んだ対象ポケモン', snippet: 'target' },
+            { keyword: '{\n  damage: 30,\n  attackCost: -1,\n  hp: 50\n}', label: '{ damage: 30, attackCost: -1, hp: 50 }', category: 'arg', badge: 'ステータスオブジェクト', desc: '一括指定（自分バトル場をデフォルト対象にする）', snippet: '{\n  damage: 30,\n  attackCost: -1,\n  hp: 50\n}' }
+          ];
+        }
+        if (idx === 1) {
+          return [
+            { keyword: '{\n  damage: 30,\n  attackCost: -1,\n  hp: 50\n}', label: '一括強化 { damage: 30, attackCost: -1, hp: 50 }', category: 'arg', badge: '引数2:一括強化', desc: '威力+30 / 技エネ-1 / HP+50 をまとめて適用', snippet: '{\n  damage: 30,\n  attackCost: -1,\n  hp: 50\n}' },
+            { keyword: '{ attackCost: -1 }', label: '技エネ軽減 { attackCost: -1 }', category: 'arg', badge: '引数2:技エネ軽減', desc: '技を使うためのエネルギーを1個少なくする', snippet: '{ attackCost: -1 }' },
+            { keyword: '{ damage: 30 }', label: '威力アップ { damage: 30 }', category: 'arg', badge: '引数2:威力アップ', desc: 'ワザの威力を+30する', snippet: '{ damage: 30 }' },
+            { keyword: '{ hp: 50 }', label: 'HP増加 { hp: 50 }', category: 'arg', badge: '引数2:HP増加', desc: '最大HP・現在HPを+50する', snippet: '{ hp: 50 }' },
+            { keyword: '{ retreat: -1 }', label: 'にげる軽減 { retreat: -1 }', category: 'arg', badge: '引数2:にげる軽減', desc: 'にげるエネルギーを1個少なくする', snippet: '{ retreat: -1 }' },
+            { keyword: '{ damageReduction: 20 }', label: '被ダメージ軽減 { damageReduction: 20 }', category: 'arg', badge: '引数2:ダメージ軽減', desc: '受けるワザのダメージを20軽減する', snippet: '{ damageReduction: 20 }' }
           ];
         }
       }
