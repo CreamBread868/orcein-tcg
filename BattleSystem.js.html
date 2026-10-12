@@ -4892,7 +4892,7 @@
       this.render();
 
       // アニメーション → 効果実行
-      this.animateTrainerCardPlay(card, kind).then(async () => {
+      return this.animateTrainerCardPlay(card, kind).then(async () => {
         let execCtx = null;
         // ActionEngine で効果実行
         const code = card.attack1Code || card.abilityCode;

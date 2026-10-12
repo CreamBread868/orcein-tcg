@@ -2739,7 +2739,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           } else if (typeof arg === 'function') {
             filter = arg;
           } else if (typeof arg === 'object' && arg !== null) {
-            if (arg.to || arg.onSelect || arg.remove || arg.message || arg.prompt || arg.desc || arg.title || arg.text || arg.autoPick) {
+            if (arg.to || arg.onSelect || arg.remove || arg.message || arg.prompt || arg.desc || arg.title || arg.text || arg.autoPick || arg.optional || arg.allowCancel || arg.allowEmpty || arg.cancelReason || arg.cancelMessage || arg.onCancel) {
               options = Object.assign({}, options, arg);
               if (arg.message || arg.prompt || arg.desc || arg.text) {
                 customMessage = arg.message || arg.prompt || arg.desc || arg.text;
@@ -2817,7 +2817,17 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
               desc: stepDesc
             });
             const actualCard = selectedItem?._raw || selectedItem || null;
-            if (!actualCard) break;
+            if (!actualCard) {
+              if (options && typeof options.onCancel === 'function') {
+                options.onCancel();
+              }
+              if (options && (options.optional || options.allowEmpty || options.allowCancel)) {
+                break;
+              }
+              const cancelMsg = options?.cancelReason || options?.cancelMessage || 'カードの選択がキャンセルされました。';
+              const activeCtx = ctx || window._currentExecutionContext;
+              return this.cant(activeCtx, cancelMsg);
+            }
             chosen.push(actualCard);
             const rIdx = remaining.indexOf(actualCard);
             if (rIdx >= 0) remaining.splice(rIdx, 1);
