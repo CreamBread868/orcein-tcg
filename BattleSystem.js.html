@@ -4071,36 +4071,111 @@
         targetPokemon.hp = (targetPokemon.hp || 70) + hpBonus;
         this.log('✨ 「' + toolCard.name + '」の効果で最大HPが +' + hpBonus + ' されました！（HP: ' + targetPokemon.hp + '/' + targetPokemon.maxHp + '）');
       }
+      const code = toolCard.attack1Code || toolCard.abilityCode;
+      if (code && code.trim() && window.executeCardEffectCode) {
+        try {
+          window.executeCardEffectCode(
+            code,
+            this.state,
+            player,
+            'onAttach',
+            { card: toolCard, pokemon: targetPokemon, tool: toolCard }
+          );
+        } catch (e) {
+          console.error('Tool attach effect error:', e);
+        }
+      }
     },
+
+    canAttachEnergyFromHand(pokemon) {
+      if (!pokemon) return false;
+      if (pokemon.cannotAttachEnergyFromHand) return false;
+      const tool = pokemon.attachedTool;
+      if (tool) {
+        if (tool.cannotAttachEnergyFromHand) return false;
+        const text = String(tool.description || '') + ' ' + String(tool.attack1Text || '') + ' ' + String(tool.attack1Code || '');
+        if (/(?:手札から|てふだから).*エネルギー.*(?:つけられない|付けられない|つけられず|付けることができない)/.test(text)) {
+          return false;
+        }
+      }
+      return true;
+    },
+
+    isProtectedFromAttackEffects(pokemon, attacker = null) {
+      if (!pokemon) return false;
+      if (pokemon.immuneToAttackEffects || pokemon.unaffectedByAttackEffects) return true;
+      const tool = pokemon.attachedTool;
+      if (tool) {
+        if (tool.immuneToAttackEffects || tool.unaffectedByAttackEffects) return true;
+        const text = String(tool.description || '') + ' ' + String(tool.attack1Text || '') + ' ' + String(tool.attack1Code || '');
+        if (/(?:相手|あいて).*ワザの効果.*(?:受けない|うけない)|ワザの効果を.*(?:受けない|うけない)/.test(text)) {
+          return true;
+        }
+      }
+      if (pokemon.abilityCode) {
+        const aText = String(pokemon.abilityText || '') + ' ' + String(pokemon.abilityCode || '');
+        if (/(?:相手|あいて).*ワザの効果.*(?:受けない|うけない)|ワザの効果を.*(?:受けない|うけない)/.test(aText)) {
+          return true;
+        }
+      }
+      return false;
+    },
+
     promptEnergyAttachment(handIndex, energyCard) {
       const p = this.state.player;
       const targets = [];
-      if (p.active) targets.push({ label: "バトル場: " + p.active.name + " (エネ: " + (p.active.energy || 0) + ")", target: p.active, isBench: false });
+      if (p.active) {
+        const canAttach = this.canAttachEnergyFromHand(p.active);
+        targets.push({
+          label: "バトル場: " + p.active.name + " (エネ: " + (p.active.energy || 0) + ")" + (canAttach ? "" : " [手貼り不可]"),
+          target: p.active,
+          isBench: false,
+          canAttach: canAttach
+        });
+      }
       p.bench.forEach((b, i) => {
-        targets.push({ label: "ベンチ" + (i + 1) + ": " + b.name + " (エネ: " + (b.energy || 0) + ")", target: b, isBench: true, benchIdx: i });
+        const canAttach = this.canAttachEnergyFromHand(b);
+        targets.push({
+          label: "ベンチ" + (i + 1) + ": " + b.name + " (エネ: " + (b.energy || 0) + ")" + (canAttach ? "" : " [手貼り不可]"),
+          target: b,
+          isBench: true,
+          benchIdx: i,
+          canAttach: canAttach
+        });
       });
 
-      if (!targets.length) {
-        App.toast('エネルギーを付けるポケモンがいません。', true);
+      const eligible = targets.filter(t => t.canAttach);
+      if (!eligible.length) {
+        App.toast('手札からエネルギーをつけられるポケモンがいません。', true);
         return;
       }
 
       // 対象が1匹のみなら即座に直接付加！
-      if (targets.length === 1) {
-        const chosen = targets[0].target;
-        const targetSlotEl = targets[0].isBench ?
-        document.querySelectorAll('#playerBenchRow .bench-slot-occupied')[targets[0].benchIdx] :
+      if (eligible.length === 1) {
+        const chosen = eligible[0].target;
+        const targetSlotEl = eligible[0].isBench ?
+        document.querySelectorAll('#playerBenchRow .bench-slot-occupied')[eligible[0].benchIdx] :
         document.getElementById('playerActiveSpot');
         this.applyEnergyAttachment(handIndex, chosen, targetSlotEl);
         return;
       }
 
-      this.showChoiceModal(targets.map((t) => ({ name: t.label, category: '対象ポケモン', type: t.target.type, hp: t.target.hp })), {
+      this.showChoiceModal(targets.map((t) => ({
+        name: t.label,
+        category: t.canAttach ? '対象ポケモン' : '対象外 (手貼り不可)',
+        type: t.target.type,
+        hp: t.target.hp,
+        disabled: !t.canAttach
+      })), {
         title: 'エネルギーを付けるポケモンを選択',
         desc: energyCard.name + " を誰に付けますか？（手札からドラッグ＆ドロップでも直接付けられます）"
       }, (selectedIndex) => {
         const chosenItem = targets[selectedIndex];
         if (chosenItem) {
+          if (!chosenItem.canAttach) {
+            App.toast('【' + chosenItem.target.name + '】には手札からエネルギーをつけられません。', true);
+            return;
+          }
           const targetSlotEl = chosenItem.isBench ?
           document.querySelectorAll('#playerBenchRow .bench-slot-occupied')[chosenItem.benchIdx] :
           document.getElementById('playerActiveSpot');
@@ -4114,6 +4189,10 @@
       if (this.state.turnPlayer !== 'player' || this.state.phase !== 'battle') return;
       if (p.energyAttached) {
         App.toast('エネルギーの手札付けは1ターンに1回までです。', true);
+        return;
+      }
+      if (!this.canAttachEnergyFromHand(targetPokemon)) {
+        App.toast('【' + targetPokemon.name + '】は効果により、手札からエネルギーをつけることができません。', true);
         return;
       }
       const energyCard = p.hand[handIndex];
@@ -5754,10 +5833,11 @@
         const nrg = ai.hand.splice(energyIdx, 1)[0];
 
         const activeNeedEnergy = !(ai.active.attack2Name ? this.checkEnergyRequirement(ai.active, ai.active.attack2Energy).canAttack : this.checkEnergyRequirement(ai.active, ai.active.attack1Energy).canAttack);
-        let targetForEnergy = ai.active;
+        let targetForEnergy = this.canAttachEnergyFromHand(ai.active) ? ai.active : null;
 
-        if (!activeNeedEnergy || (ai.active.hp <= 30 && ai.bench.length > 0)) {
+        if (!targetForEnergy || !activeNeedEnergy || (ai.active.hp <= 30 && ai.bench.length > 0)) {
           const benchNeeding = ai.bench.find(b => {
+            if (!this.canAttachEnergyFromHand(b)) return false;
             const hasAtk = b.attack1Name || b.attack2Name;
             const canAtk = (b.attack1Name && this.checkEnergyRequirement(b, b.attack1Energy).canAttack) ||
                           (b.attack2Name && this.checkEnergyRequirement(b, b.attack2Energy).canAttack);
@@ -5765,26 +5845,33 @@
           });
           if (benchNeeding) {
             targetForEnergy = benchNeeding;
+          } else if (!targetForEnergy) {
+            targetForEnergy = ai.bench.find(b => this.canAttachEnergyFromHand(b)) || null;
           }
         }
 
-        const isDoubleTurbo = String(nrg.name || '').includes('ダブルターボ');
-        const energyGain = isDoubleTurbo ? 2 : 1;
-        targetForEnergy.energy = (targetForEnergy.energy || 0) + energyGain;
-        targetForEnergy.attachedEnergies = targetForEnergy.attachedEnergies || [];
-        targetForEnergy.attachedEnergies.push(nrg.type || '無');
-        if (isDoubleTurbo) targetForEnergy.attachedEnergies.push('無');
-        targetForEnergy.attachedCards = targetForEnergy.attachedCards || [];
-        targetForEnergy.attachedCards.push(nrg);
-        ai.energyAttached = true;
+        if (targetForEnergy) {
+          const isDoubleTurbo = String(nrg.name || '').includes('ダブルターボ');
+          const energyGain = isDoubleTurbo ? 2 : 1;
+          targetForEnergy.energy = (targetForEnergy.energy || 0) + energyGain;
+          targetForEnergy.attachedEnergies = targetForEnergy.attachedEnergies || [];
+          targetForEnergy.attachedEnergies.push(nrg.type || '無');
+          if (isDoubleTurbo) targetForEnergy.attachedEnergies.push('無');
+          targetForEnergy.attachedCards = targetForEnergy.attachedCards || [];
+          targetForEnergy.attachedCards.push(nrg);
+          ai.energyAttached = true;
 
-        const isBenchTarget = targetForEnergy !== ai.active;
-        this.log("⚡ AIライバルは " + (isBenchTarget ? "ベンチの " : "") + targetForEnergy.name + " に「" + nrg.name + "」を付けました。(エネ: " + targetForEnergy.energy + ")");
-        if (oppTicker) oppTicker.textContent = "相手: " + targetForEnergy.name + " にエネルギーをチャージ！";
+          const isBenchTarget = targetForEnergy !== ai.active;
+          this.log("⚡ AIライバルは " + (isBenchTarget ? "ベンチの " : "") + targetForEnergy.name + " に「" + nrg.name + "」を付けました。(エネ: " + targetForEnergy.energy + ")");
+          if (oppTicker) oppTicker.textContent = "相手: " + targetForEnergy.name + " にエネルギーをチャージ！";
 
-        if (String(nrg.name || '').includes('ジェット') && isBenchTarget) {
-          this.switchActive(ai, targetForEnergy);
-          this.log("🌀 【ジェットエネルギー】の効果で " + targetForEnergy.name + " がバトル場へ躍り出た！");
+          if (String(nrg.name || '').includes('ジェット') && isBenchTarget) {
+            this.switchActive(ai, targetForEnergy);
+            this.log("🌀 【ジェットエネルギー】の効果で AIの " + targetForEnergy.name + " がバトル場へ繰り出された！");
+          }
+        } else {
+          // 付けられるポケモンがいない場合は手札に戻す
+          ai.hand.splice(energyIdx, 0, nrg);
         }
 
         const oppActiveEl = isBenchTarget ? document.getElementById('oppBenchRow') : document.getElementById('oppActiveSpot');

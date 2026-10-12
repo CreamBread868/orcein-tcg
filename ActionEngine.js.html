@@ -322,6 +322,16 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         const n = Math.max(0, Number(amount) || 0);
         const removeFrom = (t) => {
           if (!t) return;
+          if (this.isProtectedFromAttackEffects(ctx, t)) {
+            const pkName = t.name || 'ポケモン';
+            const toolName = t.attachedTool?.name || 'ポケモンのどうぐ';
+            const msg = '🛡️ 【' + toolName + '】の効果により、【' + pkName + '】のエネルギーは相手のワザの効果でトラッシュされない！';
+            if (ctx?.game?.logs) ctx.game.logs.push(msg);
+            if (window.BattleSystem && typeof window.BattleSystem.log === 'function') {
+              window.BattleSystem.log(msg);
+            }
+            return;
+          }
           t.energy = Math.max(0, (t.energy || 0) - n);
           if (Array.isArray(t.attachedEnergies)) {
             for (let i = 0; i < n; i++) t.attachedEnergies.pop();
@@ -397,6 +407,16 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         const targets = Array.isArray(target) ? target : [target && typeof target === 'object' ? target : ctx?.opponent?.active || ctx?.self?.active];
         targets.forEach((t) => {
           if (t) {
+            if (this.isProtectedFromAttackEffects(ctx, t)) {
+              const pkName = t.name || 'ポケモン';
+              const toolName = t.attachedTool?.name || 'ポケモンのどうぐ';
+              const msg = '🛡️ 【' + toolName + '】の効果により、【' + pkName + '】のエネルギーは相手のワザの効果でトラッシュされない！';
+              if (ctx?.game?.logs) ctx.game.logs.push(msg);
+              if (window.BattleSystem && typeof window.BattleSystem.log === 'function') {
+                window.BattleSystem.log(msg);
+              }
+              return;
+            }
             t.energy = Math.max(0, (t.energy || 0) - n);
             if (ctx?.game?.logs) ctx.game.logs.push("⚡ 【" + (t.name || 'カード') + "】のエネルギーが " + n + " 個トラッシュされました。(残り: " + t.energy + ")");
           }
@@ -458,6 +478,16 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
       switchActive(ctx, player, target) {
         const p = player || ctx?.self;
         if (!p || !p.active) return;
+        if (p === ctx?.opponent && this.isProtectedFromAttackEffects(ctx, p.active)) {
+          const pkName = p.active?.name || 'ポケモン';
+          const toolName = p.active?.attachedTool?.name || 'ポケモンのどうぐ';
+          const msg = '🛡️ 【' + toolName + '】の効果により、【' + pkName + '】は相手のワザの効果で入れ替えられない！';
+          if (ctx?.game?.logs) ctx.game.logs.push(msg);
+          if (window.BattleSystem && typeof window.BattleSystem.log === 'function') {
+            window.BattleSystem.log(msg);
+          }
+          return;
+        }
         let newActive = target;
         if (Array.isArray(newActive)) newActive = newActive[0];
         if (newActive && Array.isArray(p.bench)) {
@@ -890,6 +920,16 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
       knockout(ctx, target) {
         const t = ctx && (ctx.hp !== undefined || ctx.name !== undefined) ? ctx : target || ctx?.opponent?.active;
         if (t) {
+          if (this.isProtectedFromAttackEffects(ctx, t)) {
+            const pkName = t.name || 'ポケモン';
+            const toolName = t.attachedTool?.name || 'ポケモンのどうぐ';
+            const msg = '🛡️ 【' + toolName + '】の効果により、【' + pkName + '】は相手のワザの効果できぜつしない！';
+            if (ctx?.game?.logs) ctx.game.logs.push(msg);
+            if (window.BattleSystem && typeof window.BattleSystem.log === 'function') {
+              window.BattleSystem.log(msg);
+            }
+            return;
+          }
           t.hp = 0;
           if (ctx && ctx !== t) ctx.knockedOut = true;
         }
@@ -1157,8 +1197,51 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         }
         return [];
       },
+      isProtectedFromAttackEffects(ctx, target) {
+        if (!target) return false;
+        const isAttackEvent = ctx?.eventName === 'attack' || ctx?.currentEvent?.eventName === 'attack';
+        const game = ctx?.game || window.BattleSystem?.state;
+        if (!isAttackEvent && game?.phase !== 'battle') {
+          return false;
+        }
+        const playerSelf = ctx?.self;
+        if (playerSelf && (target === playerSelf.active || (Array.isArray(playerSelf.bench) && playerSelf.bench.includes(target)))) {
+          return false;
+        }
+
+        if (target.immuneToAttackEffects || target.unaffectedByAttackEffects) return true;
+        const tool = target.attachedTool;
+        if (tool) {
+          if (tool.immuneToAttackEffects || tool.unaffectedByAttackEffects) return true;
+          const text = String(tool.description || '') + ' ' + String(tool.attack1Text || '') + ' ' + String(tool.attack1Code || '');
+          if (/(?:相手|あいて).*ワザの効果.*(?:受けない|うけない)|ワザの効果を.*(?:受けない|うけない)/.test(text)) {
+            return true;
+          }
+        }
+        if (target.abilityCode) {
+          const aText = String(target.abilityText || '') + ' ' + String(target.abilityCode || '');
+          if (/(?:相手|あいて).*ワザの効果.*(?:受けない|うけない)|ワザの効果を.*(?:受けない|うけない)/.test(aText)) {
+            return true;
+          }
+        }
+        return false;
+      },
+
       applyStatus(ctx, target, status) {
         if (!target) return;
+        if (this.isProtectedFromAttackEffects(ctx, target)) {
+          const pkName = target.name || 'ポケモン';
+          const toolName = target.attachedTool?.name || 'ポケモンのどうぐ';
+          const msg = '🛡️ 【' + toolName + '】の効果により、【' + pkName + '】は相手のワザの効果（' + (status || '特殊状態') + '）を受けない！';
+          if (ctx?.game?.logs) ctx.game.logs.push(msg);
+          if (window.BattleSystem && typeof window.BattleSystem.log === 'function') {
+            window.BattleSystem.log(msg);
+          }
+          if (window.App && typeof window.App.toast === 'function') {
+            window.App.toast(msg);
+          }
+          return;
+        }
         const norm = this.normalizeStatusName(status || 'どく');
         let current = this.getStatuses(ctx, target);
 
@@ -1335,6 +1418,15 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         }
         tgt = tgt || opp?.active;
         if (!tgt || tgt.hp === undefined) return 0;
+        if (this.isProtectedFromAttackEffects(ctx, tgt)) {
+          const pkName = tgt.name || 'ポケモン';
+          const toolName = tgt.attachedTool?.name || 'ポケモンのどうぐ';
+          const msg = '🛡️ 【' + toolName + '】の効果により、【' + pkName + '】は相手のワザの効果（ダメカン・HP減少）を受けない！';
+          const logs = this._getLogs(ctx);
+          if (logs) logs.push(msg);
+          if (window.BattleSystem?.log) window.BattleSystem.log(msg);
+          return 0;
+        }
         const sub = Math.max(0, Number(n) || 0);
         tgt.hp = Math.max(0, tgt.hp - sub);
         const logs = this._getLogs(ctx);
@@ -1626,6 +1718,20 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           if (p1) targets.push(p1);
         }
 
+        // 相手のワザの効果を受けないポケモンの保護
+        targets = targets.filter(t => {
+          if (this.isProtectedFromAttackEffects(ctx, t)) {
+            const pkName = t.name || 'ポケモン';
+            const toolName = t.attachedTool?.name || 'ポケモンのどうぐ';
+            const msg = '🛡️ 【' + toolName + '】の効果により、【' + pkName + '】は相手のワザの効果（能力変化）を受けない！';
+            const logs = this._getLogs(ctx);
+            if (logs) logs.push(msg);
+            if (window.BattleSystem?.log) window.BattleSystem.log(msg);
+            return false;
+          }
+          return true;
+        });
+
         const logs = this._getLogs(ctx);
         const logMessages = [];
 
@@ -1755,6 +1861,17 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         } else if (targetObj === ctx?.opponent?.active || targetObj === 'opponent.active' || targetObj === 'active') {
           targetPlayer = 'opponent';
           targetType = 'opponentActive';
+        }
+
+        if (target && this.isProtectedFromAttackEffects(ctx, target)) {
+          const pkName = target.name || 'ポケモン';
+          const toolName = target.attachedTool?.name || 'ポケモンのどうぐ';
+          const msg = '🛡️ 【' + toolName + '】の効果により、【' + pkName + '】は相手のワザの効果（行動制限）を受けない！';
+          if (ctx?.game?.logs) ctx.game.logs.push(msg);
+          if (window.BattleSystem && typeof window.BattleSystem.log === 'function') {
+            window.BattleSystem.log(msg);
+          }
+          return null;
         }
 
         let actType = String(actionType || 'all').toLowerCase();
@@ -3484,6 +3601,18 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         getRetreatCost: (t) => api.getRetreatCost(ctx, t),
         modifyStat: (t, s, v, o) => api.modifyStat(ctx, t, s, v, o),
         modifyStats: (t, s, v, o) => api.modifyStats(ctx, t, s, v, o),
+        cannotAttachEnergyFromHand: (v = true, t = null) => {
+          const tgt = t || ctx?.thisPokemon || ctx?.card;
+          if (tgt) tgt.cannotAttachEnergyFromHand = (v !== false);
+        },
+        unaffectedByAttackEffects: (v = true, t = null) => {
+          const tgt = t || ctx?.thisPokemon || ctx?.card;
+          if (tgt) tgt.unaffectedByAttackEffects = (v !== false);
+        },
+        immuneToAttackEffects: (v = true, t = null) => {
+          const tgt = t || ctx?.thisPokemon || ctx?.card;
+          if (tgt) tgt.immuneToAttackEffects = (v !== false);
+        },
         passive: (fn, opt) => rawEvent.passive(fn, opt),
         continuous: (fn, opt) => rawEvent.continuous(fn, opt),
         modify: (s, fn) => rawEvent.modify(s, fn)
@@ -3645,7 +3774,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         'afterTurns', 'afterTurn', 'delayTurns', 'delayTurn', 'waitTurns', 'waitTurn', 'atEndOfTurn',
         'extraTurn', 'takeExtraTurn', 'anotherTurn', 'repeatTurn', 'grantExtraTurn',
         'lose', 'loseGame', 'win', 'winGame',
-        'modifyRetreatCost', 'increaseRetreatCost', 'reduceRetreatCost', 'decreaseRetreatCost', 'setRetreatCost', 'resetRetreatCost', 'getRetreatCost', 'modifyStat', 'modifyStats', 'passive', 'continuous',
+        'modifyRetreatCost', 'increaseRetreatCost', 'reduceRetreatCost', 'decreaseRetreatCost', 'setRetreatCost', 'resetRetreatCost', 'getRetreatCost', 'modifyStat', 'modifyStats', 'cannotAttachEnergyFromHand', 'unaffectedByAttackEffects', 'immuneToAttackEffects', 'passive', 'continuous',
         '{\n' + asyncCode + '\n}'
       );
       try {
@@ -3680,7 +3809,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           ctx.afterTurns, ctx.afterTurn, ctx.delayTurns, ctx.delayTurn, ctx.waitTurns, ctx.waitTurn, ctx.atEndOfTurn,
           ctx.extraTurn, ctx.takeExtraTurn, ctx.anotherTurn, ctx.repeatTurn, ctx.grantExtraTurn,
           ctx.lose, ctx.loseGame, ctx.win, ctx.winGame,
-          ctx.modifyRetreatCost, ctx.increaseRetreatCost, ctx.reduceRetreatCost, ctx.decreaseRetreatCost, ctx.setRetreatCost, ctx.resetRetreatCost, ctx.getRetreatCost, ctx.modifyStat, ctx.modifyStats, ctx.passive, ctx.continuous
+          ctx.modifyRetreatCost, ctx.increaseRetreatCost, ctx.reduceRetreatCost, ctx.decreaseRetreatCost, ctx.setRetreatCost, ctx.resetRetreatCost, ctx.getRetreatCost, ctx.modifyStat, ctx.modifyStats, ctx.cannotAttachEnergyFromHand, ctx.unaffectedByAttackEffects, ctx.immuneToAttackEffects, ctx.passive, ctx.continuous
         );
         if (eventName) await ctx.event.emit(eventName, eventData);
       } catch (e) {

@@ -1059,6 +1059,24 @@ var EffectEditor;
       targets: ['attack1', 'attack2', 'ability', 'trainer']
     },
     {
+      keyword: 'unaffectedByAttackEffects',
+      label: 'unaffectedByAttackEffects(true)',
+      category: 'action',
+      badge: 'ワザ効果無効',
+      desc: '【ワザの効果を受けない】相手のバトルポケモンが使うワザの効果（特殊状態、エネトラッシュ、ダメカン等）を受けなくなります。',
+      snippet: 'unaffectedByAttackEffects(true);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'cannotAttachEnergyFromHand',
+      label: 'cannotAttachEnergyFromHand(true)',
+      category: 'action',
+      badge: 'エネ手貼り不可',
+      desc: '【手札からエネルギー不可】手札からエネルギーをつけられなくなります。',
+      snippet: 'cannotAttachEnergyFromHand(true);',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
       keyword: 'whenAllyKnockedOut',
       label: 'whenAllyKnockedOut((pokemon) => ...)',
       category: 'condition',
@@ -2573,6 +2591,7 @@ var EffectEditor;
         { label: '道具: exへダメ+30', sub: 'こだわりベルト', code: '// ポケモンのどうぐ\n// このカードをつけているポケモンが使うワザの、相手の「ポケモンex」へのダメージは「+30」される。' },
         { label: '道具: 毎番HP20回復', sub: 'たべのこし', code: '// ポケモンのどうぐ\n// 自分の番の終わりに、このカードをつけているポケモンのHPを「20」回復する。' },
         { label: '道具: 逃げエネ-2', sub: 'ふうせん', code: '// ポケモンのどうぐ\n// このカードをつけているポケモンのにげるためのエネルギーは、2個分少なくなる。' },
+        { label: '道具: 技効果無効・手貼り不可', sub: 'ビッグパラソル等', code: '// ポケモンのどうぐ\n// このカードを自分のポケモンにつける。つけたポケモンは、手札からエネルギーをつけられない。そのかわり、相手のバトルポケモンが使うワザの効果を受けない。\nunaffectedByAttackEffects(true);\ncannotAttachEnergyFromHand(true);' },
         { label: '相手の道具トラッシュ', sub: 'discardTool()', code: 'discardTool(opponent.active);' }];
 
       } else {
