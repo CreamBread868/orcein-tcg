@@ -3136,20 +3136,36 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.7));
 }
 .active-hp-bar {
+  position: relative;
   width: 100%;
-  height: 7px;
+  height: 8px;
   background: #080b14;
   border-radius: 4px;
   overflow: hidden;
   margin-bottom: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+.active-hp-trail {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: linear-gradient(90deg, #ff1744 0%, #ff9100 100%);
+  border-radius: 4px;
+  box-shadow: 0 0 10px rgba(255, 23, 68, 0.8);
+  transition: width 0.65s cubic-bezier(0.25, 1, 0.5, 1) 0.22s;
+  pointer-events: none;
+  z-index: 1;
 }
 .active-hp-fill {
+  position: relative;
   height: 100%;
   background: linear-gradient(90deg, #00f5a0 0%, #00d2ff 100%);
   border-radius: 4px;
   box-shadow: 0 0 8px rgba(0, 245, 160, 0.5);
-  transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1), background 0.4s ease;
+  transition: width 0.38s cubic-bezier(0.16, 1, 0.3, 1), background 0.38s ease;
+  z-index: 2;
 }
 .active-energies-bar {
   display: flex;
@@ -3200,18 +3216,34 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 .bench-hp-mini-strip .bench-hp-bar {
+  position: relative;
   width: 100%;
-  height: 5px;
+  height: 6px;
   background: #080b14;
   border-radius: 3px;
   overflow: hidden;
   margin: 3px 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.bench-hp-mini-strip .bench-hp-trail {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: linear-gradient(90deg, #ff1744 0%, #ff9100 100%);
+  border-radius: 3px;
+  box-shadow: 0 0 8px rgba(255, 23, 68, 0.8);
+  transition: width 0.65s cubic-bezier(0.25, 1, 0.5, 1) 0.22s;
+  pointer-events: none;
+  z-index: 1;
 }
 .bench-hp-mini-strip .bench-hp-fill {
+  position: relative;
   height: 100%;
   background: linear-gradient(90deg, #00e5ff, #7000ff);
   border-radius: 3px;
-  transition: width 0.3s ease;
+  transition: width 0.38s cubic-bezier(0.16, 1, 0.3, 1), background 0.38s ease;
+  z-index: 2;
 }
 .bench-hp-mini-strip .bench-meta {
   font-size: 10px;
@@ -3591,7 +3623,149 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   100% { filter: brightness(1); transform: scale(1); }
 }
 
-/* ポップアップ浮遊ダメージ数値 (ポケポケ風アーケード表示) */
+/* カード被弾激震アニメーション */
+.card-hit-shake {
+  animation: cardHitShakeAnim 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both !important;
+}
+@keyframes cardHitShakeAnim {
+  0% { transform: translate(0, 0) scale(1); }
+  15% { transform: translate(-8px, 4px) rotate(-2deg) scale(0.96); filter: brightness(2) contrast(1.4) drop-shadow(0 0 20px rgba(255, 30, 60, 0.9)); }
+  30% { transform: translate(8px, -4px) rotate(2deg) scale(0.98); }
+  45% { transform: translate(-6px, 2px) rotate(-1deg); }
+  60% { transform: translate(5px, -2px) rotate(1deg); }
+  75% { transform: translate(-2px, 1px); }
+  100% { transform: translate(0, 0) scale(1); filter: brightness(1); }
+}
+
+/* HP数値ダメージ点滅・拡大 */
+.hp-text-damage-flash {
+  color: #ff334b !important;
+  text-shadow: 0 0 12px rgba(255, 51, 75, 1) !important;
+  transform: scale(1.22);
+  display: inline-block;
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+
+/* フローティングダメージポップアップ (「~ダメージ」アーケード演出) */
+.floating-damage-popup {
+  position: fixed;
+  transform: translate(-50%, -50%);
+  z-index: 99999;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  animation: damagePopupFloatAnim 1.1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  white-space: nowrap;
+}
+
+.floating-damage-popup .damage-main-text {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  font-family: 'Arial Black', Impact, 'Segoe UI Black', sans-serif;
+  line-height: 1;
+  color: #ff2a4b;
+  text-shadow:
+    -3px -3px 0 #fff,
+    3px -3px 0 #fff,
+    -3px 3px 0 #fff,
+    3px 3px 0 #fff,
+    0 5px 15px rgba(0, 0, 0, 0.95),
+    0 0 30px rgba(255, 42, 75, 0.95);
+}
+
+.floating-damage-popup .damage-icon {
+  font-size: 28px;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6));
+}
+
+.floating-damage-popup .damage-val {
+  font-size: 46px;
+  font-weight: 900;
+  letter-spacing: -1.5px;
+}
+
+.floating-damage-popup .damage-unit {
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.floating-damage-popup.is-weakness .damage-main-text {
+  color: #ffd700;
+  text-shadow:
+    -3px -3px 0 #000,
+    3px -3px 0 #000,
+    -3px 3px 0 #000,
+    3px 3px 0 #000,
+    0 6px 20px rgba(0, 0, 0, 0.95),
+    0 0 35px rgba(255, 215, 0, 1);
+}
+.floating-damage-popup.is-weakness .damage-val {
+  font-size: 52px;
+}
+.floating-damage-popup.is-weakness .damage-unit {
+  font-size: 25px;
+}
+
+.floating-damage-popup .damage-badge-weakness {
+  background: linear-gradient(135deg, #ffd700, #ff6b00);
+  color: #000;
+  font-family: sans-serif;
+  font-weight: 900;
+  font-size: 13px;
+  padding: 3px 12px;
+  border-radius: 999px;
+  border: 2px solid #fff;
+  box-shadow: 0 4px 15px rgba(255, 215, 0, 0.9);
+  margin-bottom: 2px;
+  animation: badgeBounceIn 0.3s ease-out;
+}
+
+.floating-damage-popup .damage-badge-resist {
+  background: linear-gradient(135deg, #38bdf8, #2563eb);
+  color: #fff;
+  font-weight: 800;
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid #fff;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.8);
+  margin-bottom: 2px;
+}
+
+@keyframes badgeBounceIn {
+  0% { transform: scale(0.5); opacity: 0; }
+  70% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes damagePopupFloatAnim {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 15px) scale(0.35) rotate(-4deg);
+  }
+  15% {
+    opacity: 1;
+    transform: translate(-50%, -15px) scale(1.35) rotate(2deg);
+  }
+  28% {
+    transform: translate(-50%, -20px) scale(1.0) rotate(0deg);
+  }
+  70% {
+    opacity: 1;
+    transform: translate(-50%, -45px) scale(1.0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -75px) scale(0.85);
+  }
+}
+
+/* ポップアップ浮遊ダメージ数値 (後方互換用) */
 .floating-damage-number {
   position: absolute;
   top: 35%;
@@ -11733,26 +11907,46 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
             // 防御側ポケモンのどうぐの反撃効果 (ゴツゴツメット等)
             if (actualDamage > 0 && attacker && t.attachedTool && (t.attachedTool.name?.includes('ゴツゴツメット') || t.attachedTool.recoilDamageToAttacker)) {
               const recoil = Number(t.attachedTool.recoilDamageToAttacker) || 20;
+              const atkHpBefore = Number(attacker.hp) || 0;
               attacker.hp -= recoil;
+              const atkHpAfter = Number(attacker.hp) || 0;
               if (ctx?.game?.logs) {
                 ctx.game.logs.push('🪖 【' + t.attachedTool.name + '】の反撃！ワザを使った【' + (attacker.name || 'ポケモン') + '】に ' + recoil + ' ダメージ！(残りHP: ' + Math.max(0, attacker.hp) + ')');
+              }
+              if (window.BattleSystem && typeof window.BattleSystem.animateDamage === 'function') {
+                await window.BattleSystem.animateDamage(attacker, recoil, {
+                  oldHp: atkHpBefore,
+                  newHp: atkHpAfter,
+                  weakText: '反撃'
+                });
               }
             }
           }
 
-          // スタジアム上のヒットエフェクト & フローティングダメージ表示
-          if (window.BattleSystem && window.BattleSystem.state) {
-            const isOppActive = t === window.BattleSystem.state.opponent?.active;
-            const isPlayerActive = t === window.BattleSystem.state.player?.active;
-            const slotEl = isOppActive ? document.getElementById('oppActiveSpot') : (isPlayerActive ? document.getElementById('playerActiveSpot') : null);
-            if (slotEl && actualDamage > 0) {
-              slotEl.classList.add('defender-hit-flash');
-              setTimeout(() => slotEl.classList.remove('defender-hit-flash'), 400);
-              const dmgEl = document.createElement('div');
-              dmgEl.className = 'floating-damage-number' + (isWeakness ? ' weakness-damage' : '');
-              dmgEl.textContent = (isWeakness ? '弱点！ -' : '-') + actualDamage;
-              slotEl.appendChild(dmgEl);
-              setTimeout(() => dmgEl.remove(), 1050);
+          // スタジアム上のヒットエフェクト & フローティングダメージ表示 (「~ダメージ」アーケード演出 & HP減少アニメーション)
+          if (window.BattleSystem && actualDamage > 0) {
+            if (typeof window.BattleSystem.animateDamage === 'function') {
+              const hpBefore = (Number(t.hp) || 0) + actualDamage;
+              const hpAfter = Number(t.hp) || 0;
+              await window.BattleSystem.animateDamage(t, actualDamage, {
+                oldHp: hpBefore,
+                newHp: hpAfter,
+                isWeakness: isWeakness,
+                weakText: weakText
+              });
+            } else if (window.BattleSystem.state) {
+              const isOppActive = t === window.BattleSystem.state.opponent?.active;
+              const isPlayerActive = t === window.BattleSystem.state.player?.active;
+              const slotEl = isOppActive ? document.getElementById('oppActiveSpot') : (isPlayerActive ? document.getElementById('playerActiveSpot') : null);
+              if (slotEl) {
+                slotEl.classList.add('defender-hit-flash');
+                setTimeout(() => slotEl.classList.remove('defender-hit-flash'), 400);
+                const dmgEl = document.createElement('div');
+                dmgEl.className = 'floating-damage-number' + (isWeakness ? ' weakness-damage' : '');
+                dmgEl.textContent = (isWeakness ? '弱点！ -' : '-') + actualDamage;
+                slotEl.appendChild(dmgEl);
+                setTimeout(() => dmgEl.remove(), 1050);
+              }
             }
           }
         }
@@ -26747,39 +26941,211 @@ window.DeckSystem = function () {
       }
     },
 
+    findPokemonElement(pokemon) {
+      if (!pokemon) return null;
+      if (typeof HTMLElement !== 'undefined' && pokemon instanceof HTMLElement) return pokemon;
+      if (pokemon.nodeType === 1) return pokemon;
+      if (!this.state) return null;
+      if (this.state.opponent?.active === pokemon) {
+        return document.getElementById('oppActiveSpot');
+      }
+      if (this.state.player?.active === pokemon) {
+        return document.getElementById('playerActiveSpot');
+      }
+      if (Array.isArray(this.state.player?.bench)) {
+        const idx = this.state.player.bench.indexOf(pokemon);
+        if (idx >= 0) {
+          const el = document.querySelector('#playerBench [data-bench-idx="' + idx + '"]');
+          if (el) return el;
+        }
+      }
+      if (Array.isArray(this.state.opponent?.bench)) {
+        const idx = this.state.opponent.bench.indexOf(pokemon);
+        if (idx >= 0) {
+          const el = document.querySelector('#oppBench [data-bench-idx="' + idx + '"]');
+          if (el) return el;
+        }
+      }
+      return null;
+    },
+
+    async animateDamage(targetPokemonOrEl, actualDamage, options = {}) {
+      if (!targetPokemonOrEl || actualDamage <= 0) return;
+      const targetEl = this.findPokemonElement(targetPokemonOrEl);
+      if (!targetEl) return;
+
+      const isEl = (typeof HTMLElement !== 'undefined' && targetPokemonOrEl instanceof HTMLElement) || targetPokemonOrEl.nodeType === 1;
+      const targetObj = isEl ? null : targetPokemonOrEl;
+
+      const oldHp = options.oldHp != null ? Number(options.oldHp) : (targetObj ? Number(targetObj.hp) + actualDamage : actualDamage * 2);
+      const newHp = options.newHp != null ? Number(options.newHp) : (targetObj ? Number(targetObj.hp) : oldHp - actualDamage);
+      const maxHp = (targetObj && targetObj.maxHp != null) ? Number(targetObj.maxHp) : (oldHp > 0 ? Math.max(oldHp, 70) : 100);
+      const isWeakness = !!options.isWeakness;
+      const weakText = options.weakText || '';
+
+      // 1. 被弾エフェクト (カード激震・被弾フラッシュ・斬撃オーバーレイ)
+      const cardWrapper = targetEl.querySelector('.battle-card-wrapper') || targetEl.querySelector('.bench-card-frame') || targetEl;
+      if (cardWrapper && cardWrapper.classList) {
+        cardWrapper.classList.remove('card-hit-shake');
+        void cardWrapper.offsetWidth;
+        cardWrapper.classList.add('card-hit-shake');
+        setTimeout(() => { if (cardWrapper && cardWrapper.classList) cardWrapper.classList.remove('card-hit-shake'); }, 450);
+      }
+
+      const slash = document.createElement('div');
+      slash.className = 'attack-slash-overlay';
+      targetEl.appendChild(slash);
+      setTimeout(() => { if (slash.parentNode) slash.parentNode.removeChild(slash); }, 400);
+
+      // 強攻撃時 (60ダメージ以上) のスタジアム全体画面揺れ
+      if (actualDamage >= 60 && typeof document !== 'undefined') {
+        const stadium = document.querySelector('.battle-stadium');
+        if (stadium && stadium.classList) {
+          stadium.classList.remove('stadium-screen-shake');
+          void stadium.offsetWidth;
+          stadium.classList.add('stadium-screen-shake');
+          setTimeout(() => { if (stadium && stadium.classList) stadium.classList.remove('stadium-screen-shake'); }, 450);
+        }
+      }
+
+      // 2. 「~ダメージ」演出 (フローティングポップアップ)
+      if (typeof document !== 'undefined' && document.body) {
+        const rect = (typeof targetEl.getBoundingClientRect === 'function')
+          ? targetEl.getBoundingClientRect()
+          : { left: 0, top: 0, width: 0, height: 0 };
+        const winWidth = typeof window !== 'undefined' ? (window.innerWidth || 800) : 800;
+        const winHeight = typeof window !== 'undefined' ? (window.innerHeight || 600) : 600;
+
+        let popLeft = rect.left + rect.width / 2;
+        let popTop = rect.top + rect.height * 0.38;
+        if (!rect.width && !rect.height) {
+          popLeft = winWidth / 2;
+          popTop = winHeight / 2;
+        }
+
+        const popup = document.createElement('div');
+        popup.className = 'floating-damage-popup' + (isWeakness ? ' is-weakness' : '');
+        popup.style.left = popLeft + 'px';
+        popup.style.top = popTop + 'px';
+
+        let badgeHtml = '';
+        if (isWeakness) {
+          badgeHtml = '<div class="damage-badge-weakness">⚡ 弱点 2倍！</div>';
+        } else if (weakText && weakText.includes('抵抗力')) {
+          badgeHtml = '<div class="damage-badge-resist">🛡️ 抵抗力 -20</div>';
+        } else if (weakText && weakText.includes('反撃')) {
+          badgeHtml = '<div class="damage-badge-resist">🪖 反撃！</div>';
+        }
+
+        popup.innerHTML = badgeHtml +
+          '<div class="damage-main-text">' +
+            '<span class="damage-icon">💥</span>' +
+            '<span class="damage-val">' + actualDamage + '</span>' +
+            '<span class="damage-unit">ダメージ</span>' +
+          '</div>';
+
+        document.body.appendChild(popup);
+        setTimeout(() => { if (popup.parentNode) popup.parentNode.removeChild(popup); }, 1100);
+      }
+
+      // 3. HPゲージ・数値減少アニメーション (HPヘルアニメーション)
+      const oldPct = Math.max(0, Math.min(100, Math.round(oldHp / maxHp * 100)));
+      const newPct = Math.max(0, Math.min(100, Math.round(newHp / maxHp * 100)));
+      const newColor = newPct > 50 ? '#2ec4b6' : newPct > 20 ? '#ff9f1c' : '#e71d36';
+
+      const hpFillEl = targetEl.querySelector('.active-hp-fill') || targetEl.querySelector('.bench-hp-fill');
+      const hpTrailEl = targetEl.querySelector('.active-hp-trail') || targetEl.querySelector('.bench-hp-trail');
+      const hpLabelStrong = targetEl.querySelector('.battle-hp-label strong');
+      const cardBadgeStrong = targetEl.querySelector('.card-hp-badge strong');
+      const benchMetaEl = targetEl.querySelector('.bench-meta');
+
+      if (hpFillEl) {
+        // 現在のゲージ幅を旧HPに固定
+        hpFillEl.style.transition = 'none';
+        hpFillEl.style.width = oldPct + '%';
+        if (hpTrailEl) {
+          hpTrailEl.style.transition = 'none';
+          hpTrailEl.style.width = oldPct + '%';
+        }
+        void hpFillEl.offsetWidth; // layout reflow
+
+        // HPバーを新HPへスムーズ減少
+        hpFillEl.style.transition = 'width 0.42s cubic-bezier(0.16, 1, 0.3, 1), background 0.42s ease';
+        hpFillEl.style.width = newPct + '%';
+        hpFillEl.style.background = newColor;
+
+        if (hpTrailEl) {
+          // ダメージ跡（赤/オレンジ）が少し遅れて追従して減る
+          hpTrailEl.style.transition = 'width 0.65s cubic-bezier(0.25, 1, 0.5, 1) 0.22s';
+          hpTrailEl.style.width = newPct + '%';
+        }
+      }
+
+      // HP数値のカウントダウン表示
+      if (hpLabelStrong || cardBadgeStrong || benchMetaEl) {
+        if (hpLabelStrong && hpLabelStrong.classList) hpLabelStrong.classList.add('hp-text-damage-flash');
+        if (cardBadgeStrong && cardBadgeStrong.classList) cardBadgeStrong.classList.add('hp-text-damage-flash');
+
+        const startTime = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+        const duration = 460;
+        const diff = oldHp - newHp;
+
+        const updateCounter = () => {
+          const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+          const elapsed = now - startTime;
+          const progress = Math.min(1, elapsed / duration);
+          const easeOut = 1 - Math.pow(1 - progress, 3);
+          const currentVal = Math.max(0, Math.round(oldHp - diff * easeOut));
+
+          if (hpLabelStrong) hpLabelStrong.textContent = currentVal;
+          if (cardBadgeStrong) cardBadgeStrong.textContent = currentVal;
+          if (benchMetaEl) benchMetaEl.innerHTML = 'HP ' + currentVal + ' • ⚡' + ((targetObj && targetObj.energy) || 0);
+
+          if (progress < 1) {
+            if (typeof requestAnimationFrame === 'function') {
+              requestAnimationFrame(updateCounter);
+            } else {
+              setTimeout(updateCounter, 16);
+            }
+          } else {
+            if (hpLabelStrong) {
+              hpLabelStrong.textContent = Math.max(0, newHp);
+              if (hpLabelStrong.classList) hpLabelStrong.classList.remove('hp-text-damage-flash');
+            }
+            if (cardBadgeStrong) {
+              cardBadgeStrong.textContent = Math.max(0, newHp);
+              if (cardBadgeStrong.classList) cardBadgeStrong.classList.remove('hp-text-damage-flash');
+            }
+            if (benchMetaEl) {
+              benchMetaEl.innerHTML = 'HP ' + Math.max(0, newHp) + ' • ⚡' + ((targetObj && targetObj.energy) || 0);
+            }
+          }
+        };
+
+        if (typeof requestAnimationFrame === 'function') {
+          requestAnimationFrame(updateCounter);
+        } else {
+          setTimeout(updateCounter, 16);
+        }
+      }
+
+      await (typeof this.wait === 'function' ? this.wait(620) : new Promise(r => setTimeout(r, 620)));
+    },
+
     animateAttack(attackerSlotEl, defenderSlotEl, isPlayer, damage, isWeakness) {
       try {
         if (attackerSlotEl) {
           attackerSlotEl.classList.add(isPlayer ? 'lunge-player' : 'lunge-opp');
           setTimeout(() => {
-            attackerSlotEl.classList.remove(isPlayer ? 'lunge-player' : 'lunge-opp');
+            if (attackerSlotEl.classList) attackerSlotEl.classList.remove(isPlayer ? 'lunge-player' : 'lunge-opp');
           }, 650);
         }
 
         setTimeout(() => {
-          const stadium = document.querySelector('.battle-stadium');
-          if (stadium) {
-            stadium.classList.add('stadium-screen-shake');
-            setTimeout(() => stadium.classList.remove('stadium-screen-shake'), 450);
-          }
-
-          if (defenderSlotEl) {
-            defenderSlotEl.classList.add('defender-hit-flash');
-            setTimeout(() => defenderSlotEl.classList.remove('defender-hit-flash'), 400);
-
-            const slash = document.createElement('div');
-            slash.className = 'attack-slash-overlay';
-            defenderSlotEl.appendChild(slash);
-            setTimeout(() => slash.remove(), 400);
-
-            if (damage > 0) {
-              const dmgEl = document.createElement('div');
-              dmgEl.className = 'floating-damage-number' + (isWeakness ? ' weakness-damage' : '');
-              dmgEl.textContent = (isWeakness ? '弱点！ -' : '-') + damage;
-              defenderSlotEl.appendChild(dmgEl);
-              setTimeout(() => dmgEl.remove(), 1050);
-            }
-          }
+          const defender = isPlayer ? this.state?.opponent?.active : this.state?.player?.active;
+          this.animateDamage(defender || defenderSlotEl, damage, {
+            isWeakness: isWeakness
+          });
         }, 240);
       } catch (err) {
         console.error('animateAttack error:', err);
@@ -28417,7 +28783,7 @@ window.DeckSystem = function () {
             }
           }
         } else {
-          const numericDmg = parseInt(String(atkDamage || '').replace(/[^d]/g, ''), 10) || 0;
+          const numericDmg = parseInt(String(atkDamage || '').replace(/[^\d]/g, ''), 10) || 0;
           if (numericDmg > 0 && window.ORBITAL_EFFECT_API) {
             const currentDefender = this.state.player?.active;
             if (currentDefender) {
@@ -29050,7 +29416,7 @@ window.DeckSystem = function () {
 
       card.hp + "</strong> / " + card.maxHp + "</span>\n              " +
       statusTagHtml + "\n            </div>\n            " +
-      toolHtml + "\n            <div class=\"active-hp-bar\">\n              <div class=\"active-hp-fill\" style=\"width: " +
+      toolHtml + "\n            <div class=\"active-hp-bar\">\n              <div class=\"active-hp-trail\" style=\"width: " + hpPct + "%;\"></div>\n              <div class=\"active-hp-fill\" style=\"width: " +
 
 
       hpPct + "%; background: " + hpColor + ";\"></div>\n            </div>\n            <div class=\"active-energies-bar\">\n              <span class=\"energies-label\" style=\"font-size:10px; color:var(--muted); font-weight:700;\">エネ:</span>\n              " + (
@@ -29172,7 +29538,7 @@ window.DeckSystem = function () {
           slotsHtml += "\n            <div class=\"bench-slot-occupied\" data-bench-idx=\"" +
           i + "\" title=\"" + this.escape(benchTooltip) + "\">\n              <div class=\"bench-card-frame\">\n                " +
 
-          miniCardHtml + "\n              </div>\n              <div class=\"bench-hp-mini-strip\">\n                <div class=\"bench-hp-bar\"><div class=\"bench-hp-fill\" style=\"width: " +
+          miniCardHtml + "\n              </div>\n              <div class=\"bench-hp-mini-strip\">\n                <div class=\"bench-hp-bar\"><div class=\"bench-hp-trail\" style=\"width: " + hpPct + "%;\"></div><div class=\"bench-hp-fill\" style=\"width: " +
 
 
           hpPct + "%; background: " + hpColor + ";\"></div></div>\n                <div class=\"bench-meta\">HP " +

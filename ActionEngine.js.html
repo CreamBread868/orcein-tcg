@@ -250,26 +250,46 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
             // 防御側ポケモンのどうぐの反撃効果 (ゴツゴツメット等)
             if (actualDamage > 0 && attacker && t.attachedTool && (t.attachedTool.name?.includes('ゴツゴツメット') || t.attachedTool.recoilDamageToAttacker)) {
               const recoil = Number(t.attachedTool.recoilDamageToAttacker) || 20;
+              const atkHpBefore = Number(attacker.hp) || 0;
               attacker.hp -= recoil;
+              const atkHpAfter = Number(attacker.hp) || 0;
               if (ctx?.game?.logs) {
                 ctx.game.logs.push('🪖 【' + t.attachedTool.name + '】の反撃！ワザを使った【' + (attacker.name || 'ポケモン') + '】に ' + recoil + ' ダメージ！(残りHP: ' + Math.max(0, attacker.hp) + ')');
+              }
+              if (window.BattleSystem && typeof window.BattleSystem.animateDamage === 'function') {
+                await window.BattleSystem.animateDamage(attacker, recoil, {
+                  oldHp: atkHpBefore,
+                  newHp: atkHpAfter,
+                  weakText: '反撃'
+                });
               }
             }
           }
 
-          // スタジアム上のヒットエフェクト & フローティングダメージ表示
-          if (window.BattleSystem && window.BattleSystem.state) {
-            const isOppActive = t === window.BattleSystem.state.opponent?.active;
-            const isPlayerActive = t === window.BattleSystem.state.player?.active;
-            const slotEl = isOppActive ? document.getElementById('oppActiveSpot') : (isPlayerActive ? document.getElementById('playerActiveSpot') : null);
-            if (slotEl && actualDamage > 0) {
-              slotEl.classList.add('defender-hit-flash');
-              setTimeout(() => slotEl.classList.remove('defender-hit-flash'), 400);
-              const dmgEl = document.createElement('div');
-              dmgEl.className = 'floating-damage-number' + (isWeakness ? ' weakness-damage' : '');
-              dmgEl.textContent = (isWeakness ? '弱点！ -' : '-') + actualDamage;
-              slotEl.appendChild(dmgEl);
-              setTimeout(() => dmgEl.remove(), 1050);
+          // スタジアム上のヒットエフェクト & フローティングダメージ表示 (「~ダメージ」アーケード演出 & HP減少アニメーション)
+          if (window.BattleSystem && actualDamage > 0) {
+            if (typeof window.BattleSystem.animateDamage === 'function') {
+              const hpBefore = (Number(t.hp) || 0) + actualDamage;
+              const hpAfter = Number(t.hp) || 0;
+              await window.BattleSystem.animateDamage(t, actualDamage, {
+                oldHp: hpBefore,
+                newHp: hpAfter,
+                isWeakness: isWeakness,
+                weakText: weakText
+              });
+            } else if (window.BattleSystem.state) {
+              const isOppActive = t === window.BattleSystem.state.opponent?.active;
+              const isPlayerActive = t === window.BattleSystem.state.player?.active;
+              const slotEl = isOppActive ? document.getElementById('oppActiveSpot') : (isPlayerActive ? document.getElementById('playerActiveSpot') : null);
+              if (slotEl) {
+                slotEl.classList.add('defender-hit-flash');
+                setTimeout(() => slotEl.classList.remove('defender-hit-flash'), 400);
+                const dmgEl = document.createElement('div');
+                dmgEl.className = 'floating-damage-number' + (isWeakness ? ' weakness-damage' : '');
+                dmgEl.textContent = (isWeakness ? '弱点！ -' : '-') + actualDamage;
+                slotEl.appendChild(dmgEl);
+                setTimeout(() => dmgEl.remove(), 1050);
+              }
             }
           }
         }
