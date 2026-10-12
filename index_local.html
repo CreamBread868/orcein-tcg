@@ -28110,19 +28110,19 @@ window.DeckSystem = function () {
             this.switchActive(ai, targetForEnergy);
             this.log("🌀 【ジェットエネルギー】の効果で AIの " + targetForEnergy.name + " がバトル場へ繰り出された！");
           }
+
+          const oppActiveEl = isBenchTarget ? document.getElementById('oppBenchRow') : document.getElementById('oppActiveSpot');
+          const oppDeckEl = document.getElementById('oppDeckCount');
+          if (oppActiveEl) {
+            this.animateEnergyFly(oppDeckEl || oppActiveEl, oppActiveEl, nrg.type);
+          }
+          await this.wait(600);
+          this.render();
+          await this.wait(400);
         } else {
           // 付けられるポケモンがいない場合は手札に戻す
           ai.hand.splice(energyIdx, 0, nrg);
         }
-
-        const oppActiveEl = isBenchTarget ? document.getElementById('oppBenchRow') : document.getElementById('oppActiveSpot');
-        const oppDeckEl = document.getElementById('oppDeckCount');
-        if (oppActiveEl) {
-          this.animateEnergyFly(oppDeckEl || oppActiveEl, oppActiveEl, nrg.type);
-        }
-        await this.wait(600);
-        this.render();
-        await this.wait(400);
       }
 
       // ==========================================
