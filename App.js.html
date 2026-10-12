@@ -252,6 +252,7 @@ console.log('[ORBITAL] App.js.html started execution');
         });
       }
       if (page === 'shop') page = 'single-shop';
+      if (page === 'sell' || page === 'sell_shop') page = 'sell-shop';
       if (page === 'packs' || page === 'pack_shop') page = 'pack';
       if (page === 'admin-pack' || page === 'admin_pack') {
         this.openAdminPackModal();
@@ -278,7 +279,7 @@ console.log('[ORBITAL] App.js.html started execution');
       target.classList.add('active');
 
       document.querySelectorAll('.nav-button').forEach((btn) => {
-        btn.classList.toggle('active', btn.dataset.page === page || (btn.dataset.page === 'single-shop' && page === 'single-shop'));
+        btn.classList.toggle('active', btn.dataset.page === page || (btn.dataset.page === 'single-shop' && page === 'single-shop') || (btn.dataset.page === 'sell-shop' && page === 'sell-shop'));
       });
 
       this.state.page = page;
@@ -309,6 +310,9 @@ console.log('[ORBITAL] App.js.html started execution');
       if (page === 'single-shop') {
         this.loadShopAndTradeItemsFromGas();
         this.renderSingleShopGrid();
+      }
+      if (page === 'sell-shop') {
+        this.renderSellShop();
       }
     },
 
@@ -3459,6 +3463,384 @@ console.log('[ORBITAL] App.js.html started execution');
     },
 
     /* ============================================================
+       カード売却所 (Card Sell Shop / Buyback for NMT)
+       ============================================================ */
+    getSellRates() {
+      const DEFAULT_RATES = {
+        'N': 10,
+        'R': 30,
+        'AR': 100,
+        'RR': 200,
+        'SR': 500,
+        'UR': 1000,
+        'ACESPEC': 1500,
+        'DEFAULT': 10
+      };
+      try {
+        const custom = localStorage.getItem('ORBITAL_SELL_RATES');
+        if (custom) return Object.assign({}, DEFAULT_RATES, JSON.parse(custom));
+      } catch(e) {}
+      return DEFAULT_RATES;
+    },
+
+    getCardSellPrice(card) {
+      if (!card) return 10;
+      const rates = this.getSellRates();
+      const rawRarity = String(card.rarity || 'N').toUpperCase().trim();
+
+      if (rates[rawRarity] !== undefined) return rates[rawRarity];
+
+      // レアリティの別名・日本語表記の正規化
+      if (['C', 'COMMON', 'ノーマル', 'コモン'].includes(rawRarity)) return rates['N'] || 10;
+      if (['U', 'UC', 'UNCOMMON', 'アンコモン', 'レア'].includes(rawRarity)) return rates['R'] || 30;
+      if (['ART', 'アートレア', 'AR'].includes(rawRarity)) return rates['AR'] || 100;
+      if (['DOUBLE', 'ダブルレア', 'RR'].includes(rawRarity)) return rates['RR'] || 200;
+      if (['SUPER', 'SAR', 'HR', 'スーパーレア'].includes(rawRarity)) return rates['SR'] || 500;
+      if (['ULTRA', 'ウルトラレア', 'UR'].includes(rawRarity)) return rates['UR'] || 1000;
+      if (['ACE', 'ACESPEC', 'エーススペック'].includes(rawRarity) || !!card.isAceSpec) return rates['ACESPEC'] || 1500;
+
+      return rates['DEFAULT'] || 10;
+    },
+
+    removeCardFromCollection(cardId, count = 1) {
+      count = Math.max(1, Number(count) || 1);
+      let col = this.getUserCollection();
+      const allCards = this.getAllCards();
+      const card = allCards.find(c => String(c.id) === String(cardId) || c.name === cardId);
+      const key = card ? String(card.id || card.name) : String(cardId);
+
+      let foundKey = null;
+      if (col[key] !== undefined) foundKey = key;
+      else if (card && card.name && col[card.name] !== undefined) foundKey = card.name;
+      else if (card && card.id && col[card.id] !== undefined) foundKey = card.id;
+
+      if (foundKey) {
+        col[foundKey] = Math.max(0, (col[foundKey] || 0) - count);
+        if (col[foundKey] <= 0) {
+          delete col[foundKey];
+        }
+      }
+
+      this.state.userCollection = col;
+      try { localStorage.setItem('ORBITAL_USER_COLLECTION', JSON.stringify(col)); } catch(e) {}
+      if (window.CardSystem && typeof window.CardSystem.saveUserCollection === 'function') {
+        window.CardSystem.saveUserCollection(col);
+      }
+      this.saveUserCollectionToGas(col);
+      return col;
+    },
+
+    filterSellShopCat(cat, el) {
+      this._sellCatFilter = cat || 'all';
+      const tabs = document.querySelectorAll('[data-sell-cat]');
+      tabs.forEach(t => t.classList.toggle('active', t.dataset.sellCat === this._sellCatFilter));
+      this.renderSellShopGrid();
+    },
+
+    renderSellShop() {
+      this._sellSteppers = this._sellSteppers || {};
+      this.updateNmtDisplays();
+      this.renderSellShopGrid();
+    },
+
+    getSellStepperVal(cardKey, maxCount) {
+      this._sellSteppers = this._sellSteppers || {};
+      if (this._sellSteppers[cardKey] === undefined) {
+        this._sellSteppers[cardKey] = 1;
+      }
+      return Math.min(maxCount, Math.max(1, Number(this._sellSteppers[cardKey]) || 1));
+    },
+
+    adjustSellStepper(cardKey, delta, maxCount) {
+      this._sellSteppers = this._sellSteppers || {};
+      const current = this.getSellStepperVal(cardKey, maxCount);
+      const next = Math.min(maxCount, Math.max(1, current + delta));
+      this._sellSteppers[cardKey] = next;
+
+      const valEl = document.getElementById('sellStepperVal_' + cardKey);
+      if (valEl) valEl.textContent = next + '枚';
+
+      const allCards = this.getAllCards();
+      const card = allCards.find(c => String(c.id || c.name) === String(cardKey));
+      if (card) {
+        const unitPrice = this.getCardSellPrice(card);
+        const subtotalEl = document.getElementById('sellSubtotal_' + cardKey);
+        if (subtotalEl) subtotalEl.textContent = '+' + (unitPrice * next).toLocaleString() + ' NMT';
+      }
+    },
+
+    renderSellShopGrid() {
+      const container = this.el('sellShopGrid');
+      if (!container) return;
+
+      const colMap = this.getUserCollection();
+      const allCards = this.getAllCards();
+      const catFilter = this._sellCatFilter || 'all';
+
+      const rarityFilterEl = this.el('sellShopRarityFilter');
+      const rarityFilter = rarityFilterEl ? rarityFilterEl.value : '';
+
+      const dupFilterEl = this.el('sellShopDuplicatesFilter');
+      const dupFilter = dupFilterEl ? dupFilterEl.value : 'duplicates';
+
+      const sortEl = this.el('sellShopSortSelect');
+      const sortKey = sortEl ? sortEl.value : 'count_desc';
+
+      const searchInput = this.el('sellShopSearchInput');
+      const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+      // 所持しているカードを抽出
+      const ownedCardsList = [];
+      let totalOwnedTypes = 0;
+      let totalOwnedCards = 0;
+
+      allCards.forEach(card => {
+        const key = String(card.id || card.name);
+        const count = colMap[key] || (card.name ? colMap[card.name] : 0) || (card.id ? colMap[card.id] : 0) || 0;
+        if (count > 0) {
+          totalOwnedTypes++;
+          totalOwnedCards += count;
+          ownedCardsList.push({
+            card,
+            key,
+            count,
+            price: this.getCardSellPrice(card)
+          });
+        }
+      });
+
+      // サマリー表示更新
+      const summaryEl = this.el('sellShopCardSummary');
+      if (summaryEl) {
+        summaryEl.textContent = '所持: ' + totalOwnedTypes + '種類 (計 ' + totalOwnedCards + '枚)';
+      }
+
+      // フィルタリング
+      const filtered = ownedCardsList.filter(item => {
+        const card = item.card;
+
+        // 重複フィルター
+        if (dupFilter === 'duplicates' && item.count < 2) return false;
+
+        // カテゴリフィルター
+        if (catFilter !== 'all') {
+          const cat = (card.category || '').toLowerCase();
+          if (catFilter === 'pokemon' && (cat.includes('トレーナー') || cat.includes('サポート') || cat.includes('グッズ') || cat.includes('どうぐ') || cat.includes('道具') || cat.includes('スタジアム') || cat.includes('エネルギー'))) return false;
+          if (catFilter === 'trainer' && !cat.includes('トレーナー') && !cat.includes('サポート') && !cat.includes('グッズ') && !cat.includes('どうぐ') && !cat.includes('道具') && !cat.includes('スタジアム')) return false;
+          if (catFilter === 'energy' && !cat.includes('エネルギー')) return false;
+        }
+
+        // レアリティフィルター
+        if (rarityFilter) {
+          const r = String(card.rarity || 'N').toUpperCase().trim();
+          if (rarityFilter === 'ACESPEC' || rarityFilter === 'ACE') {
+            if (r !== 'ACESPEC' && r !== 'ACE' && !card.isAceSpec) return false;
+          } else if (r !== rarityFilter) {
+            return false;
+          }
+        }
+
+        // 検索クエリ
+        if (query) {
+          const nameMatch = (card.name || '').toLowerCase().includes(query);
+          const idMatch = (card.id || '').toLowerCase().includes(query);
+          return nameMatch || idMatch;
+        }
+
+        return true;
+      });
+
+      // ソート
+      filtered.sort((a, b) => {
+        if (sortKey === 'count_desc') return b.count - a.count;
+        if (sortKey === 'price_desc') return b.price - a.price;
+        if (sortKey === 'name_asc') return (a.card.name || '').localeCompare(b.card.name || '', 'ja');
+        if (sortKey === 'rarity_desc') {
+          const rarityOrder = { 'ACESPEC': 7, 'ACE': 7, 'UR': 6, 'SR': 5, 'RR': 4, 'AR': 3, 'R': 2, 'N': 1 };
+          const rA = rarityOrder[String(a.card.rarity || 'N').toUpperCase()] || 0;
+          const rB = rarityOrder[String(b.card.rarity || 'N').toUpperCase()] || 0;
+          return rB - rA;
+        }
+        return 0;
+      });
+
+      if (filtered.length === 0) {
+        const emptyMsg = dupFilter === 'duplicates'
+          ? '売却可能な重複カード（2枚以上所持）はありません。<br><span style="font-size:13px; color:var(--muted);">「すべての所持カード」に切り替えるか、パックを開封してカードを獲得してください。</span>'
+          : '条件に一致する所持カードはありません。';
+        container.innerHTML = '<div style="text-align:center; padding:60px; color:var(--muted); grid-column:1/-1;">' +
+          '<div style="font-size:40px; margin-bottom:12px;">🎴</div>' +
+          '<div>' + emptyMsg + '</div>' +
+          '<div style="margin-top:20px;"><button type="button" class="primary-button" onclick="App.showPage(\'pack\')">🎁 パックを開封する</button></div>' +
+          '</div>';
+        return;
+      }
+
+      container.innerHTML = filtered.map(item => {
+        const card = item.card;
+        const key = item.key;
+        const ownedCount = item.count;
+        const unitPrice = item.price;
+        const currentStepper = this.getSellStepperVal(key, ownedCount);
+        const subtotal = unitPrice * currentStepper;
+
+        const cardHtml = window.CardSystem && CardSystem.createCardHtml
+          ? CardSystem.createCardHtml(card, { size: 'normal' })
+          : ('<div class="card-placeholder">' + this.escapeHtml(card.name) + '</div>');
+
+        const rarityBadge = '<span class="sell-rarity-tag rarity-badge-' + this.escapeHtml(card.rarity || 'N') + '">' +
+          this.escapeHtml(card.rarity || 'N') + '</span>';
+
+        const ownedBadge = '<div class="sell-owned-tag">所持: ' + ownedCount + '枚</div>';
+
+        const leaveOneBtn = ownedCount >= 2
+          ? '<button type="button" class="sell-leave-one-btn" onclick="App.sellAllExtrasOfCard(\'' + this.escapeHtml(key) + '\')" title="1枚残して、余分な ' + (ownedCount - 1) + '枚をまとめて売却します">' +
+            '✨ 1枚残して余り(' + (ownedCount - 1) + '枚)を売却' +
+            '</button>'
+          : '';
+
+        return '<div class="sell-shop-card-item" id="sellCardItem_' + this.escapeHtml(key) + '">' +
+          ownedBadge +
+          rarityBadge +
+          '<div style="width:100%; display:flex; justify-content:center; margin-top:14px;">' +
+            cardHtml +
+          '</div>' +
+          '<div class="sell-price-preview">' +
+            '<span>💰</span><span id="sellSubtotal_' + this.escapeHtml(key) + '">+' + subtotal.toLocaleString() + ' NMT</span>' +
+            '<span class="unit-rate">(@' + unitPrice + ' NMT)</span>' +
+          '</div>' +
+          '<div class="sell-stepper-box">' +
+            '<button type="button" class="sell-stepper-btn" onclick="App.adjustSellStepper(\'' + this.escapeHtml(key) + '\', -1, ' + ownedCount + ')">－</button>' +
+            '<span class="sell-stepper-val" id="sellStepperVal_' + this.escapeHtml(key) + '">' + currentStepper + '枚</span>' +
+            '<button type="button" class="sell-stepper-btn" onclick="App.adjustSellStepper(\'' + this.escapeHtml(key) + '\', 1, ' + ownedCount + ')">＋</button>' +
+          '</div>' +
+          '<button type="button" class="sell-execute-btn" onclick="App.executeCardSell(\'' + this.escapeHtml(key) + '\')">' +
+            '💰 このカードを売却' +
+          '</button>' +
+          leaveOneBtn +
+        '</div>';
+      }).join('');
+    },
+
+    executeCardSell(cardKey) {
+      const colMap = this.getUserCollection();
+      const allCards = this.getAllCards();
+      const card = allCards.find(c => String(c.id || c.name) === String(cardKey));
+      if (!card) return;
+
+      const owned = colMap[cardKey] || (card.name ? colMap[card.name] : 0) || 0;
+      const count = this.getSellStepperVal(cardKey, owned);
+      this.sellCard(card.id || cardKey, count);
+    },
+
+    sellAllExtrasOfCard(cardKey) {
+      const colMap = this.getUserCollection();
+      const allCards = this.getAllCards();
+      const card = allCards.find(c => String(c.id || c.name) === String(cardKey));
+      if (!card) return;
+
+      const owned = colMap[cardKey] || (card.name ? colMap[card.name] : 0) || 0;
+      if (owned <= 1) {
+        this.toast('余剰カードがありません (所持数: ' + owned + '枚)', true);
+        return;
+      }
+      const excess = owned - 1;
+      this.sellCard(card.id || cardKey, excess);
+    },
+
+    sellCard(cardId, count = 1) {
+      count = Math.max(1, Number(count) || 1);
+      const colMap = this.getUserCollection();
+      const allCards = this.getAllCards();
+      const card = allCards.find(c => String(c.id) === String(cardId) || c.name === cardId);
+      if (!card) {
+        this.toast('カードが見つかりません', true);
+        return;
+      }
+
+      const key = String(card.id || card.name);
+      const owned = colMap[key] || (card.name ? colMap[card.name] : 0) || (card.id ? colMap[card.id] : 0) || 0;
+      if (owned < count) {
+        this.toast('所持数が足りません (所持: ' + owned + '枚 / 売却希望: ' + count + '枚)', true);
+        return;
+      }
+
+      const unitPrice = this.getCardSellPrice(card);
+      const totalNmt = unitPrice * count;
+      const willBeZero = (owned - count === 0);
+
+      const warningZero = willBeZero ? '\n⚠️ 売却するとこのカードの所持数が「0枚」になります。' : '';
+      if (!confirm('「' + card.name + '」を ' + count + '枚 売却して、+' + totalNmt.toLocaleString() + ' NMT を獲得しますか？' + warningZero)) {
+        return;
+      }
+
+      this.removeCardFromCollection(card.id || key, count);
+      const curNmt = this.getUserNmt();
+      const newNmt = curNmt + totalNmt;
+      this.setUserNmt(newNmt);
+
+      this.toast('💰 「' + card.name + '」を ' + count + '枚売却し、+' + totalNmt.toLocaleString() + ' NMT を獲得しました！（所持: ' + newNmt.toLocaleString() + ' NMT）');
+      this.renderSellShopGrid();
+      this.updateNmtDisplays();
+    },
+
+    bulkSellDuplicates(onlyLowRarity = false) {
+      const colMap = this.getUserCollection();
+      const allCards = this.getAllCards();
+
+      const toSellList = [];
+      let totalNmt = 0;
+      let totalCount = 0;
+
+      allCards.forEach(card => {
+        const key = String(card.id || card.name);
+        const owned = colMap[key] || (card.name ? colMap[card.name] : 0) || (card.id ? colMap[card.id] : 0) || 0;
+        if (owned > 1) {
+          const excess = owned - 1;
+          const rarity = String(card.rarity || 'N').toUpperCase().trim();
+          if (onlyLowRarity) {
+            const isLow = ['N', 'C', 'COMMON', 'ノーマル', 'コモン', 'R', 'U', 'UC', 'UNCOMMON', 'アンコモン', 'レア'].includes(rarity);
+            if (!isLow) return;
+          }
+          const price = this.getCardSellPrice(card);
+          const subtotal = price * excess;
+          toSellList.push({ card, key, count: excess, price, subtotal });
+          totalNmt += subtotal;
+          totalCount += excess;
+        }
+      });
+
+      if (toSellList.length === 0) {
+        this.toast('売却可能な' + (onlyLowRarity ? '低レア(N/R)' : '') + '重複カードがありません。（すべて1枚以下の所持です）', true);
+        return;
+      }
+
+      const label = onlyLowRarity ? '低レア(N/R)の重複カード' : 'すべての重複カード';
+      const cardBreakdown = toSellList.slice(0, 5).map(item => '・' + item.card.name + ' × ' + item.count + '枚 (+' + item.subtotal.toLocaleString() + ' NMT)').join('\n') +
+        (toSellList.length > 5 ? '\n...他 ' + (toSellList.length - 5) + '種類' : '');
+
+      const confirmMsg = '【' + label + 'の一括売却】\n\n' +
+        '対象: ' + toSellList.length + '種類（合計 ' + totalCount + '枚）\n' +
+        '獲得予定: +' + totalNmt.toLocaleString() + ' NMT\n\n' +
+        '※各カード1枚は手元に残ります。\n売却を実行しますか？\n\n' +
+        cardBreakdown;
+
+      if (!confirm(confirmMsg)) return;
+
+      toSellList.forEach(item => {
+        this.removeCardFromCollection(item.card.id || item.key, item.count);
+      });
+
+      const curNmt = this.getUserNmt();
+      const newNmt = curNmt + totalNmt;
+      this.setUserNmt(newNmt);
+
+      this.toast('🎉 重複カード ' + totalCount + '枚を一括売却し、+' + totalNmt.toLocaleString() + ' NMT を獲得しました！（新残高: ' + newNmt.toLocaleString() + ' NMT）');
+      this.renderSellShopGrid();
+      this.updateNmtDisplays();
+    },
+
+    /* ============================================================
        ユーザー認証 & セッション管理 (Gmail / パスワード)
        ============================================================ */
     isLoggedIn() {
@@ -3900,7 +4282,7 @@ console.log('[ORBITAL] App.js.html started execution');
     updateNmtDisplays() {
       const val = this.getUserNmt();
       const valText = val + ' NMT';
-      ['nmtBalanceVal', 'singleShopNmtVal'].forEach(id => {
+      ['nmtBalanceVal', 'singleShopNmtVal', 'sellShopNmtVal'].forEach(id => {
         const el = this.el(id);
         if (el) el.textContent = valText;
       });

@@ -6242,6 +6242,228 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
 }
 
 /* ============================================================
+   カード売却所 (Card Sell Shop / Buyback for NMT)
+   ============================================================ */
+.sell-shop-hero {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(6, 182, 212, 0.15));
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  border-radius: 24px;
+  padding: 28px 32px;
+  margin-bottom: 24px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.sell-rate-board {
+  margin-top: 20px;
+  background: rgba(11, 19, 32, 0.8);
+  border: 1px solid rgba(52, 211, 153, 0.2);
+  border-radius: 16px;
+  padding: 14px 18px;
+}
+
+.sell-rate-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 800;
+  color: #34d399;
+  margin-bottom: 10px;
+}
+
+.sell-rate-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.sell-rate-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.sell-rate-chip .rate-val {
+  color: #fbbf24;
+  font-weight: 800;
+}
+
+.sell-shop-controls {
+  margin-bottom: 20px;
+}
+
+.sell-bulk-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.sell-bulk-btn {
+  padding: 10px 20px;
+  font-size: 13.5px;
+  font-weight: 800;
+  border-radius: 12px;
+}
+
+.sell-shop-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 22px;
+  margin-top: 16px;
+}
+
+.sell-shop-card-item {
+  background: rgba(17, 24, 39, 0.85);
+  border: 1px solid rgba(52, 211, 153, 0.25);
+  border-radius: 20px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+}
+
+.sell-shop-card-item:hover {
+  transform: translateY(-5px);
+  border-color: #34d399;
+  box-shadow: 0 16px 36px rgba(16, 185, 129, 0.25);
+}
+
+.sell-owned-tag {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 5;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #059669, #10b981);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.sell-rarity-tag {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 5;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+}
+
+.sell-price-preview {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 16px;
+  font-weight: 900;
+  color: #fbbf24;
+  margin: 12px 0 8px;
+}
+
+.sell-price-preview .unit-rate {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: normal;
+}
+
+.sell-stepper-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin: 6px 0 10px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sell-stepper-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.sell-stepper-btn:hover:not(:disabled) {
+  background: rgba(52, 211, 153, 0.3);
+  border-color: #34d399;
+}
+
+.sell-stepper-val {
+  font-size: 14px;
+  font-weight: 800;
+  min-width: 50px;
+  text-align: center;
+  color: #f3f4f6;
+}
+
+.sell-execute-btn {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 13.5px;
+  font-weight: 800;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #059669, #10b981);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
+  transition: all 0.2s ease;
+}
+
+.sell-execute-btn:hover {
+  transform: scale(1.02);
+  box-shadow: 0 6px 22px rgba(16, 185, 129, 0.6);
+}
+
+.sell-leave-one-btn {
+  width: 100%;
+  margin-top: 6px;
+  padding: 6px 10px;
+  font-size: 11.5px;
+  font-weight: 700;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #a7f3d0;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sell-leave-one-btn:hover {
+  background: rgba(52, 211, 153, 0.2);
+  border-color: #34d399;
+}
+
+/* ============================================================
    未ログイン用 偽装WEBサイト: 酢酸オルセインの生物学実験レポート
    ============================================================ */
 .camouflage-container {
@@ -9227,6 +9449,7 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
         <button class="nav-button" data-page="battle">⚔ <span>バトル</span></button>
         <button class="nav-button" data-page="pack">🎁 <span>パック開封</span></button>
         <button class="nav-button" data-page="single-shop">🛍️ <span>ショップ</span></button>
+        <button class="nav-button" data-page="sell-shop">💰 <span>カード売却所</span></button>
         <button class="nav-button" type="button" onclick="App.openFeedbackModal()">📮 <span>ご意見箱</span></button>
         <button class="nav-button admin-only-ui hidden" data-page="cards">▣ <span>カード管理</span></button>
         <button class="nav-button admin-only-ui hidden" data-page="create">＋ <span>カード作成</span></button>
@@ -9279,9 +9502,13 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
               <div class="eyebrow">CARD ALBUM & COLLECTION</div>
               <h1>🎴 コレクション</h1>
             </div>
-            <div class="heading-actions">
+            <div class="heading-actions" style="display:flex; gap:12px; align-items:center;">
               <span id="collectionStatsBadge" class="eyebrow"
                 style="font-size: 14px; font-weight: 800; color: #38bdf8;">読み込み中...</span>
+              <button type="button" class="secondary-button" onclick="App.showPage('sell-shop')"
+                style="background:linear-gradient(135deg, rgba(16,185,129,0.2), rgba(6,182,212,0.2)); border-color:rgba(52,211,153,0.4); color:#6ee7b7; font-weight:800;">
+                💰 カードを売却してNMT化
+              </button>
             </div>
           </div>
 
@@ -10296,11 +10523,15 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
                 <h1>🛍️ シングルカードショップ</h1>
                 <p class="muted">獲得したNMT通貨を使って、お気に入りのカードを1枚単位で直接購入・GET！</p>
               </div>
-              <div style="display:flex; gap:12px; align-items:center;">
+              <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
                 <div class="nmt-balance-badge" style="cursor:default;" title="現在の所持NMT">
                   <span class="nmt-icon">✨</span>
                   <span id="singleShopNmtVal" class="nmt-val">1000 NMT</span>
                 </div>
+                <button type="button" class="secondary-button" onclick="App.showPage('sell-shop')"
+                  style="background:linear-gradient(135deg, rgba(16,185,129,0.2), rgba(6,182,212,0.2)); border-color:rgba(52,211,153,0.4); color:#6ee7b7; font-weight:800;">
+                  💰 カード売却所へ
+                </button>
                 <button class="primary-button admin-only-ui hidden" id="adminAddShopItemBtn"
                   style="background:linear-gradient(135deg, #d946ef, #a855f7); font-weight:800;"
                   onclick="App.openAdminShopItemModal()">➕ シングルカード出品</button>
@@ -10328,6 +10559,108 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
 
           <div id="singleShopGrid" class="single-shop-grid">
             <!-- Dynamically populated shop items -->
+          </div>
+        </section>
+
+        <!-- カード売却所 (レアリティに応じてNMTでカードを売却) ページ -->
+        <section id="page-sell-shop" class="page">
+          <div class="sell-shop-hero">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+              <div>
+                <div class="eyebrow" style="color:#10b981; font-size:12px; letter-spacing:3px;">CARD BUYBACK & NMT EXCHANGE</div>
+                <h1>💰 カード売却所</h1>
+                <p class="muted">不要なカードや余った重複カードを売却して、暗号通貨 NMT を即時獲得！レアリティに応じた公式レートで換金されます。</p>
+              </div>
+              <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+                <div class="nmt-balance-badge" style="cursor:default;" title="現在の所持NMT">
+                  <span class="nmt-icon">✨</span>
+                  <span id="sellShopNmtVal" class="nmt-val">1000 NMT</span>
+                </div>
+                <button type="button" class="secondary-button" onclick="App.showPage('single-shop')" title="シングルショップへ">
+                  🛍️ カード購入
+                </button>
+                <button type="button" class="secondary-button" onclick="App.showPage('pack')" title="パック開封へ">
+                  🎁 パック購入
+                </button>
+              </div>
+            </div>
+
+            <!-- レアリティ別売却相場表 (リアルタイム価格ボード) -->
+            <div class="sell-rate-board">
+              <div class="sell-rate-title">
+                <span>💎 レアリティ別 換金相場表 (1枚あたり)</span>
+                <span id="sellShopCardSummary" class="muted" style="font-size:12px; font-weight:normal;">所持: 0枚</span>
+              </div>
+              <div class="sell-rate-chips">
+                <div class="sell-rate-chip" data-rarity="N"><span class="rate-rarity rarity-badge-N">N</span><span class="rate-val">+10 NMT</span></div>
+                <div class="sell-rate-chip" data-rarity="R"><span class="rate-rarity rarity-badge-R">R</span><span class="rate-val">+30 NMT</span></div>
+                <div class="sell-rate-chip" data-rarity="AR"><span class="rate-rarity rarity-badge-AR">AR</span><span class="rate-val">+100 NMT</span></div>
+                <div class="sell-rate-chip" data-rarity="RR"><span class="rate-rarity rarity-badge-RR">RR</span><span class="rate-val">+200 NMT</span></div>
+                <div class="sell-rate-chip" data-rarity="SR"><span class="rate-rarity rarity-badge-SR">SR</span><span class="rate-val">+500 NMT</span></div>
+                <div class="sell-rate-chip" data-rarity="UR"><span class="rate-rarity rarity-badge-UR">UR</span><span class="rate-val">+1,000 NMT</span></div>
+                <div class="sell-rate-chip" data-rarity="ACESPEC"><span class="rate-rarity rarity-badge-ACESPEC">ACE</span><span class="rate-val">+1,500 NMT</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 一括売却アクション ＆ フィルターバー -->
+          <div class="sell-shop-controls">
+            <!-- 一括売却クイックボタン群 -->
+            <div class="sell-bulk-actions">
+              <button type="button" class="primary-button sell-bulk-btn" onclick="App.bulkSellDuplicates(true)" title="NまたはRで2枚以上あるカードの余剰分を一括売却（各カード1枚は手元に残ります）">
+                ⚡ 低レア(N/R)重複カード一括売却
+              </button>
+              <button type="button" class="secondary-button sell-bulk-btn" onclick="App.bulkSellDuplicates(false)" title="全レアリティで2枚以上あるカードの余剰分を一括売却（各カード1枚は手元に残ります）">
+                🧹 全重複カード一括売却 (1枚残し)
+              </button>
+            </div>
+
+            <!-- 検索 & フィルター -->
+            <div class="card-picker-filter-bar" style="margin-top:16px; margin-bottom:16px;">
+              <div class="card-picker-tabs">
+                <button type="button" class="card-picker-tab active" data-sell-cat="all" onclick="App.filterSellShopCat('all', this)">すべて</button>
+                <button type="button" class="card-picker-tab" data-sell-cat="pokemon" onclick="App.filterSellShopCat('pokemon', this)">ポケモン</button>
+                <button type="button" class="card-picker-tab" data-sell-cat="trainer" onclick="App.filterSellShopCat('trainer', this)">トレーナー</button>
+                <button type="button" class="card-picker-tab" data-sell-cat="energy" onclick="App.filterSellShopCat('energy', this)">エネルギー</button>
+              </div>
+
+              <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                <!-- レアリティ絞り込み -->
+                <select id="sellShopRarityFilter" class="select compact-select" onchange="App.renderSellShopGrid()">
+                  <option value="">すべてのレアリティ</option>
+                  <option value="N">N (ノーマル)</option>
+                  <option value="R">R (レア)</option>
+                  <option value="AR">AR (アートレア)</option>
+                  <option value="RR">RR (ダブルレア)</option>
+                  <option value="SR">SR (スーパーレア)</option>
+                  <option value="UR">UR (ウルトラレア)</option>
+                  <option value="ACESPEC">ACESPEC (ACE)</option>
+                </select>
+
+                <!-- 重複のみ / 全所持 -->
+                <select id="sellShopDuplicatesFilter" class="select compact-select" onchange="App.renderSellShopGrid()">
+                  <option value="duplicates">2枚以上の重複カードのみ表示</option>
+                  <option value="all">すべての所持カード (1枚以上)</option>
+                </select>
+
+                <!-- 並び替え -->
+                <select id="sellShopSortSelect" class="select compact-select" onchange="App.renderSellShopGrid()">
+                  <option value="count_desc">所持数が多い順</option>
+                  <option value="price_desc">売却額が高い順</option>
+                  <option value="rarity_desc">レアリティが高い順</option>
+                  <option value="name_asc">カード名順</option>
+                </select>
+
+                <!-- 検索バー -->
+                <div class="card-picker-search-wrap" style="flex:1; min-width:200px;">
+                  <input type="text" id="sellShopSearchInput" class="input" placeholder="🔍 売却カードを検索..." oninput="App.renderSellShopGrid()">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="sellShopGrid" class="sell-shop-grid">
+            <!-- Dynamically populated sell items -->
           </div>
         </section>
       </main>
@@ -29829,6 +30162,7 @@ console.log('[ORBITAL] App.js.html started execution');
         });
       }
       if (page === 'shop') page = 'single-shop';
+      if (page === 'sell' || page === 'sell_shop') page = 'sell-shop';
       if (page === 'packs' || page === 'pack_shop') page = 'pack';
       if (page === 'admin-pack' || page === 'admin_pack') {
         this.openAdminPackModal();
@@ -29855,7 +30189,7 @@ console.log('[ORBITAL] App.js.html started execution');
       target.classList.add('active');
 
       document.querySelectorAll('.nav-button').forEach((btn) => {
-        btn.classList.toggle('active', btn.dataset.page === page || (btn.dataset.page === 'single-shop' && page === 'single-shop'));
+        btn.classList.toggle('active', btn.dataset.page === page || (btn.dataset.page === 'single-shop' && page === 'single-shop') || (btn.dataset.page === 'sell-shop' && page === 'sell-shop'));
       });
 
       this.state.page = page;
@@ -29886,6 +30220,9 @@ console.log('[ORBITAL] App.js.html started execution');
       if (page === 'single-shop') {
         this.loadShopAndTradeItemsFromGas();
         this.renderSingleShopGrid();
+      }
+      if (page === 'sell-shop') {
+        this.renderSellShop();
       }
     },
 
@@ -33036,6 +33373,384 @@ console.log('[ORBITAL] App.js.html started execution');
     },
 
     /* ============================================================
+       カード売却所 (Card Sell Shop / Buyback for NMT)
+       ============================================================ */
+    getSellRates() {
+      const DEFAULT_RATES = {
+        'N': 10,
+        'R': 30,
+        'AR': 100,
+        'RR': 200,
+        'SR': 500,
+        'UR': 1000,
+        'ACESPEC': 1500,
+        'DEFAULT': 10
+      };
+      try {
+        const custom = localStorage.getItem('ORBITAL_SELL_RATES');
+        if (custom) return Object.assign({}, DEFAULT_RATES, JSON.parse(custom));
+      } catch(e) {}
+      return DEFAULT_RATES;
+    },
+
+    getCardSellPrice(card) {
+      if (!card) return 10;
+      const rates = this.getSellRates();
+      const rawRarity = String(card.rarity || 'N').toUpperCase().trim();
+
+      if (rates[rawRarity] !== undefined) return rates[rawRarity];
+
+      // レアリティの別名・日本語表記の正規化
+      if (['C', 'COMMON', 'ノーマル', 'コモン'].includes(rawRarity)) return rates['N'] || 10;
+      if (['U', 'UC', 'UNCOMMON', 'アンコモン', 'レア'].includes(rawRarity)) return rates['R'] || 30;
+      if (['ART', 'アートレア', 'AR'].includes(rawRarity)) return rates['AR'] || 100;
+      if (['DOUBLE', 'ダブルレア', 'RR'].includes(rawRarity)) return rates['RR'] || 200;
+      if (['SUPER', 'SAR', 'HR', 'スーパーレア'].includes(rawRarity)) return rates['SR'] || 500;
+      if (['ULTRA', 'ウルトラレア', 'UR'].includes(rawRarity)) return rates['UR'] || 1000;
+      if (['ACE', 'ACESPEC', 'エーススペック'].includes(rawRarity) || !!card.isAceSpec) return rates['ACESPEC'] || 1500;
+
+      return rates['DEFAULT'] || 10;
+    },
+
+    removeCardFromCollection(cardId, count = 1) {
+      count = Math.max(1, Number(count) || 1);
+      let col = this.getUserCollection();
+      const allCards = this.getAllCards();
+      const card = allCards.find(c => String(c.id) === String(cardId) || c.name === cardId);
+      const key = card ? String(card.id || card.name) : String(cardId);
+
+      let foundKey = null;
+      if (col[key] !== undefined) foundKey = key;
+      else if (card && card.name && col[card.name] !== undefined) foundKey = card.name;
+      else if (card && card.id && col[card.id] !== undefined) foundKey = card.id;
+
+      if (foundKey) {
+        col[foundKey] = Math.max(0, (col[foundKey] || 0) - count);
+        if (col[foundKey] <= 0) {
+          delete col[foundKey];
+        }
+      }
+
+      this.state.userCollection = col;
+      try { localStorage.setItem('ORBITAL_USER_COLLECTION', JSON.stringify(col)); } catch(e) {}
+      if (window.CardSystem && typeof window.CardSystem.saveUserCollection === 'function') {
+        window.CardSystem.saveUserCollection(col);
+      }
+      this.saveUserCollectionToGas(col);
+      return col;
+    },
+
+    filterSellShopCat(cat, el) {
+      this._sellCatFilter = cat || 'all';
+      const tabs = document.querySelectorAll('[data-sell-cat]');
+      tabs.forEach(t => t.classList.toggle('active', t.dataset.sellCat === this._sellCatFilter));
+      this.renderSellShopGrid();
+    },
+
+    renderSellShop() {
+      this._sellSteppers = this._sellSteppers || {};
+      this.updateNmtDisplays();
+      this.renderSellShopGrid();
+    },
+
+    getSellStepperVal(cardKey, maxCount) {
+      this._sellSteppers = this._sellSteppers || {};
+      if (this._sellSteppers[cardKey] === undefined) {
+        this._sellSteppers[cardKey] = 1;
+      }
+      return Math.min(maxCount, Math.max(1, Number(this._sellSteppers[cardKey]) || 1));
+    },
+
+    adjustSellStepper(cardKey, delta, maxCount) {
+      this._sellSteppers = this._sellSteppers || {};
+      const current = this.getSellStepperVal(cardKey, maxCount);
+      const next = Math.min(maxCount, Math.max(1, current + delta));
+      this._sellSteppers[cardKey] = next;
+
+      const valEl = document.getElementById('sellStepperVal_' + cardKey);
+      if (valEl) valEl.textContent = next + '枚';
+
+      const allCards = this.getAllCards();
+      const card = allCards.find(c => String(c.id || c.name) === String(cardKey));
+      if (card) {
+        const unitPrice = this.getCardSellPrice(card);
+        const subtotalEl = document.getElementById('sellSubtotal_' + cardKey);
+        if (subtotalEl) subtotalEl.textContent = '+' + (unitPrice * next).toLocaleString() + ' NMT';
+      }
+    },
+
+    renderSellShopGrid() {
+      const container = this.el('sellShopGrid');
+      if (!container) return;
+
+      const colMap = this.getUserCollection();
+      const allCards = this.getAllCards();
+      const catFilter = this._sellCatFilter || 'all';
+
+      const rarityFilterEl = this.el('sellShopRarityFilter');
+      const rarityFilter = rarityFilterEl ? rarityFilterEl.value : '';
+
+      const dupFilterEl = this.el('sellShopDuplicatesFilter');
+      const dupFilter = dupFilterEl ? dupFilterEl.value : 'duplicates';
+
+      const sortEl = this.el('sellShopSortSelect');
+      const sortKey = sortEl ? sortEl.value : 'count_desc';
+
+      const searchInput = this.el('sellShopSearchInput');
+      const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+      // 所持しているカードを抽出
+      const ownedCardsList = [];
+      let totalOwnedTypes = 0;
+      let totalOwnedCards = 0;
+
+      allCards.forEach(card => {
+        const key = String(card.id || card.name);
+        const count = colMap[key] || (card.name ? colMap[card.name] : 0) || (card.id ? colMap[card.id] : 0) || 0;
+        if (count > 0) {
+          totalOwnedTypes++;
+          totalOwnedCards += count;
+          ownedCardsList.push({
+            card,
+            key,
+            count,
+            price: this.getCardSellPrice(card)
+          });
+        }
+      });
+
+      // サマリー表示更新
+      const summaryEl = this.el('sellShopCardSummary');
+      if (summaryEl) {
+        summaryEl.textContent = '所持: ' + totalOwnedTypes + '種類 (計 ' + totalOwnedCards + '枚)';
+      }
+
+      // フィルタリング
+      const filtered = ownedCardsList.filter(item => {
+        const card = item.card;
+
+        // 重複フィルター
+        if (dupFilter === 'duplicates' && item.count < 2) return false;
+
+        // カテゴリフィルター
+        if (catFilter !== 'all') {
+          const cat = (card.category || '').toLowerCase();
+          if (catFilter === 'pokemon' && (cat.includes('トレーナー') || cat.includes('サポート') || cat.includes('グッズ') || cat.includes('どうぐ') || cat.includes('道具') || cat.includes('スタジアム') || cat.includes('エネルギー'))) return false;
+          if (catFilter === 'trainer' && !cat.includes('トレーナー') && !cat.includes('サポート') && !cat.includes('グッズ') && !cat.includes('どうぐ') && !cat.includes('道具') && !cat.includes('スタジアム')) return false;
+          if (catFilter === 'energy' && !cat.includes('エネルギー')) return false;
+        }
+
+        // レアリティフィルター
+        if (rarityFilter) {
+          const r = String(card.rarity || 'N').toUpperCase().trim();
+          if (rarityFilter === 'ACESPEC' || rarityFilter === 'ACE') {
+            if (r !== 'ACESPEC' && r !== 'ACE' && !card.isAceSpec) return false;
+          } else if (r !== rarityFilter) {
+            return false;
+          }
+        }
+
+        // 検索クエリ
+        if (query) {
+          const nameMatch = (card.name || '').toLowerCase().includes(query);
+          const idMatch = (card.id || '').toLowerCase().includes(query);
+          return nameMatch || idMatch;
+        }
+
+        return true;
+      });
+
+      // ソート
+      filtered.sort((a, b) => {
+        if (sortKey === 'count_desc') return b.count - a.count;
+        if (sortKey === 'price_desc') return b.price - a.price;
+        if (sortKey === 'name_asc') return (a.card.name || '').localeCompare(b.card.name || '', 'ja');
+        if (sortKey === 'rarity_desc') {
+          const rarityOrder = { 'ACESPEC': 7, 'ACE': 7, 'UR': 6, 'SR': 5, 'RR': 4, 'AR': 3, 'R': 2, 'N': 1 };
+          const rA = rarityOrder[String(a.card.rarity || 'N').toUpperCase()] || 0;
+          const rB = rarityOrder[String(b.card.rarity || 'N').toUpperCase()] || 0;
+          return rB - rA;
+        }
+        return 0;
+      });
+
+      if (filtered.length === 0) {
+        const emptyMsg = dupFilter === 'duplicates'
+          ? '売却可能な重複カード（2枚以上所持）はありません。<br><span style="font-size:13px; color:var(--muted);">「すべての所持カード」に切り替えるか、パックを開封してカードを獲得してください。</span>'
+          : '条件に一致する所持カードはありません。';
+        container.innerHTML = '<div style="text-align:center; padding:60px; color:var(--muted); grid-column:1/-1;">' +
+          '<div style="font-size:40px; margin-bottom:12px;">🎴</div>' +
+          '<div>' + emptyMsg + '</div>' +
+          '<div style="margin-top:20px;"><button type="button" class="primary-button" onclick="App.showPage(\'pack\')">🎁 パックを開封する</button></div>' +
+          '</div>';
+        return;
+      }
+
+      container.innerHTML = filtered.map(item => {
+        const card = item.card;
+        const key = item.key;
+        const ownedCount = item.count;
+        const unitPrice = item.price;
+        const currentStepper = this.getSellStepperVal(key, ownedCount);
+        const subtotal = unitPrice * currentStepper;
+
+        const cardHtml = window.CardSystem && CardSystem.createCardHtml
+          ? CardSystem.createCardHtml(card, { size: 'normal' })
+          : ('<div class="card-placeholder">' + this.escapeHtml(card.name) + '</div>');
+
+        const rarityBadge = '<span class="sell-rarity-tag rarity-badge-' + this.escapeHtml(card.rarity || 'N') + '">' +
+          this.escapeHtml(card.rarity || 'N') + '</span>';
+
+        const ownedBadge = '<div class="sell-owned-tag">所持: ' + ownedCount + '枚</div>';
+
+        const leaveOneBtn = ownedCount >= 2
+          ? '<button type="button" class="sell-leave-one-btn" onclick="App.sellAllExtrasOfCard(\'' + this.escapeHtml(key) + '\')" title="1枚残して、余分な ' + (ownedCount - 1) + '枚をまとめて売却します">' +
+            '✨ 1枚残して余り(' + (ownedCount - 1) + '枚)を売却' +
+            '</button>'
+          : '';
+
+        return '<div class="sell-shop-card-item" id="sellCardItem_' + this.escapeHtml(key) + '">' +
+          ownedBadge +
+          rarityBadge +
+          '<div style="width:100%; display:flex; justify-content:center; margin-top:14px;">' +
+            cardHtml +
+          '</div>' +
+          '<div class="sell-price-preview">' +
+            '<span>💰</span><span id="sellSubtotal_' + this.escapeHtml(key) + '">+' + subtotal.toLocaleString() + ' NMT</span>' +
+            '<span class="unit-rate">(@' + unitPrice + ' NMT)</span>' +
+          '</div>' +
+          '<div class="sell-stepper-box">' +
+            '<button type="button" class="sell-stepper-btn" onclick="App.adjustSellStepper(\'' + this.escapeHtml(key) + '\', -1, ' + ownedCount + ')">－</button>' +
+            '<span class="sell-stepper-val" id="sellStepperVal_' + this.escapeHtml(key) + '">' + currentStepper + '枚</span>' +
+            '<button type="button" class="sell-stepper-btn" onclick="App.adjustSellStepper(\'' + this.escapeHtml(key) + '\', 1, ' + ownedCount + ')">＋</button>' +
+          '</div>' +
+          '<button type="button" class="sell-execute-btn" onclick="App.executeCardSell(\'' + this.escapeHtml(key) + '\')">' +
+            '💰 このカードを売却' +
+          '</button>' +
+          leaveOneBtn +
+        '</div>';
+      }).join('');
+    },
+
+    executeCardSell(cardKey) {
+      const colMap = this.getUserCollection();
+      const allCards = this.getAllCards();
+      const card = allCards.find(c => String(c.id || c.name) === String(cardKey));
+      if (!card) return;
+
+      const owned = colMap[cardKey] || (card.name ? colMap[card.name] : 0) || 0;
+      const count = this.getSellStepperVal(cardKey, owned);
+      this.sellCard(card.id || cardKey, count);
+    },
+
+    sellAllExtrasOfCard(cardKey) {
+      const colMap = this.getUserCollection();
+      const allCards = this.getAllCards();
+      const card = allCards.find(c => String(c.id || c.name) === String(cardKey));
+      if (!card) return;
+
+      const owned = colMap[cardKey] || (card.name ? colMap[card.name] : 0) || 0;
+      if (owned <= 1) {
+        this.toast('余剰カードがありません (所持数: ' + owned + '枚)', true);
+        return;
+      }
+      const excess = owned - 1;
+      this.sellCard(card.id || cardKey, excess);
+    },
+
+    sellCard(cardId, count = 1) {
+      count = Math.max(1, Number(count) || 1);
+      const colMap = this.getUserCollection();
+      const allCards = this.getAllCards();
+      const card = allCards.find(c => String(c.id) === String(cardId) || c.name === cardId);
+      if (!card) {
+        this.toast('カードが見つかりません', true);
+        return;
+      }
+
+      const key = String(card.id || card.name);
+      const owned = colMap[key] || (card.name ? colMap[card.name] : 0) || (card.id ? colMap[card.id] : 0) || 0;
+      if (owned < count) {
+        this.toast('所持数が足りません (所持: ' + owned + '枚 / 売却希望: ' + count + '枚)', true);
+        return;
+      }
+
+      const unitPrice = this.getCardSellPrice(card);
+      const totalNmt = unitPrice * count;
+      const willBeZero = (owned - count === 0);
+
+      const warningZero = willBeZero ? '\n⚠️ 売却するとこのカードの所持数が「0枚」になります。' : '';
+      if (!confirm('「' + card.name + '」を ' + count + '枚 売却して、+' + totalNmt.toLocaleString() + ' NMT を獲得しますか？' + warningZero)) {
+        return;
+      }
+
+      this.removeCardFromCollection(card.id || key, count);
+      const curNmt = this.getUserNmt();
+      const newNmt = curNmt + totalNmt;
+      this.setUserNmt(newNmt);
+
+      this.toast('💰 「' + card.name + '」を ' + count + '枚売却し、+' + totalNmt.toLocaleString() + ' NMT を獲得しました！（所持: ' + newNmt.toLocaleString() + ' NMT）');
+      this.renderSellShopGrid();
+      this.updateNmtDisplays();
+    },
+
+    bulkSellDuplicates(onlyLowRarity = false) {
+      const colMap = this.getUserCollection();
+      const allCards = this.getAllCards();
+
+      const toSellList = [];
+      let totalNmt = 0;
+      let totalCount = 0;
+
+      allCards.forEach(card => {
+        const key = String(card.id || card.name);
+        const owned = colMap[key] || (card.name ? colMap[card.name] : 0) || (card.id ? colMap[card.id] : 0) || 0;
+        if (owned > 1) {
+          const excess = owned - 1;
+          const rarity = String(card.rarity || 'N').toUpperCase().trim();
+          if (onlyLowRarity) {
+            const isLow = ['N', 'C', 'COMMON', 'ノーマル', 'コモン', 'R', 'U', 'UC', 'UNCOMMON', 'アンコモン', 'レア'].includes(rarity);
+            if (!isLow) return;
+          }
+          const price = this.getCardSellPrice(card);
+          const subtotal = price * excess;
+          toSellList.push({ card, key, count: excess, price, subtotal });
+          totalNmt += subtotal;
+          totalCount += excess;
+        }
+      });
+
+      if (toSellList.length === 0) {
+        this.toast('売却可能な' + (onlyLowRarity ? '低レア(N/R)' : '') + '重複カードがありません。（すべて1枚以下の所持です）', true);
+        return;
+      }
+
+      const label = onlyLowRarity ? '低レア(N/R)の重複カード' : 'すべての重複カード';
+      const cardBreakdown = toSellList.slice(0, 5).map(item => '・' + item.card.name + ' × ' + item.count + '枚 (+' + item.subtotal.toLocaleString() + ' NMT)').join('\n') +
+        (toSellList.length > 5 ? '\n...他 ' + (toSellList.length - 5) + '種類' : '');
+
+      const confirmMsg = '【' + label + 'の一括売却】\n\n' +
+        '対象: ' + toSellList.length + '種類（合計 ' + totalCount + '枚）\n' +
+        '獲得予定: +' + totalNmt.toLocaleString() + ' NMT\n\n' +
+        '※各カード1枚は手元に残ります。\n売却を実行しますか？\n\n' +
+        cardBreakdown;
+
+      if (!confirm(confirmMsg)) return;
+
+      toSellList.forEach(item => {
+        this.removeCardFromCollection(item.card.id || item.key, item.count);
+      });
+
+      const curNmt = this.getUserNmt();
+      const newNmt = curNmt + totalNmt;
+      this.setUserNmt(newNmt);
+
+      this.toast('🎉 重複カード ' + totalCount + '枚を一括売却し、+' + totalNmt.toLocaleString() + ' NMT を獲得しました！（新残高: ' + newNmt.toLocaleString() + ' NMT）');
+      this.renderSellShopGrid();
+      this.updateNmtDisplays();
+    },
+
+    /* ============================================================
        ユーザー認証 & セッション管理 (Gmail / パスワード)
        ============================================================ */
     isLoggedIn() {
@@ -33477,7 +34192,7 @@ console.log('[ORBITAL] App.js.html started execution');
     updateNmtDisplays() {
       const val = this.getUserNmt();
       const valText = val + ' NMT';
-      ['nmtBalanceVal', 'singleShopNmtVal'].forEach(id => {
+      ['nmtBalanceVal', 'singleShopNmtVal', 'sellShopNmtVal'].forEach(id => {
         const el = this.el(id);
         if (el) el.textContent = valText;
       });

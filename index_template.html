@@ -9012,6 +9012,7 @@
         <button class="nav-button" data-page="battle">⚔ <span>バトル</span></button>
         <button class="nav-button" data-page="pack">🎁 <span>パック開封</span></button>
         <button class="nav-button" data-page="single-shop">🛍️ <span>ショップ</span></button>
+        <button class="nav-button" data-page="sell-shop">💰 <span>カード売却所</span></button>
         <button class="nav-button" type="button" onclick="App.openFeedbackModal()">📮 <span>ご意見箱</span></button>
         <button class="nav-button admin-only-ui hidden" data-page="cards">▣ <span>カード管理</span></button>
         <button class="nav-button admin-only-ui hidden" data-page="create">＋ <span>カード作成</span></button>
@@ -9064,9 +9065,13 @@
               <div class="eyebrow">CARD ALBUM & COLLECTION</div>
               <h1>🎴 コレクション</h1>
             </div>
-            <div class="heading-actions">
+            <div class="heading-actions" style="display:flex; gap:12px; align-items:center;">
               <span id="collectionStatsBadge" class="eyebrow"
                 style="font-size: 14px; font-weight: 800; color: #38bdf8;">読み込み中...</span>
+              <button type="button" class="secondary-button" onclick="App.showPage('sell-shop')"
+                style="background:linear-gradient(135deg, rgba(16,185,129,0.2), rgba(6,182,212,0.2)); border-color:rgba(52,211,153,0.4); color:#6ee7b7; font-weight:800;">
+                💰 カードを売却してNMT化
+              </button>
             </div>
           </div>
 
@@ -10081,11 +10086,15 @@
                 <h1>🛍️ シングルカードショップ</h1>
                 <p class="muted">獲得したNMT通貨を使って、お気に入りのカードを1枚単位で直接購入・GET！</p>
               </div>
-              <div style="display:flex; gap:12px; align-items:center;">
+              <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
                 <div class="nmt-balance-badge" style="cursor:default;" title="現在の所持NMT">
                   <span class="nmt-icon">✨</span>
                   <span id="singleShopNmtVal" class="nmt-val">1000 NMT</span>
                 </div>
+                <button type="button" class="secondary-button" onclick="App.showPage('sell-shop')"
+                  style="background:linear-gradient(135deg, rgba(16,185,129,0.2), rgba(6,182,212,0.2)); border-color:rgba(52,211,153,0.4); color:#6ee7b7; font-weight:800;">
+                  💰 カード売却所へ
+                </button>
                 <button class="primary-button admin-only-ui hidden" id="adminAddShopItemBtn"
                   style="background:linear-gradient(135deg, #d946ef, #a855f7); font-weight:800;"
                   onclick="App.openAdminShopItemModal()">➕ シングルカード出品</button>
@@ -10113,6 +10122,108 @@
 
           <div id="singleShopGrid" class="single-shop-grid">
             <!-- Dynamically populated shop items -->
+          </div>
+        </section>
+
+        <!-- カード売却所 (レアリティに応じてNMTでカードを売却) ページ -->
+        <section id="page-sell-shop" class="page">
+          <div class="sell-shop-hero">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+              <div>
+                <div class="eyebrow" style="color:#10b981; font-size:12px; letter-spacing:3px;">CARD BUYBACK & NMT EXCHANGE</div>
+                <h1>💰 カード売却所</h1>
+                <p class="muted">不要なカードや余った重複カードを売却して、暗号通貨 NMT を即時獲得！レアリティに応じた公式レートで換金されます。</p>
+              </div>
+              <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+                <div class="nmt-balance-badge" style="cursor:default;" title="現在の所持NMT">
+                  <span class="nmt-icon">✨</span>
+                  <span id="sellShopNmtVal" class="nmt-val">1000 NMT</span>
+                </div>
+                <button type="button" class="secondary-button" onclick="App.showPage('single-shop')" title="シングルショップへ">
+                  🛍️ カード購入
+                </button>
+                <button type="button" class="secondary-button" onclick="App.showPage('pack')" title="パック開封へ">
+                  🎁 パック購入
+                </button>
+              </div>
+            </div>
+
+            <!-- レアリティ別売却相場表 (リアルタイム価格ボード) -->
+            <div class="sell-rate-board">
+              <div class="sell-rate-title">
+                <span>💎 レアリティ別 換金相場表 (1枚あたり)</span>
+                <span id="sellShopCardSummary" class="muted" style="font-size:12px; font-weight:normal;">所持: 0枚</span>
+              </div>
+              <div class="sell-rate-chips">
+                <div class="sell-rate-chip" data-rarity="N"><span class="rate-rarity rarity-badge-N">N</span><span class="rate-val">+10 NMT</span></div>
+                <div class="sell-rate-chip" data-rarity="R"><span class="rate-rarity rarity-badge-R">R</span><span class="rate-val">+30 NMT</span></div>
+                <div class="sell-rate-chip" data-rarity="AR"><span class="rate-rarity rarity-badge-AR">AR</span><span class="rate-val">+100 NMT</span></div>
+                <div class="sell-rate-chip" data-rarity="RR"><span class="rate-rarity rarity-badge-RR">RR</span><span class="rate-val">+200 NMT</span></div>
+                <div class="sell-rate-chip" data-rarity="SR"><span class="rate-rarity rarity-badge-SR">SR</span><span class="rate-val">+500 NMT</span></div>
+                <div class="sell-rate-chip" data-rarity="UR"><span class="rate-rarity rarity-badge-UR">UR</span><span class="rate-val">+1,000 NMT</span></div>
+                <div class="sell-rate-chip" data-rarity="ACESPEC"><span class="rate-rarity rarity-badge-ACESPEC">ACE</span><span class="rate-val">+1,500 NMT</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 一括売却アクション ＆ フィルターバー -->
+          <div class="sell-shop-controls">
+            <!-- 一括売却クイックボタン群 -->
+            <div class="sell-bulk-actions">
+              <button type="button" class="primary-button sell-bulk-btn" onclick="App.bulkSellDuplicates(true)" title="NまたはRで2枚以上あるカードの余剰分を一括売却（各カード1枚は手元に残ります）">
+                ⚡ 低レア(N/R)重複カード一括売却
+              </button>
+              <button type="button" class="secondary-button sell-bulk-btn" onclick="App.bulkSellDuplicates(false)" title="全レアリティで2枚以上あるカードの余剰分を一括売却（各カード1枚は手元に残ります）">
+                🧹 全重複カード一括売却 (1枚残し)
+              </button>
+            </div>
+
+            <!-- 検索 & フィルター -->
+            <div class="card-picker-filter-bar" style="margin-top:16px; margin-bottom:16px;">
+              <div class="card-picker-tabs">
+                <button type="button" class="card-picker-tab active" data-sell-cat="all" onclick="App.filterSellShopCat('all', this)">すべて</button>
+                <button type="button" class="card-picker-tab" data-sell-cat="pokemon" onclick="App.filterSellShopCat('pokemon', this)">ポケモン</button>
+                <button type="button" class="card-picker-tab" data-sell-cat="trainer" onclick="App.filterSellShopCat('trainer', this)">トレーナー</button>
+                <button type="button" class="card-picker-tab" data-sell-cat="energy" onclick="App.filterSellShopCat('energy', this)">エネルギー</button>
+              </div>
+
+              <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                <!-- レアリティ絞り込み -->
+                <select id="sellShopRarityFilter" class="select compact-select" onchange="App.renderSellShopGrid()">
+                  <option value="">すべてのレアリティ</option>
+                  <option value="N">N (ノーマル)</option>
+                  <option value="R">R (レア)</option>
+                  <option value="AR">AR (アートレア)</option>
+                  <option value="RR">RR (ダブルレア)</option>
+                  <option value="SR">SR (スーパーレア)</option>
+                  <option value="UR">UR (ウルトラレア)</option>
+                  <option value="ACESPEC">ACESPEC (ACE)</option>
+                </select>
+
+                <!-- 重複のみ / 全所持 -->
+                <select id="sellShopDuplicatesFilter" class="select compact-select" onchange="App.renderSellShopGrid()">
+                  <option value="duplicates">2枚以上の重複カードのみ表示</option>
+                  <option value="all">すべての所持カード (1枚以上)</option>
+                </select>
+
+                <!-- 並び替え -->
+                <select id="sellShopSortSelect" class="select compact-select" onchange="App.renderSellShopGrid()">
+                  <option value="count_desc">所持数が多い順</option>
+                  <option value="price_desc">売却額が高い順</option>
+                  <option value="rarity_desc">レアリティが高い順</option>
+                  <option value="name_asc">カード名順</option>
+                </select>
+
+                <!-- 検索バー -->
+                <div class="card-picker-search-wrap" style="flex:1; min-width:200px;">
+                  <input type="text" id="sellShopSearchInput" class="input" placeholder="🔍 売却カードを検索..." oninput="App.renderSellShopGrid()">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="sellShopGrid" class="sell-shop-grid">
+            <!-- Dynamically populated sell items -->
           </div>
         </section>
       </main>
