@@ -28343,7 +28343,10 @@ window.DeckSystem = function () {
           } else {
             root.classList.remove('player-active-spot-act-ready');
           }
-          activeCardEl.title = card.name + " (HP " + card.hp + "/" + card.maxHp + ") - クリックして行動（ワザ・特性・にげる）";
+          const acts = ['ワザ'];
+          if (this.hasActivatedAbility(card)) acts.push('特性');
+          acts.push('にげる');
+          activeCardEl.title = card.name + " (HP " + card.hp + "/" + card.maxHp + ") - クリックして行動（" + acts.join('・') + "）";
           activeCardEl.onclick = () => {
             if (this.draggedHandIndex == null) {
               this.openCardActionModal(card, false);
@@ -28568,14 +28571,14 @@ window.DeckSystem = function () {
         return;
       }
 
-      const code = active.attack1Code || active.abilityCode;
-      if (!code || !code.trim()) {
+      if (!this.hasActivatedStadiumEffect(active)) {
         if (window.App && typeof window.App.toast === 'function') {
-          window.App.toast('このスタジアムには起動する効果が登録されていません。');
+          window.App.toast('このスタジアムには手動で起動する効果はありません。');
         }
         return;
       }
 
+      const code = active.attack1Code || active.abilityCode;
       const maxUses = this.getAbilityMaxUses(active);
       const remaining = this.getAbilityRemainingUses(active);
       if (remaining <= 0) {
@@ -28628,17 +28631,21 @@ window.DeckSystem = function () {
         if (catEl) catEl.textContent = 'スタジアム';
         if (metaEl) metaEl.textContent = '【バトルフィールド・スタジアム】';
 
-        const code = card.attack1Code || card.abilityCode;
+        const isActivatedStadium = this.hasActivatedStadiumEffect(card);
         const maxUses = this.getAbilityMaxUses(card);
         const remaining = this.getAbilityRemainingUses(card);
-        const canUseStadium = isMyTurn && remaining > 0 && !!code;
+        const canUseStadium = isMyTurn && remaining > 0 && isActivatedStadium;
 
         let btnLabel = '✨ スタジアム効果を発動する';
-        if (!code) btnLabel = '起動効果なし';
+        if (!isActivatedStadium) btnLabel = '起動効果なし (常時効果)';
         else if (!isMyTurn) btnLabel = '相手の番です';
         else if (remaining <= 0) btnLabel = '使用済み (1ターン1回)';
 
-        const itemsHtml = '\n          <div class="card-act-item is-stadium">\n            <div class="act-item-content">\n              <div class="act-item-header">\n                <span class="act-badge ability" style="background:#818cf8;">スタジアム効果</span>\n                <span class="act-item-name">' + this.escape(card.name) + '</span>\n              </div>\n              <div class="act-item-text">' + this.escape(card.attack1Text || card.abilityText || card.description || '効果テキストなし') + '</div>\n            </div>\n            <button type="button" class="primary-button card-act-btn stadium-btn" data-action="stadium_effect" ' + (canUseStadium ? '' : 'disabled') + '>\n              ' + btnLabel + '\n            </button>\n          </div>\n        ';
+        const itemsHtml = '\n          <div class="card-act-item is-stadium">\n            <div class="act-item-content">\n              <div class="act-item-header">\n                <span class="act-badge ability" style="background:#818cf8;">スタジアム効果' + (isActivatedStadium ? '' : ' (常時)') + '</span>\n                <span class="act-item-name">' + this.escape(card.name) + '</span>\n              </div>\n              <div class="act-item-text">' + this.escape(card.attack1Text || card.abilityText || card.description || '効果テキストなし') + '</div>\n            </div>\n            ' + (
+          isActivatedStadium ?
+          '<button type="button" class="primary-button card-act-btn stadium-btn" data-action="stadium_effect" ' + (canUseStadium ? '' : 'disabled') + '>\n              ' + btnLabel + '\n            </button>' :
+          '<span class="act-badge-passive" style="font-size: 11px; font-weight: 700; color: #94a3b8; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.12); padding: 5px 9px; border-radius: 6px; white-space: nowrap; flex-shrink: 0;">常時発動</span>'
+        ) + '\n          </div>\n        ';
         listEl.innerHTML = itemsHtml;
         listEl.querySelectorAll('[data-action="stadium_effect"]').forEach((btn) => {
           btn.onclick = () => {
@@ -28675,29 +28682,37 @@ window.DeckSystem = function () {
 
       // 1. 特性 (バトル場またはベンチ)
       if (card.abilityName) {
-        const isAbilityBlocked = this.isBlocked('ability', card, p);
-        const maxUses = this.getAbilityMaxUses(card);
-        const remaining = this.getAbilityRemainingUses(card);
-        const canUseAbility = isMyTurn && remaining > 0 && !isAbilityBlocked;
+        const isActivated = this.hasActivatedAbility(card);
+        if (isActivated) {
+          const isAbilityBlocked = this.isBlocked('ability', card, p);
+          const maxUses = this.getAbilityMaxUses(card);
+          const remaining = this.getAbilityRemainingUses(card);
+          const canUseAbility = isMyTurn && remaining > 0 && !isAbilityBlocked;
 
-        let btnLabel = '✨ 特性を発動する';
-        if (!isMyTurn) {
-          btnLabel = '相手の番です';
-        } else if (isAbilityBlocked) {
-          btnLabel = '🚫 特性禁止中';
-        } else if (remaining === 0) {
-          btnLabel = maxUses === 1 ? '使用済み (1ターン1回)' : '使用済み (1ターン' + maxUses + '回)';
-        } else if (maxUses === Infinity) {
-          btnLabel = '✨ 特性を発動する (何度でも使用可)';
-        } else if (maxUses > 1) {
-          btnLabel = '✨ 特性を発動する (残り' + remaining + '回)';
+          let btnLabel = '✨ 特性を使う';
+          if (!isMyTurn) {
+            btnLabel = '相手の番です';
+          } else if (isAbilityBlocked) {
+            btnLabel = '🚫 特性禁止中';
+          } else if (remaining === 0) {
+            btnLabel = maxUses === 1 ? '使用済み (1ターン1回)' : '使用済み (1ターン' + maxUses + '回)';
+          } else if (maxUses === Infinity) {
+            btnLabel = '✨ 特性を使う (何度でも使用可)';
+          } else if (maxUses > 1) {
+            btnLabel = '✨ 特性を使う (残り' + remaining + '回)';
+          }
+
+          itemsHtml += "\n          <div class=\"card-act-item is-ability\">\n            <div class=\"act-item-content\">\n              <div class=\"act-item-header\">\n                <span class=\"act-badge ability\">特性</span>\n                <span class=\"act-item-name\">" +
+          this.escape(card.abilityName) + "</span>\n              </div>\n              <div class=\"act-item-text\">" +
+          this.escape(card.abilityText || '特殊効果を発揮します。') + "</div>\n            </div>\n            <button type=\"button\" class=\"primary-button card-act-btn ability-btn\" data-action=\"ability\" " + (
+          canUseAbility ? '' : 'disabled') + ">\n              " +
+          btnLabel + "\n            </button>\n          </div>\n        ";
+        } else {
+          // 常時型・トリガー型（useLimitなし）は「特性を使う」ボタンを表示せず、常時発動情報として表示
+          itemsHtml += "\n          <div class=\"card-act-item is-ability is-passive-ability\" style=\"border-left-color: #64748b;\">\n            <div class=\"act-item-content\">\n              <div class=\"act-item-header\">\n                <span class=\"act-badge ability\" style=\"background: rgba(100, 116, 139, 0.45); color: #cbd5e1;\">特性 (常時)</span>\n                <span class=\"act-item-name\">" +
+          this.escape(card.abilityName) + "</span>\n              </div>\n              <div class=\"act-item-text\">" +
+          this.escape(card.abilityText || '常時または特定条件で自動的に効果を発揮します。') + "</div>\n            </div>\n            <span class=\"act-badge-passive\" style=\"font-size: 11px; font-weight: 700; color: #94a3b8; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.12); padding: 5px 9px; border-radius: 6px; white-space: nowrap; flex-shrink: 0;\">常時 / 自動</span>\n          </div>\n        ";
         }
-
-        itemsHtml += "\n          <div class=\"card-act-item is-ability\">\n            <div class=\"act-item-content\">\n              <div class=\"act-item-header\">\n                <span class=\"act-badge ability\">特性</span>\n                <span class=\"act-item-name\">" +
-        this.escape(card.abilityName) + "</span>\n              </div>\n              <div class=\"act-item-text\">" +
-        this.escape(card.abilityText || '特殊効果を発揮します。') + "</div>\n            </div>\n            <button type=\"button\" class=\"primary-button card-act-btn ability-btn\" data-action=\"ability\" " + (
-        canUseAbility ? '' : 'disabled') + ">\n              " +
-        btnLabel + "\n            </button>\n          </div>\n        ";
       }
 
       // 2. ワザ1
@@ -28886,12 +28901,43 @@ window.DeckSystem = function () {
       }).join(' ');
     },
 
+    hasActivatedAbility(card) {
+      if (!card || !card.abilityName) return false;
+      if (card.isActivatedAbility !== undefined && card.isActivatedAbility !== null) {
+        return !!card.isActivatedAbility;
+      }
+      if (card._abilityMaxUses !== undefined && card._abilityMaxUses !== null) {
+        return Number(card._abilityMaxUses) > 0;
+      }
+      const rawCode = String(card.abilityCode || '');
+      if (!rawCode.trim()) return false;
+      const code = rawCode.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '');
+      return /(?:useLimit|limitPerTurn|timesPerTurn)\s*\(/i.test(code) ||
+             /limit\s*\(\s*(?:\d+|Infinity|['"]infinite['"])/i.test(code) ||
+             /\buselimit\b/i.test(code);
+    },
+
+    hasActivatedStadiumEffect(card) {
+      if (!card) return false;
+      if (card.isActivatedStadium !== undefined && card.isActivatedStadium !== null) {
+        return !!card.isActivatedStadium;
+      }
+      const rawCode = String(card.attack1Code || card.abilityCode || '');
+      if (!rawCode.trim()) return false;
+      const code = rawCode.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '');
+      return /(?:useLimit|limitPerTurn|timesPerTurn)\s*\(/i.test(code) ||
+             /limit\s*\(\s*(?:\d+|Infinity|['"]infinite['"])/i.test(code) ||
+             /\buselimit\b/i.test(code);
+    },
+
     getAbilityMaxUses(card) {
-      if (!card) return 1;
+      if (!card) return 0;
       if (card._abilityMaxUses !== undefined && card._abilityMaxUses !== null) {
         return Number(card._abilityMaxUses);
       }
-      const code = String(card.abilityCode || '');
+      const rawCode = String(card.abilityCode || card.attack1Code || '');
+      if (!rawCode.trim()) return 0;
+      const code = rawCode.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '');
       if (/useLimit\s*\(\s*(?:Infinity|999|'infinite'|"infinite")\s*\)/i.test(code)) {
         return Infinity;
       }
@@ -28899,11 +28945,15 @@ window.DeckSystem = function () {
       if (match) {
         return Number(match[1]);
       }
-      return 1;
+      if (/(?:useLimit|limitPerTurn|timesPerTurn)\s*\(\s*\)/i.test(code) || /\buselimit\b/i.test(code)) {
+        return 1;
+      }
+      return 0;
     },
 
     getAbilityRemainingUses(card) {
       if (!card) return 0;
+      if (!this.hasActivatedAbility(card) && !this.hasActivatedStadiumEffect(card)) return 0;
       const maxUses = this.getAbilityMaxUses(card);
       if (maxUses === Infinity) return Infinity;
       const used = Number(card._abilityUseCount || 0);
@@ -28911,6 +28961,12 @@ window.DeckSystem = function () {
     },
 
     async activateAbility(card, isBench = false, benchIdx = null) {
+      if (!this.hasActivatedAbility(card)) {
+        if (window.App && typeof window.App.toast === 'function') {
+          window.App.toast('この特性は常時型または自動型のため、手動で使うことはできません。', true);
+        }
+        return;
+      }
       if (this.state.turnPlayer !== 'player') {
         App.toast('あなたの番にのみ特性を使えます。', true);
         return;
