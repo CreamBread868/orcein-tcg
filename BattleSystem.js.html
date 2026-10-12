@@ -3179,29 +3179,30 @@
       if (!overlay) {
         overlay = document.createElement('div');
         overlay.id = 'initial-active-modal-overlay';
-        overlay.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(15,23,42,0.94); backdrop-filter:blur(10px); z-index:99999; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:20px; box-sizing:border-box; color:#fff;';
         document.body.appendChild(overlay);
       }
       overlay.style.display = 'flex';
 
       let cardsHtml = '';
       basics.forEach((card, idx) => {
-        const cHtml = window.CardSystem && window.CardSystem.createCardHtml ? window.CardSystem.createCardHtml(card, { size: 'sm' }) : ('<div>' + card.name + '</div>');
+        const cHtml = window.CardSystem && window.CardSystem.createCardHtml ? window.CardSystem.createCardHtml(card, { size: 'sm' }) : ('<div>' + this.escape(card.name) + '</div>');
         cardsHtml += '\n' +
-          '<div class="initial-active-option-card" onclick="BattleSystem.selectInitialActivePokemon(' + idx + ')" style="cursor:pointer; transform:scale(1); transition:transform 0.2s ease, box-shadow 0.2s ease; margin:10px;" onmouseover="this.style.transform=\'scale(1.08)\'; this.style.boxShadow=\'0 0 20px rgba(56,189,248,0.8)\';" onmouseout="this.style.transform=\'scale(1)\'; this.style.boxShadow=\'none\';">' +
+          '<div class="initial-active-option-card" data-idx="' + idx + '" onclick="BattleSystem.selectInitialActivePokemon(' + idx + ')">' +
           cHtml +
-          '<button style="width:100%; margin-top:8px; background:linear-gradient(135deg,#38bdf8,#3b82f6); color:#fff; border:none; padding:8px 12px; border-radius:6px; font-weight:bold; cursor:pointer;">⚡ バトル場へ配置</button>' +
+          '<button type="button" class="initial-active-select-btn" onclick="event.stopPropagation(); BattleSystem.selectInitialActivePokemon(' + idx + ')">⚡ バトル場へ配置</button>' +
           '</div>';
       });
 
       overlay.innerHTML = '\n' +
-        '<div style="text-align:center; max-width:800px; width:100%;">' +
-        '<div style="font-size:14px; text-transform:uppercase; letter-spacing:2px; color:#38bdf8; font-weight:bold; margin-bottom:6px;">SETUP PHASE</div>' +
-        '<h2 style="font-size:24px; font-weight:800; margin:0 0 8px 0; color:#fff;">⚔ 最初のバトルポケモンを選択してください</h2>' +
-        '<p style="color:#94a3b8; font-size:14px; margin-bottom:20px;">手札の「たねポケモン」の中から、最初にバトル場に出す1匹を選んでください。</p>' +
-        '<div style="display:flex; flex-wrap:wrap; justify-content:center; gap:16px; max-height:60vh; overflow-y:auto; padding:10px;">' +
+        '<div class="initial-active-dialog">' +
+        '  <div class="initial-active-header">' +
+        '    <div class="initial-active-tag">SETUP PHASE</div>' +
+        '    <h2 class="initial-active-title">⚔ 最初のバトルポケモンを選択</h2>' +
+        '    <p class="initial-active-desc">手札の「たねポケモン」の中から、最初にバトル場へ出す1匹を選んでください。</p>' +
+        '  </div>' +
+        '  <div class="initial-active-cards-grid">' +
         cardsHtml +
-        '</div>' +
+        '  </div>' +
         '</div>';
 
       this._onInitialActiveChoiceComplete = () => {
