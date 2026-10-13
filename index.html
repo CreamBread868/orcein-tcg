@@ -25814,40 +25814,52 @@ window.DeckSystem = function () {
         '</div>';
 
       this._onInitialActiveChoiceComplete = () => {
-        overlay.style.display = 'none';
-        if (onComplete) onComplete();
+        try {
+          if (overlay && overlay.parentNode) {
+            overlay.parentNode.removeChild(overlay);
+          } else if (overlay) {
+            overlay.style.display = 'none';
+          }
+          if (onComplete) onComplete();
+        } catch (err) {
+          console.error('[BattleSystem] Error starting match after initial active selection:', err);
+        }
       };
     },
 
     selectInitialActivePokemon(basicIndex) {
-      const p = this.state.player;
-      const basics = p.hand.filter(c => this.isBasic(c));
-      const chosenCard = basics[basicIndex] || basics[0];
+      try {
+        const p = this.state.player;
+        const basics = p.hand.filter(c => this.isBasic(c));
+        const chosenCard = basics[basicIndex] || basics[0];
 
-      if (chosenCard) {
-        const handIdx = p.hand.findIndex(c => c === chosenCard || (c.id === chosenCard.id && c.instanceId === chosenCard.instanceId));
-        if (handIdx >= 0) {
-          p.active = p.hand.splice(handIdx, 1)[0];
-        } else {
-          p.active = chosenCard;
-        }
+        if (chosenCard) {
+          const handIdx = p.hand.findIndex(c => c === chosenCard || (c.id === chosenCard.id && c.instanceId === chosenCard.instanceId));
+          if (handIdx >= 0) {
+            p.active = p.hand.splice(handIdx, 1)[0];
+          } else {
+            p.active = chosenCard;
+          }
 
-        if (!p.active.hp) p.active.hp = 70;
-        if (!p.active.maxHp) p.active.maxHp = Number(p.active.hp) || 70;
-        p.active._turnPlayed = 0;
+          if (!p.active.hp) p.active.hp = 70;
+          if (!p.active.maxHp) p.active.maxHp = Number(p.active.hp) || 70;
+          p.active._turnPlayed = 0;
 
-        for (let i = p.hand.length - 1; i >= 0; i--) {
-          if (this.isBasic(p.hand[i]) && p.bench.length < 2) {
-            const card = p.hand.splice(i, 1)[0];
-            card._turnPlayed = 0;
-            if (!card.maxHp) card.maxHp = Number(card.hp) || 70;
-            p.bench.push(card);
+          for (let i = p.hand.length - 1; i >= 0; i--) {
+            if (this.isBasic(p.hand[i]) && p.bench.length < 2) {
+              const card = p.hand.splice(i, 1)[0];
+              card._turnPlayed = 0;
+              if (!card.maxHp) card.maxHp = Number(card.hp) || 70;
+              p.bench.push(card);
+            }
           }
         }
-      }
 
-      if (typeof this._onInitialActiveChoiceComplete === 'function') {
-        this._onInitialActiveChoiceComplete();
+        if (typeof this._onInitialActiveChoiceComplete === 'function') {
+          this._onInitialActiveChoiceComplete();
+        }
+      } catch (err) {
+        console.error('[BattleSystem] Error in selectInitialActivePokemon:', err);
       }
     },
 
