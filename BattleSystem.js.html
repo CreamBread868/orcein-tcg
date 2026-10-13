@@ -491,15 +491,16 @@
       if (window.google && google.script && google.script.run && !window._is_mock_gas) {
         try {
           console.log('📡 [GAS Call]', fnName, cleanArgs);
-          const self = this;
           const runner = google.script.run
             .withSuccessHandler(function (res) {
               console.log('✅ [GAS Success for ' + fnName + ']:', res);
               if (typeof onSuccess === 'function') onSuccess(res);
             })
             .withFailureHandler(function (err) {
-              console.warn('⚠️ [GAS Failure for ' + fnName + '], switching to Cloud State Engine:', err);
-              self.executeClientOnlineEngine(fnName, cleanArgs, onSuccess, onFailure);
+              console.warn('⚠️ [GAS Failure for ' + fnName + ']:', err);
+              if (typeof onFailure === 'function') {
+                onFailure(err);
+              }
             });
 
           if (typeof runner[fnName] === 'function') {
@@ -507,7 +508,11 @@
             return;
           }
         } catch (e) {
-          console.warn('❌ [GAS Exception for ' + fnName + '], fallback to Cloud State Engine:', e);
+          console.warn('❌ [GAS Exception for ' + fnName + ']:', e);
+          if (typeof onFailure === 'function') {
+            onFailure(e);
+            return;
+          }
         }
       }
 
@@ -1707,11 +1712,19 @@
 
     pollRoomImmediate() {
       if (this.state.mode !== 'online' || !this.state.online.roomId) return;
-      if (this.state.online.pollInFlight) return;
+      const now = Date.now();
+      if (this.state.online.pollInFlight) {
+        if (this.state.online.pollInFlightTime && (now - this.state.online.pollInFlightTime > 5000)) {
+          console.warn('⚠️ [Online Poll Timeout] Force resetting pollInFlight flag after 5s');
+          this.state.online.pollInFlight = false;
+        } else {
+          return;
+        }
+      }
       this.state.online.pollInFlight = true;
+      this.state.online.pollInFlightTime = now;
       const self = this;
       const currentSeq = this.state.online.lastSeq || 0;
-      // console.log('🔄 [Online Poll Req]', 'Room:', this.state.online.roomId, 'Role:', this.state.online.role, 'CurrentLastSeq:', currentSeq);
       this.callGas('pollOnlineRoom', [this.state.online.roomId, this.state.online.role, currentSeq], function (res) {
         self.state.online.pollInFlight = false;
         if (!res) {
@@ -1748,7 +1761,9 @@
           if (res.actions.length > 0) {
             console.log('📥 [Online Poll Ack]', 'New Actions Count:', res.actions.length, 'ServerLastSeq:', res.lastSeq);
           }
-          res.actions.forEach(function (act) {
+          // シーケンス番号順に必ず昇順ソートして反映（抜け漏れ防止）
+          const sortedActions = res.actions.slice().sort(function (a, b) { return a.seq - b.seq; });
+          sortedActions.forEach(function (act) {
             if (act.seq > self.state.online.lastSeq) {
               self.state.online.lastSeq = act.seq;
               if (act.by !== self.state.online.role) {
@@ -1774,7 +1789,7 @@
         }
       }, function(err) {
         self.state.online.pollInFlight = false;
-        console.warn('❌ [Online Poll Error] Retrying...', err);
+        console.warn('❌ [Online Poll Error] Retrying on next interval...', err);
       });
     },
 
@@ -1870,11 +1885,14 @@
 
     getBoardSnapshot() {
       const sanitizeCard = (c) => this.sanitizeCardForNetwork(c);
+      const topDiscardCard = (this.state.player.discard && this.state.player.discard.length > 0)
+        ? sanitizeCard(this.state.player.discard[this.state.player.discard.length - 1])
+        : null;
 
       return {
         active: sanitizeCard(this.state.player.active),
         bench: (this.state.player.bench || []).map(sanitizeCard),
-        discard: (this.state.player.discard || []).map(sanitizeCard),
+        topDiscard: topDiscardCard,
         prizesCount: this.state.player.prizes ? this.state.player.prizes.length : 0,
         handCount: this.state.player.hand ? this.state.player.hand.length : 0,
         discardCount: this.state.player.discard ? this.state.player.discard.length : 0
@@ -1928,12 +1946,12 @@
         }).filter(Boolean);
       }
 
-      if (Array.isArray(snapshot.discard)) {
-        if (snapshot.discard.length > 0) {
-          opp.discard = snapshot.discard.map((d) => this.createRuntimeCard(d));
-        } else if (!opp.discard || opp.discard.length === 0) {
-          opp.discard = [];
-        }
+      if (snapshot.topDiscard) {
+        opp.discard = [this.createRuntimeCard(snapshot.topDiscard)];
+      } else if (Array.isArray(snapshot.discard) && snapshot.discard.length > 0) {
+        opp.discard = snapshot.discard.map((d) => this.createRuntimeCard(d));
+      } else if (snapshot.discardCount === 0) {
+        opp.discard = [];
       }
 
       if (typeof snapshot.prizesCount === 'number') {
@@ -1964,29 +1982,49 @@
       }
 
       console.log('📤 [Online Outgoing Packet]', type, '| Size:', payloadStr.length, 'bytes | Room:', this.state.online.roomId, '| Role:', this.state.online.role, fullPayload);
-      if (payloadStr.length > 50000) {
-        console.warn('⚠️ [Online Packet Warning] Outgoing packet size is unusually large (' + payloadStr.length + ' bytes). Check payload for oversized data.');
+      if (payloadStr.length > 30000) {
+        console.warn('⚠️ [Online Packet Warning] Outgoing packet size is large (' + payloadStr.length + ' bytes).');
       }
 
       const self = this;
-      this.callGas('submitOnlineAction', [
-        this.state.online.roomId,
-        this.state.online.role,
-        { type: type, payload: fullPayload }
-      ], function(res) {
-        if (res && res.ok && res.lastSeq) {
-          console.log('✅ [Online Packet Ack]', type, '| Server lastSeq:', res.lastSeq);
-          finish(res);
-          App.toast('📡 通信成功: 操作「' + type + '」を送信しました。');
-          self.pollRoomImmediate();
-        } else {
-          console.error('❌ [Online Packet Rejected]', type, '| Error:', res ? res.message : 'No response from server');
-          finish(null);
-        }
-      }, function(err) {
-        console.error('❌ [Online Packet Network Error]', type, '| Error:', err);
-        finish(null);
-      });
+      let attempt = 0;
+      const maxAttempts = 3;
+
+      function sendPacket() {
+        attempt++;
+        self.callGas('submitOnlineAction', [
+          self.state.online.roomId,
+          self.state.online.role,
+          { type: type, payload: fullPayload }
+        ], function(res) {
+          if (res && res.ok && res.lastSeq) {
+            console.log('✅ [Online Packet Ack]', type, '| Attempt:', attempt, '| Server lastSeq:', res.lastSeq);
+            finish(res);
+            App.toast('📡 通信成功: 操作「' + type + '」を送信しました。');
+            self.pollRoomImmediate();
+          } else {
+            console.warn('⚠️ [Online Packet Rejected]', type, '| Attempt:', attempt, '| Error:', res ? res.message : 'No response from server');
+            if (attempt < maxAttempts) {
+              console.log('🔄 [Online Packet Retry] Retrying in ' + (attempt * 400) + 'ms...');
+              setTimeout(sendPacket, attempt * 400);
+            } else {
+              console.error('❌ [Online Packet Failed]', type, '| Max attempts reached.');
+              finish(null);
+            }
+          }
+        }, function(err) {
+          console.warn('⚠️ [Online Packet Network Error]', type, '| Attempt:', attempt, '| Error:', err);
+          if (attempt < maxAttempts) {
+            console.log('🔄 [Online Packet Retry] Retrying in ' + (attempt * 400) + 'ms...');
+            setTimeout(sendPacket, attempt * 400);
+          } else {
+            console.error('❌ [Online Packet Network Failed]', type, '| Max attempts reached.');
+            finish(null);
+          }
+        });
+      }
+
+      sendPacket();
     },
 
     applyRemoteAction(action) {

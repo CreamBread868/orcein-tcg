@@ -8328,6 +8328,8 @@
               status: room.status,
               roomId: room.roomId,
               name: room.name,
+              turnPlayer: room.turnPlayer || 'host',
+              turnNumber: room.turnNumber || 1,
               hostConnected: isHostLive,
               guestConnected: isGuestLive,
               host: room.host ? { name: room.host.name, email: room.host.email } : null,
@@ -8359,8 +8361,12 @@
                 payload: action.payload || null,
                 time: Date.now()
               });
-              if (room.actions.length > 25) {
-                room.actions = room.actions.slice(-25);
+              if (action.type === 'end_turn') {
+                room.turnPlayer = (playerRole === 'host' ? 'guest' : 'host');
+                room.turnNumber = (room.turnNumber || 1) + 1;
+              }
+              if (room.actions.length > 40) {
+                room.actions = room.actions.slice(-40);
               }
               if (action.type === 'surrender' || action.type === 'game_over') {
                 room.status = 'finished';
