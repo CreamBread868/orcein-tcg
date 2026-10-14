@@ -2600,7 +2600,8 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
 }
 
 #battle-arena-view {
-  padding-bottom: 30px;
+  box-sizing: border-box;
+  width: 100%;
 }
 
 /* スタジアムトップバー: ターン情報・フェーズ・操作ボタン */
@@ -8029,91 +8030,573 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   }
 }
 
-@media (max-height: 850px) {
-  #battle-arena-view {
-    padding-bottom: 20px;
-  }
-  .stadium-topbar {
-    padding: 6px 14px;
-    margin-bottom: 8px;
-  }
-  .battle-stadium {
-    padding: 10px 14px 14px;
-    border-radius: 18px;
-    margin-bottom: 10px;
-  }
-  .stadium-col-left {
-    gap: 16px;
-    justify-content: space-around;
-  }
-  .mini-deck-back, .mini-discard-slot {
-    width: 54px;
-    height: 74px;
-    font-size: 9px;
-  }
-  .card-size-battle {
-    width: 140px;
-    min-width: 140px;
-  }
-  .card-size-bench {
-    width: 96px;
-    min-width: 96px;
-  }
-  .card-size-hand {
-    width: 120px;
-    min-width: 120px;
-  }
-  .hand-cards-rack {
-    min-height: 205px;
-    padding: 16px 10px 8px;
-    gap: 10px;
-  }
-  .battle-hand-dock {
-    padding: 6px 14px;
-    margin-top: 8px;
-    border-radius: 14px;
-  }
-  .stadium-col-center {
-    gap: 8px;
-  }
-  .stadium-col-right {
-    gap: 8px;
-  }
-  .side-zone-box {
-    padding: 8px 10px;
-  }
-  .side-cards-grid {
-    gap: 6px;
-  }
-  .prize-card-item {
-    width: 42px;
-    height: 60px;
-  }
-  .speech-bubble.opp-bubble {
-    top: 90px;
-  }
-  .speech-bubble.player-bubble {
-    bottom: 180px;
-  }
+/* ============================================================
+   BATTLE ARENA 1-SCREEN VIEWPORT FIT (一画面最適化)
+   ============================================================ */
+
+/* バトル対戦中モード: ヘッダーやサイドバーを畳み、100vhに完全フィット */
+body.in-battle-arena {
+  overflow: hidden !important;
 }
 
-@media (max-height: 720px) {
-  .card-size-battle {
-    width: 125px;
-    min-width: 125px;
-  }
-  .card-size-bench {
-    width: 86px;
-    min-width: 86px;
-  }
-  .card-size-hand {
-    width: 108px;
-    min-width: 108px;
-  }
-  .hand-cards-rack {
-    min-height: 185px;
-    padding: 10px 8px 6px;
-  }
+body.in-battle-arena .topbar {
+  display: none !important;
+}
+
+body.in-battle-arena .sidebar {
+  display: none !important;
+}
+
+body.in-battle-arena .layout {
+  min-height: 100vh !important;
+  height: 100vh !important;
+  max-height: 100vh !important;
+  overflow: hidden !important;
+}
+
+body.in-battle-arena .main {
+  width: 100vw !important;
+  max-width: 100vw !important;
+  height: 100vh !important;
+  max-height: 100vh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+body.in-battle-arena #page-battle {
+  width: 100% !important;
+  height: 100% !important;
+  max-height: 100vh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+/* アリーナビュー全体: 縦方向 100vh にフレックスで完全フィット (スクロールなし) */
+body.in-battle-arena #battle-arena-view,
+#battle-arena-view {
+  height: 100vh !important;
+  max-height: 100vh !important;
+  box-sizing: border-box !important;
+  padding: 4px 10px 4px !important;
+  margin: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  overflow: hidden !important;
+  gap: 3px !important;
+}
+
+/* スタジアムトップバー: コンパクト1行配置 */
+#battle-arena-view .stadium-topbar {
+  flex: 0 0 auto !important;
+  padding: 4px 12px !important;
+  margin-bottom: 2px !important;
+  border-radius: 10px !important;
+  min-height: 34px !important;
+}
+
+#battle-arena-view .stadium-turn-badge {
+  font-size: 11px !important;
+  padding: 2px 10px !important;
+}
+
+#battle-arena-view .stadium-active-player {
+  font-size: 12px !important;
+}
+
+#battle-arena-view .stadium-phase-text {
+  font-size: 11px !important;
+}
+
+#battle-arena-view .stadium-action-btn {
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  border-radius: 6px !important;
+}
+
+/* スタジアム対戦フィールド: 縦幅可変で伸縮 */
+#battle-arena-view .battle-stadium {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  padding: 4px 10px !important;
+  margin-bottom: 2px !important;
+  border-radius: 14px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+}
+
+#battle-arena-view .stadium-main-grid {
+  display: grid !important;
+  grid-template-columns: 80px 1fr 210px !important;
+  gap: 10px !important;
+  align-items: center !important;
+  height: 100% !important;
+  max-height: 100% !important;
+}
+
+/* 左列: 山札・トラッシュ */
+#battle-arena-view .stadium-col-left {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  height: 100% !important;
+  gap: 4px !important;
+  padding: 2px 0 !important;
+}
+
+#battle-arena-view .zone-deck-tray {
+  padding: 5px 4px !important;
+  gap: 3px !important;
+  border-radius: 8px !important;
+}
+
+#battle-arena-view .mini-deck-back,
+#battle-arena-view .mini-discard-slot {
+  width: 44px !important;
+  height: 58px !important;
+  font-size: 8px !important;
+  border-radius: 6px !important;
+}
+
+#battle-arena-view .deck-count-pill,
+#battle-arena-view .discard-count-pill {
+  padding: 1px 5px !important;
+  font-size: 8.5px !important;
+}
+
+/* 右列: サイド置き場 & ガイド */
+#battle-arena-view .stadium-col-right {
+  width: 210px !important;
+  gap: 4px !important;
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  padding: 2px 0 !important;
+}
+
+#battle-arena-view .side-zone-box {
+  padding: 4px 8px !important;
+  border-radius: 8px !important;
+}
+
+#battle-arena-view .side-zone-header {
+  font-size: 10.5px !important;
+  margin-bottom: 2px !important;
+}
+
+#battle-arena-view .side-badge {
+  font-size: 9px !important;
+  padding: 1.5px 6px !important;
+}
+
+#battle-arena-view .side-cards-grid {
+  gap: 3px !important;
+}
+
+#battle-arena-view .prize-card-item {
+  width: 32px !important;
+  height: 44px !important;
+  border-radius: 4px !important;
+}
+
+#battle-arena-view .prize-card-star {
+  font-size: 10px !important;
+}
+
+#battle-arena-view .field-action-guide-card {
+  padding: 3px 6px !important;
+  gap: 6px !important;
+  border-radius: 8px !important;
+}
+
+#battle-arena-view .guide-card-icon {
+  font-size: 13px !important;
+}
+
+#battle-arena-view .guide-card-text strong {
+  font-size: 10px !important;
+}
+
+#battle-arena-view .guide-card-text small {
+  font-size: 8.5px !important;
+  line-height: 1.1 !important;
+  display: block !important;
+}
+
+/* 中央列: プレイヤー情報、ベンチ、バトル場、スタジアム */
+#battle-arena-view .stadium-col-center {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  height: 100% !important;
+  gap: 2px !important;
+}
+
+#battle-arena-view .player-meta-strip {
+  padding: 2px 10px !important;
+  border-radius: 6px !important;
+  font-size: 10.5px !important;
+}
+
+#battle-arena-view .player-identity {
+  gap: 5px !important;
+}
+
+#battle-arena-view .player-avatar {
+  font-size: 12px !important;
+}
+
+#battle-arena-view .stat-pill {
+  font-size: 9.5px !important;
+  padding: 1px 6px !important;
+}
+
+/* ベンチ */
+#battle-arena-view .bench-row {
+  min-height: 0 !important;
+  height: auto !important;
+  gap: 5px !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+#battle-arena-view .card-size-bench {
+  width: clamp(48px, 3.8vw, 62px) !important;
+  min-width: clamp(48px, 3.8vw, 62px) !important;
+  aspect-ratio: 5 / 7.4 !important;
+  border-radius: 6px !important;
+}
+
+#battle-arena-view .card-size-bench .card-top-header {
+  padding: 1px 3px !important;
+}
+
+#battle-arena-view .card-size-bench .card-type-badge,
+#battle-arena-view .card-size-bench .card-hp-badge,
+#battle-arena-view .card-size-bench .card-kind-badge {
+  font-size: 6.5px !important;
+  padding: 0.5px 2px !important;
+}
+
+#battle-arena-view .card-size-bench .card-art-area {
+  height: 52% !important;
+}
+
+#battle-arena-view .card-size-bench .card-name-bar {
+  padding: 1px 3px !important;
+}
+
+#battle-arena-view .card-size-bench .card-name-text {
+  font-size: 7.5px !important;
+}
+
+#battle-arena-view .card-size-bench .card-bottom-rules {
+  display: none !important;
+}
+
+#battle-arena-view .card-size-bench .card-footer-stats {
+  display: none !important;
+}
+
+#battle-arena-view .bench-slot-empty {
+  width: clamp(48px, 3.8vw, 62px) !important;
+  min-width: clamp(48px, 3.8vw, 62px) !important;
+  height: auto !important;
+  aspect-ratio: 5 / 7.4 !important;
+  font-size: 7.5px !important;
+  border-radius: 6px !important;
+}
+
+#battle-arena-view .bench-slot-occupied {
+  gap: 2px !important;
+}
+
+#battle-arena-view .bench-hp-mini-strip {
+  width: clamp(48px, 3.8vw, 62px) !important;
+  padding: 1px 2px !important;
+  border-radius: 4px !important;
+}
+
+#battle-arena-view .bench-hp-mini-strip .bench-hp-bar {
+  height: 3px !important;
+  margin: 1px 0 !important;
+}
+
+#battle-arena-view .bench-hp-mini-strip .bench-meta {
+  font-size: 7.5px !important;
+  line-height: 1 !important;
+}
+
+#battle-arena-view .bench-tool-badge {
+  font-size: 7px !important;
+  padding: 0 2px !important;
+  margin-top: 1px !important;
+}
+
+/* バトル場 (Active Spot) */
+#battle-arena-view .spot-label {
+  font-size: 8px !important;
+  margin-bottom: 1px !important;
+  letter-spacing: 0.05em !important;
+}
+
+#battle-arena-view .card-size-battle {
+  width: clamp(72px, 5.8vw, 94px) !important;
+  min-width: clamp(72px, 5.8vw, 94px) !important;
+  aspect-ratio: 5 / 7.4 !important;
+  border-radius: 7px !important;
+}
+
+#battle-arena-view .empty-slot-promote-active,
+#battle-arena-view .empty-slot-text {
+  width: clamp(72px, 5.8vw, 94px) !important;
+  min-width: clamp(72px, 5.8vw, 94px) !important;
+  aspect-ratio: 5 / 7.4 !important;
+  padding: 3px !important;
+}
+
+#battle-arena-view .card-size-battle .card-top-header {
+  padding: 1.5px 3px !important;
+}
+
+#battle-arena-view .card-size-battle .card-type-badge,
+#battle-arena-view .card-size-battle .card-kind-badge {
+  font-size: 7px !important;
+  padding: 0.5px 2.5px !important;
+}
+
+#battle-arena-view .card-size-battle .card-hp-badge {
+  font-size: 8px !important;
+  padding: 0.5px 3px !important;
+}
+
+#battle-arena-view .card-size-battle .card-art-area {
+  height: 48% !important;
+}
+
+#battle-arena-view .card-size-battle .card-name-bar {
+  padding: 1.5px 3px !important;
+}
+
+#battle-arena-view .card-size-battle .card-name-text {
+  font-size: 8.5px !important;
+}
+
+#battle-arena-view .card-size-battle .card-bottom-rules {
+  padding: 1.5px 2.5px !important;
+  max-height: 36px !important;
+  overflow: hidden !important;
+  gap: 1px !important;
+}
+
+#battle-arena-view .card-size-battle .rule-title-row {
+  line-height: 1.1 !important;
+}
+
+#battle-arena-view .card-size-battle .rule-name {
+  font-size: 7px !important;
+}
+
+#battle-arena-view .card-size-battle .rule-damage {
+  font-size: 7.5px !important;
+}
+
+#battle-arena-view .card-size-battle .rule-text {
+  display: none !important;
+}
+
+#battle-arena-view .card-size-battle .card-footer-stats {
+  display: none !important;
+}
+
+#battle-arena-view .card-size-battle .energy-pip {
+  width: 9px !important;
+  height: 9px !important;
+  font-size: 5.5px !important;
+}
+
+#battle-arena-view .battle-card-hp-strip {
+  width: clamp(96px, 7.5vw, 120px) !important;
+  margin-top: 2px !important;
+  padding: 2px 5px !important;
+  border-radius: 6px !important;
+}
+
+#battle-arena-view .battle-card-hp-text {
+  font-size: 8.5px !important;
+  margin-bottom: 1.5px !important;
+}
+
+#battle-arena-view .battle-hp-label strong {
+  font-size: 10.5px !important;
+}
+
+#battle-arena-view .active-hp-bar {
+  height: 4px !important;
+  margin-bottom: 1.5px !important;
+}
+
+#battle-arena-view .active-energies-bar {
+  font-size: 7.5px !important;
+  gap: 2px !important;
+}
+
+#battle-arena-view .active-status-badge {
+  font-size: 7px !important;
+  padding: 0.5px 2.5px !important;
+}
+
+#battle-arena-view .active-tool-badge {
+  font-size: 7px !important;
+  padding: 0.5px 3px !important;
+  margin-top: 1px !important;
+}
+
+/* 中央スタジアム仕切り */
+#battle-arena-view .arena-center-divider {
+  padding: 1px 0 !important;
+  gap: 6px !important;
+}
+
+#battle-arena-view .stadium-card-slot {
+  padding: 1.5px 8px !important;
+  font-size: 9px !important;
+  border-radius: 10px !important;
+}
+
+#battle-arena-view .stadium-ticker {
+  padding: 1.5px 12px !important;
+  font-size: 9.5px !important;
+  border-radius: 12px !important;
+}
+
+/* プレイヤー手札ドック (下部) */
+#battle-arena-view .battle-hand-dock {
+  flex: 0 0 auto !important;
+  position: relative !important;
+  bottom: auto !important;
+  margin-top: 0 !important;
+  padding: 3px 10px 4px !important;
+  border-radius: 10px !important;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.6), 0 0 16px rgba(0, 229, 255, 0.12) !important;
+}
+
+#battle-arena-view .hand-dock-header {
+  font-size: 10px !important;
+  margin-bottom: 1px !important;
+}
+
+#battle-arena-view .hand-tip-text {
+  font-size: 9px !important;
+}
+
+#battle-arena-view .hand-cards-rack {
+  display: flex !important;
+  gap: 6px !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  padding: 3px 4px 1px !important;
+  min-height: 0 !important;
+  height: clamp(88px, 11vh, 110px) !important;
+  align-items: center !important;
+}
+
+#battle-arena-view .hand-card-wrapper {
+  flex: 0 0 auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 1.5px !important;
+  transition: transform 0.15s ease !important;
+}
+
+#battle-arena-view .hand-card-wrapper:hover {
+  transform: translateY(-3px) scale(1.04) !important;
+  z-index: 5 !important;
+}
+
+#battle-arena-view .card-size-hand {
+  width: clamp(54px, 4.5vw, 72px) !important;
+  min-width: clamp(54px, 4.5vw, 72px) !important;
+  aspect-ratio: 5 / 7.4 !important;
+  border-radius: 5px !important;
+}
+
+#battle-arena-view .card-size-hand .card-top-header {
+  padding: 1px 2.5px !important;
+}
+
+#battle-arena-view .card-size-hand .card-type-badge,
+#battle-arena-view .card-size-hand .card-kind-badge {
+  font-size: 6px !important;
+  padding: 0.5px 2px !important;
+}
+
+#battle-arena-view .card-size-hand .card-hp-badge {
+  font-size: 7px !important;
+  padding: 0.5px 2px !important;
+}
+
+#battle-arena-view .card-size-hand .card-art-area {
+  height: 48% !important;
+}
+
+#battle-arena-view .card-size-hand .card-name-bar {
+  padding: 1px 2.5px !important;
+}
+
+#battle-arena-view .card-size-hand .card-name-text {
+  font-size: 7px !important;
+}
+
+#battle-arena-view .card-size-hand .card-bottom-rules {
+  padding: 1px 2px !important;
+  max-height: 22px !important;
+  overflow: hidden !important;
+  gap: 1px !important;
+}
+
+#battle-arena-view .card-size-hand .rule-name {
+  font-size: 6.5px !important;
+}
+
+#battle-arena-view .card-size-hand .rule-damage {
+  font-size: 7px !important;
+}
+
+#battle-arena-view .card-size-hand .rule-text {
+  display: none !important;
+}
+
+#battle-arena-view .card-size-hand .card-footer-stats {
+  display: none !important;
+}
+
+#battle-arena-view .card-size-hand .energy-pip {
+  width: 8px !important;
+  height: 8px !important;
+  font-size: 5.5px !important;
+}
+
+#battle-arena-view .hand-play-pill-btn {
+  font-size: 8px !important;
+  padding: 1px 5px !important;
+  border-radius: 6px !important;
+  line-height: 1 !important;
+}
+
+/* スピーチバブルの配置調整 */
+#battle-arena-view .speech-bubble.opp-bubble {
+  top: 45px !important;
+}
+#battle-arena-view .speech-bubble.player-bubble {
+  bottom: 120px !important;
 }
 /* ===== 自分の番 開始バナー & ターン中ハイライト ===== */
 .turn-start-banner {
@@ -24448,6 +24931,7 @@ window.DeckSystem = function () {
       document.getElementById('battle-select-view').style.display = 'none';
       document.getElementById('battle-online-waiting-view').style.display = 'none';
       document.getElementById('battle-arena-view').style.display = 'block';
+      document.body.classList.add('in-battle-arena');
 
       this.closeResultModal();
       this.log('🌐 オンライン対戦開始！ ルーム: ' + this.state.online.roomId);
@@ -26001,6 +26485,7 @@ window.DeckSystem = function () {
           if (selView) selView.style.display = 'none';
           const arenaView = document.getElementById('battle-arena-view');
           if (arenaView) arenaView.style.display = 'block';
+          document.body.classList.add('in-battle-arena');
 
           this.closeResultModal();
           this.log('⚔ バトル開始！ 先攻は【' + (this.state.firstPlayer === 'player' ? 'プレイヤー' : 'AIライバル') + '】です。');
@@ -26169,6 +26654,7 @@ window.DeckSystem = function () {
           if (selView) selView.style.display = 'none';
           const arenaView = document.getElementById('battle-arena-view');
           if (arenaView) arenaView.style.display = 'block';
+          document.body.classList.add('in-battle-arena');
           this.closeResultModal();
           this.render();
           this.startTurn(this.state.turnPlayer || 'player');
@@ -26657,6 +27143,7 @@ window.DeckSystem = function () {
       this.closeResultModal();
       this.state.phase = 'select';
       document.getElementById('battle-arena-view').style.display = 'none';
+      document.body.classList.remove('in-battle-arena');
       document.getElementById('battle-select-view').style.display = 'block';
       if (this.state.mode === 'online') {
         this.populateOnlineDeckSelect();
@@ -29685,10 +30172,10 @@ window.DeckSystem = function () {
         if (isPlayer && this.state.player && this.state.player.bench && this.state.player.bench.length > 0) {
           root.innerHTML = `
             <div class="battle-card-wrapper">
-              <div class="empty-slot-promote-active" style="width: 170px; aspect-ratio: 5 / 7.4; border: 2px dashed #f59e0b; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(245, 158, 11, 0.12); cursor: pointer; padding: 12px; text-align: center; transition: all 0.2s;" title="クリックして交代ポケモンを選択">
-                <span style="font-size: 28px; margin-bottom: 6px;">🔄</span>
-                <span style="font-size: 13px; font-weight: 700; color: #fbbf24;">バトル場に出す</span>
-                <span style="font-size: 10px; color: var(--muted); margin-top: 4px;">クリックまたはベンチから選択</span>
+              <div class="empty-slot-promote-active" style="aspect-ratio: 5 / 7.4; border: 2px dashed #f59e0b; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(245, 158, 11, 0.12); cursor: pointer; padding: 4px; text-align: center; transition: all 0.2s;" title="クリックして交代ポケモンを選択">
+                <span style="font-size: 18px; margin-bottom: 2px;">🔄</span>
+                <span style="font-size: 10px; font-weight: 700; color: #fbbf24;">バトル場に出す</span>
+                <span style="font-size: 8px; color: var(--muted); margin-top: 2px;">クリックで選択</span>
               </div>
             </div>
           `;
@@ -29696,7 +30183,7 @@ window.DeckSystem = function () {
             this.promptPromoteFromBench(this.state.player);
           };
         } else {
-          root.innerHTML = "\n          <div class=\"battle-card-wrapper\">\n            <div class=\"empty-slot-text\" style=\"width: 170px; aspect-ratio: 5 / 7.4; border: 1.5px dashed rgba(255,255,255,0.15); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 12px;\">\n              なし\n            </div>\n          </div>\n        ";
+          root.innerHTML = "\n          <div class=\"battle-card-wrapper\">\n            <div class=\"empty-slot-text\" style=\"aspect-ratio: 5 / 7.4; border: 1.5px dashed rgba(255,255,255,0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 10px;\">\n              なし\n            </div>\n          </div>\n        ";
           root.onclick = null;
         }
         if (isPlayer) {
@@ -31099,6 +31586,9 @@ console.log('[ORBITAL] App.js.html started execution');
       });
 
       this.state.page = page;
+      if (page !== 'battle') {
+        document.body.classList.remove('in-battle-arena');
+      }
       const sidebar = this.el('sidebar');
       if (sidebar) sidebar.classList.remove('open');
 

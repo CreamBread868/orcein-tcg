@@ -283,6 +283,9 @@ console.log('[ORBITAL] App.js.html started execution');
       });
 
       this.state.page = page;
+      if (page !== 'battle') {
+        document.body.classList.remove('in-battle-arena');
+      }
       const sidebar = this.el('sidebar');
       if (sidebar) sidebar.classList.remove('open');
 
