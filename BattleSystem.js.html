@@ -3225,9 +3225,9 @@
       basics.forEach((card, idx) => {
         const cHtml = window.CardSystem && window.CardSystem.createCardHtml ? window.CardSystem.createCardHtml(card, { size: 'sm' }) : ('<div>' + this.escape(card.name) + '</div>');
         cardsHtml += '\n' +
-          '<div class="initial-active-option-card" data-idx="' + idx + '" onclick="BattleSystem.selectInitialActivePokemon(' + idx + ')">' +
+          '<div class="initial-active-option-card" data-idx="' + idx + '" role="button" tabindex="0">' +
           cHtml +
-          '<button type="button" class="initial-active-select-btn" onclick="event.stopPropagation(); BattleSystem.selectInitialActivePokemon(' + idx + ')">⚡ バトル場へ配置</button>' +
+          '<button type="button" class="initial-active-select-btn" data-idx="' + idx + '">⚡ バトル場へ選出</button>' +
           '</div>';
       });
 
@@ -3236,12 +3236,39 @@
         '  <div class="initial-active-header">' +
         '    <div class="initial-active-tag">SETUP PHASE</div>' +
         '    <h2 class="initial-active-title">⚔ 最初のバトルポケモンを選択</h2>' +
-        '    <p class="initial-active-desc">手札の「たねポケモン」の中から、最初にバトル場へ出す1匹を選んでください。</p>' +
+        '    <p class="initial-active-desc">手札の「たねポケモン」の中から、最初にバトル場へ出す1匹を選んでください。（カードまたはボタンを押して決定）</p>' +
         '  </div>' +
         '  <div class="initial-active-cards-grid">' +
         cardsHtml +
         '  </div>' +
         '</div>';
+
+      const self = this;
+      let selectionHandled = false;
+
+      const handleSelection = (idx, evt) => {
+        if (evt) {
+          evt.preventDefault();
+          evt.stopPropagation();
+        }
+        if (selectionHandled) return;
+        selectionHandled = true;
+        self.selectInitialActivePokemon(idx);
+      };
+
+      // カード要素およびボタン要素に直接イベントリスナーを確実にバインド
+      overlay.querySelectorAll('.initial-active-option-card').forEach((cardEl) => {
+        const idx = Number(cardEl.getAttribute('data-idx'));
+        
+        cardEl.addEventListener('click', (e) => handleSelection(idx, e));
+        cardEl.addEventListener('touchend', (e) => handleSelection(idx, e));
+
+        const btn = cardEl.querySelector('.initial-active-select-btn');
+        if (btn) {
+          btn.addEventListener('click', (e) => handleSelection(idx, e));
+          btn.addEventListener('touchend', (e) => handleSelection(idx, e));
+        }
+      });
 
       this._onInitialActiveChoiceComplete = () => {
         try {
@@ -6466,21 +6493,36 @@
 
       grid.innerHTML = cards.map((c, i) => {
         const rawObj = c._raw || c;
+        const btnLabel = (c.category === 'バトル場へ' || options?.title?.includes('バトルポケモン') || options?.title?.includes('交代')) ? '⚔️ バトル場へ選出' : '決定';
+        let cardInnerHtml = '';
         if (window.CardSystem && typeof window.CardSystem.createCardHtml === 'function' && rawObj && rawObj.name) {
-          const cardHtml = window.CardSystem.createCardHtml(rawObj, { size: 'sm' });
-          return '\n          <div class="battle-choice-item choice-card-item" data-choice-idx="' + (i) + '">\n            ' + cardHtml + '\n          </div>\n        ';
+          cardInnerHtml = window.CardSystem.createCardHtml(rawObj, { size: 'sm' });
+        } else {
+          const typeHtml = c.type ? '【' + this.escape(c.type) + '】' : '';
+          const hpHtml = c.hp ? '<span>HP ' + c.hp + '</span>' : '';
+          const imgUrl = c.image || rawObj.image || rawObj.imageUrl || (window.CardSystem && typeof window.CardSystem.findCardImage === 'function' ? window.CardSystem.findCardImage(c.name) : '');
+          const imgTag = imgUrl ? '<img src="' + this.escape(imgUrl) + '" style="width:100%; height:80px; object-fit:cover; border-radius:6px; margin-bottom:6px; pointer-events:none;">' : '';
+          cardInnerHtml = (imgTag) +
+            '<div class="card-choice-name choice-card-title">' + (this.escape(c.name)) + '</div>' +
+            '<div class="choice-card-meta" style="display:flex; flex-direction:column; align-items:center; gap:2px; font-size:11px; color:#cbd5e1;">' +
+            '  <span class="card-badge">' + (this.escape(c.category || '')) + '</span>' +
+            '  <span>' + (typeHtml) + '</span>' +
+            '  ' + (hpHtml) +
+            '</div>';
         }
-        const typeHtml = c.type ? '【' + this.escape(c.type) + '】' : '';
-        const hpHtml = c.hp ? '<span>HP ' + c.hp + '</span>' : '';
-        const imgUrl = c.image || rawObj.image || rawObj.imageUrl || (window.CardSystem && typeof window.CardSystem.findCardImage === 'function' ? window.CardSystem.findCardImage(c.name) : '');
-        const imgTag = imgUrl ? '<img src="' + this.escape(imgUrl) + '" style="width:100%; height:80px; object-fit:cover; border-radius:6px; margin-bottom:6px;">' : '';
-        return '\n          <div class="battle-choice-item choice-card-item" data-choice-idx="' + (i) + '">\n            ' + (imgTag) + '\n            <div class="card-choice-name choice-card-title">' + (this.escape(c.name)) + '</div>\n            <div class="choice-card-meta" style="display:flex; flex-direction:column; align-items:center; gap:2px; font-size:11px; color:#cbd5e1;">\n              <span class="card-badge">' + (this.escape(c.category || '')) + '</span>\n              <span>' + (typeHtml) + '</span>\n              ' + (hpHtml) + '\n            </div>\n          </div>\n        ';
+
+        return '\n' +
+          '<div class="battle-choice-item choice-card-item" data-choice-idx="' + (i) + '" role="button" tabindex="0" style="cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:8px;">' +
+          '  <div style="pointer-events:none; width:100%;">' + cardInnerHtml + '</div>' +
+          '  <button type="button" class="primary-button small-button choice-select-btn" data-choice-idx="' + (i) + '" style="width:100%; font-size:12px; font-weight:bold; padding:8px 4px; pointer-events:auto; z-index:20;">' + btnLabel + '</button>' +
+          '</div>\n';
       }).join('');
 
       modal.classList.remove('hidden');
       modal.style.display = 'grid';
       modal.style.zIndex = '999999';
 
+      let choiceHandled = false;
       const cleanup = () => {
         modal.classList.add('hidden');
         modal.style.display = '';
@@ -6489,24 +6531,35 @@
       };
 
       if (cancelBtn) {
-        cancelBtn.onclick = () => {
+        cancelBtn.onclick = (e) => {
+          if (e) e.preventDefault();
           cleanup();
           if (typeof onCancel === 'function') onCancel();
         };
       }
       if (closeBtn) {
-        closeBtn.onclick = () => {
+        closeBtn.onclick = (e) => {
+          if (e) e.preventDefault();
           cleanup();
           if (typeof onCancel === 'function') onCancel();
         };
       }
 
+      const selectItem = (idx, e) => {
+        if (e) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        if (choiceHandled) return;
+        choiceHandled = true;
+        cleanup();
+        if (typeof onSelect === 'function') onSelect(idx);
+      };
+
       grid.querySelectorAll('[data-choice-idx]').forEach((el) => {
-        el.addEventListener('click', () => {
-          const idx = Number(el.dataset.choiceIdx);
-          cleanup();
-          if (typeof onSelect === 'function') onSelect(idx);
-        });
+        const idx = Number(el.dataset.choiceIdx);
+        el.addEventListener('click', (e) => selectItem(idx, e));
+        el.addEventListener('touchend', (e) => selectItem(idx, e));
       });
     },
 

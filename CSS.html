@@ -6285,41 +6285,52 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   gap: 8px;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
+  z-index: 10;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
 }
 
-.initial-active-option-card:hover {
+.initial-active-option-card:hover,
+.initial-active-option-card:active {
   transform: translateY(-4px) scale(1.02);
   border-color: #38bdf8;
   background: rgba(30, 41, 59, 0.95);
-  box-shadow: 0 10px 24px rgba(56, 189, 248, 0.35);
+  box-shadow: 0 10px 24px rgba(56, 189, 248, 0.45);
 }
 
-.initial-active-option-card .orbital-card {
+.initial-active-option-card .orbital-card,
+.initial-active-option-card .orbital-card * {
   width: 100% !important;
-  pointer-events: none;
+  pointer-events: none !important;
 }
 
 .initial-active-select-btn {
   width: 100%;
   background: linear-gradient(135deg, #0284c7, #2563eb);
   color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 10px 10px;
   border-radius: 8px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
-  cursor: pointer;
+  cursor: pointer !important;
+  pointer-events: auto !important;
   box-shadow: 0 4px 12px rgba(2, 132, 199, 0.4);
   transition: all 0.15s ease;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 4px;
+  position: relative;
+  z-index: 50;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
 }
 
-.initial-active-select-btn:hover {
+.initial-active-select-btn:hover,
+.initial-active-select-btn:active {
   background: linear-gradient(135deg, #38bdf8, #3b82f6);
-  transform: translateY(-1px);
+  transform: translateY(-1px) scale(1.03);
   box-shadow: 0 6px 16px rgba(56, 189, 248, 0.6);
 }
 
