@@ -22918,16 +22918,39 @@ window.DeckSystem = function () {
     },
 
     getUsableDecksForCurrentUser() {
-      const allDecks = (window.DeckSystem && window.DeckSystem.state && window.DeckSystem.state.decks) || [];
+      let allDecks = [];
+      if (window.DeckSystem && window.DeckSystem.state && Array.isArray(window.DeckSystem.state.decks) && window.DeckSystem.state.decks.length > 0) {
+        allDecks = window.DeckSystem.state.decks.slice();
+      }
+      try {
+        const raw = localStorage.getItem('orbital_decks') || localStorage.getItem('orbital_decks_mock');
+        if (raw) {
+          const localList = JSON.parse(raw);
+          if (Array.isArray(localList)) {
+            localList.forEach(ld => {
+              if (ld && !allDecks.some(d => String(d.id) === String(ld.id))) {
+                allDecks.push(ld);
+              }
+            });
+          }
+        }
+      } catch (e) {}
+
       const myEmail = String(
         (window.App && typeof window.App.getUserEmail === 'function' ? window.App.getUserEmail() : '') ||
-        (window.DeckSystem && window.DeckSystem.state && window.window.DeckSystem.state.currentUser ? window.window.DeckSystem.state.currentUser.email : '')
+        (window.DeckSystem && window.DeckSystem.state && window.DeckSystem.state.currentUser ? window.DeckSystem.state.currentUser.email : '') ||
+        localStorage.getItem('orbital_mock_user_email') ||
+        ''
       ).trim().toLowerCase();
 
       return allDecks.filter(d => {
-        if (!d) return false;
+        if (!d || !d.id) return false;
         const owner = String(d.userEmail || '').trim().toLowerCase();
-        return !owner || owner === 'sample' || d.isSample === true || (myEmail && owner === myEmail);
+        const isSample = d.isSample === true || d.isSampleDeck === true || owner === 'sample' || String(d.id).startsWith('sample');
+        if (isSample) return true;
+        if (!owner) return true;
+        if (!myEmail) return true;
+        return owner === myEmail;
       });
     },
 
@@ -22942,9 +22965,10 @@ window.DeckSystem = function () {
         decks.forEach((d) => {
           const opt = document.createElement('option');
           opt.value = d.id;
-          const isSample = !d.userEmail || d.userEmail === 'sample' || d.isSample;
+          const isSample = d.isSample === true || d.isSampleDeck === true || d.userEmail === 'sample' || String(d.id).startsWith('sample');
           const tag = isSample ? ' [公式]' : ' [マイデッキ]';
-          opt.textContent = d.name + tag + " (" + (d.totalCount || 60) + "枚)";
+          const cardCount = Array.isArray(d.cards) ? d.cards.reduce((sum, item) => sum + (Number(item.count || item.qty || 1) || 1), 0) : 0;
+          opt.textContent = d.name + tag + " (" + (cardCount || d.totalCount || 60) + "枚)";
           sel.appendChild(opt);
         });
       }
@@ -22969,10 +22993,11 @@ window.DeckSystem = function () {
         return;
       }
 
-      const decks = window.DeckSystem && window.DeckSystem.state && window.DeckSystem.state.decks || [];
+      const decks = this.getUsableDecksForCurrentUser();
       const deck = decks.find((d) => String(d.id) === String(deckId));
       if (deck) {
-        prev.innerHTML = "<strong>" + this.escape(deck.name) + "</strong> (" + (deck.totalCount || 60) + "枚)<br><small>" + this.escape(deck.description || '自作デッキ') + "</small>";
+        const cardCount = Array.isArray(deck.cards) ? deck.cards.reduce((sum, item) => sum + (Number(item.count || item.qty || 1) || 1), 0) : 0;
+        prev.innerHTML = "<strong>" + this.escape(deck.name) + "</strong> (" + (cardCount || deck.totalCount || 60) + "枚)<br><small>" + this.escape(deck.description || '自作デッキ') + "</small>";
       } else {
         prev.textContent = 'デッキを選択してください。';
       }
@@ -23033,7 +23058,7 @@ window.DeckSystem = function () {
         decks.forEach((d) => {
           const opt = document.createElement('option');
           opt.value = d.id;
-          const isSample = !d.userEmail || d.userEmail === 'sample' || d.isSample;
+          const isSample = d.isSample === true || d.isSampleDeck === true || d.userEmail === 'sample' || String(d.id).startsWith('sample');
           const tag = isSample ? ' [公式]' : ' [マイデッキ]';
           const cardCount = Array.isArray(d.cards) ? d.cards.reduce((sum, item) => sum + (Number(item.count || item.qty || 1) || 1), 0) : 0;
           opt.textContent = d.name + tag + ' (' + (cardCount || d.totalCount || 60) + '枚)';
@@ -23057,10 +23082,11 @@ window.DeckSystem = function () {
         prev.innerHTML = '<strong>⚡ スターター雷デッキ</strong>: ピカチュウとライチュウで構成された初心者向け完成デッキです。';
         return;
       }
-      const decks = window.DeckSystem && window.DeckSystem.state && window.DeckSystem.state.decks || [];
+      const decks = this.getUsableDecksForCurrentUser();
       const deck = decks.find((d) => String(d.id) === String(deckId));
       if (deck) {
-        prev.innerHTML = '<strong>' + this.escape(deck.name) + '</strong> (' + (deck.totalCount || 60) + '枚)<br><small>' + this.escape(deck.description || '自作デッキ') + '</small>';
+        const cardCount = Array.isArray(deck.cards) ? deck.cards.reduce((sum, item) => sum + (Number(item.count || item.qty || 1) || 1), 0) : 0;
+        prev.innerHTML = '<strong>' + this.escape(deck.name) + '</strong> (' + (cardCount || deck.totalCount || 60) + '枚)<br><small>' + this.escape(deck.description || '自作デッキ') + '</small>';
       } else {
         prev.textContent = 'デッキを選択してください。';
       }
@@ -24981,7 +25007,7 @@ window.DeckSystem = function () {
       const prizeCount = Number(document.getElementById('battle-prize-count-select')?.value) || 6;
 
       if (playerDeckVal !== 'preset_starter' && window.DeckSystem && typeof window.DeckSystem.validateDeck === 'function') {
-        const decks = window.DeckSystem.state && window.window.DeckSystem.state.decks || [];
+        const decks = this.getUsableDecksForCurrentUser();
         const deck = decks.find((d) => String(d.id) === String(playerDeckVal));
         if (deck && (!deck.userEmail || deck.userEmail !== 'sample')) {
           const val = window.DeckSystem.validateDeck(deck);
@@ -25001,7 +25027,7 @@ window.DeckSystem = function () {
       if (deckVal === 'preset_starter') {
         return this.expandAiDeck(this.aiDecks.electric);
       }
-      const decks = window.DeckSystem && window.DeckSystem.state && window.DeckSystem.state.decks || [];
+      const decks = this.getUsableDecksForCurrentUser();
       const deck = decks.find((d) => String(d.id) === String(deckVal));
       if (!deck || !deck.cards || !deck.cards.length) {
         return this.expandAiDeck(this.aiDecks.electric);
@@ -25709,7 +25735,7 @@ window.DeckSystem = function () {
     },
 
     getBestPlayerDeckForCpu() {
-      const decks = (window.DeckSystem && window.DeckSystem.state && window.window.DeckSystem.state.decks) || [];
+      const decks = this.getUsableDecksForCurrentUser();
       if (!decks || !decks.length) return null;
 
       let stats = {};
@@ -25810,27 +25836,36 @@ window.DeckSystem = function () {
       this.setupInitialBoard(this.state.opponent);
 
       this.promptPlayerInitialActiveChoice(() => {
-        for (let i = 0; i < prizeCount; i++) {
-          if (this.state.player.deck.length) this.state.player.prizes.push(this.state.player.deck.shift());
-          if (this.state.opponent.deck.length) this.state.opponent.prizes.push(this.state.opponent.deck.shift());
+        try {
+          for (let i = 0; i < prizeCount; i++) {
+            if (this.state.player.deck.length) this.state.player.prizes.push(this.state.player.deck.shift());
+            if (this.state.opponent.deck.length) this.state.opponent.prizes.push(this.state.opponent.deck.shift());
+          }
+
+          const selView = document.getElementById('battle-select-view');
+          if (selView) selView.style.display = 'none';
+          const arenaView = document.getElementById('battle-arena-view');
+          if (arenaView) arenaView.style.display = 'block';
+
+          this.closeResultModal();
+          this.log('⚔ バトル開始！ 先攻は【' + (this.state.firstPlayer === 'player' ? 'プレイヤー' : 'AIライバル') + '】です。');
+
+          this.render();
+          this.playMatchIntro(this.state.player.name, this.state.opponent.name);
+
+          this.startTurn(this.state.turnPlayer);
+        } catch (matchErr) {
+          console.error('[BattleSystem] Match start error:', matchErr);
+          if (window.App && typeof window.App.toast === 'function') {
+            window.App.toast('バトル開始時にエラーが発生しました: ' + matchErr.message, true);
+          }
         }
-
-        document.getElementById('battle-select-view').style.display = 'none';
-        document.getElementById('battle-arena-view').style.display = 'block';
-
-        this.closeResultModal();
-        this.log('⚔ バトル開始！ 先攻は【' + (this.state.firstPlayer === 'player' ? 'プレイヤー' : 'AIライバル') + '】です。');
-
-        this.render();
-        this.playMatchIntro(this.state.player.name, this.state.opponent.name);
-
-        this.startTurn(this.state.turnPlayer);
       });
     },
 
     promptPlayerInitialActiveChoice(onComplete) {
       const p = this.state.player;
-      const basics = p.hand.filter(c => this.isBasic(c));
+      const basics = (p && p.hand) ? p.hand.filter(c => this.isBasic(c)) : [];
 
       if (basics.length <= 1) {
         this.setupInitialBoard(p);
@@ -25838,21 +25873,24 @@ window.DeckSystem = function () {
         return;
       }
 
-      let overlay = document.getElementById('initial-active-modal-overlay');
-      if (!overlay) {
-        overlay = document.createElement('div');
-        overlay.id = 'initial-active-modal-overlay';
-        document.body.appendChild(overlay);
-      }
+      // Remove any existing duplicate overlays
+      document.querySelectorAll('#initial-active-modal-overlay').forEach(el => {
+        if (el.parentNode) el.parentNode.removeChild(el);
+      });
+
+      const overlay = document.createElement('div');
+      overlay.id = 'initial-active-modal-overlay';
       overlay.style.display = 'flex';
+      overlay.style.zIndex = '999999';
+      document.body.appendChild(overlay);
 
       let cardsHtml = '';
       basics.forEach((card, idx) => {
         const cHtml = window.CardSystem && window.CardSystem.createCardHtml ? window.CardSystem.createCardHtml(card, { size: 'sm' }) : ('<div>' + this.escape(card.name) + '</div>');
         cardsHtml += '\n' +
-          '<div class="initial-active-option-card" data-idx="' + idx + '" role="button" tabindex="0">' +
+          '<div class="initial-active-option-card" data-idx="' + idx + '" role="button" tabindex="0" onclick="window.BattleSystem.selectInitialActivePokemon(' + idx + '); if(event){event.stopPropagation();event.preventDefault();}">' +
           cHtml +
-          '<button type="button" class="initial-active-select-btn" data-idx="' + idx + '">⚡ バトル場へ選出</button>' +
+          '<button type="button" class="initial-active-select-btn" data-idx="' + idx + '" onclick="window.BattleSystem.selectInitialActivePokemon(' + idx + '); if(event){event.stopPropagation();event.preventDefault();}">⚡ バトル場へ選出</button>' +
           '</div>';
       });
 
@@ -25873,8 +25911,7 @@ window.DeckSystem = function () {
 
       const handleSelection = (idx, evt) => {
         if (evt) {
-          evt.preventDefault();
-          evt.stopPropagation();
+          try { evt.preventDefault(); evt.stopPropagation(); } catch (e) {}
         }
         if (selectionHandled) return;
         selectionHandled = true;
@@ -25897,11 +25934,10 @@ window.DeckSystem = function () {
 
       this._onInitialActiveChoiceComplete = () => {
         try {
-          if (overlay && overlay.parentNode) {
-            overlay.parentNode.removeChild(overlay);
-          } else if (overlay) {
-            overlay.style.display = 'none';
-          }
+          document.querySelectorAll('#initial-active-modal-overlay').forEach(el => {
+            el.style.display = 'none';
+            if (el.parentNode) el.parentNode.removeChild(el);
+          });
           if (onComplete) onComplete();
         } catch (err) {
           console.error('[BattleSystem] Error starting match after initial active selection:', err);
@@ -25911,12 +25947,19 @@ window.DeckSystem = function () {
 
     selectInitialActivePokemon(basicIndex) {
       try {
+        // Immediately hide and clean up overlay elements
+        document.querySelectorAll('#initial-active-modal-overlay').forEach(el => {
+          el.style.display = 'none';
+          if (el.parentNode) el.parentNode.removeChild(el);
+        });
+
         const p = this.state.player;
-        const basics = p.hand.filter(c => this.isBasic(c));
+        if (!p) return;
+        const basics = (p.hand || []).filter(c => this.isBasic(c));
         const chosenCard = basics[basicIndex] || basics[0];
 
         if (chosenCard) {
-          const handIdx = p.hand.findIndex(c => c === chosenCard || (c.id === chosenCard.id && c.instanceId === chosenCard.instanceId));
+          const handIdx = p.hand.findIndex(c => c === chosenCard || (c && chosenCard && c.id === chosenCard.id && c.instanceId === chosenCard.instanceId));
           if (handIdx >= 0) {
             p.active = p.hand.splice(handIdx, 1)[0];
           } else {
@@ -25938,7 +25981,9 @@ window.DeckSystem = function () {
         }
 
         if (typeof this._onInitialActiveChoiceComplete === 'function') {
-          this._onInitialActiveChoiceComplete();
+          const cb = this._onInitialActiveChoiceComplete;
+          this._onInitialActiveChoiceComplete = null;
+          cb();
         }
       } catch (err) {
         console.error('[BattleSystem] Error in selectInitialActivePokemon:', err);
@@ -29100,6 +29145,17 @@ window.DeckSystem = function () {
       });
     },
 
+    _handleChoiceModalSelect(idx, e) {
+      if (e) {
+        try { e.preventDefault(); e.stopPropagation(); } catch (err) {}
+      }
+      if (typeof this._currentChoiceSelectHandler === 'function') {
+        const handler = this._currentChoiceSelectHandler;
+        this._currentChoiceSelectHandler = null;
+        handler(idx);
+      }
+    },
+
     showChoiceModal(cards, options, onSelect, onCancel) {
       const modal = document.getElementById('battleChoiceModal');
       const title = document.getElementById('battleChoiceTitle');
@@ -29137,9 +29193,9 @@ window.DeckSystem = function () {
         }
 
         return '\n' +
-          '<div class="battle-choice-item choice-card-item" data-choice-idx="' + (i) + '" role="button" tabindex="0" style="cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:8px;">' +
+          '<div class="battle-choice-item choice-card-item" data-choice-idx="' + (i) + '" role="button" tabindex="0" onclick="window.BattleSystem._handleChoiceModalSelect(' + (i) + ', event)" style="cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:8px;">' +
           '  <div style="pointer-events:none; width:100%;">' + cardInnerHtml + '</div>' +
-          '  <button type="button" class="primary-button small-button choice-select-btn" data-choice-idx="' + (i) + '" style="width:100%; font-size:12px; font-weight:bold; padding:8px 4px; pointer-events:auto; z-index:20;">' + btnLabel + '</button>' +
+          '  <button type="button" class="primary-button small-button choice-select-btn" data-choice-idx="' + (i) + '" onclick="window.BattleSystem._handleChoiceModalSelect(' + (i) + ', event)" style="width:100%; font-size:12px; font-weight:bold; padding:8px 4px; pointer-events:auto; z-index:20;">' + btnLabel + '</button>' +
           '</div>\n';
       }).join('');
 
@@ -29149,6 +29205,7 @@ window.DeckSystem = function () {
 
       let choiceHandled = false;
       const cleanup = () => {
+        this._currentChoiceSelectHandler = null;
         modal.classList.add('hidden');
         modal.style.display = '';
         if (cancelBtn) cancelBtn.onclick = null;
@@ -29172,14 +29229,15 @@ window.DeckSystem = function () {
 
       const selectItem = (idx, e) => {
         if (e) {
-          e.preventDefault();
-          e.stopPropagation();
+          try { e.preventDefault(); e.stopPropagation(); } catch (err) {}
         }
         if (choiceHandled) return;
         choiceHandled = true;
         cleanup();
         if (typeof onSelect === 'function') onSelect(idx);
       };
+
+      this._currentChoiceSelectHandler = (idx) => selectItem(idx, null);
 
       grid.querySelectorAll('[data-choice-idx]').forEach((el) => {
         const idx = Number(el.dataset.choiceIdx);
