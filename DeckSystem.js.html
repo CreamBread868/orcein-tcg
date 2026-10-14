@@ -302,11 +302,19 @@ window.DeckSystem = function () {
             ? window.CardSystem.getUserCollection()
             : {});
 
-        const idKey = String(card.id || '');
-        const nameKey = String(card.name || '');
-        const byId = Number(col[idKey]) || 0;
-        const byName = Number(col[nameKey]) || 0;
-        return Math.max(byId, byName);
+        const idKey = String(card.id || '').trim();
+        const nameKey = String(card.name || '').trim();
+        let byId = Number(col[idKey]) || 0;
+        let byName = Number(col[nameKey]) || 0;
+        let byMaster = 0;
+        if (window.CardSystem) {
+          const m = (idKey && window.CardSystem.findCardById ? window.CardSystem.findCardById(idKey) : null) ||
+                    (nameKey && window.CardSystem.findCardByName ? window.CardSystem.findCardByName(nameKey) : null);
+          if (m) {
+            byMaster = Math.max(Number(col[m.id]) || 0, Number(col[m.name]) || 0);
+          }
+        }
+        return Math.max(byId, byName, byMaster);
       }
 
       function isAceSpecCard(card) {
@@ -819,12 +827,14 @@ window.DeckSystem = function () {
 
       let actionButtons = '';
       if (isMine || (!isSample && !deck.userEmail)) {
-        actionButtons = "\n          <button class=\"btn btn-secondary btn-sm\" onclick=\"DeckSystem.openEditor('" +
+        actionButtons = "\n          <button class=\"btn btn-success btn-sm\" onclick=\"DeckSystem.playWithDeck('" +
+        deck.id + "')\" title=\"このデッキでバトル開始\"><i class=\"fas fa-gamepad\"></i> バトルで使う</button>\n          <button class=\"btn btn-secondary btn-sm\" onclick=\"DeckSystem.openEditor('" +
         deck.id + "')\"><i class=\"fas fa-edit\"></i> 編集</button>\n          <button class=\"btn btn-secondary btn-sm\" onclick=\"DeckSystem.duplicateDeck('" +
         deck.id + "')\" title=\"複製\"><i class=\"fas fa-copy\"></i> 複製</button>\n          <button class=\"btn btn-danger btn-sm\" onclick=\"DeckSystem.deleteDeck('" +
         deck.id + "')\"><i class=\"fas fa-trash\"></i> 削除</button>\n        ";
       } else {
-        actionButtons = "\n          <button class=\"btn btn-primary btn-sm\" onclick=\"DeckSystem.duplicateDeck('" +
+        actionButtons = "\n          <button class=\"btn btn-success btn-sm\" onclick=\"DeckSystem.playWithDeck('" +
+        deck.id + "')\" title=\"このデッキでバトル開始\"><i class=\"fas fa-gamepad\"></i> バトルで使う</button>\n          <button class=\"btn btn-primary btn-sm\" onclick=\"DeckSystem.duplicateDeck('" +
         deck.id + "')\"><i class=\"fas fa-copy\"></i> コピーして新規作成</button>\n          <button class=\"btn btn-secondary btn-sm\" onclick=\"DeckSystem.openEditor('" +
         deck.id + "')\"><i class=\"fas fa-eye\"></i> 閲覧</button>\n        ";
       }
@@ -1051,6 +1061,49 @@ window.DeckSystem = function () {
         grid.innerHTML = html;
       }
 
+  function playWithDeck(deckId) {
+    if (!deckId) return;
+    const found = state.decks.find(d => String(d.id) === String(deckId));
+    if (!found) {
+      if (window.App && window.App.toast) window.App.toast('デッキが見つかりません', true);
+      return;
+    }
+
+    if (window.BattleSystem) {
+      window.BattleSystem._selectedBattleDeckId = String(deckId);
+    }
+
+    if (window.App && typeof window.App.switchPage === 'function') {
+      window.App.switchPage('battle');
+    }
+
+    // 画面遷移後にドロップダウンを選択
+    setTimeout(() => {
+      const sel = document.getElementById('battle-player-deck-select');
+      if (sel) {
+        if (!Array.from(sel.options).some(o => o.value === String(deckId))) {
+          if (window.BattleSystem && typeof window.BattleSystem.populateDeckSelect === 'function') {
+            window.BattleSystem.populateDeckSelect();
+          }
+        }
+        sel.value = String(deckId);
+        if (window.BattleSystem && typeof window.BattleSystem.updatePlayerDeckPreview === 'function') {
+          window.BattleSystem.updatePlayerDeckPreview();
+        }
+      }
+      const onlineSel = document.getElementById('battle-online-deck-select');
+      if (onlineSel) {
+        onlineSel.value = String(deckId);
+        if (window.BattleSystem && typeof window.BattleSystem.updateOnlineDeckPreview === 'function') {
+          window.BattleSystem.updateOnlineDeckPreview();
+        }
+      }
+      if (window.App && window.App.toast) {
+        window.App.toast('⚔ デッキ「' + (found.name || '無題のデッキ') + '」を選択しました！対戦を開始できます。');
+      }
+    }, 120);
+  }
+
   function escapeHtml(str) {
     if (!str) return '';
     return String(str).
@@ -1082,7 +1135,8 @@ window.DeckSystem = function () {
     renderEditor: renderEditor,
     validateDeck: validateDeck,
     isAceSpecCard: isAceSpecCard,
-    getCardOwnedCount: getCardOwnedCount
+    getCardOwnedCount: getCardOwnedCount,
+    playWithDeck: playWithDeck
   };
   console.log('[ORBITAL] DeckSystem.js.html finished execution. window.DeckSystem =', typeof window.DeckSystem);
 }();

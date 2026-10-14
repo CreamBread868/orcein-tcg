@@ -294,6 +294,9 @@ console.log('[ORBITAL] App.js.html started execution');
         DeckSystem.loadDecks();
       }
       if (page === 'battle' && window.BattleSystem) {
+        if (window.DeckSystem && typeof window.DeckSystem.loadDecks === 'function') {
+          DeckSystem.loadDecks();
+        }
         BattleSystem.init();
       }
       if (page === 'create' && window.CardSystem) {

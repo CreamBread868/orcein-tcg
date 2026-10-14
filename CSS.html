@@ -6298,9 +6298,18 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   box-shadow: 0 10px 24px rgba(56, 189, 248, 0.45);
 }
 
-.initial-active-option-card .orbital-card,
-.initial-active-option-card .orbital-card * {
+.initial-active-card-wrap {
+  width: 100%;
+  pointer-events: none !important;
+}
+
+.initial-active-option-card .orbital-card {
   width: 100% !important;
+  pointer-events: none !important;
+  margin: 0 auto;
+}
+
+.initial-active-option-card .orbital-card * {
   pointer-events: none !important;
 }
 
@@ -6321,8 +6330,8 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   align-items: center;
   justify-content: center;
   gap: 4px;
-  position: relative;
-  z-index: 50;
+  position: relative !important;
+  z-index: 9999 !important;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
 }

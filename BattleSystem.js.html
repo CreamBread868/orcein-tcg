@@ -292,6 +292,20 @@
       });
     },
 
+    isMyDeck(d, myEmail) {
+      if (!d) return false;
+      const email = myEmail !== undefined ? myEmail : String(
+        (window.App && typeof window.App.getUserEmail === 'function' ? window.App.getUserEmail() : '') ||
+        (window.DeckSystem && window.DeckSystem.state && window.DeckSystem.state.currentUser ? window.DeckSystem.state.currentUser.email : '') ||
+        localStorage.getItem('orbital_mock_user_email') ||
+        ''
+      ).trim().toLowerCase();
+      const owner = String(d.userEmail || '').trim().toLowerCase();
+      if (!owner || owner === 'sample') return false;
+      if (!email) return true;
+      return owner === email || owner.split('@')[0] === email.split('@')[0];
+    },
+
     getUsableDecksForCurrentUser() {
       let allDecks = [];
       if (window.DeckSystem && window.DeckSystem.state && Array.isArray(window.DeckSystem.state.decks) && window.DeckSystem.state.decks.length > 0) {
@@ -318,20 +332,26 @@
         ''
       ).trim().toLowerCase();
 
-      return allDecks.filter(d => {
-        if (!d || !d.id) return false;
-        const owner = String(d.userEmail || '').trim().toLowerCase();
-        const isSample = d.isSample === true || d.isSampleDeck === true || owner === 'sample' || String(d.id).startsWith('sample');
-        if (isSample) return true;
-        if (!owner) return true;
-        if (!myEmail) return true;
-        return owner === myEmail;
+      // マイデッキ優先でソートしつつ、データベース上の全デッキ（自作・公式・共有）をバトルで利用可能にする
+      return allDecks.filter(d => d && d.id).sort((a, b) => {
+        const aMine = this.isMyDeck(a, myEmail) ? 2 : (a.isSample || a.userEmail === 'sample' ? 0 : 1);
+        const bMine = this.isMyDeck(b, myEmail) ? 2 : (b.isSample || b.userEmail === 'sample' ? 0 : 1);
+        return bMine - aMine;
       });
     },
 
     populateDeckSelect() {
       const sel = document.getElementById('battle-player-deck-select');
       if (!sel) return;
+
+      const currentVal = sel.value;
+
+      // デッキ未ロード時はデータベース/サーバーからロード実行 (完了時はDeckSystemのonLoadedがpopulateDeckSelectを呼び出すためコールバック不要)
+      if (window.DeckSystem && typeof window.DeckSystem.loadDecks === 'function' &&
+          !window.DeckSystem.state?.isLoadingDecks &&
+          (!window.DeckSystem.state || !Array.isArray(window.DeckSystem.state.decks) || window.DeckSystem.state.decks.length === 0)) {
+        window.DeckSystem.loadDecks();
+      }
 
       const decks = this.getUsableDecksForCurrentUser();
       sel.innerHTML = '';
@@ -341,9 +361,10 @@
           const opt = document.createElement('option');
           opt.value = d.id;
           const isSample = d.isSample === true || d.isSampleDeck === true || d.userEmail === 'sample' || String(d.id).startsWith('sample');
-          const tag = isSample ? ' [公式]' : ' [マイデッキ]';
-          const cardCount = Array.isArray(d.cards) ? d.cards.reduce((sum, item) => sum + (Number(item.count || item.qty || 1) || 1), 0) : 0;
-          opt.textContent = d.name + tag + " (" + (cardCount || d.totalCount || 60) + "枚)";
+          const isMine = this.isMyDeck(d);
+          const tag = isSample ? ' [公式]' : (isMine ? ' [マイデッキ]' : ' [共有デッキ]');
+          const cardCount = Array.isArray(d.cards) ? d.cards.reduce((sum, item) => sum + (Number(item.count || item.qty || 1) || 1), 0) : (d.totalCount || 60);
+          opt.textContent = (d.name || '無題のデッキ') + tag + " (" + (cardCount || 60) + "枚)";
           sel.appendChild(opt);
         });
       }
@@ -352,6 +373,12 @@
       starterOpt.value = 'preset_starter';
       starterOpt.textContent = '⚡ スターター雷デッキ (公式プリセット)';
       sel.appendChild(starterOpt);
+
+      if (this._selectedBattleDeckId && Array.from(sel.options).some(o => o.value === this._selectedBattleDeckId)) {
+        sel.value = this._selectedBattleDeckId;
+      } else if (currentVal && Array.from(sel.options).some(o => o.value === currentVal)) {
+        sel.value = currentVal;
+      }
 
       this.updatePlayerDeckPreview();
       this.updateAiDeckPreview();
@@ -423,7 +450,11 @@
       const sel = document.getElementById('battle-online-deck-select');
       if (!sel) return;
 
-      if (window.DeckSystem && typeof window.DeckSystem.loadDecks === 'function' && (!window.DeckSystem.state || !Array.isArray(window.DeckSystem.state.decks) || window.DeckSystem.state.decks.length === 0)) {
+      const currentVal = sel.value;
+
+      if (window.DeckSystem && typeof window.DeckSystem.loadDecks === 'function' &&
+          !window.DeckSystem.state?.isLoadingDecks &&
+          (!window.DeckSystem.state || !Array.isArray(window.DeckSystem.state.decks) || window.DeckSystem.state.decks.length === 0)) {
         window.DeckSystem.loadDecks();
       }
 
@@ -434,9 +465,10 @@
           const opt = document.createElement('option');
           opt.value = d.id;
           const isSample = d.isSample === true || d.isSampleDeck === true || d.userEmail === 'sample' || String(d.id).startsWith('sample');
-          const tag = isSample ? ' [公式]' : ' [マイデッキ]';
-          const cardCount = Array.isArray(d.cards) ? d.cards.reduce((sum, item) => sum + (Number(item.count || item.qty || 1) || 1), 0) : 0;
-          opt.textContent = d.name + tag + ' (' + (cardCount || d.totalCount || 60) + '枚)';
+          const isMine = this.isMyDeck(d);
+          const tag = isSample ? ' [公式]' : (isMine ? ' [マイデッキ]' : ' [共有デッキ]');
+          const cardCount = Array.isArray(d.cards) ? d.cards.reduce((sum, item) => sum + (Number(item.count || item.qty || 1) || 1), 0) : (d.totalCount || 60);
+          opt.textContent = (d.name || '無題のデッキ') + tag + ' (' + (cardCount || 60) + '枚)';
           sel.appendChild(opt);
         });
       }
@@ -444,6 +476,12 @@
       starterOpt.value = 'preset_starter';
       starterOpt.textContent = '⚡ スターター雷デッキ (公式プリセット)';
       sel.appendChild(starterOpt);
+
+      if (this._selectedBattleDeckId && Array.from(sel.options).some(o => o.value === this._selectedBattleDeckId)) {
+        sel.value = this._selectedBattleDeckId;
+      } else if (currentVal && Array.from(sel.options).some(o => o.value === currentVal)) {
+        sel.value = currentVal;
+      }
 
       this.updateOnlineDeckPreview();
     },
@@ -1338,14 +1376,15 @@
       const userEmail = window.DeckSystem && window.DeckSystem.state && window.DeckSystem.state.currentUser ? window.DeckSystem.state.currentUser.email : '';
 
       if (deckVal !== 'preset_starter' && window.DeckSystem && typeof window.DeckSystem.validateDeck === 'function') {
-        const decks = window.DeckSystem.state && window.window.DeckSystem.state.decks || [];
+        const decks = this.getUsableDecksForCurrentUser();
         const deck = decks.find((d) => String(d.id) === String(deckVal));
         if (deck && (!deck.userEmail || deck.userEmail !== 'sample')) {
           const val = window.DeckSystem.validateDeck(deck);
           if (val.unownedErrors && val.unownedErrors.length > 0) {
-            const msg = '未所持のカード（' + val.unownedErrors.map(e => e.name).join('、') + '）が含まれているため対戦を開始できません。デッキ管理画面で所持カードに変更してください。';
-            App.toast(msg, true);
-            return;
+            console.warn('⚠️ [Online Battle] Deck contains unowned cards:', val.unownedErrors);
+            if (window.App && window.App.toast) {
+              window.App.toast('ℹ️ 未所持カードが含まれるデッキですが、対戦用デッキとして読み込みます');
+            }
           }
         }
       }
@@ -2387,10 +2426,10 @@
         if (deck && (!deck.userEmail || deck.userEmail !== 'sample')) {
           const val = window.DeckSystem.validateDeck(deck);
           if (val.unownedErrors && val.unownedErrors.length > 0) {
-            const msg = '未所持のカード（' + val.unownedErrors.map(e => e.name).join('、') + '）が含まれているため対戦を開始できません。デッキ管理画面で所持カードに変更してください。';
-            if (window.App && window.App.toast) window.App.toast(msg, true);
-            else alert(msg);
-            return;
+            console.warn('⚠️ [BattleSystem] Deck contains unowned cards:', val.unownedErrors);
+            if (window.App && window.App.toast) {
+              window.App.toast('ℹ️ 未所持カードが含まれるデッキですが、AIバトル検証のため特別に対戦を開始します！');
+            }
           }
         }
       }
@@ -2399,45 +2438,129 @@
     },
 
     resolveDeckCards(deckVal) {
-      if (deckVal === 'preset_starter') {
+      if (!deckVal || deckVal === 'preset_starter' || deckVal === 'electric') {
         return this.expandAiDeck(this.aiDecks.electric);
       }
-      const decks = this.getUsableDecksForCurrentUser();
-      const deck = decks.find((d) => String(d.id) === String(deckVal));
-      if (!deck || !deck.cards || !deck.cards.length) {
+      if (this.aiDecks && this.aiDecks[deckVal]) {
+        return this.expandAiDeck(this.aiDecks[deckVal]);
+      }
+
+      // 1. デッキオブジェクトの特定
+      let deck = null;
+      if (deckVal && typeof deckVal === 'object') {
+        deck = deckVal;
+      } else {
+        const decks = this.getUsableDecksForCurrentUser();
+        deck = decks.find((d) => String(d.id) === String(deckVal)) ||
+               (window.DeckSystem && window.DeckSystem.state && window.DeckSystem.state.decks && window.DeckSystem.state.decks.find((d) => String(d.id) === String(deckVal)));
+      }
+
+      if (!deck) {
+        console.warn('⚠️ [BattleSystem] Deck not found for key:', deckVal, '- falling back to starter');
         return this.expandAiDeck(this.aiDecks.electric);
       }
 
-      const allCards = [
-        ...(window.App && App.state && App.state.cards || []),
-        ...(window.CardSystem && CardSystem.state && CardSystem.state.cards || []),
-        ...(window.DeckSystem && window.DeckSystem.state && window.DeckSystem.state.cardPool || [])
+      // 2. cardsの正規化（文字列JSONまたはテキストにも対応）
+      let rawCards = deck.cards;
+      if (typeof rawCards === 'string' && rawCards.trim()) {
+        try {
+          rawCards = JSON.parse(rawCards);
+        } catch (e) {
+          rawCards = rawCards.split(/[\r\n,;]+/).map(s => {
+            const m = s.match(/^(\d+)\s*(?:x|\*|枚)?\s*(.+)$/i) || s.match(/^(.+?)\s*(?:x|\*|:)?\s*(\d+)(?:枚)?$/i);
+            return m ? { id: (m[2] || m[1]).trim(), count: parseInt(m[1] || m[2], 10) || 1 } : { id: s.trim(), count: 1 };
+          }).filter(x => x && x.id);
+        }
+      }
+      if (!Array.isArray(rawCards) || rawCards.length === 0) {
+        const fallbackRaw = deck.cardsJson || deck.cards_json || deck.cardsList || deck.cardslist;
+        if (typeof fallbackRaw === 'string' && fallbackRaw.trim()) {
+          try { rawCards = JSON.parse(fallbackRaw); } catch (e) {}
+        }
+      }
+
+      if (!Array.isArray(rawCards) || rawCards.length === 0) {
+        console.warn('⚠️ [BattleSystem] Deck has no valid cards:', deck);
+        return this.expandAiDeck(this.aiDecks.electric);
+      }
+
+      // 3. 全カードプールの収集と高速マップ構築
+      const poolMap = new Map();
+      const allSources = [
+        ...(window.App && window.App.state && Array.isArray(window.App.state.cards) ? window.App.state.cards : []),
+        ...(window.CardSystem && window.CardSystem.state && Array.isArray(window.CardSystem.state.cards) ? window.CardSystem.state.cards : []),
+        ...(window.DeckSystem && window.DeckSystem.state && Array.isArray(window.DeckSystem.state.cardPool) ? window.DeckSystem.state.cardPool : [])
       ];
+      allSources.forEach(c => {
+        if (!c) return;
+        if (c.id) poolMap.set(String(c.id).trim().toLowerCase(), c);
+        if (c.name) {
+          poolMap.set(String(c.name).trim().toLowerCase(), c);
+          poolMap.set(String(c.name).trim().toLowerCase().replace(/[\s　_\-–—]+/g, ''), c);
+        }
+      });
+
       const expanded = [];
-      deck.cards.forEach((entry) => {
+      rawCards.forEach((entry) => {
         if (!entry) return;
-        const key = String(entry.id || entry.name || entry.cardId || '').toLowerCase();
-        let c = allCards.find((card) => String(card.id).toLowerCase() === key || String(card.name).toLowerCase() === key) ||
-                  (entry.name && entry.category ? entry : null);
+        const entryId = typeof entry === 'object' ? String(entry.id || entry.cardId || entry.code || '').trim() : String(entry).trim();
+        const entryName = typeof entry === 'object' ? String(entry.name || '').trim() : '';
+        const count = typeof entry === 'object' ? (Number(entry.count || entry.qty || entry.num || 1) || 1) : 1;
+
+        // 照合候補キー
+        const keys = [
+          entryId.toLowerCase(),
+          entryName.toLowerCase(),
+          entryId.toLowerCase().replace(/[\s　_\-–—]+/g, ''),
+          entryName.toLowerCase().replace(/[\s　_\-–—]+/g, '')
+        ].filter(Boolean);
+
+        let c = null;
+        for (const k of keys) {
+          if (poolMap.has(k)) {
+            c = poolMap.get(k);
+            break;
+          }
+        }
+
+        // CardSystem ヘルパー関数フォールバック
+        if (!c && window.CardSystem) {
+          if (entryId && typeof window.CardSystem.findCardById === 'function') {
+            c = window.CardSystem.findCardById(entryId);
+          }
+          if (!c && (entryName || entryId) && typeof window.CardSystem.findCardByName === 'function') {
+            c = window.CardSystem.findCardByName(entryName || entryId);
+          }
+        }
+
+        // オブジェクト自身がカードデータを持つ場合
+        if (!c && typeof entry === 'object' && (entry.category || entry.hp || entry.type || entry.attacks || entry.attack1Name)) {
+          c = entry;
+        }
+
+        // 見つからない場合はカード名/IDからカードオブジェクトを安全生成
         if (!c) {
+          const finalName = entryName || entryId || 'カスタムカード';
           c = {
-            id: entry.id || key,
-            name: entry.name || entry.id || key,
-            category: entry.category || 'たね',
-            type: entry.type || '無',
-            hp: Number(entry.hp) || 70,
-            image: entry.image || '',
-            attack1Name: entry.attack1Name || 'たいあたり',
-            attack1Damage: entry.attack1Damage || '20',
-            attack1Energy: entry.attack1Energy || '無'
+            id: entryId || ('card_' + Math.random().toString(36).substring(2, 9)),
+            name: finalName,
+            category: 'たね',
+            type: '無',
+            hp: 80,
+            image: '',
+            attack1Name: 'たいあたり',
+            attack1Damage: '30',
+            attack1Energy: '無',
+            attack1Text: '相手に30ダメージ。'
           };
         }
-        const count = Number(entry.count || entry.qty || entry.num || 1) || 1;
+
         for (let i = 0; i < count; i++) {
           expanded.push(JSON.parse(JSON.stringify(c)));
         }
       });
 
+      console.log('✅ [BattleSystem] Resolved deck cards count:', expanded.length, 'for deck:', deck.name || deckVal);
       return expanded.length > 0 ? expanded : this.expandAiDeck(this.aiDecks.electric);
     },
 
@@ -3025,37 +3148,6 @@
       return result;
     },
 
-    resolveDeckCards(deckVal) {
-      if (!deckVal || deckVal === 'preset_starter' || deckVal === 'electric') {
-        return this.expandAiDeck(this.aiDecks.electric);
-      }
-      if (this.aiDecks && this.aiDecks[deckVal]) {
-        return this.expandAiDeck(this.aiDecks[deckVal]);
-      }
-
-      const decks = (window.DeckSystem && window.DeckSystem.state && window.DeckSystem.state.decks) || [];
-      const deck = decks.find((d) => String(d.id) === String(deckVal));
-
-      if (deck && Array.isArray(deck.cards) && deck.cards.length > 0) {
-        const cardPool = (window.DeckSystem && window.DeckSystem.state && window.DeckSystem.state.cardPool) ||
-                         (window.App && App.state && App.state.cards) || [];
-        const flat = [];
-        deck.cards.forEach((item) => {
-          const cardId = typeof item === 'object' ? item.id : item;
-          const count = typeof item === 'object' ? (Number(item.count) || 1) : 1;
-          const def = cardPool.find((c) => String(c.id) === String(cardId));
-          if (def) {
-            for (let i = 0; i < count; i++) {
-              flat.push({ ...def });
-            }
-          }
-        });
-        if (flat.length > 0) return flat;
-      }
-
-      return this.expandAiDeck(this.aiDecks.electric);
-    },
-
     playMatchIntro(myName, oppName) {
       const overlay = document.getElementById('battleMatchIntroOverlay');
       if (!overlay) return;
@@ -3262,10 +3354,11 @@
       let cardsHtml = '';
       basics.forEach((card, idx) => {
         const cHtml = window.CardSystem && window.CardSystem.createCardHtml ? window.CardSystem.createCardHtml(card, { size: 'sm' }) : ('<div>' + this.escape(card.name) + '</div>');
+        const cardId = this.escape(card.id || card.name || idx);
         cardsHtml += '\n' +
-          '<div class="initial-active-option-card" data-idx="' + idx + '" role="button" tabindex="0" onclick="window.BattleSystem.selectInitialActivePokemon(' + idx + '); if(event){event.stopPropagation();event.preventDefault();}">' +
-          cHtml +
-          '<button type="button" class="initial-active-select-btn" data-idx="' + idx + '" onclick="window.BattleSystem.selectInitialActivePokemon(' + idx + '); if(event){event.stopPropagation();event.preventDefault();}">⚡ バトル場へ選出</button>' +
+          '<div class="initial-active-option-card" data-idx="' + idx + '" data-card-id="' + cardId + '" role="button" tabindex="0">' +
+          '  <div class="initial-active-card-wrap">' + cHtml + '</div>' +
+          '  <button type="button" class="initial-active-select-btn" data-idx="' + idx + '" data-card-id="' + cardId + '">⚡ バトル場へ配置</button>' +
           '</div>';
       });
 
@@ -3284,30 +3377,38 @@
       const self = this;
       let selectionHandled = false;
 
-      const handleSelection = (idx, evt) => {
-        if (evt) {
-          try { evt.preventDefault(); evt.stopPropagation(); } catch (e) {}
-        }
+      const handlePick = (idx, cardId) => {
         if (selectionHandled) return;
         selectionHandled = true;
-        self.selectInitialActivePokemon(idx);
+        self.selectInitialActivePokemon(idx, cardId);
       };
 
-      // カード要素およびボタン要素に直接イベントリスナーを確実にバインド
-      overlay.querySelectorAll('.initial-active-option-card').forEach((cardEl) => {
-        const idx = Number(cardEl.getAttribute('data-idx'));
-        
-        cardEl.addEventListener('click', (e) => handleSelection(idx, e));
-        cardEl.addEventListener('touchend', (e) => handleSelection(idx, e));
-
-        const btn = cardEl.querySelector('.initial-active-select-btn');
-        if (btn) {
-          btn.addEventListener('click', (e) => handleSelection(idx, e));
-          btn.addEventListener('touchend', (e) => handleSelection(idx, e));
+      // 1. キャプチャフェーズ & バブリング両方で overlay 上のクリック/タッチを確実に捕捉 (イベント委譲)
+      const dispatchChoice = (e) => {
+        const target = e.target.closest('.initial-active-select-btn') || e.target.closest('.initial-active-option-card');
+        if (target) {
+          try { e.preventDefault(); e.stopPropagation(); } catch (err) {}
+          const idx = Number(target.getAttribute('data-idx'));
+          const cardId = target.getAttribute('data-card-id');
+          handlePick(idx, cardId);
         }
+      };
+
+      overlay.addEventListener('click', dispatchChoice, true);
+      overlay.addEventListener('touchend', dispatchChoice, true);
+      overlay.addEventListener('pointerup', dispatchChoice, true);
+
+      // 2. 各カード & ボタン要素への直接イベントバインド
+      overlay.querySelectorAll('.initial-active-option-card, .initial-active-select-btn').forEach((el) => {
+        const idx = Number(el.getAttribute('data-idx'));
+        const cardId = el.getAttribute('data-card-id');
+        el.onclick = (e) => {
+          try { e.preventDefault(); e.stopPropagation(); } catch (err) {}
+          handlePick(idx, cardId);
+        };
       });
 
-      this._onInitialActiveChoiceComplete = () => {
+      const completeHandler = () => {
         try {
           document.querySelectorAll('#initial-active-modal-overlay').forEach(el => {
             el.style.display = 'none';
@@ -3318,11 +3419,14 @@
           console.error('[BattleSystem] Error starting match after initial active selection:', err);
         }
       };
+
+      this._onInitialActiveChoiceComplete = completeHandler;
+      if (window.BattleSystem) window.BattleSystem._onInitialActiveChoiceComplete = completeHandler;
     },
 
-    selectInitialActivePokemon(basicIndex) {
+    selectInitialActivePokemon(basicIndex, cardId) {
       try {
-        // Immediately hide and clean up overlay elements
+        // 即座にオーバーレイ要素を非表示 & 削除
         document.querySelectorAll('#initial-active-modal-overlay').forEach(el => {
           el.style.display = 'none';
           if (el.parentNode) el.parentNode.removeChild(el);
@@ -3331,7 +3435,16 @@
         const p = this.state.player;
         if (!p) return;
         const basics = (p.hand || []).filter(c => this.isBasic(c));
-        const chosenCard = basics[basicIndex] || basics[0];
+        let chosenCard = null;
+
+        // cardId による正確な特定
+        if (cardId) {
+          chosenCard = basics.find(c => String(c.id) === String(cardId) || String(c.name) === String(cardId));
+        }
+        if (!chosenCard) {
+          const idx = (typeof basicIndex === 'number' && !isNaN(basicIndex)) ? basicIndex : 0;
+          chosenCard = basics[idx] || basics[0] || (p.hand && p.hand[0]);
+        }
 
         if (chosenCard) {
           const handIdx = p.hand.findIndex(c => c === chosenCard || (c && chosenCard && c.id === chosenCard.id && c.instanceId === chosenCard.instanceId));
@@ -3345,6 +3458,7 @@
           if (!p.active.maxHp) p.active.maxHp = Number(p.active.hp) || 70;
           p.active._turnPlayed = 0;
 
+          // 残りの手札のたねポケモンを最大2匹までベンチへ展開
           for (let i = p.hand.length - 1; i >= 0; i--) {
             if (this.isBasic(p.hand[i]) && p.bench.length < 2) {
               const card = p.hand.splice(i, 1)[0];
@@ -3355,10 +3469,21 @@
           }
         }
 
-        if (typeof this._onInitialActiveChoiceComplete === 'function') {
-          const cb = this._onInitialActiveChoiceComplete;
-          this._onInitialActiveChoiceComplete = null;
+        const cb = this._onInitialActiveChoiceComplete || (window.BattleSystem && window.BattleSystem._onInitialActiveChoiceComplete);
+        this._onInitialActiveChoiceComplete = null;
+        if (window.BattleSystem) window.BattleSystem._onInitialActiveChoiceComplete = null;
+
+        if (typeof cb === 'function') {
           cb();
+        } else {
+          // コールバックが何らかの原因で失われていても確実にアリーナ画面へ遷移・ターン開始
+          const selView = document.getElementById('battle-select-view');
+          if (selView) selView.style.display = 'none';
+          const arenaView = document.getElementById('battle-arena-view');
+          if (arenaView) arenaView.style.display = 'block';
+          this.closeResultModal();
+          this.render();
+          this.startTurn(this.state.turnPlayer || 'player');
         }
       } catch (err) {
         console.error('[BattleSystem] Error in selectInitialActivePokemon:', err);
