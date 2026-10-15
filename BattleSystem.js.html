@@ -7001,10 +7001,10 @@
         if (isPlayer && this.state.player && this.state.player.bench && this.state.player.bench.length > 0) {
           root.innerHTML = `
             <div class="battle-card-wrapper">
-              <div class="empty-slot-promote-active" style="aspect-ratio: 5 / 7.4; border: 2px dashed #f59e0b; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(245, 158, 11, 0.12); cursor: pointer; padding: 4px; text-align: center; transition: all 0.2s;" title="クリックして交代ポケモンを選択">
-                <span style="font-size: 18px; margin-bottom: 2px;">🔄</span>
-                <span style="font-size: 10px; font-weight: 700; color: #fbbf24;">バトル場に出す</span>
-                <span style="font-size: 8px; color: var(--muted); margin-top: 2px;">クリックで選択</span>
+              <div class="empty-slot-promote-active" style="aspect-ratio: 5 / 7.4; border: 2px dashed #f59e0b; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(245, 158, 11, 0.12); cursor: pointer; padding: 12px; text-align: center; transition: all 0.2s;" title="クリックして交代ポケモンを選択">
+                <span style="font-size: 26px; margin-bottom: 6px;">🔄</span>
+                <span style="font-size: 13px; font-weight: 800; color: #fbbf24;">バトル場に出す</span>
+                <span style="font-size: 10.5px; color: var(--muted); margin-top: 4px;">クリックまたは選択</span>
               </div>
             </div>
           `;
@@ -7012,7 +7012,7 @@
             this.promptPromoteFromBench(this.state.player);
           };
         } else {
-          root.innerHTML = "\n          <div class=\"battle-card-wrapper\">\n            <div class=\"empty-slot-text\" style=\"aspect-ratio: 5 / 7.4; border: 1.5px dashed rgba(255,255,255,0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 10px;\">\n              なし\n            </div>\n          </div>\n        ";
+          root.innerHTML = "\n          <div class=\"battle-card-wrapper\">\n            <div class=\"empty-slot-text\" style=\"aspect-ratio: 5 / 7.4; border: 1.5px dashed rgba(255,255,255,0.15); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 12px;\">\n              なし\n            </div>\n          </div>\n        ";
           root.onclick = null;
         }
         if (isPlayer) {
