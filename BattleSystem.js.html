@@ -24,6 +24,8 @@
         role: 'host', // 'host' | 'guest'
         pollTimer: null,
         lastSeq: 0,
+        pendingAcks: {},
+        processedAckIds: [],
         myDeck: null,
         prizeCount: 6,
         roomName: '',
@@ -1658,6 +1660,17 @@
         clearInterval(this.state.online.pollTimer);
         this.state.online.pollTimer = null;
       }
+      this.clearPendingAcks();
+    },
+
+    clearPendingAcks() {
+      if (this.state.online && this.state.online.pendingAcks) {
+        Object.keys(this.state.online.pendingAcks).forEach((k) => {
+          const entry = this.state.online.pendingAcks[k];
+          if (entry && entry.timer) clearTimeout(entry.timer);
+        });
+        this.state.online.pendingAcks = {};
+      }
     },
 
     createSeededRandom(seed) {
@@ -1769,6 +1782,8 @@
       this.log('先攻は【' + (this.state.firstPlayer === 'player' ? this.state.player.name : this.state.opponent.name) + '】です。');
 
       this.render();
+      this.clearPendingAcks();
+      this.state.online.processedAckIds = [];
       this.playMatchIntro(this.state.player.name, this.state.opponent.name);
       this.startOnlineBattlePolling();
       this.startTurn(this.state.turnPlayer);
@@ -2033,13 +2048,31 @@
       }
     },
 
+    sendAckReceipt(ackId, seq, originalType) {
+      if (!ackId || this.state.mode !== 'online' || !this.state.online.roomId) return;
+      console.log('📤 [Online Sending Ack Receipt] 相手へ通信成功データ(ACK)を返信:', ackId, originalType);
+      this.broadcastOnlineAction('ack_receipt', {
+        ackId: ackId,
+        originalSeq: seq,
+        originalType: originalType,
+        status: 'success',
+        processedAt: Date.now()
+      });
+    },
+
     broadcastOnlineAction(type, payload, onDone) {
       const finish = (r) => { if (typeof onDone === 'function') { try { onDone(r); } catch (e) { console.warn(e); } } };
       if (this.state.mode !== 'online' || !this.state.online.roomId) return;
+
+      const isAckPacket = (type === 'ack_receipt');
+      // パケットごとに一意なackIdを生成（未指定時）
+      const ackId = (payload && payload.ackId) || ('ack_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8));
+
       const sanitizedPayload = this.sanitizePayloadForNetwork(payload || {});
       const fullPayload = this.stripFunctions({
         ...sanitizedPayload,
-        boardState: this.getBoardSnapshot()
+        ackId: ackId,
+        boardState: isAckPacket ? null : this.getBoardSnapshot()
       });
       
       let payloadStr = '';
@@ -2049,60 +2082,130 @@
         console.error('❌ [Online Packet Error] Failed to stringify payload:', e);
       }
 
-      console.log('📤 [Online Outgoing Packet]', type, '| Size:', payloadStr.length, 'bytes | Room:', this.state.online.roomId, '| Role:', this.state.online.role, fullPayload);
+      console.log('📤 [Online Outgoing Packet]', type, '| AckId:', ackId, '| Size:', payloadStr.length, 'bytes | Room:', this.state.online.roomId, '| Role:', this.state.online.role, fullPayload);
       if (payloadStr.length > 30000) {
         console.warn('⚠️ [Online Packet Warning] Outgoing packet size is large (' + payloadStr.length + ' bytes).');
       }
 
       const self = this;
-      let attempt = 0;
-      const maxAttempts = 3;
 
-      function sendPacket() {
-        attempt++;
+      // サーバーへパケットを送信する内部関数
+      function sendPacket(onServerSuccess) {
         self.callGas('submitOnlineAction', [
           self.state.online.roomId,
           self.state.online.role,
           { type: type, payload: fullPayload }
         ], function(res) {
           if (res && res.ok && res.lastSeq) {
-            console.log('✅ [Online Packet Ack]', type, '| Attempt:', attempt, '| Server lastSeq:', res.lastSeq);
-            finish(res);
-            App.toast('📡 通信成功: 操作「' + type + '」を送信しました。');
+            console.log('✅ [Online Server Ack]', type, '| AckId:', ackId, '| Server lastSeq:', res.lastSeq);
+            if (typeof onServerSuccess === 'function') onServerSuccess(res);
             self.pollRoomImmediate();
           } else {
-            console.warn('⚠️ [Online Packet Rejected]', type, '| Attempt:', attempt, '| Error:', res ? res.message : 'No response from server');
-            if (attempt < maxAttempts) {
-              console.log('🔄 [Online Packet Retry] Retrying in ' + (attempt * 400) + 'ms...');
-              setTimeout(sendPacket, attempt * 400);
-            } else {
-              console.error('❌ [Online Packet Failed]', type, '| Max attempts reached.');
-              finish(null);
-            }
+            console.warn('⚠️ [Online Packet Rejected by Server]', type, '| Error:', res ? res.message : 'No response from server');
           }
         }, function(err) {
-          console.warn('⚠️ [Online Packet Network Error]', type, '| Attempt:', attempt, '| Error:', err);
-          if (attempt < maxAttempts) {
-            console.log('🔄 [Online Packet Retry] Retrying in ' + (attempt * 400) + 'ms...');
-            setTimeout(sendPacket, attempt * 400);
-          } else {
-            console.error('❌ [Online Packet Network Failed]', type, '| Max attempts reached.');
-            finish(null);
-          }
+          console.warn('⚠️ [Online Packet Network Error]', type, '| Error:', err);
         });
       }
 
-      sendPacket();
+      // 1. 通信成功データ(ACK返信)の場合は再送ループ不要、単発で即時送信
+      if (isAckPacket) {
+        sendPacket(function(res) {
+          finish(res);
+        });
+        return;
+      }
+
+      // 2. 通常アクションの場合：相手から通信成功データ(ACK)が来るまで再送を監視
+      if (!this.state.online.pendingAcks) {
+        this.state.online.pendingAcks = {};
+      }
+
+      const pendingEntry = {
+        ackId: ackId,
+        type: type,
+        fullPayload: fullPayload,
+        retries: 0,
+        maxRetries: 8,
+        retryInterval: 1800, // 1.8秒待っても相手からACKが来なければ再送
+        timer: null,
+        onDone: finish
+      };
+
+      this.state.online.pendingAcks[ackId] = pendingEntry;
+
+      const scheduleRetry = () => {
+        if (!self.state.online.pendingAcks || !self.state.online.pendingAcks[ackId]) return;
+        pendingEntry.timer = setTimeout(() => {
+          // まだ相手からの通信成功データ(ACK)が届いていなければ再送！
+          if (self.state.online.pendingAcks && self.state.online.pendingAcks[ackId]) {
+            if (pendingEntry.retries < pendingEntry.maxRetries) {
+              pendingEntry.retries++;
+              console.log('🔄 [Online Mutual Retry] 相手からの受信確認が未着のため再送 (' + pendingEntry.retries + '/' + pendingEntry.maxRetries + '):', type, ackId);
+              App.toast('📡 相手の受信確認待機中: 「' + type + '」を再送中 (' + pendingEntry.retries + '/' + pendingEntry.maxRetries + ')...');
+              sendPacket();
+              scheduleRetry();
+            } else {
+              console.warn('⚠️ [Online Mutual Timeout] 相手からの受信確認が一定時間得られませんでした:', type, ackId);
+              App.toast('⚠️ 相手との通信が遅延しています。通信状態を確認してください。', true);
+              delete self.state.online.pendingAcks[ackId];
+              finish(null);
+            }
+          }
+        }, pendingEntry.retryInterval);
+      };
+
+      // 初回送信
+      sendPacket(function(res) {
+        finish(res);
+      });
+      scheduleRetry();
     },
 
     applyRemoteAction(action) {
       if (!action || !action.type) return;
-      console.log('📥 [Online Incoming Packet Applied]', 'Seq:', action.seq, '| By:', action.by, '| Type:', action.type, action.payload);
+      const payload = action.payload || {};
+      const ackId = payload.ackId;
+
+      // 1. 相手からの受領確認(ACK)パケットの処理
+      if (action.type === 'ack_receipt') {
+        const targetAckId = payload.ackId;
+        console.log('🎉 [Online Mutual Ack Received] 相手側の処理成功を確認:', targetAckId, payload.originalType);
+        if (this.state.online.pendingAcks && targetAckId && this.state.online.pendingAcks[targetAckId]) {
+          const entry = this.state.online.pendingAcks[targetAckId];
+          if (entry.timer) clearTimeout(entry.timer);
+          if (typeof entry.onDone === 'function') entry.onDone({ ok: true, ack: true });
+          delete this.state.online.pendingAcks[targetAckId];
+          App.toast('🤝 相互通信確認: 相手側の反映を確認しました！ (' + (payload.originalType || '操作') + ')');
+        }
+        return;
+      }
+
+      console.log('📥 [Online Incoming Packet Applied]', 'Seq:', action.seq, '| AckId:', ackId, '| By:', action.by, '| Type:', action.type, payload);
+
+      // 2. 重複パケットの検知（再送パケット対策）
+      if (!this.state.online.processedAckIds) {
+        this.state.online.processedAckIds = [];
+      }
+      if (ackId && this.state.online.processedAckIds.includes(ackId)) {
+        console.log('ℹ️ [Online Duplicate Packet Skipped] Already processed ackId:', ackId, '| Re-sending ACK receipt to opponent');
+        // 相手がこちらのACKを受信できていないため再送してきた。再度通信成功データを返送する！
+        this.sendAckReceipt(ackId, action.seq, action.type);
+        return;
+      }
+
+      // 新規パケット：処理済みリストに追加（最新100件保持）
+      if (ackId) {
+        this.state.online.processedAckIds.push(ackId);
+        if (this.state.online.processedAckIds.length > 100) {
+          this.state.online.processedAckIds.shift();
+        }
+      }
+
       App.toast('🟢 通信成功: 相手の操作「' + action.type + '」を受信・反映しました！');
       try {
         const opp = this.state.opponent;
         const p = this.state.player;
-        const payload = action.payload || {};
 
         if (payload.boardState && typeof this.syncOpponentSnapshot === 'function') {
           console.log('🔄 [Online Syncing Opponent Snapshot] Seq:', action.seq);
@@ -2408,6 +2511,11 @@
           this.finishBattle('player', '対戦相手が降伏または退出しました。あなたの勝利です！');
           break;
         }
+      }
+
+      // 3. 通信される側で正常に処理が成功したら、通信する側に「通信成功」データ(ACK)を送る！
+      if (ackId) {
+        this.sendAckReceipt(ackId, action.seq, action.type);
       }
       } catch (e) {
         console.error('❌ [Online Incoming Packet Exception] Failed to apply action:', action, '| Error:', e);
