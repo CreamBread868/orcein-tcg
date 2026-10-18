@@ -1263,7 +1263,7 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
 .toast { position:fixed; right:20px; bottom:20px; background:#20263a; border:1px solid var(--line); border-radius:12px; padding:12px 15px; box-shadow:var(--shadow); transform:translateY(20px); opacity:0; pointer-events:none; transition:.2s; z-index:50; }
 .toast.show { opacity:1; transform:translateY(0); }
 .hidden { display: none !important; }
-.modal { position:fixed; inset:0; z-index:60; display:grid; place-items:center; padding:20px; }
+.modal { position:fixed; inset:0; z-index:10000 !important; display:grid; place-items:center; padding:20px; }
 .modal.hidden { display: none !important; }
 .modal-backdrop { position:absolute; inset:0; background:rgba(0,0,0,.7); backdrop-filter:blur(5px); }
 .modal-card { width:min(850px,100%); max-height:90vh; overflow:auto; position:relative; background:var(--panel); border:1px solid var(--line); border-radius:22px; padding:24px; box-shadow:var(--shadow); }
