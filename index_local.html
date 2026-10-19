@@ -12707,7 +12707,25 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           window.BattleSystem.render();
         }
       },
-      draw(ctx, player, amount) { for (let i = 0; i < (Number(amount) || 0); i++) { if (!player?.deck?.length) break; const c = player.deck.shift(); if (c != null) player.hand.push(c); } },
+      draw(ctx, player, amount) {
+        let p = player;
+        if (typeof p === 'number' && amount === undefined) {
+          amount = p;
+          p = ctx?.self;
+        } else if (p === 'self') {
+          p = ctx?.self;
+        } else if (p === 'opponent') {
+          p = ctx?.opponent;
+        } else if (p && (p.hp !== undefined || p.maxHp !== undefined)) {
+          p = this.getOwner(ctx, p) || ctx?.self;
+        }
+        if (!p) p = ctx?.self;
+        for (let i = 0; i < (Number(amount) || 0); i++) {
+          if (!p?.deck?.length) break;
+          const c = p.deck.shift();
+          if (c != null) p.hand.push(c);
+        }
+      },
       attachEnergy(ctx, target, amount) {
         const n = Math.max(0, Number(amount) || 0);
         const applyTo = (t) => {
@@ -12880,7 +12898,17 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         return this.cancelDamage(ctx, event);
       },
       switchActive(ctx, player, target) {
-        const p = player || ctx?.self;
+        let p = player;
+        if (p === 'self') {
+          p = ctx?.self;
+        } else if (p === 'opponent') {
+          p = ctx?.opponent;
+        } else if (p && (p.hp !== undefined || p.maxHp !== undefined) && !target) {
+          target = p;
+          p = this.getOwner(ctx, target) || ctx?.self;
+        } else if (!p) {
+          p = ctx?.self;
+        }
         if (!p || !p.active) return;
         if (p === ctx?.opponent && this.isProtectedFromAttackEffects(ctx, p.active)) {
           const pkName = p.active?.name || 'ポケモン';
@@ -13710,7 +13738,25 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           window.BattleSystem.render();
         }
       },
-      benchDamage(ctx, player, amount) { const dmg = Math.max(0, Number(amount) || 0); const p = this._getPlayer(ctx); if (dmg && Array.isArray(p?.bench)) { p.bench.forEach((c) => { if (c) c.hp -= dmg; }); } },
+      benchDamage(ctx, player, amount) {
+        let p = player;
+        let amt = amount;
+        if (typeof p === 'number' && amt === undefined) {
+          amt = p;
+          p = ctx?.opponent;
+        } else if (p === 'self') {
+          p = ctx?.self;
+        } else if (p === 'opponent') {
+          p = ctx?.opponent;
+        } else if (p && (p.hp !== undefined || p.maxHp !== undefined)) {
+          p = this.getOwner(ctx, p) || ctx?.opponent;
+        }
+        if (!p) p = ctx?.opponent || this._getPlayer(ctx);
+        const dmg = Math.max(0, Number(amt) || 0);
+        if (dmg && Array.isArray(p?.bench)) {
+          p.bench.forEach((c) => { if (c) c.hp -= dmg; });
+        }
+      },
       reduceDamage(ctx, target, amount) { const tgt = target || this._getPlayer(ctx)?.active; if (tgt) tgt.damageReduction = (tgt.damageReduction || 0) + Math.max(0, Number(amount) || 0); },
       increaseDamage(ctx, amount) { if (ctx) ctx.bonusDamage = (ctx.bonusDamage || 0) + Math.max(0, Number(amount) || 0); return Number(amount) || 0; },
       nextTurnDamage(ctx, amount = 80, targetOrFilter = null) {
@@ -14774,6 +14820,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         return list.filter((c) => matchesCardFilter(c, filter));
       },
       _findCardOwner(ctx, cardOrPokemon) {
+        if (!cardOrPokemon || typeof cardOrPokemon !== 'object') return null;
         const players = ctx?.game?.players || [ctx?.self, ctx?.opponent].filter(Boolean);
         const inPlayer = (p) => {
           if (!p) return false;
@@ -14782,10 +14829,14 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           if (Array.isArray(p.hand) && p.hand.includes(cardOrPokemon)) return true;
           if (Array.isArray(p.discard) && p.discard.includes(cardOrPokemon)) return true;
           if (Array.isArray(p.deck) && p.deck.includes(cardOrPokemon)) return true;
+          if (Array.isArray(p.prizes) && p.prizes.includes(cardOrPokemon)) return true;
+          if (Array.isArray(p.lostZone) && p.lostZone.includes(cardOrPokemon)) return true;
           if (p.active?.attachedCards && p.active.attachedCards.includes(cardOrPokemon)) return true;
+          if (p.active?.attachedTool === cardOrPokemon) return true;
           if (Array.isArray(p.bench)) {
             for (let b of p.bench) {
               if (b?.attachedCards && b.attachedCards.includes(cardOrPokemon)) return true;
+              if (b?.attachedTool === cardOrPokemon) return true;
             }
           }
           return false;
@@ -14793,7 +14844,67 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         for (let pl of players) {
           if (inPlayer(pl)) return pl;
         }
-        return ctx?.self || ctx?.opponent;
+        if (cardOrPokemon._ownerPlayer) return cardOrPokemon._ownerPlayer;
+        if (cardOrPokemon === ctx?.thisPokemon || cardOrPokemon === ctx?.card) return ctx?.self || null;
+        if (window.BattleSystem?.state?.player) {
+          const bsPlayer = window.BattleSystem.state.player;
+          const bsOpp = window.BattleSystem.state.opponent;
+          if (inPlayer(bsPlayer)) return (ctx?.self === bsOpp) ? bsOpp : (ctx?.self || bsPlayer);
+          if (inPlayer(bsOpp)) return (ctx?.self === bsOpp) ? ctx?.self : (ctx?.opponent || bsOpp);
+        }
+        return null;
+      },
+      getOwner(ctx, target) {
+        let effectiveCtx = ctx;
+        let effectiveTarget = target;
+        if (!effectiveTarget && ctx && (ctx.hp !== undefined || ctx.name !== undefined || ctx.category)) {
+          effectiveTarget = ctx;
+          effectiveCtx = window.currentCardEffectContext || null;
+        }
+        const pk = effectiveTarget || effectiveCtx?.thisPokemon || effectiveCtx?.card;
+        if (!pk || typeof pk !== 'object') return null;
+        const found = this._findCardOwner(effectiveCtx, pk);
+        if (found) return found;
+        if (effectiveCtx?.self?.active === pk || (effectiveCtx?.self?.bench && effectiveCtx.self.bench.includes(pk))) {
+          return effectiveCtx.self;
+        }
+        if (effectiveCtx?.opponent?.active === pk || (effectiveCtx?.opponent?.bench && effectiveCtx.opponent.bench.includes(pk))) {
+          return effectiveCtx.opponent;
+        }
+        return effectiveCtx?.self || null;
+      },
+      getSide(ctx, target) {
+        let effectiveCtx = ctx;
+        let effectiveTarget = target;
+        if (!effectiveTarget && ctx && (ctx.hp !== undefined || ctx.name !== undefined || ctx.category)) {
+          effectiveTarget = ctx;
+          effectiveCtx = window.currentCardEffectContext || null;
+        }
+        const owner = this.getOwner(effectiveCtx, effectiveTarget);
+        if (!owner) return null;
+        if (owner === effectiveCtx?.self || (effectiveCtx?.self && owner.id && owner.id === effectiveCtx.self.id)) {
+          return 'self';
+        }
+        if (owner === effectiveCtx?.opponent || (effectiveCtx?.opponent && owner.id && owner.id === effectiveCtx.opponent.id)) {
+          return 'opponent';
+        }
+        if (window.BattleSystem?.state?.player) {
+          const bsPlayer = window.BattleSystem.state.player;
+          if (owner === bsPlayer || owner.id === bsPlayer.id) {
+            return (effectiveCtx?.self === bsPlayer) ? 'self' : 'opponent';
+          }
+          const bsOpp = window.BattleSystem.state.opponent;
+          if (owner === bsOpp || owner.id === bsOpp.id) {
+            return (effectiveCtx?.self === bsOpp) ? 'self' : 'opponent';
+          }
+        }
+        return 'self';
+      },
+      isSelf(ctx, target) {
+        return this.getSide(ctx, target) === 'self';
+      },
+      isOpponent(ctx, target) {
+        return this.getSide(ctx, target) === 'opponent';
       },
       _sendPokemonToDiscard(ctx, pokemon) {
         if (!pokemon) return;
@@ -15266,8 +15377,10 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           });
         }
 
+        if (ctx?.attachGetters) chosen.forEach(ctx.attachGetters);
+
         if (chosen.length > 0 && chosen[0]) {
-          ['name', 'hp', 'maxHp', 'energy', 'category', 'type', 'status'].forEach((prop) => {
+          ['name', 'hp', 'maxHp', 'energy', 'category', 'type', 'status', 'owner', 'player', 'side', 'ownerSide', 'isSelf', 'isOpponent', 'self', 'opponent', 'turnNumber'].forEach((prop) => {
             if (chosen[prop] === undefined && chosen[0][prop] !== undefined) {
               Object.defineProperty(chosen, prop, {
                 get() { return chosen[0] ? chosen[0][prop] : undefined; },
@@ -16041,10 +16154,35 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         },
         passive: (fn, opt) => rawEvent.passive(fn, opt),
         continuous: (fn, opt) => rawEvent.continuous(fn, opt),
-        modify: (s, fn) => rawEvent.modify(s, fn)
+        modify: (s, fn) => rawEvent.modify(s, fn),
+        getOwner: (t) => api.getOwner(ctx, t),
+        getSide: (t) => api.getSide(ctx, t),
+        isSelf: (t) => api.isSelf(ctx, t),
+        isOpponent: (t) => api.isOpponent(ctx, t)
       };
 
       ctx.turnNumber = (game?.turnNumber != null) ? game.turnNumber : ((window.BattleSystem?.state?.turnNumber != null) ? window.BattleSystem.state.turnNumber : 1);
+
+      if (player) {
+        player.side = 'self';
+        player.isSelf = true;
+        player.isOpponent = false;
+        try {
+          if (!Object.getOwnPropertyDescriptor(player, Symbol.toPrimitive)) {
+            player[Symbol.toPrimitive] = function () { return 'self'; };
+          }
+        } catch (e) { }
+      }
+      if (opponent) {
+        opponent.side = 'opponent';
+        opponent.isSelf = false;
+        opponent.isOpponent = true;
+        try {
+          if (!Object.getOwnPropertyDescriptor(opponent, Symbol.toPrimitive)) {
+            opponent[Symbol.toPrimitive] = function () { return 'opponent'; };
+          }
+        } catch (e) { }
+      }
 
       const attachGetters = (pk) => {
         if (!pk || typeof pk !== 'object') return;
@@ -16070,12 +16208,77 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
               enumerable: false
             });
           }
+          if (!Object.getOwnPropertyDescriptor(pk, 'owner')) {
+            Object.defineProperty(pk, 'owner', {
+              get: () => api.getOwner(ctx, pk),
+              configurable: true,
+              enumerable: false
+            });
+          }
+          if (!Object.getOwnPropertyDescriptor(pk, 'player')) {
+            Object.defineProperty(pk, 'player', {
+              get: () => api.getOwner(ctx, pk),
+              configurable: true,
+              enumerable: false
+            });
+          }
+          if (!Object.getOwnPropertyDescriptor(pk, 'side')) {
+            Object.defineProperty(pk, 'side', {
+              get: () => api.getSide(ctx, pk),
+              configurable: true,
+              enumerable: false
+            });
+          }
+          if (!Object.getOwnPropertyDescriptor(pk, 'ownerSide')) {
+            Object.defineProperty(pk, 'ownerSide', {
+              get: () => api.getSide(ctx, pk),
+              configurable: true,
+              enumerable: false
+            });
+          }
+          if (!Object.getOwnPropertyDescriptor(pk, 'isSelf')) {
+            Object.defineProperty(pk, 'isSelf', {
+              get: () => api.isSelf(ctx, pk),
+              configurable: true,
+              enumerable: false
+            });
+          }
+          if (!Object.getOwnPropertyDescriptor(pk, 'isOpponent')) {
+            Object.defineProperty(pk, 'isOpponent', {
+              get: () => api.isOpponent(ctx, pk),
+              configurable: true,
+              enumerable: false
+            });
+          }
+          if (!Object.getOwnPropertyDescriptor(pk, 'self')) {
+            Object.defineProperty(pk, 'self', {
+              get: () => api.isSelf(ctx, pk) ? (ctx?.self || null) : null,
+              configurable: true,
+              enumerable: false
+            });
+          }
+          if (!Object.getOwnPropertyDescriptor(pk, 'opponent')) {
+            Object.defineProperty(pk, 'opponent', {
+              get: () => api.isOpponent(ctx, pk) ? (ctx?.opponent || null) : null,
+              configurable: true,
+              enumerable: false
+            });
+          }
         } catch (e) { }
       };
-      if (player?.active) attachGetters(player.active);
-      (player?.bench || []).forEach(attachGetters);
-      if (opponent?.active) attachGetters(opponent.active);
-      (opponent?.bench || []).forEach(attachGetters);
+      ctx.attachGetters = attachGetters;
+
+      const attachAll = (p) => {
+        if (!p) return;
+        if (p.active) attachGetters(p.active);
+        (p.bench || []).forEach(attachGetters);
+        (p.hand || []).forEach(attachGetters);
+        (p.discard || []).forEach(attachGetters);
+        (p.deck || []).forEach(attachGetters);
+        (p.prizes || []).forEach(attachGetters);
+      };
+      attachAll(player);
+      attachAll(opponent);
 
       try {
         if (player && !Object.getOwnPropertyDescriptor(player, 'field')) {
@@ -16172,15 +16375,30 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
       if (thisPokemon && typeof thisPokemon === 'object') {
         thisPokemon.isActive = isActive;
         thisPokemon.isBench = isBench;
+        if (ctx.attachGetters) ctx.attachGetters(thisPokemon);
       }
       if (thisCard && typeof thisCard === 'object' && thisCard !== thisPokemon) {
         thisCard.isActive = isActive;
         thisCard.isBench = isBench;
+        if (ctx.attachGetters) ctx.attachGetters(thisCard);
+      }
+      if (eventData && typeof eventData === 'object' && ctx.attachGetters) {
+        if (eventData.target) ctx.attachGetters(eventData.target);
+        if (eventData.defender) ctx.attachGetters(eventData.defender);
+        if (eventData.attacker) ctx.attachGetters(eventData.attacker);
+        if (eventData.pokemon) ctx.attachGetters(eventData.pokemon);
+        if (eventData.card) ctx.attachGetters(eventData.card);
+      }
+
+      const target = (eventData && (eventData.target || eventData.defender)) || ctx.opponent?.active || null;
+      if (target && typeof target === 'object' && ctx.attachGetters) {
+        ctx.attachGetters(target);
       }
 
       ctx.thisPokemon = thisPokemon;
       ctx.card = thisCard;
       ctx.pokemon = thisPokemon;
+      ctx.target = target;
       ctx.isActive = isActive;
       ctx.isBench = isBench;
 
@@ -16197,7 +16415,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
       const AsyncFunction = Object.getPrototypeOf(async function () { }).constructor;
       const fn = new AsyncFunction(
         'event', 'self', 'opponent', 'game',
-        'thisPokemon', 'card', 'pokemon', 'isActive', 'isBench',
+        'thisPokemon', 'card', 'pokemon', 'target', 'isActive', 'isBench',
         'damage', 'heal', 'draw', 'attachEnergy', 'discardEnergy',
         'switchActive', 'toHand', 'toDiscard', 'toDeck', 'toBench', 'moveCard', 'discardCards', 'searchCards',
         'coinFlip', 'flipCoin', 'applyStatus', 'clearStatus', 'hasStatus', 'getStatuses', 'benchDamage',
@@ -16226,13 +16444,14 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         'extraTurn', 'takeExtraTurn', 'anotherTurn', 'repeatTurn', 'grantExtraTurn',
         'lose', 'loseGame', 'win', 'winGame',
         'modifyRetreatCost', 'increaseRetreatCost', 'reduceRetreatCost', 'decreaseRetreatCost', 'setRetreatCost', 'resetRetreatCost', 'getRetreatCost', 'modifyStat', 'modifyStats', 'cannotAttachEnergyFromHand', 'unaffectedByAttackEffects', 'immuneToAttackEffects', 'passive', 'continuous',
+        'getOwner', 'getSide', 'isSelf', 'isOpponent',
         'turnNumber',
         '{\n' + asyncCode + '\n}'
       );
       try {
         await fn(
           ctx.event, ctx.self, ctx.opponent, ctx.game,
-          thisPokemon, thisCard, thisPokemon, isActive, isBench,
+          thisPokemon, thisCard, thisPokemon, target, isActive, isBench,
           ctx.damage, ctx.heal, ctx.draw, ctx.attachEnergy, ctx.discardEnergy,
           ctx.switchActive, ctx.toHand, ctx.toDiscard, ctx.toDeck, ctx.toBench, ctx.moveCard, ctx.discardCards, ctx.searchCards,
           ctx.coinFlip, ctx.flipCoin, ctx.applyStatus, ctx.clearStatus, ctx.hasStatus, ctx.getStatuses, ctx.benchDamage,
@@ -16262,6 +16481,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           ctx.extraTurn, ctx.takeExtraTurn, ctx.anotherTurn, ctx.repeatTurn, ctx.grantExtraTurn,
           ctx.lose, ctx.loseGame, ctx.win, ctx.winGame,
           ctx.modifyRetreatCost, ctx.increaseRetreatCost, ctx.reduceRetreatCost, ctx.decreaseRetreatCost, ctx.setRetreatCost, ctx.resetRetreatCost, ctx.getRetreatCost, ctx.modifyStat, ctx.modifyStats, ctx.cannotAttachEnergyFromHand, ctx.unaffectedByAttackEffects, ctx.immuneToAttackEffects, ctx.passive, ctx.continuous,
+          ctx.getOwner, ctx.getSide, ctx.isSelf, ctx.isOpponent,
           ctx.turnNumber
         );
         if (eventName) await ctx.event.emit(eventName, eventData);
@@ -16447,6 +16667,42 @@ var EffectEditor;
       badge: '自分',
       desc: '自分プレイヤーオブジェクト（.active, .bench, .hand, .deck, .discard, .prizes）',
       snippet: 'self',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'getOwner',
+      label: 'getOwner(pokemon)',
+      category: 'func',
+      badge: '所有者取得',
+      desc: '指定したポケモンの所有プレイヤー（self または opponent）を取得します',
+      snippet: 'getOwner(target)',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'getSide',
+      label: 'getSide(pokemon)',
+      category: 'func',
+      badge: '陣営取得',
+      desc: '指定したポケモンの陣営文字列（"self" または "opponent"）を取得します',
+      snippet: 'getSide(target)',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'isSelf',
+      label: 'isSelf(pokemon)',
+      category: 'func',
+      badge: '自判定',
+      desc: '指定したポケモンが自分側（self）なら true を返します',
+      snippet: 'isSelf(target)',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'isOpponent',
+      label: 'isOpponent(pokemon)',
+      category: 'func',
+      badge: '敵判定',
+      desc: '指定したポケモンが相手側（opponent）なら true を返します',
+      snippet: 'isOpponent(target)',
       targets: ['attack1', 'attack2', 'ability', 'trainer']
     },
 
@@ -19138,6 +19394,11 @@ var EffectEditor;
           { keyword: 'category', label: 'category', category: 'prop', badge: '分類', desc: 'カードの分類（"たね", "1進化", "2進化", "グッズ", "サポート" など）', snippet: 'category' },
           { keyword: 'type', label: 'type', category: 'prop', badge: 'タイプ', desc: 'ポケモンの属性タイプ（"草", "炎", "水", "雷", "超", "闘", "悪", "鋼", "ドラゴン", "無色"）', snippet: 'type' },
           { keyword: 'status', label: 'status', category: 'prop', badge: '状態異常', desc: '現在の状態異常（"どく", "やけど", "マヒ", "ねむり", "こんらん" または null）', snippet: 'status' },
+          { keyword: 'owner', label: 'owner', category: 'prop', badge: '所有プレイヤー', desc: '所有者プレイヤーオブジェクト（self または opponent）', snippet: 'owner' },
+          { keyword: 'player', label: 'player', category: 'prop', badge: '所有プレイヤー', desc: '所有者プレイヤーオブジェクト（self または opponent）', snippet: 'player' },
+          { keyword: 'side', label: 'side', category: 'prop', badge: '陣営', desc: '所有陣営文字列（"self" または "opponent"）', snippet: 'side' },
+          { keyword: 'isSelf', label: 'isSelf', category: 'prop', badge: '自判定', desc: '自分のポケモンなら true、相手なら false', snippet: 'isSelf' },
+          { keyword: 'isOpponent', label: 'isOpponent', category: 'prop', badge: '敵判定', desc: '相手のポケモンなら true、自分なら false', snippet: 'isOpponent' },
           { keyword: 'damageReduction', label: 'damageReduction', category: 'prop', badge: '軽減値', desc: '現在受けているダメージ軽減数値', snippet: 'damageReduction' },
           { keyword: 'attachedCards', label: 'attachedCards', category: 'prop', badge: '付随カード', desc: 'ポケモンについているエネルギーや進化前カード配列', snippet: 'attachedCards' },
           { keyword: 'getCards', label: 'getCards(filter)', category: 'func', badge: '付随取得', desc: 'ついているカード（エネルギー等）を取得する', snippet: 'getCards()' }

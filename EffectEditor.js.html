@@ -40,6 +40,42 @@ var EffectEditor;
       snippet: 'self',
       targets: ['attack1', 'attack2', 'ability', 'trainer']
     },
+    {
+      keyword: 'getOwner',
+      label: 'getOwner(pokemon)',
+      category: 'func',
+      badge: '所有者取得',
+      desc: '指定したポケモンの所有プレイヤー（self または opponent）を取得します',
+      snippet: 'getOwner(target)',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'getSide',
+      label: 'getSide(pokemon)',
+      category: 'func',
+      badge: '陣営取得',
+      desc: '指定したポケモンの陣営文字列（"self" または "opponent"）を取得します',
+      snippet: 'getSide(target)',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'isSelf',
+      label: 'isSelf(pokemon)',
+      category: 'func',
+      badge: '自判定',
+      desc: '指定したポケモンが自分側（self）なら true を返します',
+      snippet: 'isSelf(target)',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'isOpponent',
+      label: 'isOpponent(pokemon)',
+      category: 'func',
+      badge: '敵判定',
+      desc: '指定したポケモンが相手側（opponent）なら true を返します',
+      snippet: 'isOpponent(target)',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
 
     // === 【グッズ・サポート効果 (トレーナー)】 ===
     {
@@ -2729,6 +2765,11 @@ var EffectEditor;
           { keyword: 'category', label: 'category', category: 'prop', badge: '分類', desc: 'カードの分類（"たね", "1進化", "2進化", "グッズ", "サポート" など）', snippet: 'category' },
           { keyword: 'type', label: 'type', category: 'prop', badge: 'タイプ', desc: 'ポケモンの属性タイプ（"草", "炎", "水", "雷", "超", "闘", "悪", "鋼", "ドラゴン", "無色"）', snippet: 'type' },
           { keyword: 'status', label: 'status', category: 'prop', badge: '状態異常', desc: '現在の状態異常（"どく", "やけど", "マヒ", "ねむり", "こんらん" または null）', snippet: 'status' },
+          { keyword: 'owner', label: 'owner', category: 'prop', badge: '所有プレイヤー', desc: '所有者プレイヤーオブジェクト（self または opponent）', snippet: 'owner' },
+          { keyword: 'player', label: 'player', category: 'prop', badge: '所有プレイヤー', desc: '所有者プレイヤーオブジェクト（self または opponent）', snippet: 'player' },
+          { keyword: 'side', label: 'side', category: 'prop', badge: '陣営', desc: '所有陣営文字列（"self" または "opponent"）', snippet: 'side' },
+          { keyword: 'isSelf', label: 'isSelf', category: 'prop', badge: '自判定', desc: '自分のポケモンなら true、相手なら false', snippet: 'isSelf' },
+          { keyword: 'isOpponent', label: 'isOpponent', category: 'prop', badge: '敵判定', desc: '相手のポケモンなら true、自分なら false', snippet: 'isOpponent' },
           { keyword: 'damageReduction', label: 'damageReduction', category: 'prop', badge: '軽減値', desc: '現在受けているダメージ軽減数値', snippet: 'damageReduction' },
           { keyword: 'attachedCards', label: 'attachedCards', category: 'prop', badge: '付随カード', desc: 'ポケモンについているエネルギーや進化前カード配列', snippet: 'attachedCards' },
           { keyword: 'getCards', label: 'getCards(filter)', category: 'func', badge: '付随取得', desc: 'ついているカード（エネルギー等）を取得する', snippet: 'getCards()' }
