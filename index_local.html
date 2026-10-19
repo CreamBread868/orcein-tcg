@@ -12587,6 +12587,67 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
                 });
               }
             }
+
+            // ダメージを与えた時 (dealDamage / onDealDamage) イベント発火
+            if (actualDamage > 0) {
+              const dealEvent = {
+                attacker: attacker || ctx?.thisPokemon || ctx?.card || null,
+                defender: t,
+                target: t,
+                damage: actualDamage,
+                amount: actualDamage,
+                isWeakness: isWeakness
+              };
+
+              // 1. ctx.event.emit でリスナーを呼び出し
+              if (ctx?.event?.emit) {
+                try {
+                  await ctx.event.emit('dealDamage', dealEvent);
+                } catch (e) {
+                  console.error('ctx.event dealDamage error:', e);
+                }
+              }
+
+              // 2. 攻撃側ポケモン（またはカード）の特性・ワザコードで event.on('onDealDamage') 等をディスパッチ
+              const atkPk = attacker || ctx?.thisPokemon || ctx?.card;
+              if (atkPk && window.executeCardEffectCode) {
+                const DEAL_EVENT_REGEX = /(?:event\s*\.\s*(?:on|onasync|onAsync)|on)\s*\(\s*['"](?:dealDamage|onDealDamage|afterDamage|damageDealt|onDamageDealt|giveDamage|onGiveDamage|ダメージを与えた時|ダメージ時|攻撃ヒット時)['"]/i;
+                const codes = [atkPk.abilityCode, atkPk.attack1Code, atkPk.attack2Code];
+                for (const c of codes) {
+                  if (c && DEAL_EVENT_REGEX.test(c)) {
+                    try {
+                      await window.executeCardEffectCode(
+                        c,
+                        { players: [ctx?.self, ctx?.opponent].filter(Boolean), logs: ctx?.game?.logs },
+                        ctx?.self,
+                        'dealDamage',
+                        dealEvent
+                      );
+                    } catch (e) {
+                      console.error('dealDamage attack/ability effect error:', e);
+                    }
+                  }
+                }
+              }
+
+              // 3. 防御側ポケモン（ダメージを受けた側）の onDamage イベント発火
+              if (t && window.executeCardEffectCode) {
+                const ON_DMG_REGEX = /(?:event\s*\.\s*(?:on|onasync|onAsync)|on)\s*\(\s*['"](?:onDamage|damage|takeDamage|receiveDamage|被ダメ後|ダメージを受けた時)['"]/i;
+                if (t.abilityCode && ON_DMG_REGEX.test(t.abilityCode)) {
+                  try {
+                    await window.executeCardEffectCode(
+                      t.abilityCode,
+                      { players: [ctx?.opponent, ctx?.self].filter(Boolean), logs: ctx?.game?.logs },
+                      ctx?.opponent || ctx?.self,
+                      'onDamage',
+                      dealEvent
+                    );
+                  } catch (e) {
+                    console.error('onDamage effect error:', e);
+                  }
+                }
+              }
+            }
           }
 
           // スタジアム上のヒットエフェクト & フローティングダメージ表示 (「~ダメージ」アーケード演出 & HP減少アニメーション)
@@ -15662,6 +15723,18 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
       }
       normalizeName(name) {
         const n = String(name || '').trim();
+        if (['dealDamage', 'onDealDamage', 'afterDamage', 'damageDealt', 'onDamageDealt', 'giveDamage', 'onGiveDamage', 'ダメージを与えた時', 'ダメージを与えた', 'ダメージ時', '攻撃ヒット時', 'ヒット時'].includes(n)) {
+          return 'dealDamage';
+        }
+        if (['onDamage', 'damage', 'takeDamage', 'receiveDamage', '被ダメ後', 'ダメージを受けた時', 'ダメージを受けた'].includes(n)) {
+          return 'onDamage';
+        }
+        if (['turnEnd', 'endTurn', 'onEndTurn', 'turn_end', 'end_turn', 'ターン終了', 'ターン終了時', '番の終わり', '自分の番の終わり', 'お互いの番の終わり'].includes(n)) {
+          return 'turnEnd';
+        }
+        if (['turnStart', 'start', 'onTurnStart', 'turn_start', 'ターン開始', 'ターン開始時', '番の初め', '自分の番の初め', 'turnNumber', 'turn', 'ターン'].includes(n)) {
+          return 'turnStart';
+        }
         if (['allyKnockedOut', 'onAllyKnockout', 'allyKnockout', 'ally_knocked_out', 'allyFainted', '味方気絶', '仲間気絶', '自分のポケモン気絶', '自分の仲間が気絶したら', '仲間が気絶したら', '味方が気絶したら'].includes(n)) {
           return 'allyKnockedOut';
         }
@@ -15971,6 +16044,8 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         modify: (s, fn) => rawEvent.modify(s, fn)
       };
 
+      ctx.turnNumber = (game?.turnNumber != null) ? game.turnNumber : ((window.BattleSystem?.state?.turnNumber != null) ? window.BattleSystem.state.turnNumber : 1);
+
       const attachGetters = (pk) => {
         if (!pk || typeof pk !== 'object') return;
         try {
@@ -15984,6 +16059,13 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           if (!Object.getOwnPropertyDescriptor(pk, 'turnsInPlay')) {
             Object.defineProperty(pk, 'turnsInPlay', {
               get: () => api.getTurnsInPlay(ctx, pk),
+              configurable: true,
+              enumerable: false
+            });
+          }
+          if (!Object.getOwnPropertyDescriptor(pk, 'turnNumber')) {
+            Object.defineProperty(pk, 'turnNumber', {
+              get: () => (game?.turnNumber != null) ? game.turnNumber : ((window.BattleSystem?.state?.turnNumber != null) ? window.BattleSystem.state.turnNumber : 1),
               configurable: true,
               enumerable: false
             });
@@ -16046,17 +16128,33 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
       // （起動型特性が turnStart/beforeDamage 等で意図せず自動実行されることを防ぐ）
       const ALLY_KO_ALIASES = ['allyKnockedOut', 'onAllyKnockout', 'allyKnockout', 'ally_knocked_out', 'allyFainted', '味方気絶', '仲間気絶', '自分のポケモン気絶', '自分の仲間が気絶したら', '仲間が気絶したら', '味方が気絶したら'];
       const PASSIVE_ALIASES = ['passive', 'continuous', 'calcRetreatCost', 'calcMaxHp'];
-      const EVENT_DISPATCH_NAMES = ['turnStart', 'start', 'beforeDamage', 'onKnockout', 'onKnockoutOpponent', 'onAttach', 'onEvolution', ...ALLY_KO_ALIASES, ...PASSIVE_ALIASES];
+      const TURN_END_ALIASES = ['turnEnd', 'endTurn', 'onEndTurn', 'turn_end', 'end_turn', 'ターン終了', 'ターン終了時', '番の終わり', '自分の番の終わり', 'お互いの番の終わり'];
+      const TURN_START_ALIASES = ['turnStart', 'start', 'onTurnStart', 'turn_start', 'ターン開始', 'ターン開始時', 'turnNumber', 'turn', 'ターン'];
+      const DEAL_DAMAGE_ALIASES = ['dealDamage', 'onDealDamage', 'afterDamage', 'damageDealt', 'onDamageDealt', 'giveDamage', 'onGiveDamage', 'ダメージを与えた時', 'ダメージを与えた', 'ダメージ時', '攻撃ヒット時', 'ヒット時'];
+      const ON_DAMAGE_ALIASES = ['onDamage', 'damage', 'takeDamage', 'receiveDamage', '被ダメ後', 'ダメージを受けた時', 'ダメージを受けた'];
+      const EVENT_DISPATCH_NAMES = [...TURN_START_ALIASES, ...TURN_END_ALIASES, ...DEAL_DAMAGE_ALIASES, ...ON_DAMAGE_ALIASES, 'beforeDamage', 'onKnockout', 'onKnockoutOpponent', 'onAttach', 'onEvolution', ...ALLY_KO_ALIASES, ...PASSIVE_ALIASES];
       if (eventName && EVENT_DISPATCH_NAMES.includes(eventName)) {
         if (eventName === 'allyKnockedOut' || ALLY_KO_ALIASES.includes(eventName)) {
-          const hasListener = /event\s*\.\s*(?:on|onasync|onAsync)\s*\(\s*['"](allyKnockedOut|onAllyKnockout|allyKnockout|ally_knocked_out|allyFainted|味方気絶|仲間気絶|自分のポケモン気絶|自分の仲間が気絶したら|仲間が気絶したら|味方が気絶したら)['"]|whenAllyKnockedOut|onAllyKnockedOut/i.test(code);
+          const hasListener = /(?:event\s*\.\s*(?:on|onasync|onAsync)|on)\s*\(\s*['"](allyKnockedOut|onAllyKnockout|allyKnockout|ally_knocked_out|allyFainted|味方気絶|仲間気絶|自分のポケモン気絶|自分の仲間が気絶したら|仲間が気絶したら|味方が気絶したら)['"]|whenAllyKnockedOut|onAllyKnockedOut/i.test(code);
+          if (!hasListener) return;
+        } else if (eventName === 'dealDamage' || DEAL_DAMAGE_ALIASES.includes(eventName)) {
+          const hasListener = /(?:event\s*\.\s*(?:on|onasync|onAsync)|on)\s*\(\s*['"](?:dealDamage|onDealDamage|afterDamage|damageDealt|onDamageDealt|giveDamage|onGiveDamage|ダメージを与えた時|ダメージを与えた|ダメージ時|攻撃ヒット時|ヒット時)['"]/i.test(code);
+          if (!hasListener) return;
+        } else if (eventName === 'onDamage' || ON_DAMAGE_ALIASES.includes(eventName)) {
+          const hasListener = /(?:event\s*\.\s*(?:on|onasync|onAsync)|on)\s*\(\s*['"](?:onDamage|damage|takeDamage|receiveDamage|被ダメ後|ダメージを受けた時|ダメージを受けた)['"]/i.test(code);
+          if (!hasListener) return;
+        } else if (eventName === 'turnEnd' || TURN_END_ALIASES.includes(eventName)) {
+          const hasListener = /(?:event\s*\.\s*(?:on|onasync|onAsync)|on)\s*\(\s*['"](?:turnEnd|endTurn|onEndTurn|turn_end|end_turn|ターン終了|ターン終了時|番の終わり|自分の番の終わり|お互いの番の終わり)['"]/i.test(code);
+          if (!hasListener) return;
+        } else if (eventName === 'turnStart' || TURN_START_ALIASES.includes(eventName)) {
+          const hasListener = /(?:event\s*\.\s*(?:on|onasync|onAsync)|on)\s*\(\s*['"](?:turnStart|start|onTurnStart|turn_start|ターン開始|ターン開始時|turnNumber|turn|ターン)['"]/i.test(code);
           if (!hasListener) return;
         } else if (PASSIVE_ALIASES.includes(eventName)) {
           const hasListener = /(?:event\s*\.\s*(?:passive|continuous|modify|on)|modifyRetreatCost|increaseRetreatCost|reduceRetreatCost|setRetreatCost)/i.test(code);
           if (!hasListener) return;
         } else {
           const escapedEvent = eventName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const hasListener = new RegExp('event\\s*\\.\\s*(?:on|onasync|onAsync)\\s*\\(\\s*[\'"]' + escapedEvent + '[\'"]', 'i').test(code);
+          const hasListener = new RegExp('(?:event\\s*\\.\\s*(?:on|onasync|onAsync)|on)\\s*\\(\\s*[\'"]' + escapedEvent + '[\'"]', 'i').test(code);
           if (!hasListener) return; // このコードはこのイベントをリッスンしていない → スキップ
         }
       }
@@ -16128,6 +16226,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         'extraTurn', 'takeExtraTurn', 'anotherTurn', 'repeatTurn', 'grantExtraTurn',
         'lose', 'loseGame', 'win', 'winGame',
         'modifyRetreatCost', 'increaseRetreatCost', 'reduceRetreatCost', 'decreaseRetreatCost', 'setRetreatCost', 'resetRetreatCost', 'getRetreatCost', 'modifyStat', 'modifyStats', 'cannotAttachEnergyFromHand', 'unaffectedByAttackEffects', 'immuneToAttackEffects', 'passive', 'continuous',
+        'turnNumber',
         '{\n' + asyncCode + '\n}'
       );
       try {
@@ -16162,7 +16261,8 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           ctx.afterTurns, ctx.afterTurn, ctx.delayTurns, ctx.delayTurn, ctx.waitTurns, ctx.waitTurn, ctx.atEndOfTurn,
           ctx.extraTurn, ctx.takeExtraTurn, ctx.anotherTurn, ctx.repeatTurn, ctx.grantExtraTurn,
           ctx.lose, ctx.loseGame, ctx.win, ctx.winGame,
-          ctx.modifyRetreatCost, ctx.increaseRetreatCost, ctx.reduceRetreatCost, ctx.decreaseRetreatCost, ctx.setRetreatCost, ctx.resetRetreatCost, ctx.getRetreatCost, ctx.modifyStat, ctx.modifyStats, ctx.cannotAttachEnergyFromHand, ctx.unaffectedByAttackEffects, ctx.immuneToAttackEffects, ctx.passive, ctx.continuous
+          ctx.modifyRetreatCost, ctx.increaseRetreatCost, ctx.reduceRetreatCost, ctx.decreaseRetreatCost, ctx.setRetreatCost, ctx.resetRetreatCost, ctx.getRetreatCost, ctx.modifyStat, ctx.modifyStats, ctx.cannotAttachEnergyFromHand, ctx.unaffectedByAttackEffects, ctx.immuneToAttackEffects, ctx.passive, ctx.continuous,
+          ctx.turnNumber
         );
         if (eventName) await ctx.event.emit(eventName, eventData);
       } catch (e) {
@@ -16685,6 +16785,42 @@ var EffectEditor;
       desc: '自分のターン終了時に発動',
       snippet: 'event.on("turnEnd", () => {\n  \n});',
       targets: ['ability']
+    },
+    {
+      keyword: 'endTurn',
+      label: 'event.on("endTurn", () => { ... })',
+      category: 'event',
+      badge: '特性イベント',
+      desc: '自分のターン終了時に発動（turnEndの別名）',
+      snippet: 'event.on("endTurn", () => {\n  \n});',
+      targets: ['ability']
+    },
+    {
+      keyword: 'onDealDamage',
+      label: 'event.on("onDealDamage", (e) => { ... })',
+      category: 'event',
+      badge: '特性イベント',
+      desc: '相手にダメージを与えた時に発動（e.damage, e.target）',
+      snippet: 'event.on("onDealDamage", (e) => {\n  // ダメージを与えた時の処理\n});',
+      targets: ['ability', 'attack']
+    },
+    {
+      keyword: 'dealDamage',
+      label: 'event.on("dealDamage", (e) => { ... })',
+      category: 'event',
+      badge: '特性イベント',
+      desc: '相手にダメージを与えた時に発動（onDealDamageの別名）',
+      snippet: 'event.on("dealDamage", (e) => {\n  // ダメージを与えた時の処理\n});',
+      targets: ['ability', 'attack']
+    },
+    {
+      keyword: 'turnNumber',
+      label: 'turnNumber',
+      category: 'prop',
+      badge: 'ターン数',
+      desc: '現在の対戦ターン数（1, 2, 3... ベンチでも使用可能）',
+      snippet: 'turnNumber',
+      targets: ['ability', 'attack']
     },
     {
       keyword: 'event',
@@ -19027,10 +19163,13 @@ var EffectEditor;
           { keyword: 'on', label: 'on("calcRetreatCost", (e) => { ... })', category: 'event', badge: 'にげる計算時', desc: '【にげる計算フック】にげるエネルギー計算時に割り込み（e.cost += 1 等）', snippet: 'on("calcRetreatCost", (e) => {\n  if (e.isActive) e.cost += 1;\n});' },
           { keyword: 'on', label: 'on("turnStart", () => { ... })', category: 'event', badge: 'ターン開始時', desc: '【毎ターン1回】自分のターン開始時に発動', snippet: 'on("turnStart", () => {\n  draw(self, 1);\n});' },
           { keyword: 'on', label: 'on("turnEnd", () => { ... })', category: 'event', badge: 'ターン終了時', desc: '自分のターン終了時に発動', snippet: 'on("turnEnd", () => {\n  \n});' },
+          { keyword: 'on', label: 'on("endTurn", () => { ... })', category: 'event', badge: 'ターン終了時', desc: '自分のターン終了時に発動（turnEndの別名）', snippet: 'on("endTurn", () => {\n  \n});' },
           { keyword: 'on', label: 'on("enterBattle", () => { ... })', category: 'event', badge: 'バトル場登場', desc: 'バトル場に出た時に発動', snippet: 'on("enterBattle", () => {\n  heal(self.active, 30);\n});' },
           { keyword: 'on', label: 'on("enterBench", () => { ... })', category: 'event', badge: 'ベンチ登場', desc: '手札からベンチに出した時に発動', snippet: 'on("enterBench", () => {\n  addEnergy(self.active, 1);\n});' },
           { keyword: 'on', label: 'on("beforeDamage", (e) => { ... })', category: 'event', badge: '被ダメ直前', desc: '【被ダメージ直前】相手からダメージを受ける直前に無効化や軽減（e.cancel = true）', snippet: 'on("beforeDamage", (e) => {\n  // 相手のワザのダメージを受けない\n  e.cancel = true;\n});' },
           { keyword: 'on', label: 'on("onDamage", (amount) => { ... })', category: 'event', badge: '被ダメ後', desc: 'ワザのダメージを受けた時に発動', snippet: 'on("onDamage", (amount) => {\n  \n});' },
+          { keyword: 'on', label: 'on("onDealDamage", (e) => { ... })', category: 'event', badge: 'ダメージを与えた時', desc: '相手にダメージを与えた時に発動（e.damage, e.target）', snippet: 'on("onDealDamage", (e) => {\n  \n});' },
+          { keyword: 'on', label: 'on("dealDamage", (e) => { ... })', category: 'event', badge: 'ダメージを与えた時', desc: '相手にダメージを与えた時に発動（onDealDamageの別名）', snippet: 'on("dealDamage", (e) => {\n  \n});' },
           { keyword: 'on', label: 'on("onKnockout", () => { ... })', category: 'event', badge: 'きぜつ時', desc: 'このポケモンがきぜつした時に発動', snippet: 'on("onKnockout", () => {\n  draw(self, 2);\n});' },
           { keyword: 'on', label: 'on("onKnockoutOpponent", () => { ... })', category: 'event', badge: '相手撃破時', desc: '相手のポケモンをきぜつさせた時に発動', snippet: 'on("onKnockoutOpponent", () => {\n  draw(self, 1);\n});' }
         ];
@@ -19043,9 +19182,11 @@ var EffectEditor;
           { keyword: 'isActive', label: 'isActive', category: 'prop', badge: 'バトル場判定', desc: 'calcRetreatCostイベント時の対象がバトル場かどうかの真偽値', snippet: 'isActive' },
           { keyword: 'cancel', label: 'cancel = true', category: 'func', badge: '完全無効化', desc: '受けるワザのダメージを完全にキャンセル（無効化）する', snippet: 'cancel = true;' },
           { keyword: 'preventDamage', label: 'preventDamage()', category: 'func', badge: '無効化', desc: '受けるワザのダメージを無効化するメソッド', snippet: 'preventDamage();' },
-          { keyword: 'damage', label: 'damage', category: 'prop', badge: '受けるダメ値', desc: '受けようとしているダメージ量数値', snippet: 'damage' },
-          { keyword: 'source', label: 'source', category: 'prop', badge: '攻撃側ポケモン', desc: 'ダメージを与えてきた相手ポケモンオブジェクト（.name, .hp など）', snippet: 'source' },
-          { keyword: 'target', label: 'target', category: 'prop', badge: '防御側ポケモン', desc: 'ダメージを受ける自分ポケモンオブジェクト（.name, .hp など）', snippet: 'target' }
+          { keyword: 'damage', label: 'damage', category: 'prop', badge: 'ダメージ値', desc: '与えた/受けようとしているダメージ量数値', snippet: 'damage' },
+          { keyword: 'source', label: 'source', category: 'prop', badge: '攻撃側ポケモン', desc: 'ダメージを与えたポケモンオブジェクト（.name, .hp など）', snippet: 'source' },
+          { keyword: 'attacker', label: 'attacker', category: 'prop', badge: '攻撃側ポケモン', desc: 'ダメージを与えたポケモンオブジェクト', snippet: 'attacker' },
+          { keyword: 'target', label: 'target', category: 'prop', badge: '防御側ポケモン', desc: 'ダメージを受けるポケモンオブジェクト（.name, .hp など）', snippet: 'target' },
+          { keyword: 'defender', label: 'defender', category: 'prop', badge: '防御側ポケモン', desc: 'ダメージを受けるポケモンオブジェクト', snippet: 'defender' }
         ];
       }
 
@@ -19053,6 +19194,7 @@ var EffectEditor;
       if (cleanPath === 'game') {
         return [
           { keyword: 'turn', label: 'turn', category: 'prop', badge: 'ターン数', desc: '現在のターン数（数値）', snippet: 'turn' },
+          { keyword: 'turnNumber', label: 'turnNumber', category: 'prop', badge: 'ターン数', desc: '現在の対戦ターン数（数値: 1, 2, 3...）', snippet: 'turnNumber' },
           { keyword: 'logs', label: 'logs', category: 'prop', badge: 'バトルログ', desc: 'バトルログ文字列配列（game.logs.push("メッセージ")）', snippet: 'logs' },
           { keyword: 'currentTurn', label: 'currentTurn', category: 'prop', badge: '手番', desc: '現在手番のプレイヤーオブジェクト（self または opponent）', snippet: 'currentTurn' }
         ];
@@ -19469,12 +19611,16 @@ var EffectEditor;
             { keyword: '"start"', label: '"start"', category: 'event', badge: 'ターン開始時(強制)', desc: '自分のターン開始時に強制（自動）発動', snippet: '"start"' },
             { keyword: '"turnStart"', label: '"turnStart"', category: 'event', badge: 'ターン開始時', desc: '自分のターン開始時（毎ターン強制発動）', snippet: '"turnStart"' },
             { keyword: '"turnEnd"', label: '"turnEnd"', category: 'event', badge: 'ターン終了時', desc: '自分のターン終了時', snippet: '"turnEnd"' },
+            { keyword: '"endTurn"', label: '"endTurn"', category: 'event', badge: 'ターン終了時', desc: '自分のターン終了時（turnEndの別名）', snippet: '"endTurn"' },
             { keyword: '"enterBattle"', label: '"enterBattle"', category: 'event', badge: 'バトル場登場', desc: 'バトル場に出た時', snippet: '"enterBattle"' },
             { keyword: '"enterBench"', label: '"enterBench"', category: 'event', badge: 'ベンチ登場', desc: '手札からベンチに出した時', snippet: '"enterBench"' },
             { keyword: '"beforeDamage"', label: '"beforeDamage"', category: 'event', badge: '被ダメ直前', desc: '被ダメージ直前（無効化・軽減）', snippet: '"beforeDamage"' },
             { keyword: '"onDamage"', label: '"onDamage"', category: 'event', badge: '被ダメ後', desc: 'ダメージを受けた時', snippet: '"onDamage"' },
+            { keyword: '"onDealDamage"', label: '"onDealDamage"', category: 'event', badge: '与ダメ後', desc: 'ダメージを与えた時', snippet: '"onDealDamage"' },
+            { keyword: '"dealDamage"', label: '"dealDamage"', category: 'event', badge: '与ダメ後', desc: 'ダメージを与えた時（onDealDamageの別名）', snippet: '"dealDamage"' },
             { keyword: '"onKnockout"', label: '"onKnockout"', category: 'event', badge: 'きぜつ時', desc: 'このポケモンがきぜつした時', snippet: '"onKnockout"' },
-            { keyword: '"onKnockoutOpponent"', label: '"onKnockoutOpponent"', category: 'event', badge: '相手撃破時', desc: '相手ポケモンを倒した時', snippet: '"onKnockoutOpponent"' }
+            { keyword: '"onKnockoutOpponent"', label: '"onKnockoutOpponent"', category: 'event', badge: '相手撃破時', desc: '相手ポケモンを倒した時', snippet: '"onKnockoutOpponent"' },
+            { keyword: '"turnNumber"', label: '"turnNumber"', category: 'event', badge: 'ターン毎', desc: '各ターン毎に実行（バトル場・ベンチ両対応）', snippet: '"turnNumber"' }
           ];
         }
       }
@@ -27275,22 +27421,44 @@ window.DeckSystem = function () {
       // ※ event.on('turnStart', ...) または event.on('start', ...) を明示的に宣言しているコードのみ実行する
       // ※ useLimit() 等の起動型特性（上位コードがイベント登録なし）は絶対に自動実行しない
       const activePokemons = [cur.active, ...(cur.bench || [])].filter(Boolean);
-      const TURN_START_EVENT_REGEX = /event\s*\.\s*(?:on|onasync|onAsync)\s*\(\s*['"](?:turnStart|start)['"]/i;
+      const TURN_START_EVENT_REGEX = /(?:event\s*\.\s*(?:on|onasync|onAsync)|on)\s*\(\s*['"](?:turnStart|start|turnNumber|turn|ターン開始|ターン開始時)['"]/i;
       activePokemons.forEach((pk) => {
-        const code = String(pk.abilityCode || '');
-        if (code && window.executeCardEffectCode && TURN_START_EVENT_REGEX.test(code)) {
-          try {
-            window.executeCardEffectCode(
-              pk.abilityCode,
-              { players: [this.state.player, this.state.opponent], logs: this.state.logs },
-              cur,
-              'turnStart',
-              { card: pk, pokemon: pk, turnNumber: this.state.turnNumber }
-            ).catch((err) => {
-              console.error('turnStart ability error:', err);
-            });
-          } catch (e) {
-            console.error('turnStart ability error:', e);
+        const codes = [pk.abilityCode, pk.attack1Code, pk.attack2Code];
+        for (const code of codes) {
+          if (code && window.executeCardEffectCode && TURN_START_EVENT_REGEX.test(code)) {
+            try {
+              window.executeCardEffectCode(
+                code,
+                { players: [this.state.player, this.state.opponent], logs: this.state.logs },
+                cur,
+                'turnStart',
+                { card: pk, pokemon: pk, turnNumber: this.state.turnNumber }
+              ).catch((err) => {
+                console.error('turnStart ability error on', pk.name, err);
+              });
+            } catch (e) {
+              console.error('turnStart ability error on', pk.name, e);
+            }
+          }
+        }
+        if (pk.attachedTool) {
+          const toolCodes = [pk.attachedTool.abilityCode, pk.attachedTool.attack1Code];
+          for (const tCode of toolCodes) {
+            if (tCode && window.executeCardEffectCode && TURN_START_EVENT_REGEX.test(tCode)) {
+              try {
+                window.executeCardEffectCode(
+                  tCode,
+                  { players: [this.state.player, this.state.opponent], logs: this.state.logs },
+                  cur,
+                  'turnStart',
+                  { card: pk.attachedTool, pokemon: pk, turnNumber: this.state.turnNumber }
+                ).catch((err) => {
+                  console.error('turnStart tool error on', pk.attachedTool.name, err);
+                });
+              } catch (e) {
+                console.error('turnStart tool error on', pk.attachedTool.name, e);
+              }
+            }
           }
         }
       });
@@ -27334,7 +27502,11 @@ window.DeckSystem = function () {
         return;
       }
       const curEnding = this.state.turnPlayer === 'player' ? this.state.player : this.state.opponent;
+      const otherPlayer = this.state.turnPlayer === 'player' ? this.state.opponent : this.state.player;
       if (curEnding) {
+        // ターン終了時 (turnEnd / endTurn) のカード効果・特性イベント発火
+        await this.dispatchTurnEndEvents(curEnding, otherPlayer);
+
         // 番の終わりのポケモンのどうぐ効果 (たべのこし等)
         const allEndingPk = [curEnding.active, ...(curEnding.bench || [])].filter(Boolean);
         allEndingPk.forEach((pk) => {
@@ -27390,6 +27562,95 @@ window.DeckSystem = function () {
       }
 
       this.startTurn(nextPlayer);
+    },
+
+    async dispatchTurnEndEvents(curEnding, otherPlayer) {
+      if (!window.executeCardEffectCode) return;
+      const TURN_END_EVENT_REGEX = /(?:event\s*\.\s*(?:on|onasync|onAsync)|on)\s*\(\s*['"](?:turnEnd|endTurn|onEndTurn|turn_end|end_turn|ターン終了|ターン終了時|番の終わり|自分の番の終わり|お互いの番の終わり)['"]/i;
+
+      // 1. ターン終了側プレイヤーのポケモン（バトル場・ベンチ）
+      const endingPokemons = [curEnding.active, ...(curEnding.bench || [])].filter(Boolean);
+      for (const pk of endingPokemons) {
+        const codes = [pk.abilityCode, pk.attack1Code, pk.attack2Code];
+        for (const code of codes) {
+          if (code && TURN_END_EVENT_REGEX.test(code)) {
+            try {
+              await window.executeCardEffectCode(
+                code,
+                { players: [this.state.player, this.state.opponent], logs: this.state.logs },
+                curEnding,
+                'turnEnd',
+                { card: pk, pokemon: pk, turnNumber: this.state.turnNumber, player: curEnding }
+              );
+            } catch (e) {
+              console.error('turnEnd card effect error on', pk.name, e);
+            }
+          }
+        }
+        if (pk.attachedTool) {
+          const toolCodes = [pk.attachedTool.abilityCode, pk.attachedTool.attack1Code, pk.attachedTool.attack2Code];
+          for (const tCode of toolCodes) {
+            if (tCode && TURN_END_EVENT_REGEX.test(tCode)) {
+              try {
+                await window.executeCardEffectCode(
+                  tCode,
+                  { players: [this.state.player, this.state.opponent], logs: this.state.logs },
+                  curEnding,
+                  'turnEnd',
+                  { card: pk.attachedTool, pokemon: pk, turnNumber: this.state.turnNumber, player: curEnding }
+                );
+              } catch (e) {
+                console.error('turnEnd tool error on', pk.attachedTool.name, e);
+              }
+            }
+          }
+        }
+      }
+
+      // 2. スタジアムカードのターン終了イベント
+      if (this.state.activeStadium) {
+        const stadiumCodes = [this.state.activeStadium.abilityCode, this.state.activeStadium.attack1Code];
+        for (const sCode of stadiumCodes) {
+          if (sCode && TURN_END_EVENT_REGEX.test(sCode)) {
+            try {
+              await window.executeCardEffectCode(
+                sCode,
+                { players: [this.state.player, this.state.opponent], logs: this.state.logs },
+                curEnding,
+                'turnEnd',
+                { card: this.state.activeStadium, stadium: this.state.activeStadium, turnNumber: this.state.turnNumber, player: curEnding }
+              );
+            } catch (e) {
+              console.error('turnEnd stadium error on', this.state.activeStadium.name, e);
+            }
+          }
+        }
+      }
+
+      // 3. 相手プレイヤーのポケモン（「相手の番の終わりに」や「お互いの番の終わりに」の検知）
+      if (otherPlayer) {
+        const otherPokemons = [otherPlayer.active, ...(otherPlayer.bench || [])].filter(Boolean);
+        for (const pk of otherPokemons) {
+          const oppCodes = [pk.abilityCode, pk.attack1Code];
+          for (const oCode of oppCodes) {
+            if (oCode && /(?:相手|お互い|両方|各プレイヤー).*番の終わり/i.test(oCode) && TURN_END_EVENT_REGEX.test(oCode)) {
+              try {
+                await window.executeCardEffectCode(
+                  oCode,
+                  { players: [this.state.player, this.state.opponent], logs: this.state.logs },
+                  otherPlayer,
+                  'turnEnd',
+                  { card: pk, pokemon: pk, turnNumber: this.state.turnNumber, player: otherPlayer, endingPlayer: curEnding }
+                );
+              } catch (e) {
+                console.error('turnEnd opponent pk error on', pk.name, e);
+              }
+            }
+          }
+        }
+      }
+
+      this.render();
     },
 
     surrender() {

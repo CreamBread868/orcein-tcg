@@ -264,6 +264,67 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
                 });
               }
             }
+
+            // ダメージを与えた時 (dealDamage / onDealDamage) イベント発火
+            if (actualDamage > 0) {
+              const dealEvent = {
+                attacker: attacker || ctx?.thisPokemon || ctx?.card || null,
+                defender: t,
+                target: t,
+                damage: actualDamage,
+                amount: actualDamage,
+                isWeakness: isWeakness
+              };
+
+              // 1. ctx.event.emit でリスナーを呼び出し
+              if (ctx?.event?.emit) {
+                try {
+                  await ctx.event.emit('dealDamage', dealEvent);
+                } catch (e) {
+                  console.error('ctx.event dealDamage error:', e);
+                }
+              }
+
+              // 2. 攻撃側ポケモン（またはカード）の特性・ワザコードで event.on('onDealDamage') 等をディスパッチ
+              const atkPk = attacker || ctx?.thisPokemon || ctx?.card;
+              if (atkPk && window.executeCardEffectCode) {
+                const DEAL_EVENT_REGEX = /(?:event\s*\.\s*(?:on|onasync|onAsync)|on)\s*\(\s*['"](?:dealDamage|onDealDamage|afterDamage|damageDealt|onDamageDealt|giveDamage|onGiveDamage|ダメージを与えた時|ダメージ時|攻撃ヒット時)['"]/i;
+                const codes = [atkPk.abilityCode, atkPk.attack1Code, atkPk.attack2Code];
+                for (const c of codes) {
+                  if (c && DEAL_EVENT_REGEX.test(c)) {
+                    try {
+                      await window.executeCardEffectCode(
+                        c,
+                        { players: [ctx?.self, ctx?.opponent].filter(Boolean), logs: ctx?.game?.logs },
+                        ctx?.self,
+                        'dealDamage',
+                        dealEvent
+                      );
+                    } catch (e) {
+                      console.error('dealDamage attack/ability effect error:', e);
+                    }
+                  }
+                }
+              }
+
+              // 3. 防御側ポケモン（ダメージを受けた側）の onDamage イベント発火
+              if (t && window.executeCardEffectCode) {
+                const ON_DMG_REGEX = /(?:event\s*\.\s*(?:on|onasync|onAsync)|on)\s*\(\s*['"](?:onDamage|damage|takeDamage|receiveDamage|被ダメ後|ダメージを受けた時)['"]/i;
+                if (t.abilityCode && ON_DMG_REGEX.test(t.abilityCode)) {
+                  try {
+                    await window.executeCardEffectCode(
+                      t.abilityCode,
+                      { players: [ctx?.opponent, ctx?.self].filter(Boolean), logs: ctx?.game?.logs },
+                      ctx?.opponent || ctx?.self,
+                      'onDamage',
+                      dealEvent
+                    );
+                  } catch (e) {
+                    console.error('onDamage effect error:', e);
+                  }
+                }
+              }
+            }
           }
 
           // スタジアム上のヒットエフェクト & フローティングダメージ表示 (「~ダメージ」アーケード演出 & HP減少アニメーション)
@@ -3339,6 +3400,18 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
       }
       normalizeName(name) {
         const n = String(name || '').trim();
+        if (['dealDamage', 'onDealDamage', 'afterDamage', 'damageDealt', 'onDamageDealt', 'giveDamage', 'onGiveDamage', 'ダメージを与えた時', 'ダメージを与えた', 'ダメージ時', '攻撃ヒット時', 'ヒット時'].includes(n)) {
+          return 'dealDamage';
+        }
+        if (['onDamage', 'damage', 'takeDamage', 'receiveDamage', '被ダメ後', 'ダメージを受けた時', 'ダメージを受けた'].includes(n)) {
+          return 'onDamage';
+        }
+        if (['turnEnd', 'endTurn', 'onEndTurn', 'turn_end', 'end_turn', 'ターン終了', 'ターン終了時', '番の終わり', '自分の番の終わり', 'お互いの番の終わり'].includes(n)) {
+          return 'turnEnd';
+        }
+        if (['turnStart', 'start', 'onTurnStart', 'turn_start', 'ターン開始', 'ターン開始時', '番の初め', '自分の番の初め', 'turnNumber', 'turn', 'ターン'].includes(n)) {
+          return 'turnStart';
+        }
         if (['allyKnockedOut', 'onAllyKnockout', 'allyKnockout', 'ally_knocked_out', 'allyFainted', '味方気絶', '仲間気絶', '自分のポケモン気絶', '自分の仲間が気絶したら', '仲間が気絶したら', '味方が気絶したら'].includes(n)) {
           return 'allyKnockedOut';
         }
@@ -3648,6 +3721,8 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         modify: (s, fn) => rawEvent.modify(s, fn)
       };
 
+      ctx.turnNumber = (game?.turnNumber != null) ? game.turnNumber : ((window.BattleSystem?.state?.turnNumber != null) ? window.BattleSystem.state.turnNumber : 1);
+
       const attachGetters = (pk) => {
         if (!pk || typeof pk !== 'object') return;
         try {
@@ -3661,6 +3736,13 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           if (!Object.getOwnPropertyDescriptor(pk, 'turnsInPlay')) {
             Object.defineProperty(pk, 'turnsInPlay', {
               get: () => api.getTurnsInPlay(ctx, pk),
+              configurable: true,
+              enumerable: false
+            });
+          }
+          if (!Object.getOwnPropertyDescriptor(pk, 'turnNumber')) {
+            Object.defineProperty(pk, 'turnNumber', {
+              get: () => (game?.turnNumber != null) ? game.turnNumber : ((window.BattleSystem?.state?.turnNumber != null) ? window.BattleSystem.state.turnNumber : 1),
               configurable: true,
               enumerable: false
             });
@@ -3723,17 +3805,33 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
       // （起動型特性が turnStart/beforeDamage 等で意図せず自動実行されることを防ぐ）
       const ALLY_KO_ALIASES = ['allyKnockedOut', 'onAllyKnockout', 'allyKnockout', 'ally_knocked_out', 'allyFainted', '味方気絶', '仲間気絶', '自分のポケモン気絶', '自分の仲間が気絶したら', '仲間が気絶したら', '味方が気絶したら'];
       const PASSIVE_ALIASES = ['passive', 'continuous', 'calcRetreatCost', 'calcMaxHp'];
-      const EVENT_DISPATCH_NAMES = ['turnStart', 'start', 'beforeDamage', 'onKnockout', 'onKnockoutOpponent', 'onAttach', 'onEvolution', ...ALLY_KO_ALIASES, ...PASSIVE_ALIASES];
+      const TURN_END_ALIASES = ['turnEnd', 'endTurn', 'onEndTurn', 'turn_end', 'end_turn', 'ターン終了', 'ターン終了時', '番の終わり', '自分の番の終わり', 'お互いの番の終わり'];
+      const TURN_START_ALIASES = ['turnStart', 'start', 'onTurnStart', 'turn_start', 'ターン開始', 'ターン開始時', 'turnNumber', 'turn', 'ターン'];
+      const DEAL_DAMAGE_ALIASES = ['dealDamage', 'onDealDamage', 'afterDamage', 'damageDealt', 'onDamageDealt', 'giveDamage', 'onGiveDamage', 'ダメージを与えた時', 'ダメージを与えた', 'ダメージ時', '攻撃ヒット時', 'ヒット時'];
+      const ON_DAMAGE_ALIASES = ['onDamage', 'damage', 'takeDamage', 'receiveDamage', '被ダメ後', 'ダメージを受けた時', 'ダメージを受けた'];
+      const EVENT_DISPATCH_NAMES = [...TURN_START_ALIASES, ...TURN_END_ALIASES, ...DEAL_DAMAGE_ALIASES, ...ON_DAMAGE_ALIASES, 'beforeDamage', 'onKnockout', 'onKnockoutOpponent', 'onAttach', 'onEvolution', ...ALLY_KO_ALIASES, ...PASSIVE_ALIASES];
       if (eventName && EVENT_DISPATCH_NAMES.includes(eventName)) {
         if (eventName === 'allyKnockedOut' || ALLY_KO_ALIASES.includes(eventName)) {
-          const hasListener = /event\s*\.\s*(?:on|onasync|onAsync)\s*\(\s*['"](allyKnockedOut|onAllyKnockout|allyKnockout|ally_knocked_out|allyFainted|味方気絶|仲間気絶|自分のポケモン気絶|自分の仲間が気絶したら|仲間が気絶したら|味方が気絶したら)['"]|whenAllyKnockedOut|onAllyKnockedOut/i.test(code);
+          const hasListener = /(?:event\s*\.\s*(?:on|onasync|onAsync)|on)\s*\(\s*['"](allyKnockedOut|onAllyKnockout|allyKnockout|ally_knocked_out|allyFainted|味方気絶|仲間気絶|自分のポケモン気絶|自分の仲間が気絶したら|仲間が気絶したら|味方が気絶したら)['"]|whenAllyKnockedOut|onAllyKnockedOut/i.test(code);
+          if (!hasListener) return;
+        } else if (eventName === 'dealDamage' || DEAL_DAMAGE_ALIASES.includes(eventName)) {
+          const hasListener = /(?:event\s*\.\s*(?:on|onasync|onAsync)|on)\s*\(\s*['"](?:dealDamage|onDealDamage|afterDamage|damageDealt|onDamageDealt|giveDamage|onGiveDamage|ダメージを与えた時|ダメージを与えた|ダメージ時|攻撃ヒット時|ヒット時)['"]/i.test(code);
+          if (!hasListener) return;
+        } else if (eventName === 'onDamage' || ON_DAMAGE_ALIASES.includes(eventName)) {
+          const hasListener = /(?:event\s*\.\s*(?:on|onasync|onAsync)|on)\s*\(\s*['"](?:onDamage|damage|takeDamage|receiveDamage|被ダメ後|ダメージを受けた時|ダメージを受けた)['"]/i.test(code);
+          if (!hasListener) return;
+        } else if (eventName === 'turnEnd' || TURN_END_ALIASES.includes(eventName)) {
+          const hasListener = /(?:event\s*\.\s*(?:on|onasync|onAsync)|on)\s*\(\s*['"](?:turnEnd|endTurn|onEndTurn|turn_end|end_turn|ターン終了|ターン終了時|番の終わり|自分の番の終わり|お互いの番の終わり)['"]/i.test(code);
+          if (!hasListener) return;
+        } else if (eventName === 'turnStart' || TURN_START_ALIASES.includes(eventName)) {
+          const hasListener = /(?:event\s*\.\s*(?:on|onasync|onAsync)|on)\s*\(\s*['"](?:turnStart|start|onTurnStart|turn_start|ターン開始|ターン開始時|turnNumber|turn|ターン)['"]/i.test(code);
           if (!hasListener) return;
         } else if (PASSIVE_ALIASES.includes(eventName)) {
           const hasListener = /(?:event\s*\.\s*(?:passive|continuous|modify|on)|modifyRetreatCost|increaseRetreatCost|reduceRetreatCost|setRetreatCost)/i.test(code);
           if (!hasListener) return;
         } else {
           const escapedEvent = eventName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const hasListener = new RegExp('event\\s*\\.\\s*(?:on|onasync|onAsync)\\s*\\(\\s*[\'"]' + escapedEvent + '[\'"]', 'i').test(code);
+          const hasListener = new RegExp('(?:event\\s*\\.\\s*(?:on|onasync|onAsync)|on)\\s*\\(\\s*[\'"]' + escapedEvent + '[\'"]', 'i').test(code);
           if (!hasListener) return; // このコードはこのイベントをリッスンしていない → スキップ
         }
       }
@@ -3805,6 +3903,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         'extraTurn', 'takeExtraTurn', 'anotherTurn', 'repeatTurn', 'grantExtraTurn',
         'lose', 'loseGame', 'win', 'winGame',
         'modifyRetreatCost', 'increaseRetreatCost', 'reduceRetreatCost', 'decreaseRetreatCost', 'setRetreatCost', 'resetRetreatCost', 'getRetreatCost', 'modifyStat', 'modifyStats', 'cannotAttachEnergyFromHand', 'unaffectedByAttackEffects', 'immuneToAttackEffects', 'passive', 'continuous',
+        'turnNumber',
         '{\n' + asyncCode + '\n}'
       );
       try {
@@ -3839,7 +3938,8 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           ctx.afterTurns, ctx.afterTurn, ctx.delayTurns, ctx.delayTurn, ctx.waitTurns, ctx.waitTurn, ctx.atEndOfTurn,
           ctx.extraTurn, ctx.takeExtraTurn, ctx.anotherTurn, ctx.repeatTurn, ctx.grantExtraTurn,
           ctx.lose, ctx.loseGame, ctx.win, ctx.winGame,
-          ctx.modifyRetreatCost, ctx.increaseRetreatCost, ctx.reduceRetreatCost, ctx.decreaseRetreatCost, ctx.setRetreatCost, ctx.resetRetreatCost, ctx.getRetreatCost, ctx.modifyStat, ctx.modifyStats, ctx.cannotAttachEnergyFromHand, ctx.unaffectedByAttackEffects, ctx.immuneToAttackEffects, ctx.passive, ctx.continuous
+          ctx.modifyRetreatCost, ctx.increaseRetreatCost, ctx.reduceRetreatCost, ctx.decreaseRetreatCost, ctx.setRetreatCost, ctx.resetRetreatCost, ctx.getRetreatCost, ctx.modifyStat, ctx.modifyStats, ctx.cannotAttachEnergyFromHand, ctx.unaffectedByAttackEffects, ctx.immuneToAttackEffects, ctx.passive, ctx.continuous,
+          ctx.turnNumber
         );
         if (eventName) await ctx.event.emit(eventName, eventData);
       } catch (e) {

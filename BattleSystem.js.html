@@ -3947,22 +3947,44 @@
       // ※ event.on('turnStart', ...) または event.on('start', ...) を明示的に宣言しているコードのみ実行する
       // ※ useLimit() 等の起動型特性（上位コードがイベント登録なし）は絶対に自動実行しない
       const activePokemons = [cur.active, ...(cur.bench || [])].filter(Boolean);
-      const TURN_START_EVENT_REGEX = /event\s*\.\s*(?:on|onasync|onAsync)\s*\(\s*['"](?:turnStart|start)['"]/i;
+      const TURN_START_EVENT_REGEX = /(?:event\s*\.\s*(?:on|onasync|onAsync)|on)\s*\(\s*['"](?:turnStart|start|turnNumber|turn|ターン開始|ターン開始時)['"]/i;
       activePokemons.forEach((pk) => {
-        const code = String(pk.abilityCode || '');
-        if (code && window.executeCardEffectCode && TURN_START_EVENT_REGEX.test(code)) {
-          try {
-            window.executeCardEffectCode(
-              pk.abilityCode,
-              { players: [this.state.player, this.state.opponent], logs: this.state.logs },
-              cur,
-              'turnStart',
-              { card: pk, pokemon: pk, turnNumber: this.state.turnNumber }
-            ).catch((err) => {
-              console.error('turnStart ability error:', err);
-            });
-          } catch (e) {
-            console.error('turnStart ability error:', e);
+        const codes = [pk.abilityCode, pk.attack1Code, pk.attack2Code];
+        for (const code of codes) {
+          if (code && window.executeCardEffectCode && TURN_START_EVENT_REGEX.test(code)) {
+            try {
+              window.executeCardEffectCode(
+                code,
+                { players: [this.state.player, this.state.opponent], logs: this.state.logs },
+                cur,
+                'turnStart',
+                { card: pk, pokemon: pk, turnNumber: this.state.turnNumber }
+              ).catch((err) => {
+                console.error('turnStart ability error on', pk.name, err);
+              });
+            } catch (e) {
+              console.error('turnStart ability error on', pk.name, e);
+            }
+          }
+        }
+        if (pk.attachedTool) {
+          const toolCodes = [pk.attachedTool.abilityCode, pk.attachedTool.attack1Code];
+          for (const tCode of toolCodes) {
+            if (tCode && window.executeCardEffectCode && TURN_START_EVENT_REGEX.test(tCode)) {
+              try {
+                window.executeCardEffectCode(
+                  tCode,
+                  { players: [this.state.player, this.state.opponent], logs: this.state.logs },
+                  cur,
+                  'turnStart',
+                  { card: pk.attachedTool, pokemon: pk, turnNumber: this.state.turnNumber }
+                ).catch((err) => {
+                  console.error('turnStart tool error on', pk.attachedTool.name, err);
+                });
+              } catch (e) {
+                console.error('turnStart tool error on', pk.attachedTool.name, e);
+              }
+            }
           }
         }
       });
@@ -4006,7 +4028,11 @@
         return;
       }
       const curEnding = this.state.turnPlayer === 'player' ? this.state.player : this.state.opponent;
+      const otherPlayer = this.state.turnPlayer === 'player' ? this.state.opponent : this.state.player;
       if (curEnding) {
+        // ターン終了時 (turnEnd / endTurn) のカード効果・特性イベント発火
+        await this.dispatchTurnEndEvents(curEnding, otherPlayer);
+
         // 番の終わりのポケモンのどうぐ効果 (たべのこし等)
         const allEndingPk = [curEnding.active, ...(curEnding.bench || [])].filter(Boolean);
         allEndingPk.forEach((pk) => {
@@ -4062,6 +4088,95 @@
       }
 
       this.startTurn(nextPlayer);
+    },
+
+    async dispatchTurnEndEvents(curEnding, otherPlayer) {
+      if (!window.executeCardEffectCode) return;
+      const TURN_END_EVENT_REGEX = /(?:event\s*\.\s*(?:on|onasync|onAsync)|on)\s*\(\s*['"](?:turnEnd|endTurn|onEndTurn|turn_end|end_turn|ターン終了|ターン終了時|番の終わり|自分の番の終わり|お互いの番の終わり)['"]/i;
+
+      // 1. ターン終了側プレイヤーのポケモン（バトル場・ベンチ）
+      const endingPokemons = [curEnding.active, ...(curEnding.bench || [])].filter(Boolean);
+      for (const pk of endingPokemons) {
+        const codes = [pk.abilityCode, pk.attack1Code, pk.attack2Code];
+        for (const code of codes) {
+          if (code && TURN_END_EVENT_REGEX.test(code)) {
+            try {
+              await window.executeCardEffectCode(
+                code,
+                { players: [this.state.player, this.state.opponent], logs: this.state.logs },
+                curEnding,
+                'turnEnd',
+                { card: pk, pokemon: pk, turnNumber: this.state.turnNumber, player: curEnding }
+              );
+            } catch (e) {
+              console.error('turnEnd card effect error on', pk.name, e);
+            }
+          }
+        }
+        if (pk.attachedTool) {
+          const toolCodes = [pk.attachedTool.abilityCode, pk.attachedTool.attack1Code, pk.attachedTool.attack2Code];
+          for (const tCode of toolCodes) {
+            if (tCode && TURN_END_EVENT_REGEX.test(tCode)) {
+              try {
+                await window.executeCardEffectCode(
+                  tCode,
+                  { players: [this.state.player, this.state.opponent], logs: this.state.logs },
+                  curEnding,
+                  'turnEnd',
+                  { card: pk.attachedTool, pokemon: pk, turnNumber: this.state.turnNumber, player: curEnding }
+                );
+              } catch (e) {
+                console.error('turnEnd tool error on', pk.attachedTool.name, e);
+              }
+            }
+          }
+        }
+      }
+
+      // 2. スタジアムカードのターン終了イベント
+      if (this.state.activeStadium) {
+        const stadiumCodes = [this.state.activeStadium.abilityCode, this.state.activeStadium.attack1Code];
+        for (const sCode of stadiumCodes) {
+          if (sCode && TURN_END_EVENT_REGEX.test(sCode)) {
+            try {
+              await window.executeCardEffectCode(
+                sCode,
+                { players: [this.state.player, this.state.opponent], logs: this.state.logs },
+                curEnding,
+                'turnEnd',
+                { card: this.state.activeStadium, stadium: this.state.activeStadium, turnNumber: this.state.turnNumber, player: curEnding }
+              );
+            } catch (e) {
+              console.error('turnEnd stadium error on', this.state.activeStadium.name, e);
+            }
+          }
+        }
+      }
+
+      // 3. 相手プレイヤーのポケモン（「相手の番の終わりに」や「お互いの番の終わりに」の検知）
+      if (otherPlayer) {
+        const otherPokemons = [otherPlayer.active, ...(otherPlayer.bench || [])].filter(Boolean);
+        for (const pk of otherPokemons) {
+          const oppCodes = [pk.abilityCode, pk.attack1Code];
+          for (const oCode of oppCodes) {
+            if (oCode && /(?:相手|お互い|両方|各プレイヤー).*番の終わり/i.test(oCode) && TURN_END_EVENT_REGEX.test(oCode)) {
+              try {
+                await window.executeCardEffectCode(
+                  oCode,
+                  { players: [this.state.player, this.state.opponent], logs: this.state.logs },
+                  otherPlayer,
+                  'turnEnd',
+                  { card: pk, pokemon: pk, turnNumber: this.state.turnNumber, player: otherPlayer, endingPlayer: curEnding }
+                );
+              } catch (e) {
+                console.error('turnEnd opponent pk error on', pk.name, e);
+              }
+            }
+          }
+        }
+      }
+
+      this.render();
     },
 
     surrender() {
