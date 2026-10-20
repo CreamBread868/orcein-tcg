@@ -12988,7 +12988,13 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
               if (idx >= 0) {
                 pk.attachedCards.splice(idx, 1);
                 if (Array.isArray(pk.attachedEnergies)) {
-                  const eIdx = pk.attachedEnergies.indexOf(item.type || '無');
+                  let eIdx = pk.attachedEnergies.indexOf(item.type || '無');
+                  if (eIdx < 0 && item.type) {
+                    eIdx = pk.attachedEnergies.findIndex((e) => (typeof e === 'object' ? e.type : e) === item.type);
+                  }
+                  if (eIdx < 0 && pk.attachedEnergies.length > 0) {
+                    eIdx = pk.attachedEnergies.length - 1;
+                  }
                   if (eIdx >= 0) pk.attachedEnergies.splice(eIdx, 1);
                 }
                 const cat = String(item.category || '');
@@ -12999,6 +13005,36 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
               }
             }
           }
+
+          // attachedCards に実オブジェクトが存在しない場合（仮想エネルギー、または attachedEnergies のみの場合）
+          let fromPk = item._fromPokemon || null;
+          if (!fromPk) {
+            fromPk = allPks.find((pk) => Array.isArray(pk.attachedCards) && pk.attachedCards.some((c) => c && (c === item || c.name === item.name)))
+                  || allPks.find((pk) => Array.isArray(pk.attachedEnergies) && pk.attachedEnergies.some((e) => (typeof e === 'object' ? e.type : e) === item.type))
+                  || allPks.find((pk) => (pk.energy || 0) > 0);
+          }
+          if (fromPk) {
+            if (Array.isArray(fromPk.attachedCards)) {
+              const cardIdx = fromPk.attachedCards.findIndex((c) => c === item || (c && c.name === item.name && c.type === item.type));
+              if (cardIdx >= 0) fromPk.attachedCards.splice(cardIdx, 1);
+            }
+            if (Array.isArray(fromPk.attachedEnergies)) {
+              let eIdx = fromPk.attachedEnergies.indexOf(item.type || '無');
+              if (eIdx < 0 && item.type) {
+                eIdx = fromPk.attachedEnergies.findIndex((e) => (typeof e === 'object' ? e.type : e) === item.type);
+              }
+              if (eIdx < 0 && fromPk.attachedEnergies.length > 0) {
+                eIdx = fromPk.attachedEnergies.length - 1;
+              }
+              if (eIdx >= 0) fromPk.attachedEnergies.splice(eIdx, 1);
+            }
+            const cat = String(item.category || '');
+            if (cat.includes('エネルギー') || cat.toLowerCase().includes('energy') || !item.hp) {
+              fromPk.energy = Math.max(0, (fromPk.energy || 0) - 1);
+            }
+            return { card: item, fromPokemon: fromPk, type: item.type || '無' };
+          }
+
           return { card: item, fromPokemon: null, type: item.type };
         }
         return null;
@@ -15146,6 +15182,48 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
             'attached', 'attachedcards', 'ついているカード', 'エネルギー', 'エネ'].includes(norm);
         };
 
+        const getPokemonAttachedList = (pk) => {
+          if (!pk || typeof pk !== 'object') return [];
+          const items = [];
+          const attachedCards = Array.isArray(pk.attachedCards) ? pk.attachedCards : [];
+          attachedCards.forEach((c) => {
+            if (c) {
+              if (!c._fromPokemon) c._fromPokemon = pk;
+              items.push(c);
+            }
+          });
+
+          if (Array.isArray(pk.attachedEnergies)) {
+            const energyCards = attachedCards.filter((c) => {
+              const cat = String(c?.category || '');
+              return cat.includes('エネルギー') || cat.toLowerCase().includes('energy') || (c && !c.hp && c.type);
+            });
+            const matchedTypes = [];
+            energyCards.forEach((c) => {
+              if (c.type) matchedTypes.push(c.type);
+            });
+
+            const remainingTypes = [...pk.attachedEnergies];
+            for (const t of matchedTypes) {
+              const idx = remainingTypes.indexOf(t);
+              if (idx >= 0) remainingTypes.splice(idx, 1);
+            }
+
+            remainingTypes.forEach((e) => {
+              const energyType = typeof e === 'object' ? (e.type || '無') : (e || '無');
+              const energyName = typeof e === 'object' ? (e.name || energyType + 'エネルギー') : (energyType + 'エネルギー');
+              items.push({
+                name: energyName,
+                type: energyType,
+                category: 'Energy',
+                _fromPokemon: pk,
+                _isVirtualEnergy: true
+              });
+            });
+          }
+          return items;
+        };
+
         const resolveZoneList = (player, zoneName) => {
           const p = player || ctx?.self;
           const z = String(zoneName || '').toLowerCase().trim();
@@ -15162,9 +15240,9 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           if (['active', 'バトル場'].includes(z)) return p?.active ? [p.active] : [];
           if (['attached', 'attachedcards', 'ついているカード', 'エネルギー', 'エネ'].includes(z)) {
             const res = [];
-            if (p?.active?.attachedCards) res.push(...p.active.attachedCards);
+            if (p?.active) res.push(...getPokemonAttachedList(p.active));
             if (Array.isArray(p?.bench)) {
-              p.bench.forEach((b) => { if (b?.attachedCards) res.push(...b.attachedCards); });
+              p.bench.forEach((b) => { if (b) res.push(...getPokemonAttachedList(b)); });
             }
             return res;
           }
@@ -15180,18 +15258,25 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         let list = [];
         let filter = null;
         let count = 1;
+        let isAny = false;
         let options = null;
         let customMessage = null;
+
+        const isAnyToken = (val) => {
+          if (typeof val !== 'string') return false;
+          const s = val.trim().toLowerCase();
+          return [
+            'any', 'all', '好きなだけ', '好きな枚数', '任意', '0以上',
+            'anynumber', 'as_many_as_you_like', 'unlimited'
+          ].includes(s);
+        };
 
         let restArgs = rawRest.filter((a) => a !== undefined && a !== null);
 
         if (Array.isArray(source)) {
           list = source;
         } else if (isPokemonObj(source)) {
-          list = source.attachedCards || [];
-          if (list.length === 0 && Array.isArray(source.attachedEnergies)) {
-            list = source.attachedEnergies.map((e) => ({ name: e + 'エネルギー', type: e, category: 'Energy' }));
-          }
+          list = getPokemonAttachedList(source);
           if (restArgs.length > 0 && isZoneName(restArgs[0])) {
             restArgs.shift();
           }
@@ -15253,8 +15338,16 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
             count = Math.max(0, Number(arg) || 1);
           } else if (typeof arg === 'function') {
             filter = arg;
+          } else if (typeof arg === 'string' && isAnyToken(arg)) {
+            isAny = true;
+            count = Infinity;
+            options = Object.assign({}, options, { isAny: true, allowCancel: true, allowEmpty: true, canCancel: true });
           } else if (typeof arg === 'object' && arg !== null) {
-            if (arg.to || arg.onSelect || arg.remove || arg.message || arg.prompt || arg.desc || arg.title || arg.text || arg.autoPick || arg.optional || arg.allowCancel || arg.allowEmpty || arg.cancelReason || arg.cancelMessage || arg.onCancel) {
+            if (arg.isAny || arg.any || arg.asManyAsYouLike || (typeof arg.count === 'string' && isAnyToken(arg.count))) {
+              isAny = true;
+              count = Infinity;
+            }
+            if (arg.to || arg.onSelect || arg.remove || arg.message || arg.prompt || arg.desc || arg.title || arg.text || arg.autoPick || arg.optional || arg.allowCancel || arg.allowEmpty || arg.cancelReason || arg.cancelMessage || arg.onCancel || arg.isAny || arg.any || arg.canCancel) {
               options = Object.assign({}, options, arg);
               if (arg.message || arg.prompt || arg.desc || arg.text) {
                 customMessage = arg.message || arg.prompt || arg.desc || arg.text;
@@ -15274,6 +15367,11 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
               customMessage = s;
             }
           }
+        }
+
+        if (options && (options.isAny || options.any || options.asManyAsYouLike)) {
+          isAny = true;
+          count = Infinity;
         }
 
         const matched = list.filter((c) => {
@@ -15314,7 +15412,8 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           chosen = matched.slice(0, count);
         } else {
           const remaining = [...matched];
-          for (let step = 0; step < count && remaining.length > 0; step++) {
+          const maxPicks = isAny ? remaining.length : count;
+          for (let step = 0; step < maxPicks && remaining.length > 0; step++) {
             const modalCards = remaining.map((c) => ({
               name: c.name,
               category: c.category,
@@ -15323,16 +15422,54 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
               image: c.image || c.imageUrl,
               _raw: c
             }));
-            const stepTitle = options?.title || (customMessage ? 'カード選択' : (count > 1 ? 'カードを選択 (' + (step + 1) + '/' + (count) + '枚目)' : 'カードを選択'));
-            const stepDesc = customMessage
-              ? (count > 1 ? '' + (customMessage) + ' (' + (step + 1) + '/' + (count) + '枚目)' : customMessage)
-              : (options?.desc || options?.message || options?.prompt || (count > 1 ? '対象カードをあと' + (count - step) + '枚選んでください。' : '対象カードを選んでください。'));
+
+            let stepTitle = options?.title;
+            if (!stepTitle) {
+              if (isAny) {
+                stepTitle = 'カード選択 (好きな枚数)';
+              } else if (customMessage) {
+                stepTitle = 'カード選択';
+              } else if (count > 1) {
+                stepTitle = 'カードを選択 (' + (step + 1) + '/' + count + '枚目)';
+              } else {
+                stepTitle = 'カードを選択';
+              }
+            }
+
+            let stepDesc = '';
+            if (isAny) {
+              if (customMessage) {
+                stepDesc = customMessage + (chosen.length > 0 ? ' (現在 ' + chosen.length + ' 枚選択中)' : '');
+              } else {
+                stepDesc = '好きな枚数を選んでください。(現在 ' + chosen.length + ' 枚選択済み。完了したら「選択終了」を押してください)';
+              }
+            } else if (customMessage) {
+              stepDesc = (count > 1 ? '' + customMessage + ' (' + (step + 1) + '/' + count + '枚目)' : customMessage);
+            } else {
+              stepDesc = options?.desc || options?.message || options?.prompt || (count > 1 ? '対象カードをあと' + (count - step) + '枚選んでください。' : '対象カードを選んでください。');
+            }
+
+            const canCancelModal = isAny || !!(options && (options.allowCancel || options.optional || options.allowEmpty || options.canCancel));
+            const closeLabel = isAny
+              ? (chosen.length > 0 ? ('✅ 選択終了 (' + chosen.length + '枚で決定)') : '選択終了 (0枚で終了)')
+              : (options?.closeLabel || options?.cancelLabel || 'キャンセル');
+
             const selectedItem = await window.BattleSystem.showChoiceModalPromise(modalCards, {
               title: stepTitle,
-              desc: stepDesc
+              desc: stepDesc,
+              isAny: isAny,
+              canCancel: canCancelModal,
+              allowCancel: canCancelModal,
+              chosenCount: chosen.length,
+              closeLabel: closeLabel
             });
+
             const actualCard = selectedItem?._raw || selectedItem || null;
             if (!actualCard) {
+              if (isAny) {
+                // 好きな枚数選択での「選択終了」クリック → ここまでに選んだ枚数で確定してループ終了
+                break;
+              }
               if (options && typeof options.onCancel === 'function') {
                 options.onCancel();
               }
@@ -15343,6 +15480,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
               const activeCtx = ctx || window._currentExecutionContext;
               return this.cant(activeCtx, cancelMsg);
             }
+
             chosen.push(actualCard);
             const rIdx = remaining.indexOf(actualCard);
             if (rIdx >= 0) remaining.splice(rIdx, 1);
@@ -30655,12 +30793,18 @@ window.DeckSystem = function () {
     },
 
     showChoiceModal(cards, options, onSelect, onCancel) {
+      if (typeof cards === 'string') {
+        const titleStr = cards;
+        cards = options || [];
+        options = { title: titleStr };
+      }
       const modal = document.getElementById('battleChoiceModal');
       const title = document.getElementById('battleChoiceTitle');
       const desc = document.getElementById('battleChoiceDesc');
       const grid = document.getElementById('battleChoiceGrid');
       const cancelBtn = document.getElementById('cancelBattleChoiceBtn');
       const closeBtn = document.getElementById('closeBattleChoiceModal');
+      const backdrop = modal?.querySelector('.modal-backdrop');
 
       if (!modal || !grid) {
         if (typeof onSelect === 'function') onSelect(0);
@@ -30670,7 +30814,11 @@ window.DeckSystem = function () {
       if (title) title.textContent = options?.title || 'カード選択';
       if (desc) desc.textContent = options?.desc || '対象を選択してください。';
 
-      grid.innerHTML = cards.map((c, i) => {
+      const isAny = !!(options?.isAny || options?.any);
+      const canCancel = isAny || !!(options?.allowCancel || options?.optional || options?.allowEmpty || options?.canCancel);
+      this._choiceModalCanCancel = canCancel;
+
+      grid.innerHTML = (cards || []).map((c, i) => {
         const rawObj = c._raw || c;
         const btnLabel = (c.category === 'バトル場へ' || options?.title?.includes('バトルポケモン') || options?.title?.includes('交代')) ? '⚔️ バトル場へ選出' : '決定';
         let cardInnerHtml = '';
@@ -30704,25 +30852,75 @@ window.DeckSystem = function () {
       let choiceHandled = false;
       const cleanup = () => {
         this._currentChoiceSelectHandler = null;
+        this._choiceModalCanCancel = true;
         modal.classList.add('hidden');
         modal.style.display = '';
-        if (cancelBtn) cancelBtn.onclick = null;
-        if (closeBtn) closeBtn.onclick = null;
+        if (cancelBtn) {
+          cancelBtn.onclick = null;
+          cancelBtn.style.display = '';
+          cancelBtn.textContent = 'キャンセル';
+        }
+        if (closeBtn) {
+          closeBtn.onclick = null;
+          closeBtn.style.display = '';
+        }
+        if (backdrop) backdrop.onclick = null;
       };
 
-      if (cancelBtn) {
-        cancelBtn.onclick = (e) => {
-          if (e) e.preventDefault();
-          cleanup();
-          if (typeof onCancel === 'function') onCancel();
-        };
-      }
-      if (closeBtn) {
-        closeBtn.onclick = (e) => {
-          if (e) e.preventDefault();
-          cleanup();
-          if (typeof onCancel === 'function') onCancel();
-        };
+      if (canCancel) {
+        if (cancelBtn) {
+          cancelBtn.style.display = '';
+          if (isAny) {
+            cancelBtn.textContent = options?.closeLabel || (options?.chosenCount > 0 ? ('✅ 選択終了 (' + options.chosenCount + '枚で決定)') : '選択終了 (0枚で終了)');
+          } else {
+            cancelBtn.textContent = options?.cancelLabel || 'キャンセル';
+          }
+          cancelBtn.onclick = (e) => {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
+            if (choiceHandled) return;
+            choiceHandled = true;
+            cleanup();
+            if (typeof onCancel === 'function') onCancel();
+          };
+        }
+        if (closeBtn) {
+          if (isAny) {
+            closeBtn.style.display = 'none';
+          } else {
+            closeBtn.style.display = '';
+            closeBtn.onclick = (e) => {
+              if (e) { e.preventDefault(); e.stopPropagation(); }
+              if (choiceHandled) return;
+              choiceHandled = true;
+              cleanup();
+              if (typeof onCancel === 'function') onCancel();
+            };
+          }
+        }
+        if (backdrop) {
+          backdrop.onclick = (e) => {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
+            if (choiceHandled) return;
+            choiceHandled = true;
+            cleanup();
+            if (typeof onCancel === 'function') onCancel();
+          };
+        }
+      } else {
+        // キャンセル不可（非anyでの必須選択）: ボタンを非表示にし、途中キャンセルを封じる
+        if (cancelBtn) {
+          cancelBtn.style.display = 'none';
+          cancelBtn.onclick = null;
+        }
+        if (closeBtn) {
+          closeBtn.style.display = 'none';
+          closeBtn.onclick = null;
+        }
+        if (backdrop) {
+          backdrop.onclick = (e) => {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
+          };
+        }
       }
 
       const selectItem = (idx, e) => {
@@ -30745,6 +30943,9 @@ window.DeckSystem = function () {
     },
 
     closeChoiceModal() {
+      if (this._choiceModalCanCancel === false) {
+        return;
+      }
       const modal = document.getElementById('battleChoiceModal');
       if (modal) {
         modal.classList.add('hidden');

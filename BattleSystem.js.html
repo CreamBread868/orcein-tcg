@@ -6920,12 +6920,18 @@
     },
 
     showChoiceModal(cards, options, onSelect, onCancel) {
+      if (typeof cards === 'string') {
+        const titleStr = cards;
+        cards = options || [];
+        options = { title: titleStr };
+      }
       const modal = document.getElementById('battleChoiceModal');
       const title = document.getElementById('battleChoiceTitle');
       const desc = document.getElementById('battleChoiceDesc');
       const grid = document.getElementById('battleChoiceGrid');
       const cancelBtn = document.getElementById('cancelBattleChoiceBtn');
       const closeBtn = document.getElementById('closeBattleChoiceModal');
+      const backdrop = modal?.querySelector('.modal-backdrop');
 
       if (!modal || !grid) {
         if (typeof onSelect === 'function') onSelect(0);
@@ -6935,7 +6941,11 @@
       if (title) title.textContent = options?.title || 'カード選択';
       if (desc) desc.textContent = options?.desc || '対象を選択してください。';
 
-      grid.innerHTML = cards.map((c, i) => {
+      const isAny = !!(options?.isAny || options?.any);
+      const canCancel = isAny || !!(options?.allowCancel || options?.optional || options?.allowEmpty || options?.canCancel);
+      this._choiceModalCanCancel = canCancel;
+
+      grid.innerHTML = (cards || []).map((c, i) => {
         const rawObj = c._raw || c;
         const btnLabel = (c.category === 'バトル場へ' || options?.title?.includes('バトルポケモン') || options?.title?.includes('交代')) ? '⚔️ バトル場へ選出' : '決定';
         let cardInnerHtml = '';
@@ -6969,25 +6979,75 @@
       let choiceHandled = false;
       const cleanup = () => {
         this._currentChoiceSelectHandler = null;
+        this._choiceModalCanCancel = true;
         modal.classList.add('hidden');
         modal.style.display = '';
-        if (cancelBtn) cancelBtn.onclick = null;
-        if (closeBtn) closeBtn.onclick = null;
+        if (cancelBtn) {
+          cancelBtn.onclick = null;
+          cancelBtn.style.display = '';
+          cancelBtn.textContent = 'キャンセル';
+        }
+        if (closeBtn) {
+          closeBtn.onclick = null;
+          closeBtn.style.display = '';
+        }
+        if (backdrop) backdrop.onclick = null;
       };
 
-      if (cancelBtn) {
-        cancelBtn.onclick = (e) => {
-          if (e) e.preventDefault();
-          cleanup();
-          if (typeof onCancel === 'function') onCancel();
-        };
-      }
-      if (closeBtn) {
-        closeBtn.onclick = (e) => {
-          if (e) e.preventDefault();
-          cleanup();
-          if (typeof onCancel === 'function') onCancel();
-        };
+      if (canCancel) {
+        if (cancelBtn) {
+          cancelBtn.style.display = '';
+          if (isAny) {
+            cancelBtn.textContent = options?.closeLabel || (options?.chosenCount > 0 ? ('✅ 選択終了 (' + options.chosenCount + '枚で決定)') : '選択終了 (0枚で終了)');
+          } else {
+            cancelBtn.textContent = options?.cancelLabel || 'キャンセル';
+          }
+          cancelBtn.onclick = (e) => {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
+            if (choiceHandled) return;
+            choiceHandled = true;
+            cleanup();
+            if (typeof onCancel === 'function') onCancel();
+          };
+        }
+        if (closeBtn) {
+          if (isAny) {
+            closeBtn.style.display = 'none';
+          } else {
+            closeBtn.style.display = '';
+            closeBtn.onclick = (e) => {
+              if (e) { e.preventDefault(); e.stopPropagation(); }
+              if (choiceHandled) return;
+              choiceHandled = true;
+              cleanup();
+              if (typeof onCancel === 'function') onCancel();
+            };
+          }
+        }
+        if (backdrop) {
+          backdrop.onclick = (e) => {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
+            if (choiceHandled) return;
+            choiceHandled = true;
+            cleanup();
+            if (typeof onCancel === 'function') onCancel();
+          };
+        }
+      } else {
+        // キャンセル不可（非anyでの必須選択）: ボタンを非表示にし、途中キャンセルを封じる
+        if (cancelBtn) {
+          cancelBtn.style.display = 'none';
+          cancelBtn.onclick = null;
+        }
+        if (closeBtn) {
+          closeBtn.style.display = 'none';
+          closeBtn.onclick = null;
+        }
+        if (backdrop) {
+          backdrop.onclick = (e) => {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
+          };
+        }
       }
 
       const selectItem = (idx, e) => {
@@ -7010,6 +7070,9 @@
     },
 
     closeChoiceModal() {
+      if (this._choiceModalCanCancel === false) {
+        return;
+      }
       const modal = document.getElementById('battleChoiceModal');
       if (modal) {
         modal.classList.add('hidden');
