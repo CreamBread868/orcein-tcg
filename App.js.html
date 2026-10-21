@@ -2505,10 +2505,11 @@ console.log('[ORBITAL] App.js.html started execution');
       this.setUserFreePackTickets(current + count);
     },
 
-    openLogboPack() {
+    openLogboPack(pullCount = 1) {
       const tickets = this.getUserFreePackTickets();
-      if (tickets <= 0) {
-        this.toast('ログボパックの所持チケットがありません。ログインボーナスで獲得してください！', true);
+      const count = (pullCount === 10) ? 10 : 1;
+      if (tickets < count) {
+        this.toast('ログボパックの所持チケットが足りません！ (必要: ' + count + '枚 / 所持: ' + tickets + '枚)', true);
         this.openDailyBonusModal();
         return;
       }
@@ -2517,12 +2518,12 @@ console.log('[ORBITAL] App.js.html started execution');
         this.toast('利用可能なパックが登録されていません', true);
         return;
       }
-      this.setUserFreePackTickets(tickets - 1);
+      this.setUserFreePackTickets(tickets - count);
 
       // 既存のパックからランダムに1つ選出
       const chosenPack = packs[Math.floor(Math.random() * packs.length)];
-      this.toast('🎁 ログボ特典！既存パックの中から【' + (chosenPack.title || 'パック') + '】が選ばれました！');
-      this.buyAndOpenPack(chosenPack.id, true, true);
+      this.toast('🎁 ログボ特典' + (count === 10 ? '【10連】！' : '！') + '既存パックの中から【' + (chosenPack.title || 'パック') + '】が選ばれました！');
+      this.buyAndOpenPack(chosenPack.id, true, true, count);
       this.renderPackGrid();
     },
 
@@ -2550,9 +2551,15 @@ console.log('[ORBITAL] App.js.html started execution');
           '<div class="pack-desc">ログインボーナスで獲得した特別無料チケット！既存の全パックから毎回ランダムに1つが選ばれて開封されます！</div>' +
           '<div class="pack-price-tag" style="color:#fbbf24;">✨ 所持チケット: <strong>' + freeTickets + '</strong> 個</div>' +
           (freeTickets > 0 ? (
-            '<button class="pack-buy-btn" type="button" style="background: linear-gradient(135deg, #fbbf24, #f59e0b); color:#0b0f19; font-weight:900; box-shadow:0 6px 20px rgba(251,191,36,0.5);" onclick="App.openLogboPack()">' +
-              '🎲 ランダムパック開封！ (残り ' + freeTickets + '個)' +
-            '</button>'
+            '<div style="display:flex; flex-direction:column; gap:6px; width:100%; margin-top:8px;">' +
+              '<button class="pack-buy-btn" type="button" style="background: linear-gradient(135deg, #fbbf24, #f59e0b); color:#0b0f19; font-weight:900; box-shadow:0 6px 20px rgba(251,191,36,0.5);" onclick="App.openLogboPack(1)">' +
+                '🎲 1パック開封 (チケット1枚)' +
+              '</button>' +
+              (freeTickets >= 10 ?
+                '<button class="pack-buy-btn pack-buy-10ren-btn" type="button" onclick="App.openLogboPack(10)">' +
+                  '🔥 10連開封 (チケット10枚) <span class="ten-ren-sub-tag">★ ex以上2枚確定！</span>' +
+                '</button>' : '') +
+            '</div>'
           ) : (
             '<button class="pack-buy-btn" type="button" style="opacity: 0.7; cursor: pointer; background: rgba(255,255,255,0.12);" onclick="App.openDailyBonusModal()">' +
               '🔒 チケットなし (ログボでGET)' +
@@ -2562,8 +2569,10 @@ console.log('[ORBITAL] App.js.html started execution');
         '</div>';
 
       const customPacksHtml = packs.map(p => {
-      const coverArt = p.image ? ('<img src="' + this.escapeHtml(p.image) + '" style="width:100%; height:100%; object-fit:cover; border-radius:8px;">') : ('<div class="pack-foil-art">✦</div><div class="pack-foil-header">' + this.escapeHtml(p.title) + '</div>');
-        return '\n          <div class="pack-card">\n            <div class="pack-cover-wrapper">\n              ' + (coverArt) + '\n            </div>\n            <div class="pack-title">' + (this.escapeHtml(p.title)) + '</div>\n            <div class="pack-desc">' + (this.escapeHtml(p.description || '5枚のカードを収録')) + '</div>\n            <div class="pack-price-tag">✨ ' + (p.price || 100) + ' NMT</div>\n            <button class="pack-buy-btn" type="button" onclick="App.buyAndOpenPack(\'' + (p.id) + '\')">🎁 ' + (p.price || 100) + ' NMT で開封</button>\n            <button class="pack-rates-btn" type="button" onclick="App.openPackRatesModal(\'' + (p.id) + '\')">📊 排出率を見る</button>\n          </div>\n        ';
+        const coverArt = p.image ? ('<img src="' + this.escapeHtml(p.image) + '" style="width:100%; height:100%; object-fit:cover; border-radius:8px;">') : ('<div class="pack-foil-art">✦</div><div class="pack-foil-header">' + this.escapeHtml(p.title) + '</div>');
+        const unitPrice = p.price || 100;
+        const tenPrice = unitPrice * 10;
+        return '\n          <div class="pack-card">\n            <div class="pack-cover-wrapper">\n              ' + (coverArt) + '\n            </div>\n            <div class="pack-title">' + (this.escapeHtml(p.title)) + '</div>\n            <div class="pack-desc">' + (this.escapeHtml(p.description || '5枚のカードを収録')) + '</div>\n            <div class="pack-price-tag">✨ 1パック: ' + unitPrice + ' NMT / 10連: ' + tenPrice + ' NMT</div>\n            <div style="display:flex; flex-direction:column; gap:6px; width:100%; margin-top:8px;">\n              <button class="pack-buy-btn" type="button" onclick="App.buyAndOpenPack(\'' + (p.id) + '\', false, false, 1)">🎁 1パック開封 (' + unitPrice + ' NMT)</button>\n              <button class="pack-buy-btn pack-buy-10ren-btn" type="button" onclick="App.buyAndOpenPack(\'' + (p.id) + '\', false, false, 10)">🔥 10連開封 (' + tenPrice + ' NMT)<span class="ten-ren-sub-tag">★ ex以上2枚確定！</span></button>\n            </div>\n            <button class="pack-rates-btn" type="button" onclick="App.openPackRatesModal(\'' + (p.id) + '\')">📊 排出率を見る</button>\n          </div>\n        ';
       }).join('');
       grid.innerHTML = logboCardHtml + customPacksHtml;
     },
@@ -2623,12 +2632,12 @@ console.log('[ORBITAL] App.js.html started execution');
         if (filtered.length > 0) targetPool = filtered;
       }
 
-      // レアリティ別基本排出比重 (左から順に高く: N:56%, R:25%, AR:10%, RR:6%, SR:2.5%, ACESPEC:0.5%)
+      // レアリティ別基本排出比重 (左から順に高く: N:57.5%, R:25.5%, AR:10%, RR(ex):4.0%, SR:2.5%, ACESPEC:0.5%)
       const BASE_WEIGHTS = {
-        'N': 56.0,
-        'R': 25.0,
+        'N': 57.5,
+        'R': 25.5,
         'AR': 10.0,
-        'RR': 6.0,
+        'RR': 4.0,
         'SR': 2.5,
         'ACESPEC': 0.5
       };
@@ -2645,14 +2654,24 @@ console.log('[ORBITAL] App.js.html started execution');
           r === 'ACE SPEC' ||
           /ACE\s*SPEC|エーススペック/i.test(String(card.category || ''))
         );
+        const isEx = !!(
+          card.isEx ||
+          String(card.category || '').includes('ex') ||
+          /[\s_・-]ex|ex$/i.test(String(card.name || '')) ||
+          r === 'EX' ||
+          r === 'DOUBLE RARE' ||
+          r === 'RR'
+        );
         if (isAce) {
           r = 'ACESPEC';
+        } else if (r === 'SR' || r === 'UR' || r === 'SUPER RARE' || r === 'ULTRA RARE') {
+          r = 'SR';
+        } else if (isEx) {
+          r = 'RR';
         } else if (!BASE_WEIGHTS[r]) {
           if (r === 'C' || r === 'UC' || r === 'COMMON' || r === 'NORMAL' || !r) r = 'N';
           else if (r === 'RARE') r = 'R';
           else if (r === 'ART RARE') r = 'AR';
-          else if (r === 'DOUBLE RARE' || r === 'EX') r = 'RR';
-          else if (r === 'SUPER RARE' || r === 'UR' || r === 'ULTRA RARE') r = 'SR';
           else r = 'N';
         }
         if (!groups[r]) groups[r] = [];
@@ -2770,6 +2789,13 @@ console.log('[ORBITAL] App.js.html started execution');
         <div class="pack-rates-chips-grid">
           ${chipsHtml}
         </div>
+        <div style="margin-top:14px; padding:12px 16px; background:linear-gradient(135deg, rgba(245,158,11,0.15), rgba(236,72,153,0.15)); border:1.5px solid rgba(245,158,11,0.5); border-radius:12px; display:flex; align-items:center; gap:12px;">
+          <span style="font-size:24px;">🔥</span>
+          <div style="font-size:12px; line-height:1.5; color:#cbd5e1;">
+            <strong style="color:#fbbf24; font-size:13.5px;">【10連パック購入特典: ex以上2枚確定！】</strong><br>
+            10連開封（10パック同時開封）を行うと、<strong>ex以上のレアリティカード（RR / SR / ACESPEC）が必ず2枚以上確定</strong>で排出されます！
+          </div>
+        </div>
       `;
     },
 
@@ -2866,21 +2892,46 @@ console.log('[ORBITAL] App.js.html started execution');
       `;
     },
 
-    buyAndOpenPack(packId, isFree = false, isLogbo = false) {
+    isExOrHigherCard(card) {
+      if (!card) return false;
+      const r = String(card.rarity || '').toUpperCase().trim();
+      if (r === 'RR' || r === 'SR' || r === 'UR' || r === 'ACESPEC' || r === 'ACE' || r === 'DOUBLE RARE' || r === 'SUPER RARE' || r === 'ULTRA RARE') {
+        return true;
+      }
+      if (card.isAceSpec || card.aceSpec || card.isEx) {
+        return true;
+      }
+      const cat = String(card.category || '');
+      if (cat.includes('ex') || /ACE\s*SPEC|エーススペック/i.test(cat)) {
+        return true;
+      }
+      const name = String(card.name || '');
+      if (/[\s_・-]ex|ex$/i.test(name)) {
+        return true;
+      }
+      return false;
+    },
+
+    buyAndOpenPack(packId, isFree = false, isLogbo = false, pullCount = 1) {
       const pack = (this.state.packs || []).find(p => p.id === packId) || (this.state.packs && this.state.packs[0]);
       if (!pack) {
         this.toast('指定されたパックが見つかりません', true);
         return;
       }
 
+      const count = pack.cardCount || 5;
+      const is10Ren = (pullCount === 10);
+      const totalPacks = is10Ren ? 10 : 1;
+      const unitPrice = pack.price || 100;
+      const totalPrice = isFree ? 0 : (unitPrice * totalPacks);
+
       if (!isFree) {
         const curNmt = this.getUserNmt();
-        if (curNmt < pack.price) {
-          this.toast('❌ NMTが足りません！ (必要: ' + pack.price + ' NMT / 所持: ' + curNmt + ' NMT) 毎日ログインボーナスを取得してください。', true);
+        if (curNmt < totalPrice) {
+          this.toast('❌ NMTが足りません！ (必要: ' + totalPrice + ' NMT / 所持: ' + curNmt + ' NMT) 毎日ログインボーナスを取得してください。', true);
           return;
         }
-
-        this.setUserNmt(curNmt - pack.price);
+        this.setUserNmt(curNmt - totalPrice);
       }
 
       this.state.currentOpeningPackId = packId;
@@ -2888,49 +2939,105 @@ console.log('[ORBITAL] App.js.html started execution');
       // 排出率設定に基づき確率重み付け抽選を行う
       const ratesData = this.getPackEmissionRates(packId);
       const cardList = ratesData.cardList;
-      const count = pack.cardCount || 5;
-      const drawnCards = [];
+      const allDrawnCards = [];
+      const packsDrawn = [];
 
-      if (cardList && cardList.length > 0) {
-        for (let i = 0; i < count; i++) {
-          let poolToUse = cardList.filter(cand => !drawnCards.some(d => String(d.id) === String(cand.card.id) || (d.name && cand.card.name && d.name === cand.card.name)));
-          if (poolToUse.length === 0) poolToUse = cardList;
+      for (let pIdx = 0; pIdx < totalPacks; pIdx++) {
+        const currentPackCards = [];
+        if (cardList && cardList.length > 0) {
+          for (let i = 0; i < count; i++) {
+            let poolToUse = cardList.filter(cand => !currentPackCards.some(d => String(d.id) === String(cand.card.id) || (d.name && cand.card.name && d.name === cand.card.name)));
+            if (poolToUse.length === 0) poolToUse = cardList;
 
-          const totalWeight = poolToUse.reduce((sum, item) => sum + item.percent, 0);
-          let randVal = Math.random() * totalWeight;
-          let selected = poolToUse[0].card;
-          for (let j = 0; j < poolToUse.length; j++) {
-            randVal -= poolToUse[j].percent;
-            if (randVal <= 0) {
-              selected = poolToUse[j].card;
-              break;
+            const totalWeight = poolToUse.reduce((sum, item) => sum + item.percent, 0);
+            let randVal = Math.random() * totalWeight;
+            let selected = poolToUse[0].card;
+            for (let j = 0; j < poolToUse.length; j++) {
+              randVal -= poolToUse[j].percent;
+              if (randVal <= 0) {
+                selected = poolToUse[j].card;
+                break;
+              }
+            }
+            const copyCard = JSON.parse(JSON.stringify(selected));
+            currentPackCards.push(copyCard);
+            allDrawnCards.push(copyCard);
+          }
+        } else {
+          // デフォルトサンプルカード生成
+          for (let i = 0; i < count; i++) {
+            const cardObj = {
+              id: 'drawn_' + Date.now() + '_' + pIdx + '_' + i,
+              name: 'キラカード ' + (i + 1) + '号',
+              category: 'たね',
+              type: '無色',
+              hp: 80,
+              attack1Name: 'スターバースト',
+              attack1Damage: 40,
+              rarity: (i === 4 ? 'SR' : (i === 3 ? 'RR' : (i === 2 ? 'AR' : (i === 1 ? 'R' : 'N'))))
+            };
+            currentPackCards.push(cardObj);
+            allDrawnCards.push(cardObj);
+          }
+        }
+        packsDrawn.push(currentPackCards);
+      }
+
+      // ★ 10連特典: ex以上2枚確定保証
+      if (is10Ren) {
+        const currentExCount = allDrawnCards.filter(c => this.isExOrHigherCard(c)).length;
+        if (currentExCount < 2) {
+          const needed = 2 - currentExCount;
+          let exPool = (cardList || []).filter(cand => this.isExOrHigherCard(cand.card));
+          if (exPool.length === 0) {
+            // 万が一プールにexがない場合のフェイルセーフ
+            exPool = (this.getAllCards() || []).filter(c => this.isExOrHigherCard(c)).map(c => ({ card: c, percent: 1 }));
+          }
+          if (exPool.length > 0) {
+            for (let k = 0; k < needed; k++) {
+              const totalExWeight = exPool.reduce((sum, item) => sum + item.percent, 0);
+              let randVal = Math.random() * totalExWeight;
+              let chosenEx = exPool[0].card;
+              for (let j = 0; j < exPool.length; j++) {
+                randVal -= exPool[j].percent;
+                if (randVal <= 0) {
+                  chosenEx = exPool[j].card;
+                  break;
+                }
+              }
+              // 非exカードを後ろのパックから優先して置換
+              let replaceIdx = -1;
+              for (let rev = allDrawnCards.length - 1; rev >= 0; rev--) {
+                if (!this.isExOrHigherCard(allDrawnCards[rev])) {
+                  replaceIdx = rev;
+                  break;
+                }
+              }
+              if (replaceIdx >= 0) {
+                const guaranteedCard = JSON.parse(JSON.stringify(chosenEx));
+                allDrawnCards[replaceIdx] = guaranteedCard;
+                const p = Math.floor(replaceIdx / count);
+                const c = replaceIdx % count;
+                if (packsDrawn[p]) {
+                  packsDrawn[p][c] = guaranteedCard;
+                }
+              }
             }
           }
-          drawnCards.push(JSON.parse(JSON.stringify(selected)));
-        }
-      } else {
-        // デフォルトサンプルカード生成
-        for (let i = 0; i < count; i++) {
-          drawnCards.push({
-            id: 'drawn_' + Date.now() + '_' + i,
-            name: 'キラカード ' + (i + 1) + '号',
-            category: 'たね',
-            type: '無色',
-            hp: 80,
-            attack1Name: 'スターバースト',
-            attack1Damage: 40,
-            rarity: (i === 4 ? 'SR' : (i === 3 ? 'RR' : (i === 2 ? 'AR' : (i === 1 ? 'R' : 'N'))))
-          });
         }
       }
 
-      this.state.activeDrawnCards = drawnCards;
+      this.state.is10RenPull = is10Ren;
+      this.state.tenRenPacks = packsDrawn;
+      this.state.tenRenCurrentPackIndex = 0;
+      this.state.all10RenDrawnCards = allDrawnCards;
+      this.state.activeDrawnCards = is10Ren ? packsDrawn[0] : allDrawnCards;
 
       // 獲得したカードをCardSystemのカスタムカードに登録し、所持状態にする
       if (window.CardSystem && typeof CardSystem.addCardsToCollection === 'function') {
-        CardSystem.addCardsToCollection(drawnCards);
+        CardSystem.addCardsToCollection(allDrawnCards);
       } else if (window.CardSystem && Array.isArray(CardSystem.customCards)) {
-        drawnCards.forEach(c => {
+        allDrawnCards.forEach(c => {
           if (!CardSystem.customCards.some(x => x.id === c.id)) {
             CardSystem.customCards.push(c);
           }
@@ -2938,28 +3045,34 @@ console.log('[ORBITAL] App.js.html started execution');
         try { localStorage.setItem('ORBITAL_CUSTOM_CARDS', JSON.stringify(CardSystem.customCards)); } catch(e) {}
       }
 
-      this.openPackOpeningModal(pack, isLogbo);
+      this.openPackOpeningModal(pack, isLogbo, is10Ren);
     },
 
-    openPackOpeningModal(pack, isLogbo = false) {
+    openPackOpeningModal(pack, isLogbo = false, is10Ren = false) {
+      const is10 = is10Ren || this.state.is10RenPull;
       const titleEl = this.el('packFoilTitle');
-      if (titleEl) titleEl.textContent = pack.title || '拡張パック';
+      if (titleEl) titleEl.textContent = (pack.title || '拡張パック') + (is10 ? ' (10連パック)' : '');
       const headerEl = this.el('packFoilHeader');
-      if (headerEl) headerEl.textContent = isLogbo ? '🎁 ログボ特典 (ランダム当選)' : 'ORCEIN BOOSTER';
+      if (headerEl) headerEl.textContent = isLogbo ? '🎁 ログボ特典 (ランダム当選)' : (is10 ? '🔥 10連 BOOSTER' : 'ORCEIN BOOSTER');
       const subEl = this.el('packFoilSub');
-      if (subEl) subEl.textContent = isLogbo ? '🎁 既存パックからランダム選出！' : ((pack.cardCount || 5) + ' CARDS INSIDE');
+      if (subEl) subEl.textContent = is10 ? '🔥 10 PACKS (50枚) / ex以上2枚確定！' : (isLogbo ? '🎁 既存パックからランダム選出！' : ((pack.cardCount || 5) + ' CARDS INSIDE'));
       const artEl = this.el('packFoilArt');
       if (artEl) {
         if (pack.image) {
           artEl.innerHTML = '<img src="' + this.escapeHtml(pack.image) + '" style="width:72px; height:72px; object-fit:cover; border-radius:10px;">';
         } else {
-          artEl.textContent = isLogbo ? '🎁' : '🧪';
+          artEl.textContent = is10 ? '🔥' : (isLogbo ? '🎁' : '🧪');
         }
       }
       const stageVis = this.el('packStageVisual');
       const revealStage = this.el('packRevealStage');
       if (stageVis) stageVis.style.display = 'flex';
       if (revealStage) revealStage.classList.add('hidden');
+      const summaryContainer = this.el('tenRenSummaryContainer');
+      if (summaryContainer) summaryContainer.classList.add('hidden');
+      const fanContainer = this.el('pokepokeCardsFanContainer');
+      if (fanContainer) fanContainer.classList.remove('hidden');
+
       const modal = this.el('packOpeningOverlay');
       if (modal) modal.classList.remove('hidden');
     },
@@ -2970,10 +3083,60 @@ console.log('[ORBITAL] App.js.html started execution');
       if (stageVis) stageVis.style.display = 'none';
       if (revealStage) revealStage.classList.remove('hidden');
 
+      this.renderCurrentPackReveal();
+    },
+
+    renderCurrentPackReveal() {
       const container = this.el('pokepokeCardsFanContainer');
+      const summaryContainer = this.el('tenRenSummaryContainer');
+      const noticeEl = this.el('tenRenProgressNotice');
+      const nextBtn = this.el('nextPackBtn');
+      const quickBtn = this.el('tenRenQuickRevealBtn');
+      const revealAllBtn = this.el('revealAllCardsBtn');
+      const closeBtn = this.el('closePackOpeningBtn');
+      const headingTitle = this.el('packRevealTitle');
+
+      if (summaryContainer) summaryContainer.classList.add('hidden');
+      if (container) container.classList.remove('hidden');
+
+      const is10 = !!this.state.is10RenPull;
+      let drawn = [];
+
+      if (is10) {
+        const pIdx = this.state.tenRenCurrentPackIndex || 0;
+        drawn = (this.state.tenRenPacks && this.state.tenRenPacks[pIdx]) || [];
+        this.state.activeDrawnCards = drawn;
+
+        if (noticeEl) {
+          noticeEl.classList.remove('hidden');
+          noticeEl.innerHTML = `<span style="color:#fbbf24; font-weight:900;">🔥 10連開封: パック ${pIdx + 1} / 10</span> <span style="margin-left:8px; color:#fef08a; font-size:12px;">(★ ex以上2枚確定保証)</span>`;
+        }
+        if (headingTitle) headingTitle.textContent = `✨ パック ${pIdx + 1} / 10 をめくろう！`;
+        if (nextBtn) {
+          nextBtn.classList.remove('hidden');
+          if (pIdx < 9) {
+            nextBtn.textContent = `次のパックへ ➔ (${pIdx + 2}/10)`;
+            nextBtn.onclick = () => this.next10RenPack();
+          } else {
+            nextBtn.textContent = `🎉 全50枚の結果一覧を見る ➔`;
+            nextBtn.onclick = () => this.show10RenSummary();
+          }
+        }
+        if (quickBtn) quickBtn.classList.remove('hidden');
+        if (closeBtn) closeBtn.classList.add('hidden');
+      } else {
+        drawn = this.state.activeDrawnCards || [];
+        if (noticeEl) noticeEl.classList.add('hidden');
+        if (headingTitle) headingTitle.textContent = '✨ カードを1枚ずつタップしてめくろう！';
+        if (nextBtn) nextBtn.classList.add('hidden');
+        if (quickBtn) quickBtn.classList.add('hidden');
+        if (closeBtn) closeBtn.classList.remove('hidden');
+      }
+
+      if (revealAllBtn) revealAllBtn.classList.remove('hidden');
+
       if (!container) return;
 
-      const drawn = this.state.activeDrawnCards || [];
       container.innerHTML = drawn.map((card, idx) => {
         const rarityClass = card.rarity ? 'rarity-aura-' + (card.rarity) : '';
         const rot = (idx - 2) * 6;
@@ -2996,6 +3159,74 @@ console.log('[ORBITAL] App.js.html started execution');
           </div>
         `;
       }).join('');
+    },
+
+    next10RenPack() {
+      const current = this.state.tenRenCurrentPackIndex || 0;
+      if (current < 9) {
+        this.state.tenRenCurrentPackIndex = current + 1;
+        this.renderCurrentPackReveal();
+      } else {
+        this.show10RenSummary();
+      }
+    },
+
+    show10RenSummary() {
+      const fanContainer = this.el('pokepokeCardsFanContainer');
+      const summaryContainer = this.el('tenRenSummaryContainer');
+      const noticeEl = this.el('tenRenProgressNotice');
+      const nextBtn = this.el('nextPackBtn');
+      const quickBtn = this.el('tenRenQuickRevealBtn');
+      const revealAllBtn = this.el('revealAllCardsBtn');
+      const closeBtn = this.el('closePackOpeningBtn');
+      const headingTitle = this.el('packRevealTitle');
+
+      if (fanContainer) fanContainer.classList.add('hidden');
+      if (summaryContainer) summaryContainer.classList.remove('hidden');
+      if (nextBtn) nextBtn.classList.add('hidden');
+      if (quickBtn) quickBtn.classList.add('hidden');
+      if (revealAllBtn) revealAllBtn.classList.add('hidden');
+      if (closeBtn) closeBtn.classList.remove('hidden');
+
+      const allCards = this.state.all10RenDrawnCards || [];
+      const exCards = allCards.filter(c => this.isExOrHigherCard(c));
+
+      if (headingTitle) {
+        headingTitle.innerHTML = `🎉 10連開封結果 (全50枚) <span style="font-size:18px; color:#fef08a; margin-left:8px; display:inline-block;">★ ex以上 ${exCards.length}枚 獲得！</span>`;
+      }
+      if (noticeEl) {
+        noticeEl.classList.remove('hidden');
+        noticeEl.innerHTML = `<span style="color:#38bdf8; font-weight:800;">カードをクリックすると詳細を確認できます。獲得カードは自動的にコレクションへ保存されました！</span>`;
+      }
+
+      if (!summaryContainer) return;
+
+      const cardsHtml = allCards.map((card, idx) => {
+        const isEx = this.isExOrHigherCard(card);
+        const isAce = card.rarity === 'ACESPEC' || card.isAceSpec;
+        const borderClass = isAce ? 'is-ace-card' : (isEx ? 'is-ex-card' : '');
+        const badgeHtml = isAce ? '<div class="ten-ren-ex-badge" style="background:linear-gradient(135deg, #f43f5e, #be123c);">💎 ACE SPEC</div>' :
+          (isEx ? '<div class="ten-ren-ex-badge">★ ' + (card.rarity || 'ex') + '</div>' : '');
+
+        const cardInner = (window.CardSystem && typeof window.CardSystem.createCardHtml === 'function')
+          ? window.CardSystem.createCardHtml(card, { size: 'sm' })
+          : `<div style="font-size:12px; font-weight:bold; color:#fff; text-align:center;">${this.escapeHtml(card.name)}</div>`;
+
+        return `
+          <div class="ten-ren-card-wrapper ${borderClass}" onclick="CardSystem && CardSystem.showDetail && CardSystem.showDetail(App.state.all10RenDrawnCards[${idx}])" title="${this.escapeHtml(card.name)}">
+            ${badgeHtml}
+            <div style="width:100%; pointer-events:none;">
+              ${cardInner}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      summaryContainer.innerHTML = `
+        <div class="ten-ren-summary-grid">
+          ${cardsHtml}
+        </div>
+      `;
     },
 
     flipPokepokeCard(el, idx) {
@@ -3050,6 +3281,9 @@ console.log('[ORBITAL] App.js.html started execution');
     closePackOpening() {
       const modal = this.el('packOpeningOverlay');
       if (modal) modal.classList.add('hidden');
+      this.state.is10RenPull = false;
+      this.state.tenRenPacks = [];
+      this.state.all10RenDrawnCards = [];
       this.toast('🎉 開封したカードはコレクションに保存されました！');
       if (window.CardSystem && typeof CardSystem.renderCardList === 'function') {
         CardSystem.renderCardList();

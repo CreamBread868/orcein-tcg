@@ -6067,6 +6067,81 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   100% { opacity: 0; transform: scale(1.35); }
 }
 
+/* ============================================================
+   10連開封 (10-Ren Pack Pull) スタイル
+   ============================================================ */
+.pack-buy-10ren-btn {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 30%, #ec4899 100%) !important;
+  color: #ffffff !important;
+  font-weight: 900 !important;
+  box-shadow: 0 4px 16px rgba(236, 72, 153, 0.35) !important;
+  border: 1px solid rgba(253, 230, 138, 0.4) !important;
+  transition: all 0.25s ease !important;
+  cursor: pointer;
+}
+.pack-buy-10ren-btn:hover {
+  transform: translateY(-2px) scale(1.02) !important;
+  box-shadow: 0 8px 24px rgba(236, 72, 153, 0.55), 0 0 15px rgba(251, 191, 36, 0.4) !important;
+}
+.ten-ren-sub-tag {
+  display: block;
+  font-size: 11px;
+  color: #fef08a;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  font-weight: 800;
+  margin-top: 2px;
+}
+.ten-ren-summary-container {
+  width: 100%;
+}
+.ten-ren-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 12px;
+  padding: 12px 6px;
+}
+.ten-ren-card-wrapper {
+  position: relative;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+}
+.ten-ren-card-wrapper:hover {
+  transform: translateY(-4px) scale(1.04);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  z-index: 10;
+}
+.ten-ren-card-wrapper.is-ex-card {
+  border: 2px solid #fbbf24;
+  background: linear-gradient(145deg, rgba(30, 27, 75, 0.95), rgba(46, 16, 101, 0.95));
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.4), inset 0 0 15px rgba(245, 158, 11, 0.2);
+}
+.ten-ren-card-wrapper.is-ace-card {
+  border: 2px solid #f43f5e;
+  background: linear-gradient(145deg, rgba(88, 28, 135, 0.95), rgba(159, 18, 57, 0.95));
+  box-shadow: 0 0 25px rgba(244, 63, 94, 0.5), inset 0 0 15px rgba(225, 29, 72, 0.3);
+}
+.ten-ren-ex-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: linear-gradient(135deg, #f59e0b, #ec4899);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 900;
+  padding: 2px 8px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  z-index: 10;
+  letter-spacing: 0.5px;
+}
+
 /* バトルスタジアム カードスロット (対戦画面中央) */
 .stadium-card-slot {
   display: inline-flex;
