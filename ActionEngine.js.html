@@ -659,6 +659,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           }
           return { card: detachedCard, fromPokemon: fromPokemon, type: detachedType || targetType };
         } else if (item && typeof item === 'object') {
+          // 1. ポケモンについている実カード(attachedCards)に存在する場合
           for (let pk of allPks) {
             if (Array.isArray(pk.attachedCards)) {
               const idx = pk.attachedCards.indexOf(item);
@@ -675,7 +676,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
                   if (eIdx >= 0) pk.attachedEnergies.splice(eIdx, 1);
                 }
                 const cat = String(item.category || '');
-                if (cat.includes('エネルギー') || cat.toLowerCase().includes('energy') || !item.hp) {
+                if (cat.includes('エネルギー') || cat.toLowerCase().includes('energy') || (!item.hp && item.type)) {
                   pk.energy = Math.max(0, (pk.energy || 0) - 1);
                 }
                 return { card: item, fromPokemon: pk, type: item.type || '無' };
@@ -683,36 +684,37 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
             }
           }
 
-          // attachedCards に実オブジェクトが存在しない場合（仮想エネルギー、または attachedEnergies のみの場合）
-          let fromPk = item._fromPokemon || null;
-          if (!fromPk) {
-            fromPk = allPks.find((pk) => Array.isArray(pk.attachedCards) && pk.attachedCards.some((c) => c && (c === item || c.name === item.name)))
-                  || allPks.find((pk) => Array.isArray(pk.attachedEnergies) && pk.attachedEnergies.some((e) => (typeof e === 'object' ? e.type : e) === item.type))
-                  || allPks.find((pk) => (pk.energy || 0) > 0);
-          }
-          if (fromPk) {
-            if (Array.isArray(fromPk.attachedCards)) {
-              const cardIdx = fromPk.attachedCards.findIndex((c) => c === item || (c && c.name === item.name && c.type === item.type));
-              if (cardIdx >= 0) fromPk.attachedCards.splice(cardIdx, 1);
+          // 2. choiceCard等で取得された仮想エネルギー、または明示的にポケモンに紐付いたカード(_fromPokemon / _isVirtualEnergy)
+          if (item._fromPokemon || item._isVirtualEnergy) {
+            let fromPk = item._fromPokemon;
+            if (!fromPk && item.type) {
+              fromPk = allPks.find((pk) => Array.isArray(pk.attachedEnergies) && pk.attachedEnergies.some((e) => (typeof e === 'object' ? e.type : e) === item.type));
             }
-            if (Array.isArray(fromPk.attachedEnergies)) {
-              let eIdx = fromPk.attachedEnergies.indexOf(item.type || '無');
-              if (eIdx < 0 && item.type) {
-                eIdx = fromPk.attachedEnergies.findIndex((e) => (typeof e === 'object' ? e.type : e) === item.type);
+            if (fromPk) {
+              if (Array.isArray(fromPk.attachedCards)) {
+                const cardIdx = fromPk.attachedCards.findIndex((c) => c === item || (c && c.name === item.name && c.type === item.type));
+                if (cardIdx >= 0) fromPk.attachedCards.splice(cardIdx, 1);
               }
-              if (eIdx < 0 && fromPk.attachedEnergies.length > 0) {
-                eIdx = fromPk.attachedEnergies.length - 1;
+              if (Array.isArray(fromPk.attachedEnergies)) {
+                let eIdx = fromPk.attachedEnergies.indexOf(item.type || '無');
+                if (eIdx < 0 && item.type) {
+                  eIdx = fromPk.attachedEnergies.findIndex((e) => (typeof e === 'object' ? e.type : e) === item.type);
+                }
+                if (eIdx < 0 && fromPk.attachedEnergies.length > 0) {
+                  eIdx = fromPk.attachedEnergies.length - 1;
+                }
+                if (eIdx >= 0) fromPk.attachedEnergies.splice(eIdx, 1);
               }
-              if (eIdx >= 0) fromPk.attachedEnergies.splice(eIdx, 1);
+              const cat = String(item.category || '');
+              if (cat.includes('エネルギー') || cat.toLowerCase().includes('energy') || !item.hp) {
+                fromPk.energy = Math.max(0, (fromPk.energy || 0) - 1);
+              }
+              return { card: item, fromPokemon: fromPk, type: item.type || '無' };
             }
-            const cat = String(item.category || '');
-            if (cat.includes('エネルギー') || cat.toLowerCase().includes('energy') || !item.hp) {
-              fromPk.energy = Math.max(0, (fromPk.energy || 0) - 1);
-            }
-            return { card: item, fromPokemon: fromPk, type: item.type || '無' };
           }
 
-          return { card: item, fromPokemon: null, type: item.type };
+          // 3. ポケモンについていたカードではない（手札・山札・トラッシュ等の通常のカード）
+          return null;
         }
         return null;
       },
