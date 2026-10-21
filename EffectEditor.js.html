@@ -41,6 +41,15 @@ var EffectEditor;
       targets: ['attack1', 'attack2', 'ability', 'trainer']
     },
     {
+      keyword: 'represent',
+      label: 'represent(fnOrCode, options)',
+      category: 'func',
+      badge: '相手視点実行',
+      desc: 'コードを相手プレイヤーの視点（selfとopponentを反転、choiceCard等は相手UIモード）で実行します',
+      snippet: 'await represent(async (self, opponent) => {\n  // 相手としてコードを実行（selfは相手、opponentは自分）\n  ${1:// 相手の行動}\n});',
+      targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
       keyword: 'getOwner',
       label: 'getOwner(pokemon)',
       category: 'func',
@@ -2664,7 +2673,8 @@ var EffectEditor;
         { label: '道具: 毎番HP20回復', sub: 'たべのこし', code: '// ポケモンのどうぐ\n// 自分の番の終わりに、このカードをつけているポケモンのHPを「20」回復する。' },
         { label: '道具: 逃げエネ-2', sub: 'ふうせん', code: '// ポケモンのどうぐ\n// このカードをつけているポケモンのにげるためのエネルギーは、2個分少なくなる。' },
         { label: '道具: 技効果無効・手貼り不可', sub: 'ビッグパラソル等', code: '// ポケモンのどうぐ\n// このカードを自分のポケモンにつける。つけたポケモンは、手札からエネルギーをつけられない。そのかわり、相手のバトルポケモンが使うワザの効果を受けない。\nunaffectedByAttackEffects(true);\ncannotAttachEnergyFromHand(true);' },
-        { label: '相手の道具トラッシュ', sub: 'discardTool()', code: 'discardTool(opponent.active);' }];
+        { label: '相手の道具トラッシュ', sub: 'discardTool()', code: 'discardTool(opponent.active);' },
+        { label: '相手視点で実行 (represent)', sub: 'represent() 相手に選択・行動させる', code: '// 相手の行動としてコードを実行（相手に手札から1枚選ばせる等）\nawait represent(async (self, opponent) => {\n  const card = await choiceCard(self.hand, 1, { title: "手札を1枚選んでトラッシュしてください" });\n  if (card && card[0]) toDiscard(self, card[0]);\n});' }];
 
       } else {
         buttons = [

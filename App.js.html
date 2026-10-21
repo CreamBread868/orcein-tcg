@@ -2623,26 +2623,36 @@ console.log('[ORBITAL] App.js.html started execution');
         if (filtered.length > 0) targetPool = filtered;
       }
 
-      // レアリティ別基本排出比重 (左から順に高く: N:55%, R:25%, AR:11%, RR:6%, SR:3%)
+      // レアリティ別基本排出比重 (左から順に高く: N:56%, R:25%, AR:10%, RR:6%, SR:2.5%, ACESPEC:0.5%)
       const BASE_WEIGHTS = {
-        'N': 55.0,
+        'N': 56.0,
         'R': 25.0,
-        'AR': 11.0,
+        'AR': 10.0,
         'RR': 6.0,
-        'SR': 3.0,
-        'ACESPEC': 2.0
+        'SR': 2.5,
+        'ACESPEC': 0.5
       };
 
       const groups = {};
       targetPool.forEach(card => {
         let r = String(card.rarity || 'N').toUpperCase().trim();
-        if (!BASE_WEIGHTS[r]) {
+        const isAce = !!(
+          card.isAceSpec ||
+          card.aceSpec ||
+          card.subCategory === 'ACESPEC' ||
+          r === 'ACE' ||
+          r === 'ACESPEC' ||
+          r === 'ACE SPEC' ||
+          /ACE\s*SPEC|エーススペック/i.test(String(card.category || ''))
+        );
+        if (isAce) {
+          r = 'ACESPEC';
+        } else if (!BASE_WEIGHTS[r]) {
           if (r === 'C' || r === 'UC' || r === 'COMMON' || r === 'NORMAL' || !r) r = 'N';
           else if (r === 'RARE') r = 'R';
           else if (r === 'ART RARE') r = 'AR';
           else if (r === 'DOUBLE RARE' || r === 'EX') r = 'RR';
           else if (r === 'SUPER RARE' || r === 'UR' || r === 'ULTRA RARE') r = 'SR';
-          else if (r === 'ACE' || r === 'ACESPEC' || r === 'ACE SPEC') r = 'ACESPEC';
           else r = 'N';
         }
         if (!groups[r]) groups[r] = [];

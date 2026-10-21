@@ -6928,6 +6928,7 @@
       const modal = document.getElementById('battleChoiceModal');
       const title = document.getElementById('battleChoiceTitle');
       const desc = document.getElementById('battleChoiceDesc');
+      const eyebrow = document.getElementById('battleChoiceEyebrow');
       const grid = document.getElementById('battleChoiceGrid');
       const cancelBtn = document.getElementById('cancelBattleChoiceBtn');
       const closeBtn = document.getElementById('closeBattleChoiceModal');
@@ -6936,6 +6937,19 @@
       if (!modal || !grid) {
         if (typeof onSelect === 'function') onSelect(0);
         return;
+      }
+
+      const isOpponent = !!(options?.isOpponent || options?.isRepresenting);
+      if (isOpponent) {
+        modal.classList.add('opponent-choice-mode');
+        if (eyebrow) {
+          eyebrow.textContent = options?.eyebrow || '🔴 OPPONENT ACTION (相手プレイヤーの選択)';
+        }
+      } else {
+        modal.classList.remove('opponent-choice-mode');
+        if (eyebrow) {
+          eyebrow.textContent = options?.eyebrow || 'CARD SELECTION';
+        }
       }
 
       if (title) title.textContent = options?.title || 'カード選択';
@@ -6947,7 +6961,10 @@
 
       grid.innerHTML = (cards || []).map((c, i) => {
         const rawObj = c._raw || c;
-        const btnLabel = (c.category === 'バトル場へ' || options?.title?.includes('バトルポケモン') || options?.title?.includes('交代')) ? '⚔️ バトル場へ選出' : '決定';
+        const defaultBtn = isOpponent ? '相手として決定' : '決定';
+        const btnLabel = (c.category === 'バトル場へ' || options?.title?.includes('バトルポケモン') || options?.title?.includes('交代'))
+          ? (isOpponent ? '⚔️ 相手バトル場へ選出' : '⚔️ バトル場へ選出')
+          : defaultBtn;
         let cardInnerHtml = '';
         if (window.CardSystem && typeof window.CardSystem.createCardHtml === 'function' && rawObj && rawObj.name) {
           cardInnerHtml = window.CardSystem.createCardHtml(rawObj, { size: 'sm' });
@@ -6981,7 +6998,11 @@
         this._currentChoiceSelectHandler = null;
         this._choiceModalCanCancel = true;
         modal.classList.add('hidden');
+        modal.classList.remove('opponent-choice-mode');
         modal.style.display = '';
+        if (eyebrow) {
+          eyebrow.textContent = 'CARD SELECTION';
+        }
         if (cancelBtn) {
           cancelBtn.onclick = null;
           cancelBtn.style.display = '';
