@@ -29,11 +29,29 @@ window.DeckSystem = function () {
 
   function fetchCurrentUser(callback) {
     const localEmail = (function () {
-      try { return localStorage.getItem('orbital_mock_user_email') || ''; } catch (e) { return ''; }
+      try {
+        const saved = localStorage.getItem('orbital_mock_user_email');
+        if (saved && saved.toLowerCase() === 'player@gmail.com') {
+          localStorage.removeItem('orbital_mock_user_email');
+          return '';
+        }
+        return saved || '';
+      } catch (e) { return ''; }
     })();
 
     const fallbackUser = () => {
-      var email = localEmail || 'player@gmail.com';
+      var email = localEmail || '';
+      if (!email) {
+        state.currentUser = {
+          email: '',
+          displayName: 'ゲスト',
+          avatar: '👤',
+          isLoggedIn: false
+        };
+        updateUserBadge();
+        if (callback) callback(state.currentUser);
+        return;
+      }
       var users = [];
       try {
         var raw = localStorage.getItem('orbital_mock_users');
@@ -50,11 +68,16 @@ window.DeckSystem = function () {
       if (callback) callback(state.currentUser);
     };
 
-    if (window.google && google.script && google.script.run) {
+    if (window.google && google.script && google.script.run && localEmail) {
       try {
         google.script.run
           .withSuccessHandler(function (user) {
-            state.currentUser = user || { email: 'player@gmail.com', displayName: 'プレイヤー', avatar: '⚡', isLoggedIn: true };
+            if (user && user.email && user.email.toLowerCase() !== 'player@gmail.com') {
+              state.currentUser = user;
+            } else {
+              fallbackUser();
+              return;
+            }
             updateUserBadge();
             if (callback) callback(state.currentUser);
           })
@@ -79,15 +102,33 @@ window.DeckSystem = function () {
     const topbarUserAccount = document.getElementById('topbarUserAccount');
 
     const u = state.currentUser || {};
-    const email = u.email || 'player@gmail.com';
-    const name = u.displayName || email.split('@')[0] || 'ゲスト';
-    const avatar = u.avatar || '⚡';
+    const isLoggedIn = !!(u.isLoggedIn && u.email && u.email.toLowerCase() !== 'player@gmail.com');
+    const email = isLoggedIn ? u.email : '';
+    const name = isLoggedIn ? (u.displayName || email.split('@')[0] || 'トレーナー') : 'ゲスト';
+    const avatar = isLoggedIn ? (u.avatar || '⚡') : '👤';
 
     if (avatarBadge) avatarBadge.textContent = avatar;
     if (nameBadge) nameBadge.textContent = name;
-    if (emailBadge) emailBadge.textContent = '(' + email + ')';
+    if (emailBadge) emailBadge.textContent = email ? '(' + email + ')' : '(未ログイン)';
     if (topbarUserAccount) {
-      topbarUserAccount.title = 'ログイン中: ' + name + ' (' + email + ')\nクリックしてプロフ編集・アカウント切替';
+      if (isLoggedIn) {
+        topbarUserAccount.title = 'ログイン中: ' + name + ' (' + email + ')\nクリックしてプロフ編集・アカウント切替';
+        topbarUserAccount.onclick = () => {
+          if (window.App && typeof window.App.openAccountProfileModal === 'function') {
+            window.App.openAccountProfileModal();
+          }
+        };
+      } else {
+        topbarUserAccount.title = '未ログイン（クリックしてGmailログイン）';
+        topbarUserAccount.onclick = () => {
+          if (window.App && typeof window.App.openAuthModal === 'function') {
+            window.App.openAuthModal('login');
+          }
+        };
+      }
+    }
+    if (window.App && typeof window.App.updateUserBadge === 'function') {
+      window.App.updateUserBadge();
     }
   }
 

@@ -607,8 +607,8 @@
     },
 
     cloudCreateOnlineRoom(deck, roomName, userEmail, rules, onSuccess, onFailure) {
-      const hostEmail = userEmail || (window.DeckSystem && window.DeckSystem.state && window.DeckSystem.state.currentUser ? window.DeckSystem.state.currentUser.email : '') || 'player@gmail.com';
-      const hostName = hostEmail.split('@')[0] || 'プレイヤー';
+      const hostEmail = userEmail || (window.App && typeof window.App.getUserEmail === 'function' ? window.App.getUserEmail() : '') || (window.DeckSystem && window.DeckSystem.state && window.DeckSystem.state.currentUser ? window.DeckSystem.state.currentUser.email : '');
+      const hostName = (hostEmail && hostEmail.includes('@')) ? hostEmail.split('@')[0] : (window.App && typeof window.App.getUserDisplayName === 'function' ? window.App.getUserDisplayName() : 'ゲスト');
       const roomId = 'ROOM-' + Math.random().toString(36).substring(2, 6).toUpperCase();
       const name = String(roomName || (hostName + 'の部屋')).trim();
       const now = Date.now();
@@ -1050,8 +1050,8 @@
     },
 
     clientCreateOnlineRoom(deck, roomName, userEmail, rules) {
-      const hostEmail = userEmail || (window.DeckSystem && window.DeckSystem.state && window.DeckSystem.state.currentUser ? window.DeckSystem.state.currentUser.email : '') || 'player@gmail.com';
-      const hostName = hostEmail.split('@')[0] || 'プレイヤー';
+      const hostEmail = userEmail || (window.App && typeof window.App.getUserEmail === 'function' ? window.App.getUserEmail() : '') || (window.DeckSystem && window.DeckSystem.state && window.DeckSystem.state.currentUser ? window.DeckSystem.state.currentUser.email : '');
+      const hostName = (hostEmail && hostEmail.includes('@')) ? hostEmail.split('@')[0] : (window.App && typeof window.App.getUserDisplayName === 'function' ? window.App.getUserDisplayName() : 'ゲスト');
       const roomId = 'ROOM-' + Math.random().toString(36).substring(2, 6).toUpperCase();
       const name = String(roomName || (hostName + 'の部屋')).trim();
       const now = Date.now();

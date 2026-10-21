@@ -82,6 +82,7 @@ for (const [key, file] of Object.entries(includes)) {
 }
 
 // Write master compiled files
+fs.writeFileSync(templatePath, indexHtml, 'utf8');
 fs.writeFileSync(path.join(__dirname, 'index.html'), indexHtml, 'utf8');
 fs.writeFileSync(path.join(__dirname, 'index_local.html'), indexHtml, 'utf8');
 

@@ -9464,11 +9464,14 @@ body.in-battle-arena #battle-arena-view,
         function getLocalUsers() {
           try {
             var raw = localStorage.getItem('orbital_mock_users');
-            if (raw) return JSON.parse(raw);
+            if (raw) {
+              var list = JSON.parse(raw);
+              if (Array.isArray(list)) {
+                return list.filter(function (x) { return x && x.email && x.email.toLowerCase() !== 'player@gmail.com'; });
+              }
+            }
           } catch (e) { }
-          return [
-            { email: 'player@gmail.com', displayName: 'プレイヤー', avatar: '⚡', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
-          ];
+          return [];
         }
 
         function saveLocalUsers(users) {
@@ -9478,11 +9481,16 @@ body.in-battle-arena #battle-arena-view,
         MockRunner.prototype.getUserProfile = function (userEmail) {
           var self = this;
           setTimeout(function () {
-            var email = String(userEmail || localStorage.getItem('orbital_mock_user_email') || 'player@gmail.com').trim().toLowerCase();
+            var rawEmail = userEmail || localStorage.getItem('orbital_mock_user_email') || '';
+            var email = String(rawEmail).trim().toLowerCase();
+            if (!email || email === 'player@gmail.com') {
+              self._success({ email: '', displayName: 'ゲスト', avatar: '👤', isLoggedIn: false });
+              return;
+            }
             var users = getLocalUsers();
             var u = users.find(function (x) { return String(x.email).toLowerCase() === email; });
             if (!u) {
-              var defaultName = email.split('@')[0] || 'プレイヤー';
+              var defaultName = email.split('@')[0] || 'ゲスト';
               u = { email: email, displayName: defaultName, avatar: '👤', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
               users.push(u);
               saveLocalUsers(users);
@@ -9555,7 +9563,13 @@ body.in-battle-arena #battle-arena-view,
             try {
               var decks = getLocalDecks();
               if (!deck.id) deck.id = 'deck_' + Date.now();
-              if (!deck.userEmail) deck.userEmail = userEmail || localStorage.getItem('orbital_mock_user_email') || 'player@gmail.com';
+              var savedEmail = (function() {
+                try {
+                  var e = localStorage.getItem('orbital_mock_user_email');
+                  return (e && e.toLowerCase() !== 'player@gmail.com') ? e : '';
+                } catch(e) { return ''; }
+              })();
+              if (!deck.userEmail) deck.userEmail = userEmail || savedEmail || '';
               deck.updatedAt = new Date().toISOString().replace('T', ' ').slice(0, 19);
               var idx = decks.findIndex(function (x) { return String(x.id) === String(deck.id); });
               if (idx >= 0) {
@@ -9600,8 +9614,14 @@ body.in-battle-arena #battle-arena-view,
           var self = this;
           setTimeout(function () {
             try {
-              var hostEmail = userEmail || localStorage.getItem('orbital_mock_user_email') || 'player@gmail.com';
-              var hostName = hostEmail.split('@')[0];
+              var savedEmail = (function() {
+                try {
+                  var e = localStorage.getItem('orbital_mock_user_email');
+                  return (e && e.toLowerCase() !== 'player@gmail.com') ? e : '';
+                } catch(e) { return ''; }
+              })();
+              var hostEmail = userEmail || savedEmail || '';
+              var hostName = hostEmail && hostEmail.includes('@') ? hostEmail.split('@')[0] : 'ゲスト';
               var roomId = 'ROOM-' + Math.random().toString(36).substring(2, 6).toUpperCase();
               var name = String(roomName || (hostName + 'の部屋')).trim();
               var now = Date.now();
@@ -9832,7 +9852,16 @@ body.in-battle-arena #battle-arena-view,
           var self = this;
           setTimeout(function () {
             try {
-              var userEmail = String(email || localStorage.getItem('orbital_mock_user_email') || 'player@gmail.com').trim().toLowerCase();
+              var savedEmail = (function() {
+                try {
+                  var e = localStorage.getItem('orbital_mock_user_email');
+                  return (e && e.toLowerCase() !== 'player@gmail.com') ? e : '';
+                } catch(e) { return ''; }
+              })();
+              var userEmail = String(email || savedEmail || '').trim().toLowerCase();
+              if (!userEmail || userEmail === 'player@gmail.com') {
+                return self._failure(new Error('ログインが必要です。'));
+              }
               var users = getLocalUsers();
               var idx = users.findIndex(function (x) { return String(x.email).toLowerCase() === userEmail; });
               var u = idx >= 0 ? users[idx] : { email: userEmail, displayName: userEmail.split('@')[0], avatar: '👤', nmtBalance: 10000, lastBonusDate: '', streakDay: 1 };
@@ -9937,7 +9966,16 @@ body.in-battle-arena #battle-arena-view,
           var self = this;
           setTimeout(function () {
             try {
-              var userEmail = String(email || localStorage.getItem('orbital_mock_user_email') || 'player@gmail.com').trim().toLowerCase();
+              var savedEmail = (function() {
+                try {
+                  var e = localStorage.getItem('orbital_mock_user_email');
+                  return (e && e.toLowerCase() !== 'player@gmail.com') ? e : '';
+                } catch(e) { return ''; }
+              })();
+              var userEmail = String(email || savedEmail || '').trim().toLowerCase();
+              if (!userEmail || userEmail === 'player@gmail.com') {
+                return self._failure(new Error('DNAとの残高同期にはログインが必要です。'));
+              }
               var users = getLocalUsers();
               var idx = users.findIndex(function (x) { return String(x.email).toLowerCase() === userEmail; });
               var u = idx >= 0 ? users[idx] : { email: userEmail, displayName: userEmail.split('@')[0], avatar: '👤', nmtBalance: 10000, lastBonusDate: '', streakDay: 1 };
@@ -9991,9 +10029,12 @@ body.in-battle-arena #battle-arena-view,
           var self = this;
           setTimeout(function () {
             try {
-              var email = String(userEmail || 'player@gmail.com').trim().toLowerCase();
-              var name = String(displayName || email.split('@')[0] || 'プレイヤー').trim();
-              var icon = String(avatar || '⚡').trim();
+              var email = String(userEmail || '').trim().toLowerCase();
+              if (!email || email === 'player@gmail.com') {
+                return self._success({ ok: true, onlineCount: 1, onlineUsers: [] });
+              }
+              var name = String(displayName || email.split('@')[0] || 'ユーザー').trim();
+              var icon = String(avatar || '👤').trim();
               var act = String(activity || '🟢 オンライン').trim();
               var now = Date.now();
               var nowIso = new Date(now).toISOString();
@@ -10108,15 +10149,19 @@ body.in-battle-arena #battle-arena-view,
           setTimeout(function () {
             try {
               if (!msgData || !msgData.text) throw new Error('メッセージを入力してください。');
+              var senderEmail = String(msgData.email || '').trim();
+              if (!senderEmail || senderEmail.toLowerCase() === 'player@gmail.com') {
+                throw new Error('チャットを送信するにはログインが必要です。');
+              }
               var raw = localStorage.getItem('orbital_global_chat_messages') || '[]';
               var list = JSON.parse(raw);
               if (!Array.isArray(list)) list = [];
 
               var newMsg = {
                 id: 'msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
-                email: String(msgData.email || 'player@gmail.com').trim(),
-                displayName: String(msgData.displayName || 'プレイヤー').trim(),
-                avatar: String(msgData.avatar || '⚡').trim(),
+                email: senderEmail,
+                displayName: String(msgData.displayName || senderEmail.split('@')[0] || 'ユーザー').trim(),
+                avatar: String(msgData.avatar || '👤').trim(),
                 text: String(msgData.text).trim(),
                 createdAt: new Date().toISOString()
               };
@@ -12060,7 +12105,7 @@ body.in-battle-arena #battle-arena-view,
 
         <div style="margin-bottom: 16px;">
           <label style="display: block; font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 6px;">ご送信者Email (任意)</label>
-          <input type="email" id="feedbackEmailInput" class="input" placeholder="player@gmail.com" style="width: 100%; font-size: 13px;">
+          <input type="email" id="feedbackEmailInput" class="input" placeholder="your-email@gmail.com" style="width: 100%; font-size: 13px;">
         </div>
 
         <div style="margin-bottom: 20px;">
@@ -22758,11 +22803,29 @@ window.DeckSystem = function () {
 
   function fetchCurrentUser(callback) {
     const localEmail = (function () {
-      try { return localStorage.getItem('orbital_mock_user_email') || ''; } catch (e) { return ''; }
+      try {
+        const saved = localStorage.getItem('orbital_mock_user_email');
+        if (saved && saved.toLowerCase() === 'player@gmail.com') {
+          localStorage.removeItem('orbital_mock_user_email');
+          return '';
+        }
+        return saved || '';
+      } catch (e) { return ''; }
     })();
 
     const fallbackUser = () => {
-      var email = localEmail || 'player@gmail.com';
+      var email = localEmail || '';
+      if (!email) {
+        state.currentUser = {
+          email: '',
+          displayName: 'ゲスト',
+          avatar: '👤',
+          isLoggedIn: false
+        };
+        updateUserBadge();
+        if (callback) callback(state.currentUser);
+        return;
+      }
       var users = [];
       try {
         var raw = localStorage.getItem('orbital_mock_users');
@@ -22779,11 +22842,16 @@ window.DeckSystem = function () {
       if (callback) callback(state.currentUser);
     };
 
-    if (window.google && google.script && google.script.run) {
+    if (window.google && google.script && google.script.run && localEmail) {
       try {
         google.script.run
           .withSuccessHandler(function (user) {
-            state.currentUser = user || { email: 'player@gmail.com', displayName: 'プレイヤー', avatar: '⚡', isLoggedIn: true };
+            if (user && user.email && user.email.toLowerCase() !== 'player@gmail.com') {
+              state.currentUser = user;
+            } else {
+              fallbackUser();
+              return;
+            }
             updateUserBadge();
             if (callback) callback(state.currentUser);
           })
@@ -22808,15 +22876,33 @@ window.DeckSystem = function () {
     const topbarUserAccount = document.getElementById('topbarUserAccount');
 
     const u = state.currentUser || {};
-    const email = u.email || 'player@gmail.com';
-    const name = u.displayName || email.split('@')[0] || 'ゲスト';
-    const avatar = u.avatar || '⚡';
+    const isLoggedIn = !!(u.isLoggedIn && u.email && u.email.toLowerCase() !== 'player@gmail.com');
+    const email = isLoggedIn ? u.email : '';
+    const name = isLoggedIn ? (u.displayName || email.split('@')[0] || 'トレーナー') : 'ゲスト';
+    const avatar = isLoggedIn ? (u.avatar || '⚡') : '👤';
 
     if (avatarBadge) avatarBadge.textContent = avatar;
     if (nameBadge) nameBadge.textContent = name;
-    if (emailBadge) emailBadge.textContent = '(' + email + ')';
+    if (emailBadge) emailBadge.textContent = email ? '(' + email + ')' : '(未ログイン)';
     if (topbarUserAccount) {
-      topbarUserAccount.title = 'ログイン中: ' + name + ' (' + email + ')\nクリックしてプロフ編集・アカウント切替';
+      if (isLoggedIn) {
+        topbarUserAccount.title = 'ログイン中: ' + name + ' (' + email + ')\nクリックしてプロフ編集・アカウント切替';
+        topbarUserAccount.onclick = () => {
+          if (window.App && typeof window.App.openAccountProfileModal === 'function') {
+            window.App.openAccountProfileModal();
+          }
+        };
+      } else {
+        topbarUserAccount.title = '未ログイン（クリックしてGmailログイン）';
+        topbarUserAccount.onclick = () => {
+          if (window.App && typeof window.App.openAuthModal === 'function') {
+            window.App.openAuthModal('login');
+          }
+        };
+      }
+    }
+    if (window.App && typeof window.App.updateUserBadge === 'function') {
+      window.App.updateUserBadge();
     }
   }
 
@@ -24482,8 +24568,8 @@ window.DeckSystem = function () {
     },
 
     cloudCreateOnlineRoom(deck, roomName, userEmail, rules, onSuccess, onFailure) {
-      const hostEmail = userEmail || (window.DeckSystem && window.DeckSystem.state && window.DeckSystem.state.currentUser ? window.DeckSystem.state.currentUser.email : '') || 'player@gmail.com';
-      const hostName = hostEmail.split('@')[0] || 'プレイヤー';
+      const hostEmail = userEmail || (window.App && typeof window.App.getUserEmail === 'function' ? window.App.getUserEmail() : '') || (window.DeckSystem && window.DeckSystem.state && window.DeckSystem.state.currentUser ? window.DeckSystem.state.currentUser.email : '');
+      const hostName = (hostEmail && hostEmail.includes('@')) ? hostEmail.split('@')[0] : (window.App && typeof window.App.getUserDisplayName === 'function' ? window.App.getUserDisplayName() : 'ゲスト');
       const roomId = 'ROOM-' + Math.random().toString(36).substring(2, 6).toUpperCase();
       const name = String(roomName || (hostName + 'の部屋')).trim();
       const now = Date.now();
@@ -24925,8 +25011,8 @@ window.DeckSystem = function () {
     },
 
     clientCreateOnlineRoom(deck, roomName, userEmail, rules) {
-      const hostEmail = userEmail || (window.DeckSystem && window.DeckSystem.state && window.DeckSystem.state.currentUser ? window.DeckSystem.state.currentUser.email : '') || 'player@gmail.com';
-      const hostName = hostEmail.split('@')[0] || 'プレイヤー';
+      const hostEmail = userEmail || (window.App && typeof window.App.getUserEmail === 'function' ? window.App.getUserEmail() : '') || (window.DeckSystem && window.DeckSystem.state && window.DeckSystem.state.currentUser ? window.DeckSystem.state.currentUser.email : '');
+      const hostName = (hostEmail && hostEmail.includes('@')) ? hostEmail.split('@')[0] : (window.App && typeof window.App.getUserDisplayName === 'function' ? window.App.getUserDisplayName() : 'ゲスト');
       const roomId = 'ROOM-' + Math.random().toString(36).substring(2, 6).toUpperCase();
       const name = String(roomName || (hostName + 'の部屋')).trim();
       const now = Date.now();
@@ -32471,6 +32557,17 @@ console.log('[ORBITAL] App.js.html started execution');
         }
         this.showPage(initialPage);
       });
+      safe('checkInitialAuthPrompt', () => {
+        // 旧ダミーアカウント player@gmail.com をクリーンアップ
+        this.getUserEmail();
+
+        // 起動時にGmailでログインしていない場合は、ログインモーダルを表示してログインを促す
+        if (!this.isLoggedIn()) {
+          setTimeout(() => {
+            this.openAuthModal('login');
+          }, 350);
+        }
+      });
       try {
         const loaderScreen = document.getElementById('gas-loader-screen');
         if (loaderScreen) {
@@ -32886,9 +32983,9 @@ console.log('[ORBITAL] App.js.html started execution');
     },
 
     refreshPresence(manual) {
-      const email = this.getUserEmail() || 'player@gmail.com';
-      const displayName = this.getUserDisplayName() || 'プレイヤー';
-      const avatar = this.getUserAvatar() || '⚡';
+      const email = this.getUserEmail() || ('guest_' + (this.state.guestId || (this.state.guestId = Math.random().toString(36).substring(2, 8))) + '@guest.local');
+      const displayName = this.getUserDisplayName() || 'ゲスト';
+      const avatar = this.getUserAvatar() || '👤';
       const activity = this.getCurrentActivity();
 
       const applyPresenceRes = (res) => {
@@ -33227,8 +33324,9 @@ console.log('[ORBITAL] App.js.html started execution');
       const text = input.value.trim();
       if (!text) return;
 
-      const email = this.getUserEmail() || 'player@gmail.com';
-      const displayName = this.getUserDisplayName() || 'プレイヤー';
+      if (!this.requireLogin('チャット投稿')) return;
+      const email = this.getUserEmail();
+      const displayName = this.getUserDisplayName() || 'トレーナー';
       const avatar = this.getUserAvatar() || '⚡';
 
       const tempId = 'msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
@@ -33363,7 +33461,7 @@ console.log('[ORBITAL] App.js.html started execution');
       const msgInput = document.getElementById('feedbackMessageInput');
       const btn = document.getElementById('submitFeedbackBtn');
 
-      const email = (emailInput ? emailInput.value : '').trim() || (this.state.userProfile?.email || 'player@gmail.com');
+      const email = (emailInput ? emailInput.value : '').trim() || (this.getUserEmail() || '');
       const message = (msgInput ? msgInput.value : '').trim();
       const category = this.state.selectedFeedbackCategory || '💡 機能要望';
 
@@ -34180,8 +34278,8 @@ console.log('[ORBITAL] App.js.html started execution');
       const saveBtn = this.el('saveAccountProfileBtn');
       if (saveBtn) saveBtn.disabled = false;
 
-      const curUser = (window.DeckSystem && window.DeckSystem.state && window.DeckSystem.state.currentUser) || { email: 'player@gmail.com' };
-      const savedEmail = (function() { try { return localStorage.getItem('orbital_mock_user_email') || curUser.email || 'player@gmail.com'; } catch(e) { return 'player@gmail.com'; } })();
+      const curUser = (window.DeckSystem && window.DeckSystem.state && window.DeckSystem.state.currentUser) || { email: '', displayName: 'ゲスト', avatar: '👤' };
+      const savedEmail = (function() { try { const e = localStorage.getItem('orbital_mock_user_email'); return (e && e.toLowerCase() !== 'player@gmail.com') ? e : (curUser.email || ''); } catch(e) { return ''; } })();
       const savedPass = (function() { try { return localStorage.getItem('orbital_mock_user_password') || ''; } catch(e) { return ''; } })();
 
       const emailInput = this.el('accEmailInput');
@@ -34190,7 +34288,7 @@ console.log('[ORBITAL] App.js.html started execution');
 
       if (emailInput) emailInput.value = savedEmail;
       if (passInput) passInput.value = savedPass;
-      if (nameInput) nameInput.value = curUser.displayName || (savedEmail ? savedEmail.split('@')[0] : 'プレイヤー');
+      if (nameInput) nameInput.value = curUser.displayName || (savedEmail ? savedEmail.split('@')[0] : 'ゲスト');
 
       const dnaUidInput = this.el('accDnaUidInput');
       const savedDnaUid = (function() {
@@ -34423,9 +34521,10 @@ console.log('[ORBITAL] App.js.html started execution');
       } else {
         try {
           var raw = localStorage.getItem('orbital_mock_users');
-          var users = raw ? JSON.parse(raw) : [
-            { email: 'player@gmail.com', displayName: 'プレイヤー', avatar: '⚡' }
-          ];
+          var users = raw ? JSON.parse(raw) : [];
+          if (Array.isArray(users)) {
+            users = users.filter(x => x && x.email && x.email.toLowerCase() !== 'player@gmail.com');
+          }
           onRender(users);
         } catch (e) {
           container.innerHTML = '<div class="muted">読み込みエラー</div>';
@@ -36225,17 +36324,26 @@ console.log('[ORBITAL] App.js.html started execution');
        ユーザー認証 & セッション管理 (Gmail / パスワード)
        ============================================================ */
     isLoggedIn() {
-      if (this.state.userProfile && this.state.userProfile.isLoggedIn && this.state.userProfile.email) {
+      if (this.state.userProfile && this.state.userProfile.isLoggedIn && this.state.userProfile.email && this.state.userProfile.email.toLowerCase() !== 'player@gmail.com') {
         return true;
       }
       try {
         const stored = localStorage.getItem('ORBITAL_LOGGED_IN_USER');
         if (stored) {
           const user = JSON.parse(stored);
-          if (user && user.email) {
+          if (user && user.email && user.email.toLowerCase() !== 'player@gmail.com') {
             this.state.userProfile = Object.assign({ isLoggedIn: true }, user);
             return true;
+          } else {
+            localStorage.removeItem('ORBITAL_LOGGED_IN_USER');
           }
+        }
+        const savedEmail = localStorage.getItem('orbital_mock_user_email');
+        if (savedEmail && savedEmail.toLowerCase() !== 'player@gmail.com') {
+          this.state.userProfile = { email: savedEmail, displayName: savedEmail.split('@')[0], avatar: '👤', isLoggedIn: true };
+          return true;
+        } else if (savedEmail && savedEmail.toLowerCase() === 'player@gmail.com') {
+          localStorage.removeItem('orbital_mock_user_email');
         }
       } catch (e) {}
       return false;
@@ -36526,22 +36634,29 @@ console.log('[ORBITAL] App.js.html started execution');
 
     getUserEmail() {
       try {
-        if (this.state.userProfile && this.state.userProfile.email) return this.state.userProfile.email;
+        if (this.state.userProfile && this.state.userProfile.email && this.state.userProfile.email !== 'player@gmail.com') {
+          return this.state.userProfile.email;
+        }
         const loggedIn = localStorage.getItem('ORBITAL_LOGGED_IN_USER');
         if (loggedIn) {
           const u = JSON.parse(loggedIn);
-          if (u && u.email) {
+          if (u && u.email && u.email !== 'player@gmail.com') {
             this.state.userProfile = Object.assign({ isLoggedIn: true }, u);
             return u.email;
+          } else if (u && u.email === 'player@gmail.com') {
+            try { localStorage.removeItem('ORBITAL_LOGGED_IN_USER'); } catch(e) {}
           }
         }
-        if (window.DeckSystem && window.DeckSystem.state && window.DeckSystem.state.currentUser && window.DeckSystem.state.currentUser.email) {
+        if (window.DeckSystem && window.DeckSystem.state && window.DeckSystem.state.currentUser && window.DeckSystem.state.currentUser.email && window.DeckSystem.state.currentUser.email !== 'player@gmail.com') {
           return window.DeckSystem.state.currentUser.email;
         }
         const saved = localStorage.getItem('orbital_mock_user_email');
-        if (saved) return saved;
+        if (saved && saved !== 'player@gmail.com') return saved;
+        if (saved === 'player@gmail.com') {
+          try { localStorage.removeItem('orbital_mock_user_email'); } catch(e) {}
+        }
       } catch(e) {}
-      return 'player@gmail.com';
+      return '';
     },
 
     getUserDisplayName() {
@@ -36554,7 +36669,7 @@ console.log('[ORBITAL] App.js.html started execution');
         }
       } catch(e) {}
       const email = this.getUserEmail();
-      return (email && email.includes('@')) ? email.split('@')[0] : 'プレイヤー';
+      return (email && email.includes('@')) ? email.split('@')[0] : 'ゲスト';
     },
 
     getUserAvatar() {
@@ -36566,11 +36681,12 @@ console.log('[ORBITAL] App.js.html started execution');
           if (u && u.avatar) return u.avatar;
         }
       } catch(e) {}
-      return '⚡';
+      return '👤';
     },
 
     loadUserProfileFromGas(email) {
       const targetEmail = email || this.getUserEmail();
+      if (!targetEmail) return;
       const self = this;
       if (window.google && google.script && google.script.run && !window._is_mock_gas && typeof google.script.run.getUserProfile === 'function') {
         try {
