@@ -2031,6 +2031,88 @@ console.log('[ORBITAL] App.js.html started execution');
       }
     },
 
+    saveDbNmtToOnline() {
+      const email = (this.el('accEmailInput')?.value || this.getUserEmail() || '').trim().toLowerCase();
+      const uid = (this.el('accDnaUidInput')?.value || '').trim();
+      const btn = this.el('pushDbNmtBtn');
+      const msgEl = this.el('dnaSyncMessage');
+      const currentNmt = this.getUserNmt();
+
+      if (!uid) {
+        this.toast('DNA ユーザーID (Firebase UID) を入力してください', true);
+        if (msgEl) {
+          msgEl.style.display = 'block';
+          msgEl.style.color = '#f87171';
+          msgEl.textContent = '⚠️ Firebase UID が入力されていません。';
+        }
+        return;
+      }
+
+      if (!confirm('現在のゲームDBのNMT残高 (' + currentNmt.toLocaleString() + ' NMT) をオンラインNMTへ上書き保存しますか？')) {
+        return;
+      }
+
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = '💾 保存中...';
+      }
+
+      const self = this;
+      const onSuccess = (res) => {
+        if (btn) { btn.disabled = false; btn.textContent = '📤 DBのNMTをオンラインへ保存'; }
+        if (res && res.ok) {
+          self.updateDnaSyncStatusBadge(uid);
+          if (msgEl) {
+            msgEl.style.display = 'block';
+            msgEl.style.color = '#86efac';
+            msgEl.textContent = '✅ ' + (res.message || ('オンラインNMTへ保存完了: ' + currentNmt.toLocaleString() + ' NMT'));
+          }
+          self.toast('✨ ' + (res.message || ('DB残高 (' + currentNmt.toLocaleString() + ' NMT) をオンラインNMTへ保存しました！')));
+        } else {
+          const errText = (res && res.message) ? res.message : '保存に失敗しました';
+          if (msgEl) {
+            msgEl.style.display = 'block';
+            msgEl.style.color = '#f87171';
+            msgEl.textContent = '❌ ' + errText;
+          }
+          self.toast('オンラインNMT保存エラー: ' + errText, true);
+        }
+      };
+
+      const onError = (err) => {
+        if (btn) { btn.disabled = false; btn.textContent = '📤 DBのNMTをオンラインへ保存'; }
+        const errMsg = err ? (err.message || err.toString()) : '通信エラー';
+        if (msgEl) {
+          msgEl.style.display = 'block';
+          msgEl.style.color = '#f87171';
+          msgEl.textContent = '❌ 通信エラー: ' + errMsg;
+        }
+        self.toast('オンラインNMT保存通信エラー: ' + errMsg, true);
+      };
+
+      if (window.google && google.script && google.script.run && typeof google.script.run.saveDbNmtToOnlineNmt === 'function') {
+        try {
+          google.script.run
+            .withSuccessHandler(onSuccess)
+            .withFailureHandler(onError)
+            .saveDbNmtToOnlineNmt(email, uid, currentNmt);
+          return;
+        } catch(e) {
+          onError(e);
+        }
+      } else {
+        // Mock fallback
+        setTimeout(() => {
+          onSuccess({
+            ok: true,
+            balance: currentNmt,
+            dnaUid: uid,
+            message: '✅ [ローカル] DBのNMT (' + currentNmt.toLocaleString() + ' NMT) をオンラインNMTへ保存しました！'
+          });
+        }, 300);
+      }
+    },
+
 
     renderAccountSwitchList() {
       const container = this.el('accountSwitchList');
@@ -3036,14 +3118,21 @@ console.log('[ORBITAL] App.js.html started execution');
       // 獲得したカードをCardSystemのカスタムカードに登録し、所持状態にする
       if (window.CardSystem && typeof CardSystem.addCardsToCollection === 'function') {
         CardSystem.addCardsToCollection(allDrawnCards);
-      } else if (window.CardSystem && Array.isArray(CardSystem.customCards)) {
+      }
+      if (window.CardSystem && Array.isArray(CardSystem.customCards)) {
+        let customChanged = false;
         allDrawnCards.forEach(c => {
-          if (!CardSystem.customCards.some(x => x.id === c.id)) {
+          if (c && !CardSystem.customCards.some(x => x && String(x.id || x.name) === String(c.id || c.name))) {
             CardSystem.customCards.push(c);
+            customChanged = true;
           }
         });
-        try { localStorage.setItem('ORBITAL_CUSTOM_CARDS', JSON.stringify(CardSystem.customCards)); } catch(e) {}
+        if (customChanged) {
+          try { localStorage.setItem('ORBITAL_CUSTOM_CARDS', JSON.stringify(CardSystem.customCards)); } catch(e) {}
+        }
       }
+      // バックエンドDBへ確実にキュー保存
+      this.saveUserCollectionToGas();
 
       this.openPackOpeningModal(pack, isLogbo, is10Ren);
     },
@@ -4468,10 +4557,10 @@ console.log('[ORBITAL] App.js.html started execution');
     },
 
     loadUserProfileFromGas(email) {
-      const targetEmail = email || this.getUserEmail();
+      const targetEmail = email || this.getUserEmail() || 'player@gmail.com';
       if (!targetEmail) return;
       const self = this;
-      if (window.google && google.script && google.script.run && !window._is_mock_gas && typeof google.script.run.getUserProfile === 'function') {
+      if (window.google && google.script && google.script.run && typeof google.script.run.getUserProfile === 'function') {
         try {
           google.script.run.withSuccessHandler((prof) => {
             if (!prof || !prof.email) return;
@@ -4503,8 +4592,8 @@ console.log('[ORBITAL] App.js.html started execution');
             if (prof.userCollection && typeof prof.userCollection === 'object') {
               self.state.userCollection = prof.userCollection;
               try { localStorage.setItem('ORBITAL_USER_COLLECTION', JSON.stringify(prof.userCollection)); } catch(e) {}
-              if (window.CardSystem && typeof window.CardSystem.saveUserCollection === 'function') {
-                window.CardSystem.saveUserCollection(prof.userCollection);
+              if (window.CardSystem && window.CardSystem.state) {
+                window.CardSystem.state.userCollection = prof.userCollection;
               }
             }
             if (window.DeckSystem && window.DeckSystem.state) {
@@ -4544,9 +4633,18 @@ console.log('[ORBITAL] App.js.html started execution');
       try { localStorage.setItem('ORBITAL_NMT_BALANCE', String(val)); } catch(e) {}
       this.updateNmtDisplays();
 
-      if (window.google && google.script && google.script.run && !window._is_mock_gas) {
+      // GAS DB への残高保存
+      let email = this.getUserEmail();
+      if (!email || email === 'player@gmail.com') {
+        email = (this.state.userProfile && this.state.userProfile.email) ||
+                (window.DeckSystem && window.DeckSystem.state && window.DeckSystem.state.currentUser && window.DeckSystem.state.currentUser.email) ||
+                localStorage.getItem('orbital_mock_user_email') ||
+                localStorage.getItem('ORBITAL_USER_EMAIL') ||
+                'player@gmail.com';
+      }
+
+      if (window.google && google.script && google.script.run && typeof google.script.run.saveUserNmtBalance === 'function') {
         try {
-          const email = this.getUserEmail();
           console.log('📡 [GAS Sync] Saving NMT balance to Users sheet:', val, 'for email:', email);
           google.script.run.withSuccessHandler((res) => {
             console.log('✅ [GAS Sync Success] saveUserNmtBalance:', res);
@@ -4595,18 +4693,85 @@ console.log('[ORBITAL] App.js.html started execution');
 
     saveUserCollectionToGas(col) {
       const collectionObj = col || this.getUserCollection();
-      if (window.google && google.script && google.script.run && !window._is_mock_gas && typeof google.script.run.saveUserCollection === 'function') {
-        try {
-          const email = this.getUserEmail();
-          console.log('📡 [GAS Sync] Saving collection to Users sheet for email:', email);
-          google.script.run.withSuccessHandler((res) => {
-            console.log('✅ [GAS Sync Success] saveUserCollection:', res);
-          }).withFailureHandler((err) => {
-            console.warn('⚠️ [GAS Sync Error] saveUserCollection:', err);
-          }).saveUserCollection(collectionObj, email);
-        } catch(e) {
-          console.warn('saveUserCollectionToGas error:', e);
+      if (!collectionObj || typeof collectionObj !== 'object') return;
+
+      // ローカルストレージは即時同期
+      try {
+        localStorage.setItem('ORBITAL_USER_COLLECTION', JSON.stringify(collectionObj));
+      } catch (e) {}
+
+      this._pendingCollectionToSave = Object.assign({}, collectionObj);
+
+      // デバウンス処理: 10連開封や連続カード獲得時の重複リクエスト・ロック衝突を完全に防止
+      if (this._collectionSaveTimer) {
+        clearTimeout(this._collectionSaveTimer);
+      }
+
+      const self = this;
+      this._collectionSaveTimer = setTimeout(() => {
+        self._flushCollectionSave();
+      }, 250);
+    },
+
+    _flushCollectionSave(retryCount = 0) {
+      if (this._isSavingCollection && retryCount === 0) {
+        this._hasQueuedCollectionSave = true;
+        return;
+      }
+
+      const collectionObj = this._pendingCollectionToSave || this.getUserCollection();
+      if (!collectionObj) return;
+
+      let email = this.getUserEmail();
+      if (!email || email === 'player@gmail.com') {
+        email = (this.state.userProfile && this.state.userProfile.email) ||
+                (window.DeckSystem && window.DeckSystem.state && window.DeckSystem.state.currentUser && window.DeckSystem.state.currentUser.email) ||
+                localStorage.getItem('orbital_mock_user_email') ||
+                localStorage.getItem('ORBITAL_USER_EMAIL') ||
+                'player@gmail.com';
+      }
+
+      this._isSavingCollection = true;
+      this._hasQueuedCollectionSave = false;
+      const self = this;
+
+      const onSuccess = (res) => {
+        self._isSavingCollection = false;
+        console.log('✅ [GAS Sync Success] saveUserCollection:', res);
+        if (self._hasQueuedCollectionSave) {
+          self._hasQueuedCollectionSave = false;
+          self._flushCollectionSave();
         }
+      };
+
+      const onError = (err) => {
+        console.warn(`⚠️ [GAS Sync Error] saveUserCollection (attempt ${retryCount + 1}):`, err);
+        if (retryCount < 3) {
+          const delay = Math.pow(2, retryCount) * 1000;
+          setTimeout(() => {
+            self._flushCollectionSave(retryCount + 1);
+          }, delay);
+        } else {
+          self._isSavingCollection = false;
+          console.error('❌ [GAS Sync Failed] saveUserCollection failed after 3 retries:', err);
+        }
+      };
+
+      if (window.google && google.script && google.script.run && typeof google.script.run.saveUserCollection === 'function') {
+        try {
+          console.log('📡 [GAS Sync] Saving collection to Users sheet for email:', email);
+          google.script.run
+            .withSuccessHandler(onSuccess)
+            .withFailureHandler(onError)
+            .saveUserCollection(collectionObj, email);
+          return;
+        } catch(e) {
+          onError(e);
+        }
+      } else {
+        setTimeout(() => {
+          onSuccess({ ok: true, userCollection: collectionObj });
+        }, 50);
       }
     },
 
@@ -4616,8 +4781,8 @@ console.log('[ORBITAL] App.js.html started execution');
       this.state.userCollection = col;
       try { localStorage.setItem('ORBITAL_USER_COLLECTION', JSON.stringify(col)); } catch(e) {}
 
-      if (window.CardSystem && typeof window.CardSystem.saveUserCollection === 'function') {
-        window.CardSystem.saveUserCollection(col);
+      if (window.CardSystem && window.CardSystem.state) {
+        window.CardSystem.state.userCollection = col;
       }
       if (window.CardSystem && window.App && window.App.state && window.App.state.page === 'collection') {
         window.CardSystem.renderCollectionPage();
@@ -4976,6 +5141,7 @@ console.log('[ORBITAL] App.js.html started execution');
       col[cardId] = Math.max(0, (col[cardId] || 1) - 1);
       this.state.userCollection = col;
       try { localStorage.setItem('ORBITAL_USER_COLLECTION', JSON.stringify(col)); } catch(err) {}
+      this.saveUserCollectionToGas(col);
 
       const sellerName = (this.state.userProfile && this.state.userProfile.displayName) ? this.state.userProfile.displayName : 'プレイヤー';
       const sellerEmail = (this.state.userProfile && this.state.userProfile.email) ? this.state.userProfile.email : 'guest';

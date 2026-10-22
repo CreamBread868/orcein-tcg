@@ -299,15 +299,36 @@ var CardSystem;
     addCardsToCollection(drawnCards) {
       if (!Array.isArray(drawnCards) || !drawnCards.length) return;
       const col = this.getUserCollection();
+
+      // 獲得したカードをcustomCardsおよびApp.state.cardsに登録して永続化（未登録カードの消失・非表示防止）
+      if (!Array.isArray(this.customCards)) {
+        try {
+          this.customCards = JSON.parse(localStorage.getItem('ORBITAL_CUSTOM_CARDS') || '[]');
+        } catch(e) { this.customCards = []; }
+      }
+      let hasNewCustom = false;
+      const appCards = (window.App && window.App.state && Array.isArray(window.App.state.cards)) ? window.App.state.cards : null;
+
       drawnCards.forEach((c) => {
         if (!c) return;
         const key = String(c.id || c.name);
         col[key] = (col[key] || 0) + 1;
+
+        if (!this.customCards.some(x => x && String(x.id || x.name) === key)) {
+          this.customCards.push(c);
+          hasNewCustom = true;
+        }
+        if (appCards && !appCards.some(x => x && String(x.id || x.name) === key)) {
+          appCards.push(c);
+        }
       });
-      this.saveUserCollection(col);
-      if (window.App && typeof window.App.saveUserCollectionToGas === 'function') {
-        window.App.saveUserCollectionToGas(col);
+
+      if (hasNewCustom) {
+        try { localStorage.setItem('ORBITAL_CUSTOM_CARDS', JSON.stringify(this.customCards)); } catch(e) {}
       }
+
+      this.saveUserCollection(col);
+
       if (window.App && window.App.state && window.App.state.page === 'collection') {
         this.renderCollectionPage();
       }
