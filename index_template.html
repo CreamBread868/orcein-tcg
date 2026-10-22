@@ -18018,10 +18018,10 @@ var EffectEditor;
     },
     {
       keyword: 'cantAttackNextTurn',
-      label: 'cantAttackNextTurn()',
+      label: 'cantAttackNextTurn(target?, turns?)',
       category: 'func',
       badge: 'ワザ不可',
-      desc: '次の自分の番、このポケモンはワザを使えない',
+      desc: '次の番ワザを使えなくする（省略時は自身の大技反動用。cantAttackNextTurn(opponent.active)で相手も指定可）',
       snippet: 'cantAttackNextTurn();',
       targets: ['attack1', 'attack2', 'ability']
     },
@@ -18299,10 +18299,10 @@ var EffectEditor;
     },
     {
       keyword: 'cantAttackNextTurn',
-      label: 'cantAttackNextTurn();',
+      label: 'cantAttackNextTurn(target?, turns?)',
       category: 'action',
       badge: '次回ワザ不可',
-      desc: '次の自分の番、このポケモンはワザを使えない（統一エイリアス）',
+      desc: '次の番ワザを使えない（省略時は自身。相手を指定して相手のワザ封じも可能）',
       snippet: 'cantAttackNextTurn();',
       targets: ['attack1', 'attack2', 'ability', 'trainer']
     },
@@ -18604,7 +18604,744 @@ var EffectEditor;
       desc: '相手のバトル場のカード',
       snippet: 'opponent.active',
       targets: ['attack1', 'attack2', 'ability']
-    }],
+    },
+
+    // === 【行動制限・ロック・不発系 (追加API)】 ===
+    {
+      keyword: "blockAttack",
+      label: "blockAttack(target, turnsOrOptions?)",
+      category: "action",
+      badge: "ワザ禁止",
+      desc: "対象ポケモン（相手のバトル場など）のワザの使用を禁止します。第2引数にターン数を指定可能（デフォルト: 1ターン）",
+      snippet: "blockAttack(opponent.active, 1);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "blockEffect",
+      label: "blockEffect(target, turnsOrOptions?)",
+      category: "action",
+      badge: "効果無効耐性",
+      desc: "対象がワザや効果を受けない状態にします（ワザの効果耐性付与）",
+      snippet: "blockEffect(self.active, 1);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "blockEnergy",
+      label: "blockEnergy(playerOrTarget, turnsOrOptions?)",
+      category: "action",
+      badge: "エネ付加禁止",
+      desc: "相手プレイヤーが手札からエネルギーをつける行為を禁止します",
+      snippet: "blockEnergy(opponent, 1);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "blockEvolution",
+      label: "blockEvolution(playerOrTarget, turnsOrOptions?)",
+      category: "action",
+      badge: "進化禁止",
+      desc: "対象プレイヤーの手札からの進化を禁止します",
+      snippet: "blockEvolution(opponent, 1);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "blockSupporter",
+      label: "blockSupporter(playerOrTarget, turnsOrOptions?)",
+      category: "action",
+      badge: "サポート禁止",
+      desc: "対象プレイヤーのサポートカードの使用を禁止します",
+      snippet: "blockSupporter(opponent, 1);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "blockTrainer",
+      label: "blockTrainer(playerOrTarget, turnsOrOptions?)",
+      category: "action",
+      badge: "トレーナーズ禁止",
+      desc: "対象プレイヤーのトレーナーズカード全般（グッズ・サポート・スタジアム）の使用を禁止します",
+      snippet: "blockTrainer(opponent, 1);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "unblock",
+      label: "unblock(actionType, target?)",
+      category: "action",
+      badge: "制限解除",
+      desc: "指定されたアクションタイプ（\"attack\", \"retreat\", \"item\", \"energy\" など）の禁止効果を解除します",
+      snippet: "unblock('attack', self.active);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "isBlocked",
+      label: "isBlocked(actionType, target?, player?)",
+      category: "logic",
+      badge: "制限判定",
+      desc: "指定のアクションが禁止・ロックされているかを判定します（boolean）",
+      snippet: "if (isBlocked('attack', opponent.active)) {\n  ${1:// 制限中の処理}\n}",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "lock",
+      label: "lock(actionType, target?, options?)",
+      category: "action",
+      badge: "行動ロック",
+      desc: "指定した行動（attack, item, retreat等）を禁止・ロックします（blockの別名）",
+      snippet: "lock('retreat', opponent.active, 1);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "ban",
+      label: "ban(actionType, target?, options?)",
+      category: "action",
+      badge: "行動禁止",
+      desc: "指定した行動を禁止します（blockの別名）",
+      snippet: "ban('attack', opponent.active, 1);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "disable",
+      label: "disable(actionType, target?, options?)",
+      category: "action",
+      badge: "行動無効化",
+      desc: "指定した行動を無効化します（blockの別名）",
+      snippet: "disable('ability', opponent.active, 1);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "cannotAttackNextTurn",
+      label: "cannotAttackNextTurn(target?, optionsOrTurns?)",
+      category: "action",
+      badge: "ワザ不可",
+      desc: "次の番、このポケモンはワザが使えなくなります（cantAttackNextTurnの別名）",
+      snippet: "cannotAttackNextTurn();",
+      targets: ["attack1","attack2","ability"]
+    },
+    {
+      keyword: "nextTurnCannotAttack",
+      label: "nextTurnCannotAttack(target?, optionsOrTurns?)",
+      category: "action",
+      badge: "次番ワザ不可",
+      desc: "次の番、指定ポケモンはワザが使えなくなります",
+      snippet: "nextTurnCannotAttack(self.active);",
+      targets: ["attack1","attack2","ability"]
+    },
+    {
+      keyword: "cannot",
+      label: "cannot(reason?)",
+      category: "logic",
+      badge: "中断/不発",
+      desc: "条件不一致などで効果の実行を中断・不発にします（cantの別名）",
+      snippet: "cannot('発動条件を満たしていません');",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "cancelAttack",
+      label: "cancelAttack(reason?)",
+      category: "action",
+      badge: "ワザ中断",
+      desc: "発動中のワザを失敗・キャンセルさせます",
+      snippet: "cancelAttack('ワザが失敗した');",
+      targets: ["attack1","attack2","ability"]
+    },
+    {
+      keyword: "fail",
+      label: "fail(reason?)",
+      category: "action",
+      badge: "効果不発",
+      desc: "効果を失敗扱いにして終了します（cancelAttackの別名）",
+      snippet: "fail('しかし効果がなかった！');",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "abort",
+      label: "abort(reason?)",
+      category: "action",
+      badge: "処理中断",
+      desc: "処理を即座に中断します（cancelAttackの別名）",
+      snippet: "abort('処理が中断されました');",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "immuneToAttackEffects",
+      label: "immuneToAttackEffects(flag, target?)",
+      category: "action",
+      badge: "効果無効",
+      desc: "相手のワザの効果を受けない耐性を設定します",
+      snippet: "immuneToAttackEffects(true, self.active);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "unaffectedByAttackEffects",
+      label: "unaffectedByAttackEffects(flag, target?)",
+      category: "action",
+      badge: "効果無効",
+      desc: "相手のワザの効果を受けない耐性を設定します",
+      snippet: "unaffectedByAttackEffects(true, self.active);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "cannotAttachEnergyFromHand",
+      label: "cannotAttachEnergyFromHand(flag, target?)",
+      category: "action",
+      badge: "エネ付加不可",
+      desc: "対象ポケモンに手札からエネルギーをつけられないよう設定します",
+      snippet: "cannotAttachEnergyFromHand(true, opponent.active);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+
+    // === 【エネルギー操作系 (追加API)】 ===
+    {
+      keyword: "attachEnergy",
+      label: "attachEnergy(target, count)",
+      category: "energy",
+      badge: "エネ付加",
+      desc: "対象ポケモンにエネルギーを付加します",
+      snippet: "attachEnergy(self.active, 1);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "discardEnergy",
+      label: "discardEnergy(target, count)",
+      category: "energy",
+      badge: "エネ破棄",
+      desc: "対象ポケモンからエネルギーをトラッシュします",
+      snippet: "discardEnergy(self.active, 1);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "addEnergy",
+      label: "addEnergy(target, count)",
+      category: "energy",
+      badge: "エネ追加",
+      desc: "対象ポケモンにエネルギーを追加します（attachEnergyの別名）",
+      snippet: "addEnergy(self.active, 1);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "removeEnergy",
+      label: "removeEnergy(target, count)",
+      category: "energy",
+      badge: "エネ除去",
+      desc: "対象ポケモンからエネルギーを除去・破棄します（discardEnergyの別名）",
+      snippet: "removeEnergy(opponent.active, 1);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+
+    // === 【カード選択・山札サーチ系 (追加API)】 ===
+    {
+      keyword: "choicePokemon",
+      label: "choicePokemon(player, filter?, message?)",
+      category: "choice",
+      badge: "ポケモン選択",
+      desc: "指定プレイヤーの場のポケモンから、条件に合うものを選択させて取得します",
+      snippet: "const target = await choicePokemon(self, {}, 'ポケモンを選択してください');",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "searchTopDeck",
+      label: "searchTopDeck(player, lookCount, filter, pickCount, options?)",
+      category: "choice",
+      badge: "上からサーチ",
+      desc: "山札の上から指定枚数を見て、条件に合うカードを選んで手札や場に移動します",
+      snippet: "const picked = await searchTopDeck(self, 7, { category: 'Pokemon' }, 1, { toHand: true });",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "lookAtTop",
+      label: "lookAtTop(player, count, options?)",
+      category: "choice",
+      badge: "山札上確認",
+      desc: "山札の上から指定枚数のカードを確認します（lookAtDeckTopの別名）",
+      snippet: "const cards = lookAtTop(self, 3);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "lookDeckTop",
+      label: "lookDeckTop(player, count, options?)",
+      category: "choice",
+      badge: "山札上確認",
+      desc: "山札の上から指定枚数のカードを確認します（lookAtDeckTopの別名）",
+      snippet: "const cards = lookDeckTop(self, 3);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "moveCard",
+      label: "moveCard(card, destinationZone)",
+      category: "action",
+      badge: "カード移動",
+      desc: "指定カードを目的地（\"hand\", \"bench\", \"discard\", \"deck\" など）に移動させます",
+      snippet: "moveCard(card, 'hand');",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+
+    // === 【ダメージ・HP変動系 (追加API)】 ===
+    {
+      keyword: "increaseDamage",
+      label: "increaseDamage(amount)",
+      category: "action",
+      badge: "打点増加",
+      desc: "今回のワザの与えるダメージを追加・増加させます",
+      snippet: "increaseDamage(30);",
+      targets: ["attack1","attack2"]
+    },
+    {
+      keyword: "bonusDamage",
+      label: "bonusDamage",
+      category: "action",
+      badge: "追加打点値",
+      desc: "今回のワザに追加される固定ダメージ量変数（直接加算可能）",
+      snippet: "bonusDamage += 30;",
+      targets: ["attack1","attack2"]
+    },
+    {
+      keyword: "boostDamageNextTurn",
+      label: "boostDamageNextTurn(amount, target?)",
+      category: "action",
+      badge: "次番打点増加",
+      desc: "次の番、このポケモンが使うワザのダメージを増加させます（nextTurnDamageの別名）",
+      snippet: "boostDamageNextTurn(30);",
+      targets: ["attack1","attack2","ability"]
+    },
+    {
+      keyword: "increaseDamageNextTurn",
+      label: "increaseDamageNextTurn(amount, target?)",
+      category: "action",
+      badge: "次番打点増加",
+      desc: "次の番、このポケモンが使うワザのダメージを増加させます",
+      snippet: "increaseDamageNextTurn(30);",
+      targets: ["attack1","attack2","ability"]
+    },
+    {
+      keyword: "nextTurnBoostDamage",
+      label: "nextTurnBoostDamage(amount, target?)",
+      category: "action",
+      badge: "次番打点増加",
+      desc: "次の番、このポケモンが使うワザのダメージを増加させます",
+      snippet: "nextTurnBoostDamage(30);",
+      targets: ["attack1","attack2","ability"]
+    },
+    {
+      keyword: "reduceAttackNextTurn",
+      label: "reduceAttackNextTurn(amount, target?)",
+      category: "action",
+      badge: "次番相手弱体",
+      desc: "次の番、相手のバトルポケモンが使うワザのダメージを減少させます",
+      snippet: "reduceAttackNextTurn(30, opponent.active);",
+      targets: ["attack1","attack2","ability"]
+    },
+    {
+      keyword: "nextTurnReduceAttack",
+      label: "nextTurnReduceAttack(amount, target?)",
+      category: "action",
+      badge: "次番相手弱体",
+      desc: "次の番、相手のバトルポケモンが使うワザのダメージを減少させます",
+      snippet: "nextTurnReduceAttack(30, opponent.active);",
+      targets: ["attack1","attack2","ability"]
+    },
+    {
+      keyword: "preventDamageNextTurn",
+      label: "preventDamageNextTurn(flagOrAmount, target?)",
+      category: "action",
+      badge: "次番無効化",
+      desc: "次の番、対象ポケモンが受けるワザのダメージを無効または軽減します",
+      snippet: "preventDamageNextTurn(true, self.active);",
+      targets: ["attack1","attack2","ability"]
+    },
+    {
+      keyword: "nextTurnPreventDamage",
+      label: "nextTurnPreventDamage(flagOrAmount, target?)",
+      category: "action",
+      badge: "次番無効化",
+      desc: "次の番、対象ポケモンが受けるワザのダメージを無効または軽減します",
+      snippet: "nextTurnPreventDamage(true, self.active);",
+      targets: ["attack1","attack2","ability"]
+    },
+    {
+      keyword: "addMaxHp",
+      label: "addMaxHp(target, amount)",
+      category: "action",
+      badge: "最大HP増加",
+      desc: "対象ポケモンの最大HPを一時的または永続的に増加させます（increaseMaxHpの別名）",
+      snippet: "addMaxHp(self.active, 50);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "boostMaxHp",
+      label: "boostMaxHp(target, amount)",
+      category: "action",
+      badge: "最大HP増加",
+      desc: "対象ポケモンの最大HPを増加させます（increaseMaxHpの別名）",
+      snippet: "boostMaxHp(self.active, 50);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "lowerMaxHp",
+      label: "lowerMaxHp(target, amount)",
+      category: "action",
+      badge: "最大HP減少",
+      desc: "対象ポケモンの最大HPを減少させます（reduceMaxHpの別名）",
+      snippet: "lowerMaxHp(opponent.active, 30);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "subMaxHp",
+      label: "subMaxHp(target, amount)",
+      category: "action",
+      badge: "最大HP減少",
+      desc: "対象ポケモンの最大HPを減少させます（reduceMaxHpの別名）",
+      snippet: "subMaxHp(opponent.active, 30);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "subHp",
+      label: "subHp(target, amount)",
+      category: "action",
+      badge: "HP直接減少",
+      desc: "ダメージ計算や効果耐性を貫通して、対象ポケモンの残りHPを直接減少させます（ダメカン直接置き）",
+      snippet: "subHp(opponent.active, 50);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "reduceSelfHp",
+      label: "reduceSelfHp(amount)",
+      category: "action",
+      badge: "自身反動HP減",
+      desc: "自分のバトルポケモンの残りHPを反動等で直接減少させます",
+      snippet: "reduceSelfHp(20);",
+      targets: ["attack1","attack2","ability"]
+    },
+
+    // === 【にげるコスト操作系 (追加API)】 ===
+    {
+      keyword: "modifyRetreatCost",
+      label: "modifyRetreatCost(target, delta, options?)",
+      category: "action",
+      badge: "逃げエネ増減",
+      desc: "対象ポケモンのにげるエネルギーを増減させます（-1で1個減少、+1で1個増加）",
+      snippet: "modifyRetreatCost(self.active, -1);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "reduceRetreatCost",
+      label: "reduceRetreatCost(target, amount)",
+      category: "action",
+      badge: "逃げエネ減少",
+      desc: "対象ポケモンのにげるエネルギーを減らします",
+      snippet: "reduceRetreatCost(self.active, 1);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "decreaseRetreatCost",
+      label: "decreaseRetreatCost(target, amount)",
+      category: "action",
+      badge: "逃げエネ減少",
+      desc: "対象ポケモンのにげるエネルギーを減らします（reduceRetreatCostの別名）",
+      snippet: "decreaseRetreatCost(self.active, 1);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "increaseRetreatCost",
+      label: "increaseRetreatCost(target, amount)",
+      category: "action",
+      badge: "逃げエネ増加",
+      desc: "対象ポケモンのにげるエネルギーを増やします（相手の逃げエネ重化等）",
+      snippet: "increaseRetreatCost(opponent.active, 1);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "setRetreatCost",
+      label: "setRetreatCost(target, cost)",
+      category: "action",
+      badge: "逃げエネ変更",
+      desc: "対象ポケモンのにげるエネルギーを指定値に変更します（0を指定でにげるコストなし）",
+      snippet: "setRetreatCost(self.active, 0);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "resetRetreatCost",
+      label: "resetRetreatCost(target)",
+      category: "action",
+      badge: "逃げエネ初期化",
+      desc: "対象ポケモンのにげるエネルギーを元の基本コストに戻します",
+      snippet: "resetRetreatCost(self.active);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "getRetreatCost",
+      label: "getRetreatCost(target)",
+      category: "func",
+      badge: "逃げエネ取得",
+      desc: "対象ポケモンの現在のにげるエネルギー個数を取得します（number）",
+      snippet: "const cost = getRetreatCost(self.active);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+
+    // === 【ターン進行・タイミング制御系 (追加API)】 ===
+    {
+      keyword: "extraTurn",
+      label: "extraTurn(count?, options?)",
+      category: "action",
+      badge: "追加ターン",
+      desc: "ターン終了後、もう一度自分の番を行う「追加ターン」を獲得します",
+      snippet: "await extraTurn(1);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "takeExtraTurn",
+      label: "takeExtraTurn(count?, options?)",
+      category: "action",
+      badge: "追加ターン",
+      desc: "追加ターンを獲得します（extraTurnの別名）",
+      snippet: "await takeExtraTurn(1);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "anotherTurn",
+      label: "anotherTurn(count?, options?)",
+      category: "action",
+      badge: "追加ターン",
+      desc: "追加ターンを獲得します（extraTurnの別名）",
+      snippet: "await anotherTurn(1);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "repeatTurn",
+      label: "repeatTurn(count?, options?)",
+      category: "action",
+      badge: "追加ターン",
+      desc: "ターンをもう一度行います（extraTurnの別名）",
+      snippet: "await repeatTurn(1);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "grantExtraTurn",
+      label: "grantExtraTurn(count?, options?)",
+      category: "action",
+      badge: "追加ターン付与",
+      desc: "追加ターンをプレイヤーに付与します",
+      snippet: "await grantExtraTurn(1);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "delayTurns",
+      label: "delayTurns(turns, callback, options?)",
+      category: "action",
+      badge: "ターン遅延実行",
+      desc: "指定したターン数後にコールバックを実行する遅延効果を予約します",
+      snippet: "delayTurns(1, async (self, opponent) => {\n  ${1:// 1ターン後に発動する効果}\n});",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "delayTurn",
+      label: "delayTurn(turns, callback, options?)",
+      category: "action",
+      badge: "ターン遅延実行",
+      desc: "指定したターン数後にコールバックを実行します（delayTurnsの別名）",
+      snippet: "delayTurn(1, async (self, opponent) => {\n  ${1:// 1ターン後に発動する効果}\n});",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "waitTurns",
+      label: "waitTurns(turns, callback, options?)",
+      category: "action",
+      badge: "ターン待機実行",
+      desc: "指定ターン待機後にコールバックを実行します（delayTurnsの別名）",
+      snippet: "waitTurns(1, async (self, opponent) => {\n  ${1:// 指定ターン後に実行}\n});",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "waitTurn",
+      label: "waitTurn(turns, callback, options?)",
+      category: "action",
+      badge: "ターン待機実行",
+      desc: "指定ターン待機後にコールバックを実行します（delayTurnsの別名）",
+      snippet: "waitTurn(1, async (self, opponent) => {\n  ${1:// 指定ターン後に実行}\n});",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "isFirstPlayerFirstTurn",
+      label: "isFirstPlayerFirstTurn()",
+      category: "logic",
+      badge: "先攻1ターン目判定",
+      desc: "現在が「先攻プレイヤーの最初の番」かどうかを判定します（boolean）",
+      snippet: "if (isFirstPlayerFirstTurn()) {\n  ${1:// 先攻1ターン目の処理}\n}",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "getTurnsInPlay",
+      label: "getTurnsInPlay(target)",
+      category: "func",
+      badge: "経過ターン数",
+      desc: "対象ポケモンが場に出てから経過したターン数を取得します（number）",
+      snippet: "const turns = getTurnsInPlay(self.active);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "requireTurnsInPlay",
+      label: "requireTurnsInPlay(turns, options?)",
+      category: "logic",
+      badge: "場ターン制限",
+      desc: "このポケモンが場に出てから指定ターン以上経過していることを要求します（未達なら不発）",
+      snippet: "requireTurnsInPlay(1);",
+      targets: ["attack1","attack2","ability"]
+    },
+    {
+      keyword: "timesPerTurn",
+      label: "timesPerTurn(count)",
+      category: "logic",
+      badge: "ターン回数制限",
+      desc: "1ターン中にこの効果を発動できる最大回数を制限します（useLimitの別名）",
+      snippet: "timesPerTurn(1);",
+      targets: ["ability","trainer"]
+    },
+
+    // === 【きぜつ・サイド・勝敗系 (追加API)】 ===
+    {
+      keyword: "knockout",
+      label: "knockout(target)",
+      category: "action",
+      badge: "きぜつ",
+      desc: "対象ポケモンをHPを0にしてきぜつさせます",
+      snippet: "knockout(opponent.active);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "defeat",
+      label: "defeat(target)",
+      category: "action",
+      badge: "きぜつ/撃破",
+      desc: "対象ポケモンを撃破・きぜつさせます（knockoutの別名）",
+      snippet: "defeat(opponent.active);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "isDefeated",
+      label: "isDefeated(target)",
+      category: "logic",
+      badge: "きぜつ判定",
+      desc: "対象ポケモンがきぜつ・撃破されたかを判定します（isKnockedOutの別名）",
+      snippet: "if (isDefeated(opponent.active)) {\n  ${1:// きぜつ時の処理}\n}",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "defeatedOpponent",
+      label: "defeatedOpponent(target?)",
+      category: "logic",
+      badge: "相手撃破判定",
+      desc: "このワザや効果で相手のポケモンをきぜつさせたかを判定します（didKnockoutの別名）",
+      snippet: "if (defeatedOpponent()) {\n  ${1:// 相手撃破時のボーナス処理}\n}",
+      targets: ["attack1","attack2","ability"]
+    },
+    {
+      keyword: "didAllyKnockout",
+      label: "didAllyKnockout(target?)",
+      category: "logic",
+      badge: "味方きぜつ判定",
+      desc: "前の相手の番などに自分のポケモンがきぜつしたかを判定します",
+      snippet: "if (didAllyKnockout()) {\n  ${1:// 味方きぜつ時のかたきうち等}\n}",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "isAllyKnockedOut",
+      label: "isAllyKnockedOut(target?)",
+      category: "logic",
+      badge: "味方きぜつ判定",
+      desc: "前の番などに味方のポケモンがきぜつしたかを判定します（didAllyKnockoutの別名）",
+      snippet: "if (isAllyKnockedOut()) {\n  ${1:// 味方きぜつ時の処理}\n}",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "isAllyKnockedOutPreviousTurn",
+      label: "isAllyKnockedOutPreviousTurn()",
+      category: "logic",
+      badge: "前番味方きぜつ判定",
+      desc: "前の相手の番に自分のポケモンがきぜつしていたかを判定します",
+      snippet: "if (isAllyKnockedOutPreviousTurn()) {\n  ${1:// 前の番味方きぜつ時の処理}\n}",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "getKnockedOutAlly",
+      label: "getKnockedOutAlly()",
+      category: "func",
+      badge: "きぜつ味方取得",
+      desc: "直前にきぜつした自分のポケモンオブジェクトを取得します",
+      snippet: "const ally = getKnockedOutAlly();",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "lastKnockedOutPokemon",
+      label: "lastKnockedOutPokemon()",
+      category: "func",
+      badge: "直前きぜつ取得",
+      desc: "直前にきぜつしたポケモンオブジェクトを取得します",
+      snippet: "const p = lastKnockedOutPokemon();",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "onAllyKnockedOut",
+      label: "onAllyKnockedOut(options, callback)",
+      category: "action",
+      badge: "味方きぜつフック",
+      desc: "味方ポケモンがきぜつした時に割り込んで発動する処理を登録します",
+      snippet: "onAllyKnockedOut({}, async (pokemon) => {\n  ${1:// 味方きぜつ時に実行する効果}\n});",
+      targets: ["ability","trainer"]
+    },
+    {
+      keyword: "takePrizes",
+      label: "takePrizes(player, count)",
+      category: "action",
+      badge: "サイド取得",
+      desc: "サイドカードをプレイヤーが指定枚数取得します（takePrizeの複数形）",
+      snippet: "takePrizes(self, 1);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "takeSide",
+      label: "takeSide(player, count)",
+      category: "action",
+      badge: "サイド取得",
+      desc: "サイドカードをプレイヤーが指定枚数取得します（takePrizeの別名）",
+      snippet: "takeSide(self, 1);",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+    {
+      keyword: "winGame",
+      label: "winGame(reason?)",
+      category: "action",
+      badge: "特殊勝利",
+      desc: "対戦に即座に勝利します（特殊勝利条件達成時など。winの別名）",
+      snippet: "winGame('特殊勝利条件を達成した！');",
+      targets: ["attack1","attack2","ability","trainer"]
+    },
+
+    // === 【イベント・動的ステータス修正系 (追加API)】 ===
+    {
+      keyword: "modify",
+      label: "modify(statName, callback)",
+      category: "action",
+      badge: "動的ステータス修正",
+      desc: "攻撃力やHPなどのステータス計算時に動的な修正関数を適用します",
+      snippet: "modify('attack', (val) => val + 30);",
+      targets: ["ability","trainer"]
+    },
+    {
+      keyword: "event.on",
+      label: "event.on(eventName, handler)",
+      category: "action",
+      badge: "イベントリスナー",
+      desc: "バトル中の各種イベント（beforeDamage, afterAttack, turnStart など）のリスナーを登録します",
+      snippet: "event.on('beforeDamage', ({ damage, target }) => {\n  ${1:// ダメージ補正や判定}\n});",
+      targets: ["ability","trainer"]
+    },
+    {
+      keyword: "event.passive",
+      label: "event.passive(handler, options?)",
+      category: "action",
+      badge: "常時パッシブ",
+      desc: "常に場や手札に影響を与えるパッシブ能力・継続効果を登録します",
+      snippet: "event.passive((self, opponent) => {\n  ${1:// 常時発動するパッシブ効果}\n});",
+      targets: ["ability"]
+    }
+    ],
 
     functionReferenceData: [
       {
@@ -21268,6 +22005,8 @@ var EffectEditor;
 
 
 
+
+
   <script>
 console.log('[ORBITAL] CardSystem.js.html started execution');
 if (window.__showDebugMsg) window.__showDebugMsg('CardSystem読込開始');
@@ -23208,6 +23947,8 @@ var CardSystem;
 
 
 
+
+
   <script>
 console.log('[ORBITAL] DeckSystem.js.html started execution');
 window.DeckSystem = function () {
@@ -24392,6 +25133,8 @@ window.DeckSystem = function () {
   console.log('[ORBITAL] DeckSystem.js.html finished execution. window.DeckSystem =', typeof window.DeckSystem);
 }();
 </script>
+
+
 
 
 
@@ -32932,6 +33675,8 @@ window.DeckSystem = function () {
 
 
 
+
+
   <script>
 console.log('[ORBITAL] App.js.html started execution');
 (() => {
@@ -38204,6 +38949,8 @@ console.log('[ORBITAL] App.js.html started execution');
   console.log('[ORBITAL] App.js.html finished execution. window.App =', typeof window.App);
 })();
 </script>
+
+
 
 
 
