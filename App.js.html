@@ -4045,11 +4045,15 @@ console.log('[ORBITAL] App.js.html started execution');
 
         const ownedBadge = '<div class="sell-owned-tag">所持: ' + ownedCount + '枚</div>';
 
-        const leaveOneBtn = ownedCount >= 2
-          ? '<button type="button" class="sell-leave-one-btn" onclick="App.sellAllExtrasOfCard(\'' + this.escapeHtml(key) + '\')" title="1枚残して、余分な ' + (ownedCount - 1) + '枚をまとめて売却します">' +
-            '✨ 1枚残して余り(' + (ownedCount - 1) + '枚)を売却' +
+        const leaveOneBtn = ownedCount > 4
+          ? '<button type="button" class="sell-leave-one-btn" style="background:rgba(56,189,248,0.12); border-color:rgba(56,189,248,0.3); color:#38bdf8;" onclick="App.sellAllExtrasOfCard(\'' + this.escapeHtml(key) + '\', 4)" title="4枚残して、余分な ' + (ownedCount - 4) + '枚をまとめて売却します">' +
+            '✨ 4枚残して余り(' + (ownedCount - 4) + '枚)を売却' +
             '</button>'
-          : '';
+          : (ownedCount > 1
+              ? '<button type="button" class="sell-leave-one-btn" onclick="App.sellAllExtrasOfCard(\'' + this.escapeHtml(key) + '\', 1)" title="1枚残して、余分な ' + (ownedCount - 1) + '枚をまとめて売却します">' +
+                '✨ 1枚残して余り(' + (ownedCount - 1) + '枚)を売却' +
+                '</button>'
+              : '');
 
         return '<div class="sell-shop-card-item" id="sellCardItem_' + this.escapeHtml(key) + '">' +
           ownedBadge +
@@ -4085,18 +4089,19 @@ console.log('[ORBITAL] App.js.html started execution');
       this.sellCard(card.id || cardKey, count);
     },
 
-    sellAllExtrasOfCard(cardKey) {
+    sellAllExtrasOfCard(cardKey, keepCount = 4) {
+      keepCount = Math.max(1, Number(keepCount) || 4);
       const colMap = this.getUserCollection();
       const allCards = this.getAllCards();
       const card = allCards.find(c => String(c.id || c.name) === String(cardKey));
       if (!card) return;
 
       const owned = colMap[cardKey] || (card.name ? colMap[card.name] : 0) || 0;
-      if (owned <= 1) {
-        this.toast('余剰カードがありません (所持数: ' + owned + '枚)', true);
+      if (owned <= keepCount) {
+        this.toast('余剰カードがありません (所持数: ' + owned + '枚 / ' + keepCount + '枚残し)', true);
         return;
       }
-      const excess = owned - 1;
+      const excess = owned - keepCount;
       this.sellCard(card.id || cardKey, excess);
     },
 
@@ -4136,7 +4141,8 @@ console.log('[ORBITAL] App.js.html started execution');
       this.updateNmtDisplays();
     },
 
-    bulkSellDuplicates(onlyLowRarity = false) {
+    bulkSellDuplicates(onlyLowRarity = false, keepCount = 4) {
+      keepCount = Math.max(1, Number(keepCount) || 4);
       const colMap = this.getUserCollection();
       const allCards = this.getAllCards();
 
@@ -4147,8 +4153,8 @@ console.log('[ORBITAL] App.js.html started execution');
       allCards.forEach(card => {
         const key = String(card.id || card.name);
         const owned = colMap[key] || (card.name ? colMap[card.name] : 0) || (card.id ? colMap[card.id] : 0) || 0;
-        if (owned > 1) {
-          const excess = owned - 1;
+        if (owned > keepCount) {
+          const excess = owned - keepCount;
           const rarity = String(card.rarity || 'N').toUpperCase().trim();
           if (onlyLowRarity) {
             const isLow = ['N', 'C', 'COMMON', 'ノーマル', 'コモン', 'R', 'U', 'UC', 'UNCOMMON', 'アンコモン', 'レア'].includes(rarity);
@@ -4163,7 +4169,7 @@ console.log('[ORBITAL] App.js.html started execution');
       });
 
       if (toSellList.length === 0) {
-        this.toast('売却可能な' + (onlyLowRarity ? '低レア(N/R)' : '') + '重複カードがありません。（すべて1枚以下の所持です）', true);
+        this.toast('売却可能な' + (onlyLowRarity ? '低レア(N/R)' : '') + '重複カードがありません。（すべて' + keepCount + '枚以下の所持です）', true);
         return;
       }
 
@@ -4171,10 +4177,10 @@ console.log('[ORBITAL] App.js.html started execution');
       const cardBreakdown = toSellList.slice(0, 5).map(item => '・' + item.card.name + ' × ' + item.count + '枚 (+' + item.subtotal.toLocaleString() + ' NMT)').join('\n') +
         (toSellList.length > 5 ? '\n...他 ' + (toSellList.length - 5) + '種類' : '');
 
-      const confirmMsg = '【' + label + 'の一括売却】\n\n' +
+      const confirmMsg = '【' + label + 'の一括売却 (' + keepCount + '枚残し)】\n\n' +
         '対象: ' + toSellList.length + '種類（合計 ' + totalCount + '枚）\n' +
         '獲得予定: +' + totalNmt.toLocaleString() + ' NMT\n\n' +
-        '※各カード1枚は手元に残ります。\n売却を実行しますか？\n\n' +
+        '※各カード' + keepCount + '枚（デッキ投入上限）は手元に残ります。\n売却を実行しますか？\n\n' +
         cardBreakdown;
 
       if (!confirm(confirmMsg)) return;
@@ -4187,7 +4193,7 @@ console.log('[ORBITAL] App.js.html started execution');
       const newNmt = curNmt + totalNmt;
       this.setUserNmt(newNmt);
 
-      this.toast('🎉 重複カード ' + totalCount + '枚を一括売却し、+' + totalNmt.toLocaleString() + ' NMT を獲得しました！（新残高: ' + newNmt.toLocaleString() + ' NMT）');
+      this.toast('🎉 重複カード ' + totalCount + '枚を一括売却しました！（各カード' + keepCount + '枚残し / +' + totalNmt.toLocaleString() + ' NMT）');
       this.renderSellShopGrid();
       this.updateNmtDisplays();
     },
