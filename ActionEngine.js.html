@@ -1469,7 +1469,19 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         if (!p) p = ctx?.opponent || this._getPlayer(ctx);
         const dmg = Math.max(0, Number(amt) || 0);
         if (dmg && Array.isArray(p?.bench)) {
-          p.bench.forEach((c) => { if (c) c.hp -= dmg; });
+          p.bench.forEach((c) => {
+            if (c) {
+              c.hp -= dmg;
+              const msg = "💥 ベンチの【" + (c.name || 'ポケモン') + "】に " + dmg + " ダメージ！ (残りHP: " + Math.max(0, c.hp) + ")";
+              if (ctx?.game?.logs) ctx.game.logs.push(msg);
+              if (window.BattleSystem && typeof window.BattleSystem.log === 'function') {
+                window.BattleSystem.log(msg);
+              }
+            }
+          });
+          if (window.BattleSystem && typeof window.BattleSystem.render === 'function') {
+            window.BattleSystem.render();
+          }
         }
       },
       reduceDamage(ctx, target, amount) { const tgt = target || this._getPlayer(ctx)?.active; if (tgt) tgt.damageReduction = (tgt.damageReduction || 0) + Math.max(0, Number(amount) || 0); },
@@ -4220,10 +4232,18 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
       const TURN_START_ALIASES = ['turnStart', 'start', 'onTurnStart', 'turn_start', 'ターン開始', 'ターン開始時', 'turnNumber', 'turn', 'ターン'];
       const DEAL_DAMAGE_ALIASES = ['dealDamage', 'onDealDamage', 'afterDamage', 'damageDealt', 'onDamageDealt', 'giveDamage', 'onGiveDamage', 'ダメージを与えた時', 'ダメージを与えた', 'ダメージ時', '攻撃ヒット時', 'ヒット時'];
       const ON_DAMAGE_ALIASES = ['onDamage', 'damage', 'takeDamage', 'receiveDamage', '被ダメ後', 'ダメージを受けた時', 'ダメージを受けた'];
-      const EVENT_DISPATCH_NAMES = [...TURN_START_ALIASES, ...TURN_END_ALIASES, ...DEAL_DAMAGE_ALIASES, ...ON_DAMAGE_ALIASES, 'beforeDamage', 'onKnockout', 'onKnockoutOpponent', 'onAttach', 'onEvolution', ...ALLY_KO_ALIASES, ...PASSIVE_ALIASES];
+      const KNOCKOUT_ALIASES = ['onKnockout', 'knockout', 'knockedOut', 'faint', 'fainted', '気絶', 'きぜつ', '気絶時', 'きぜつしたとき', '自身気絶', '自分が気絶した時', 'このポケモンが気絶した時'];
+      const KNOCKOUT_OPP_ALIASES = ['onKnockoutOpponent', 'knockoutOpponent', 'defeatOpponent', '相手気絶', '相手を倒した時', '相手をきぜつさせたとき'];
+      const EVENT_DISPATCH_NAMES = [...TURN_START_ALIASES, ...TURN_END_ALIASES, ...DEAL_DAMAGE_ALIASES, ...ON_DAMAGE_ALIASES, 'beforeDamage', ...KNOCKOUT_ALIASES, ...KNOCKOUT_OPP_ALIASES, 'onAttach', 'onEvolution', ...ALLY_KO_ALIASES, ...PASSIVE_ALIASES];
       if (eventName && EVENT_DISPATCH_NAMES.includes(eventName)) {
         if (eventName === 'allyKnockedOut' || ALLY_KO_ALIASES.includes(eventName)) {
           const hasListener = /(?:event\s*\.\s*(?:on|onasync|onAsync)|on)\s*\(\s*['"](allyKnockedOut|onAllyKnockout|allyKnockout|ally_knocked_out|allyFainted|味方気絶|仲間気絶|自分のポケモン気絶|自分の仲間が気絶したら|仲間が気絶したら|味方が気絶したら)['"]|whenAllyKnockedOut|onAllyKnockedOut/i.test(code);
+          if (!hasListener) return;
+        } else if (eventName === 'onKnockout' || KNOCKOUT_ALIASES.includes(eventName)) {
+          const hasListener = /(?:event\s*\.\s*(?:on|onasync|onAsync)|on)\s*\(\s*['"](?:onKnockout|knockout|knockedOut|faint|fainted|気絶|きぜつ|気絶時|きぜつしたとき|自身気絶|自分が気絶した時|このポケモンが気絶した時)['"]/i.test(code);
+          if (!hasListener) return;
+        } else if (eventName === 'onKnockoutOpponent' || KNOCKOUT_OPP_ALIASES.includes(eventName)) {
+          const hasListener = /(?:event\s*\.\s*(?:on|onasync|onAsync)|on)\s*\(\s*['"](?:onKnockoutOpponent|knockoutOpponent|defeatOpponent|相手気絶|相手を倒した時|相手をきぜつさせたとき)['"]/i.test(code);
           if (!hasListener) return;
         } else if (eventName === 'dealDamage' || DEAL_DAMAGE_ALIASES.includes(eventName)) {
           const hasListener = /(?:event\s*\.\s*(?:on|onasync|onAsync)|on)\s*\(\s*['"](?:dealDamage|onDealDamage|afterDamage|damageDealt|onDamageDealt|giveDamage|onGiveDamage|ダメージを与えた時|ダメージを与えた|ダメージ時|攻撃ヒット時|ヒット時)['"]/i.test(code);
@@ -4254,8 +4274,8 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
 
       const thisCard = (eventData && (eventData.card || eventData.pokemon)) || player?.active || null;
       const thisPokemon = (eventData && (eventData.pokemon || eventData.card)) || player?.active || null;
-      const isActive = !!(thisPokemon && player && player.active === thisPokemon);
-      const isBench = !!(thisPokemon && player && Array.isArray(player.bench) && player.bench.indexOf(thisPokemon) >= 0);
+      const isBench = !!(eventData?.isBench || (thisPokemon && player && Array.isArray(player.bench) && player.bench.indexOf(thisPokemon) >= 0));
+      const isActive = !isBench && !!(thisPokemon && player && player.active === thisPokemon);
 
       if (thisPokemon && typeof thisPokemon === 'object') {
         thisPokemon.isActive = isActive;

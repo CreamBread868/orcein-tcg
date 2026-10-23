@@ -758,8 +758,15 @@ var CardSystem;
           "<div class=\"detail-section\"><h4>エネルギー種別</h4><div>" + this.escape(card.category || 'エネルギー') + " [" + this.escape(card.type || '無') + "]</div></div>" :
           "<div class=\"detail-section\"><h4>基本パラメータ</h4><div>HP: " + this.escape(card.hp || '—') + (preEvoName ? "\u3000進化前: " + this.escape(preEvoName) : "") + "\u3000弱点: " + this.escape(card.weakness || '—') + "\u3000抵抗力: " + this.escape(card.resistance || '—') + "\u3000にげる: " + this.escape(card.retreat || 0) + "</div></div>");
 
+      const inBattle = (window.App && App.state && App.state.page === 'battle');
+      const isAdmin = (window.App && typeof App.isAdmin === 'function' && App.isAdmin());
+      const isActiveStadiumInBattle = inBattle && window.BattleSystem?.state?.activeStadium &&
+        (window.BattleSystem.state.activeStadium.name === card.name || (card.id && window.BattleSystem.state.activeStadium.id === card.id));
+
       App.openModal("\n        <div class=\"detail-layout\">\n          <div class=\"detail-card-col\">\n            " +
-      cardHtml + "\n            <div class=\"detail-actions-row\">\n              <button id=\"detailEdit\" class=\"primary-button\">編集</button>\n              <button id=\"detailDelete\" class=\"secondary-button\">削除</button>\n            </div>\n          </div>\n          <div class=\"detail-info-col\">\n            <div class=\"eyebrow\">" +
+      cardHtml + "\n            <div class=\"detail-actions-row\">\n              " +
+      (isActiveStadiumInBattle ? '<button id="detailUseStadium" class="primary-button" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); font-weight: bold;">✨ スタジアム効果を使う</button>' : '') +
+      "\n              <button id=\"detailEdit\" class=\"primary-button\">編集</button>\n              <button id=\"detailDelete\" class=\"secondary-button\">削除</button>\n            </div>\n          </div>\n          <div class=\"detail-info-col\">\n            <div class=\"eyebrow\">" +
       this.escape(card.category) + (preEvoName ? " (" + this.escape(preEvoName) + "から進化)" : "") + typePart + " / " + this.escape(card.rarity || 'N') + "</div>\n            <h2>" +
       this.escape(card.name) + "</h2>\n            " + statsHtml + "\n            " + (
       card.abilityName ? "<div class=\"detail-section\"><h4>特性：" + this.escape(card.abilityName) + "</h4><div>" + this.escape(card.abilityText || '—') + "</div></div>" : '') + "\n            " + (
@@ -771,8 +778,16 @@ var CardSystem;
 
       const editBtn = document.getElementById('detailEdit');
       const delBtn = document.getElementById('detailDelete');
-      const inBattle = (window.App && App.state && App.state.page === 'battle');
-      const isAdmin = (window.App && typeof App.isAdmin === 'function' && App.isAdmin());
+      const useStadiumBtn = document.getElementById('detailUseStadium');
+
+      if (useStadiumBtn) {
+        useStadiumBtn.addEventListener('click', () => {
+          App.closeModal();
+          if (window.BattleSystem && typeof window.BattleSystem.openCardActionModal === 'function') {
+            window.BattleSystem.openCardActionModal(window.BattleSystem.state.activeStadium);
+          }
+        });
+      }
 
       if (inBattle || !isAdmin) {
         if (editBtn) editBtn.style.display = 'none';

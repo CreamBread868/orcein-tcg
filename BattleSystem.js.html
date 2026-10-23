@@ -243,11 +243,19 @@
             return;
           }
           e.preventDefault();
-          el.classList.remove('drag-hover');
+          this._lastDragEndTime = Date.now();
+          document.body.classList.remove('is-card-dragging');
+          document.querySelectorAll('.drag-hover, .drop-target-active, .drop-target-field, .field-drag-hover').forEach((target) => {
+            target.classList.remove('drag-hover', 'drop-target-active', 'drop-target-field', 'field-drag-hover');
+          });
           const rawIdx = (this.draggedHandIndex != null) ? this.draggedHandIndex : (e.dataTransfer ? parseInt(e.dataTransfer.getData('text/plain'), 10) : null);
           const idx = (typeof rawIdx === 'number' && !isNaN(rawIdx)) ? rawIdx : null;
           if (idx != null) {
-            this.draggedHandIndex = null;
+            setTimeout(() => {
+              this.draggedHandIndex = null;
+              this.draggedCard = null;
+              this._isDragging = false;
+            }, 300);
             this.handleDropOnField(idx);
           }
         });
@@ -2380,6 +2388,18 @@
           this.render();
           break;
         }
+        case 'stadium_effect': {
+          const stName = payload.name || (this.state.activeStadium ? this.state.activeStadium.name : 'スタジアム');
+          if (this.state.activeStadium) {
+            this.state.activeStadium._abilityUseCount = (this.state.activeStadium._abilityUseCount || 0) + 1;
+          }
+          this.log('🏟️ 相手がスタジアム「' + stName + '」の効果を発動しました！');
+          if (window.App && typeof window.App.toast === 'function') {
+            window.App.toast('🏟️ 相手がスタジアム「' + stName + '」の効果を発動しました！');
+          }
+          this.render();
+          break;
+        }
         case 'cancel_trainer': {
           const card = payload.card || { name: 'トレーナーカード' };
           const kind = payload.kind || 'グッズ';
@@ -2455,13 +2475,18 @@
           if (attacker && payload.attackerHp != null) {
             attacker.hp = payload.attackerHp;
           }
+          if (Array.isArray(payload.benchHps) && Array.isArray(p.bench)) {
+            payload.benchHps.forEach(bh => {
+              const bp = p.bench.find(c => c && (c.id === bh.id || c.name === bh.name));
+              if (bp && bh.hp != null) {
+                bp.hp = bh.hp;
+              }
+            });
+          }
 
           setTimeout(async () => {
-            if (defender && defender.hp <= 0) {
-              await this.handleKnockout(opp, p);
-            } else {
-              this.render();
-            }
+            await this.checkAllKnockouts();
+            this.render();
           }, 300);
           break;
         }
@@ -2979,13 +3004,8 @@
         this.render();
       }
 
-      // 気絶チェック (どくやけどによる気絶)
-      if (oActive && oActive.hp <= 0) {
-        await this.handleKnockout(this.state.player, this.state.opponent);
-      }
-      if (pActive && pActive.hp <= 0) {
-        await this.handleKnockout(this.state.opponent, this.state.player);
-      }
+      // 気絶チェック (どくやけど・各種チェックアップによる気絶: バトル場・ベンチ両方)
+      await this.checkAllKnockouts();
     },
 
     isFirstPlayerFirstTurn(playerWho) {
@@ -5576,6 +5596,32 @@
       // アニメーション → 効果実行
       return this.animateTrainerCardPlay(card, kind).then(async () => {
         let execCtx = null;
+        if (isStadium && this.hasActivatedStadiumEffect(card)) {
+          // 起動型スタジアムは場に残り、ターン中に発動可能
+          // 常時発動イベント (event.on / event.passive 等) が含まれていれば登録だけ行う
+          const code = card.attack1Code || card.abilityCode;
+          if (code && /(?:event\s*\.\s*(?:on|onasync|onAsync|passive|continuous|modify)|modifyRetreatCost)/i.test(code) && window.executeCardEffectCode) {
+            try {
+              await window.executeCardEffectCode(
+                code,
+                { players: [this.state.player, this.state.opponent], logs: this.state.logs, activeStadium: this.state.activeStadium },
+                p,
+                'passive',
+                { card: card, stadium: card }
+              );
+            } catch (e) {
+              console.error('Stadium passive setup error:', e);
+            }
+          }
+          if (window.App && typeof window.App.toast === 'function') {
+            window.App.toast('🏟️ スタジアム【' + card.name + '】を場に出しました！タップして効果を発動できます。');
+          }
+          this.render();
+          // 出した直後に効果を発動できるよう、アクションモーダルを開く
+          this.openCardActionModal(this.state.activeStadium);
+          return;
+        }
+
         // ActionEngine で効果実行
         const code = card.attack1Code || card.abilityCode;
         if (code && window.executeCardEffectCode) {
@@ -5647,6 +5693,7 @@
           return;
         }
 
+        await this.checkAllKnockouts();
         this.render();
       });
     },
@@ -5793,7 +5840,7 @@
           attacker.hp = Math.max(0, (Number(attacker.hp) || 0) - 30);
           this.render();
           if (attacker.hp <= 0) {
-            await this.handleKnockout(this.state.opponent, this.state.player);
+            await this.checkAllKnockouts();
           } else {
             setTimeout(() => this.endTurn(), 800);
           }
@@ -5878,18 +5925,22 @@
           attackIndex: attackIndex,
           defenderHp: defHpAfter,
           attackerHp: postAtk ? postAtk.hp : 0,
-          status: postDef ? postDef.status : null
+          status: postDef ? postDef.status : null,
+          benchHps: (this.state.opponent?.bench || []).map(b => ({ id: b.id, name: b.name, hp: b.hp }))
         });
 
-        // きぜつ判定
-        if (postDef && postDef.hp <= 0) {
-          await this.handleKnockout(this.state.player, this.state.opponent);
-        } else if (postAtk && postAtk.hp <= 0) {
-          await this.handleKnockout(this.state.opponent, this.state.player);
-        } else {
+        // きぜつ判定（バトル場・ベンチ両方を網羅）
+        const hadKo = await this.checkAllKnockouts();
+        if (!hadKo) {
           this.render();
           // 攻撃宣言後はターン終了
           setTimeout(() => this.endTurn(), 800);
+        } else if (!this.state.winner) {
+          // バトル場が両者とも健在（ベンチきぜつのみ）の場合はターン終了へ
+          if (this.state.opponent?.active && this.state.player?.active) {
+            this.render();
+            setTimeout(() => this.endTurn(), 800);
+          }
         }
       }, 350);
     },
@@ -6084,21 +6135,98 @@
       };
     },
 
-    async handleKnockout(scorer, victim) {
-      const koPokemon = victim.active;
+    async checkAllKnockouts() {
+      const checkOrder = [
+        { victim: this.state.opponent, scorer: this.state.player },
+        { victim: this.state.player, scorer: this.state.opponent }
+      ];
+      let anyKo = false;
+
+      for (const pair of checkOrder) {
+        const victim = pair.victim;
+        const scorer = pair.scorer;
+        if (!victim || !scorer) continue;
+
+        // 1. ベンチポケモンのきぜつチェック（後ろからループして安全にsplice）
+        if (Array.isArray(victim.bench)) {
+          for (let i = victim.bench.length - 1; i >= 0; i--) {
+            const bPk = victim.bench[i];
+            if (bPk && Number(bPk.hp) <= 0) {
+              anyKo = true;
+              await this.handleKnockout(scorer, victim, bPk);
+              if (this.state.winner) return true;
+            }
+          }
+        }
+
+        // 2. バトル場ポケモンのきぜつチェック
+        if (victim.active && Number(victim.active.hp) <= 0) {
+          anyKo = true;
+          await this.handleKnockout(scorer, victim, victim.active);
+          if (this.state.winner) return true;
+        }
+      }
+
+      if (anyKo) {
+        this.render();
+      }
+      return anyKo;
+    },
+
+    async handleKnockout(scorer, victim, targetPokemon = null) {
+      let koPokemon = targetPokemon;
+      let isBench = false;
+      let benchIdx = -1;
+
+      if (koPokemon) {
+        if (victim.active === koPokemon) {
+          isBench = false;
+        } else if (Array.isArray(victim.bench)) {
+          benchIdx = victim.bench.indexOf(koPokemon);
+          if (benchIdx >= 0) {
+            isBench = true;
+          }
+        }
+      } else {
+        if (victim.active && Number(victim.active.hp) <= 0) {
+          koPokemon = victim.active;
+          isBench = false;
+        } else if (Array.isArray(victim.bench)) {
+          benchIdx = victim.bench.findIndex(p => p && Number(p.hp) <= 0);
+          if (benchIdx >= 0) {
+            koPokemon = victim.bench[benchIdx];
+            isBench = true;
+          }
+        }
+      }
+
       // nullガード: 既にきぜつ処理済み or 状態が変わっていた場合はスキップ
       if (!koPokemon) {
-        console.warn('[handleKnockout] victim.active is null, skipping duplicate knockout.');
+        console.warn('[handleKnockout] No valid knocked-out pokemon found, skipping.');
         return;
       }
-      this.log("💀 " + (koPokemon.name || 'ポケモン') + " はきぜつした！");
+
+      if (isBench) {
+        if (benchIdx >= 0) {
+          victim.bench.splice(benchIdx, 1);
+        } else {
+          const idx = victim.bench.indexOf(koPokemon);
+          if (idx >= 0) victim.bench.splice(idx, 1);
+        }
+        this.log("💀 ベンチの【" + (koPokemon.name || 'ポケモン') + "】はきぜつした！");
+      } else {
+        victim.active = null;
+        this.log("💀 【" + (koPokemon.name || 'ポケモン') + "】はきぜつした！");
+      }
+
+      if (!Array.isArray(victim.discard)) victim.discard = [];
       victim.discard.push(koPokemon);
       if (koPokemon.attachedTool) {
         victim.discard.push(koPokemon.attachedTool);
         this.log("🧰 ついていた「" + koPokemon.attachedTool.name + "」もトラッシュされました。");
         koPokemon.attachedTool = null;
       }
-      victim.active = null;
+
       victim.lastKnockedOutPokemon = koPokemon;
       victim.lastKnockedOutAlly = koPokemon;
       victim.allyKnockedOutThisTurn = true;
@@ -6129,8 +6257,8 @@
         return;
       }
 
-      // 勝利判定 2: 相手のベンチが全滅
-      if (!victim.bench.length) {
+      // 勝利判定 2: 相手の場にポケモンがいなくなった（バトル場もベンチもなし）
+      if (!victim.active && (!victim.bench || victim.bench.length === 0)) {
         this.finishBattle(scorer.id, '相手の場にポケモンがいなくなりました！');
         return;
       }
@@ -6138,7 +6266,7 @@
       // きぜつしたポケモン自身の onKnockout イベントの発火
       if (koPokemon?.abilityCode && window.executeCardEffectCode) {
         try {
-          await window.executeCardEffectCode(koPokemon.abilityCode, { players: [victim, scorer] }, victim, 'onKnockout', { koPokemon, isEx, pokemon: koPokemon, card: koPokemon });
+          await window.executeCardEffectCode(koPokemon.abilityCode, { players: [victim, scorer] }, victim, 'onKnockout', { koPokemon, isEx, isBench, pokemon: koPokemon, card: koPokemon });
         } catch (e) {
           console.error('onKnockout ability error:', e);
         }
@@ -6147,23 +6275,32 @@
       // 相手撃破時イベント onKnockoutOpponent の発火
       if (scorer.active?.abilityCode && window.executeCardEffectCode) {
         try {
-          await window.executeCardEffectCode(scorer.active.abilityCode, { players: [scorer, victim] }, scorer, 'onKnockoutOpponent', { koPokemon, isEx });
+          await window.executeCardEffectCode(scorer.active.abilityCode, { players: [scorer, victim] }, scorer, 'onKnockoutOpponent', { koPokemon, isEx, isBench });
         } catch (e) {
           console.error('onKnockoutOpponent ability error:', e);
         }
       }
 
-      // 自身の仲間（味方）きぜつ時イベント allyKnockedOut / 味方気絶 の発火
-      const ALLY_KO_REGEX = /event\s*\.\s*on\s*\(\s*['"](allyKnockedOut|onAllyKnockout|allyKnockout|ally_knocked_out|allyFainted|味方気絶|仲間気絶|自分のポケモン気絶|自分の仲間が気絶したら|仲間が気絶したら|味方が気絶したら)['"]|whenAllyKnockedOut|onAllyKnockedOut/;
+      // 自身の仲間（味方）きぜつ時イベント allyKnockedOut / 味方気絶 の発火（バトル場・ベンチ両方の仲間が反応）
+      const ALLY_KO_REGEX = /(?:event\s*\.\s*(?:on|onasync|onAsync)|on)\s*\(\s*['"](allyKnockedOut|onAllyKnockout|allyKnockout|ally_knocked_out|allyFainted|味方気絶|仲間気絶|自分のポケモン気絶|自分の仲間が気絶したら|仲間が気絶したら|味方が気絶したら)['"]|whenAllyKnockedOut|onAllyKnockedOut/;
       const victimAllies = [...(victim.bench || [])];
       if (victim.active) victimAllies.push(victim.active);
       for (const allyPk of victimAllies) {
-        if (allyPk?.abilityCode && ALLY_KO_REGEX.test(allyPk.abilityCode) && window.executeCardEffectCode) {
+        if (allyPk !== koPokemon && allyPk?.abilityCode && ALLY_KO_REGEX.test(allyPk.abilityCode) && window.executeCardEffectCode) {
           try {
-            await window.executeCardEffectCode(allyPk.abilityCode, { players: [victim, scorer] }, victim, 'allyKnockedOut', { koPokemon, isEx, pokemon: allyPk, card: allyPk });
+            await window.executeCardEffectCode(allyPk.abilityCode, { players: [victim, scorer] }, victim, 'allyKnockedOut', { koPokemon, isEx, isBench, pokemon: allyPk, card: allyPk });
           } catch (e) {
             console.error('allyKnockedOut ability error:', e);
           }
+        }
+      }
+
+      // ActionEngine の event.emit('allyKnockedOut', ...) も発火
+      if (window._currentExecutionContext?.event?.emit) {
+        try {
+          await window._currentExecutionContext.event.emit('allyKnockedOut', koPokemon, { koPokemon, isEx, isBench });
+        } catch (e) {
+          console.error('event.emit allyKnockedOut error:', e);
         }
       }
 
@@ -6172,35 +6309,40 @@
         this.finishBattle(scorer.id, 'すべてのサイドカードを取り切りました！');
         return;
       }
-      if (!victim.bench.length && !victim.active) {
+      if (!victim.active && (!victim.bench || victim.bench.length === 0)) {
         this.finishBattle(scorer.id, '相手の場にポケモンがいなくなりました！');
         return;
       }
 
-      // 交代ポケモンの選出
-      if (victim.id === 'player') {
-        this.promptPromoteFromBench(victim);
-      } else if (this.state.mode === 'online') {
-        // オンライン対戦時、相手の交代はリモートアクション 'promote_active' を待つ
-        this.log("⏳ 相手がバトル場に出すポケモンを選択中...");
-        this.render();
+      // 交代ポケモンの選出（バトル場のポケモンがきぜつした場合のみ、ベンチから昇格させる）
+      if (!victim.active && victim.bench.length > 0) {
+        if (victim.id === 'player') {
+          this.promptPromoteFromBench(victim);
+        } else if (this.state.mode === 'online') {
+          // オンライン対戦時、相手の交代はリモートアクション 'promote_active' を待つ
+          this.log("⏳ 相手がバトル場に出すポケモンを選択中...");
+          this.render();
+        } else {
+          // AI は戦況に応じて最適なポケモンをバトル場へ昇格（攻撃可能・エネルギー蓄積・高HPを優先）
+          const getPkScore = (p) => {
+            if (!p) return -100;
+            const hp = Number(p.hp) || 0;
+            const canAtk1 = p.attack1Name && this.checkEnergyRequirement(p, p.attack1Energy).canAttack;
+            const canAtk2 = p.attack2Name && this.checkEnergyRequirement(p, p.attack2Energy).canAttack;
+            const canAtk = canAtk1 || canAtk2;
+            const energy = Number(p.energy) || 0;
+            const isEx = Boolean(p.isEx);
+            return (canAtk ? 150 : 0) + (isEx ? 20 : 0) + (energy * 15) + hp;
+          };
+          victim.bench.sort((a, b) => getPkScore(b) - getPkScore(a));
+          victim.active = victim.bench.shift();
+          this.log("🔄 AIライバルは「" + victim.active.name + "」をバトル場に出しました。");
+          this.render();
+          setTimeout(() => this.endTurn(), 600);
+        }
       } else {
-        // AI は戦況に応じて最適なポケモンをバトル場へ昇格（攻撃可能・エネルギー蓄積・高HPを優先）
-        const getPkScore = (p) => {
-          if (!p) return -100;
-          const hp = Number(p.hp) || 0;
-          const canAtk1 = p.attack1Name && this.checkEnergyRequirement(p, p.attack1Energy).canAttack;
-          const canAtk2 = p.attack2Name && this.checkEnergyRequirement(p, p.attack2Energy).canAttack;
-          const canAtk = canAtk1 || canAtk2;
-          const energy = Number(p.energy) || 0;
-          const isEx = Boolean(p.isEx);
-          return (canAtk ? 150 : 0) + (isEx ? 20 : 0) + (energy * 15) + hp;
-        };
-        victim.bench.sort((a, b) => getPkScore(b) - getPkScore(a));
-        victim.active = victim.bench.shift();
-        this.log("🔄 AIライバルは「" + victim.active.name + "」をバトル場に出しました。");
+        // ベンチポケモンがきぜつした場合はバトル場は健在なので交代プロンプト不要
         this.render();
-        setTimeout(() => this.endTurn(), 600);
       }
     },
 
@@ -6644,7 +6786,7 @@
             this.render();
             await this.wait(800);
             if (ai.active.hp <= 0) {
-              await this.handleKnockout(this.state.player, this.state.opponent);
+              await this.checkAllKnockouts();
             } else {
               this.endTurn();
             }
@@ -6707,17 +6849,13 @@
 
         this.render();
 
-        const postDef = this.state.player?.active;
-        const postAi = this.state.opponent?.active;
-
-        if (postDef && postDef.hp <= 0) {
+        await this.wait(400);
+        const hadKo = await this.checkAllKnockouts();
+        if (!hadKo && !this.state.winner) {
           await this.wait(400);
-          this.handleKnockout(this.state.opponent, this.state.player);
-        } else if (postAi && postAi.hp <= 0) {
+          this.endTurn();
+        } else if (!this.state.winner && this.state.player?.active && this.state.opponent?.active) {
           await this.wait(400);
-          this.handleKnockout(this.state.player, this.state.opponent);
-        } else {
-          await this.wait(800);
           this.endTurn();
         }
       } else {
@@ -7225,11 +7363,19 @@
       const nameEl = document.getElementById('activeStadiumName');
 
       if (nameEl) {
-        nameEl.textContent = active ? ('🏟️ ' + active.name) : '🏟️ スタジアムなし';
+        if (active) {
+          const isActivated = this.hasActivatedStadiumEffect(active);
+          const remaining = this.getAbilityRemainingUses(active);
+          const isMyTurn = this.state.turnPlayer === 'player';
+          const canUse = isMyTurn && remaining > 0 && isActivated;
+          nameEl.textContent = '🏟️ ' + active.name + (canUse ? ' (タップで効果使用)' : '');
+        } else {
+          nameEl.textContent = '🏟️ スタジアムなし';
+        }
       }
       if (slotEl) {
         slotEl.className = 'stadium-card-slot ' + (active ? 'active-stadium-present' : '');
-        slotEl.title = active ? (active.name + ': ' + (active.description || active.attack1Text || 'クリックして効果詳細を確認')) : 'クリックしてスタジアム詳細を確認';
+        slotEl.title = active ? (active.name + ': ' + (active.description || active.attack1Text || 'クリックして効果を使う')) : 'クリックしてスタジアム詳細を確認';
       }
     },
 
@@ -7243,11 +7389,7 @@
         }
         return;
       }
-      if (window.CardSystem && typeof window.CardSystem.showDetail === 'function') {
-        window.CardSystem.showDetail(active);
-      } else {
-        this.showCardActionModal(active, 'stadium');
-      }
+      this.openCardActionModal(active);
     },
 
     render() {
@@ -7352,6 +7494,7 @@
             </div>
           `;
           root.onclick = () => {
+            if (this._isDragging || this.draggedHandIndex != null || (Date.now() - (this._lastDragEndTime || 0) < 350)) return;
             this.promptPromoteFromBench(this.state.player);
           };
         } else {
@@ -7364,7 +7507,10 @@
             e.preventDefault();
             e.stopPropagation();
             if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-            if (this.draggedHandIndex != null) {
+            if (this.draggedHandIndex != null || this._isDragging) {
+              document.querySelectorAll('.drag-hover').forEach((el) => {
+                if (el !== root) el.classList.remove('drag-hover');
+              });
               root.classList.add('drag-hover');
             }
           };
@@ -7376,11 +7522,20 @@
           root.ondrop = (e) => {
             e.preventDefault();
             e.stopPropagation();
-            root.classList.remove('drag-hover');
+            this._lastDragEndTime = Date.now();
+            document.body.classList.remove('is-card-dragging');
+            document.querySelectorAll('.drag-hover, .drop-target-active, .drop-target-field, .field-drag-hover').forEach((el) => {
+              el.classList.remove('drag-hover', 'drop-target-active', 'drop-target-field', 'field-drag-hover');
+            });
             const dataStr = e.dataTransfer ? e.dataTransfer.getData('text/plain') : '';
             if (dataStr && dataStr.startsWith('bench:')) {
               const bIdx = parseInt(dataStr.replace('bench:', ''), 10);
               if (!isNaN(bIdx)) {
+                setTimeout(() => {
+                  this.draggedHandIndex = null;
+                  this.draggedCard = null;
+                  this._isDragging = false;
+                }, 300);
                 this.promoteBenchPokemonToActive(bIdx);
                 return;
               }
@@ -7388,7 +7543,11 @@
             const rawIdx = (this.draggedHandIndex != null) ? this.draggedHandIndex : (e.dataTransfer ? parseInt(dataStr, 10) : null);
             const idx = (typeof rawIdx === 'number' && !isNaN(rawIdx)) ? rawIdx : null;
             if (idx != null) {
-              this.draggedHandIndex = null;
+              setTimeout(() => {
+                this.draggedHandIndex = null;
+                this.draggedCard = null;
+                this._isDragging = false;
+              }, 300);
               this.handleDropOnPokemon(idx, null, root, false);
             }
           };
@@ -7481,15 +7640,15 @@
           acts.push('にげる');
           activeCardEl.title = card.name + " (HP " + card.hp + "/" + card.maxHp + ") - クリックして行動（" + acts.join('・') + "）";
           activeCardEl.onclick = () => {
-            if (this.draggedHandIndex == null) {
-              this.openCardActionModal(card, false);
-            }
+            if (this._isDragging || this.draggedHandIndex != null || (Date.now() - (this._lastDragEndTime || 0) < 350)) return;
+            this.openCardActionModal(card, false);
           };
         } else {
           activeCardEl.title = card.name + " (HP " + card.hp + "/" + card.maxHp + ") - クリックで効果・詳細カード拡大";
           activeCardEl.onclick = (e) => {
             if (e) { e.preventDefault(); e.stopPropagation(); }
-            if (this.draggedHandIndex == null && window.CardSystem && typeof window.CardSystem.showDetail === 'function') {
+            if (this._isDragging || this.draggedHandIndex != null || (Date.now() - (this._lastDragEndTime || 0) < 350)) return;
+            if (window.CardSystem && typeof window.CardSystem.showDetail === 'function') {
               window.CardSystem.showDetail(card);
             }
           };
@@ -7501,7 +7660,8 @@
         root.title = card.name + " (HP " + card.hp + "/" + card.maxHp + ") - クリックで効果・詳細カード拡大";
         root.onclick = (e) => {
           if (e && e.target && e.target.closest('.active-status-badge')) return;
-          if (this.draggedHandIndex == null && window.CardSystem && typeof window.CardSystem.showDetail === 'function') {
+          if (this._isDragging || this.draggedHandIndex != null || (Date.now() - (this._lastDragEndTime || 0) < 350)) return;
+          if (window.CardSystem && typeof window.CardSystem.showDetail === 'function') {
             window.CardSystem.showDetail(card);
           }
         };
@@ -7515,7 +7675,10 @@
           e.preventDefault();
           e.stopPropagation();
           if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-          if (this.draggedHandIndex != null) {
+          if (this.draggedHandIndex != null || this._isDragging) {
+            document.querySelectorAll('.drag-hover').forEach((el) => {
+              if (el !== root) el.classList.remove('drag-hover');
+            });
             root.classList.add('drag-hover');
           }
         };
@@ -7528,11 +7691,19 @@
         root.ondrop = (e) => {
           e.preventDefault();
           e.stopPropagation();
-          root.classList.remove('drag-hover');
+          this._lastDragEndTime = Date.now();
+          document.body.classList.remove('is-card-dragging');
+          document.querySelectorAll('.drag-hover, .drop-target-active, .drop-target-field, .field-drag-hover').forEach((target) => {
+            target.classList.remove('drag-hover', 'drop-target-active', 'drop-target-field', 'field-drag-hover');
+          });
           const rawIdx = (this.draggedHandIndex != null) ? this.draggedHandIndex : (e.dataTransfer ? parseInt(e.dataTransfer.getData('text/plain'), 10) : null);
           const idx = (typeof rawIdx === 'number' && !isNaN(rawIdx)) ? rawIdx : null;
           if (idx != null) {
-            this.draggedHandIndex = null;
+            setTimeout(() => {
+              this.draggedHandIndex = null;
+              this.draggedCard = null;
+              this._isDragging = false;
+            }, 300);
             this.handleDropOnPokemon(idx, this.state.player.active, root, false);
           }
         };
@@ -7590,24 +7761,39 @@
             slotEl.title = '【クリックしてバトル場に出す】' + (slotEl.title || '');
             slotEl.draggable = true;
             slotEl.ondragstart = (e) => {
+              this._isDragging = true;
+              document.body.classList.add('is-card-dragging');
+              slotEl.classList.add('is-dragging-card');
               if (e.dataTransfer) {
                 e.dataTransfer.setData('text/plain', 'bench:' + benchIdx);
                 e.dataTransfer.effectAllowed = 'move';
               }
             };
+            slotEl.ondragend = () => {
+              slotEl.classList.remove('is-dragging-card');
+              document.body.classList.remove('is-card-dragging');
+              document.querySelectorAll('.drop-target-active, .drop-target-field, .drag-hover, .field-drag-hover').forEach((target) => {
+                target.classList.remove('drop-target-active', 'drop-target-field', 'drag-hover', 'field-drag-hover');
+              });
+              this._lastDragEndTime = Date.now();
+              setTimeout(() => {
+                this._isDragging = false;
+              }, 300);
+            };
           }
           slotEl.onclick = () => {
-            if (this.draggedHandIndex == null) {
-              if (isPlayer) {
-                if (this.state.player.active === null) {
-                  // バトル場が空なら、ベンチクリックで即座にバトル場へ昇格！
-                  this.promoteBenchPokemonToActive(benchIdx);
-                } else {
-                  this.openCardActionModal(c, true, benchIdx);
-                }
-              } else if (window.CardSystem && window.CardSystem.showDetail) {
-                CardSystem.showDetail(c);
+            if (this._isDragging || this.draggedHandIndex != null || (Date.now() - (this._lastDragEndTime || 0) < 350)) {
+              return;
+            }
+            if (isPlayer) {
+              if (this.state.player.active === null) {
+                // バトル場が空なら、ベンチクリックで即座にバトル場へ昇格！
+                this.promoteBenchPokemonToActive(benchIdx);
+              } else {
+                this.openCardActionModal(c, true, benchIdx);
               }
+            } else if (window.CardSystem && window.CardSystem.showDetail) {
+              CardSystem.showDetail(c);
             }
           };
         }
@@ -7622,7 +7808,11 @@
             e.preventDefault();
             e.stopPropagation();
             if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-            if (this.draggedHandIndex != null) {
+            if (this.draggedHandIndex != null || this._isDragging) {
+              // 隣のベンチスロットの drag-hover を確実に解除
+              document.querySelectorAll('.drag-hover').forEach((el) => {
+                if (el !== slotEl) el.classList.remove('drag-hover');
+              });
               slotEl.classList.add('drag-hover');
             }
           };
@@ -7634,11 +7824,19 @@
           slotEl.ondrop = (e) => {
             e.preventDefault();
             e.stopPropagation();
-            slotEl.classList.remove('drag-hover');
+            this._lastDragEndTime = Date.now();
+            document.body.classList.remove('is-card-dragging');
+            document.querySelectorAll('.drag-hover, .drop-target-active, .drop-target-field, .field-drag-hover').forEach((target) => {
+              target.classList.remove('drag-hover', 'drop-target-active', 'drop-target-field', 'field-drag-hover');
+            });
             const rawIdx = (this.draggedHandIndex != null) ? this.draggedHandIndex : (e.dataTransfer ? parseInt(e.dataTransfer.getData('text/plain'), 10) : null);
             const idx = (typeof rawIdx === 'number' && !isNaN(rawIdx)) ? rawIdx : null;
             if (idx != null && this.state.player.bench[benchIdx]) {
-              this.draggedHandIndex = null;
+              setTimeout(() => {
+                this.draggedHandIndex = null;
+                this.draggedCard = null;
+                this._isDragging = false;
+              }, 300);
               this.handleDropOnPokemon(idx, this.state.player.bench[benchIdx], slotEl, true, benchIdx);
             }
           };
@@ -7650,9 +7848,13 @@
             e.preventDefault();
             e.stopPropagation();
             if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-            if (this.draggedHandIndex != null) {
-              const draggedCard = this.state.player.hand[this.draggedHandIndex];
+            if (this.draggedHandIndex != null || this._isDragging) {
+              const draggedCard = this.draggedCard || (this.draggedHandIndex != null ? this.state.player.hand[this.draggedHandIndex] : null);
               if (draggedCard && this.isBasic(draggedCard)) {
+                // 隣のベンチスロットの drag-hover を確実に解除
+                document.querySelectorAll('.drag-hover').forEach((el) => {
+                  if (el !== slotEl) el.classList.remove('drag-hover');
+                });
                 slotEl.classList.add('drag-hover');
               }
             }
@@ -7665,11 +7867,19 @@
           slotEl.ondrop = (e) => {
             e.preventDefault();
             e.stopPropagation();
-            slotEl.classList.remove('drag-hover');
+            this._lastDragEndTime = Date.now();
+            document.body.classList.remove('is-card-dragging');
+            document.querySelectorAll('.drag-hover, .drop-target-active, .drop-target-field, .field-drag-hover').forEach((target) => {
+              target.classList.remove('drag-hover', 'drop-target-active', 'drop-target-field', 'field-drag-hover');
+            });
             const rawIdx = (this.draggedHandIndex != null) ? this.draggedHandIndex : (e.dataTransfer ? parseInt(e.dataTransfer.getData('text/plain'), 10) : null);
             const idx = (typeof rawIdx === 'number' && !isNaN(rawIdx)) ? rawIdx : null;
             if (idx != null) {
-              this.draggedHandIndex = null;
+              setTimeout(() => {
+                this.draggedHandIndex = null;
+                this.draggedCard = null;
+                this._isDragging = false;
+              }, 300);
               this.handleDropOnEmptyBench(idx, slotEl, benchIdx);
             }
           };
@@ -7711,12 +7921,11 @@
         return;
       }
 
-      const code = active.attack1Code || active.abilityCode;
       const maxUses = this.getAbilityMaxUses(active);
       const remaining = this.getAbilityRemainingUses(active);
       if (remaining <= 0) {
         if (window.App && typeof window.App.toast === 'function') {
-          window.App.toast('このスタジアムの効果は自分の番に1回までしか使えません。', true);
+          window.App.toast(maxUses === 1 ? 'このスタジアムの効果は自分の番に1回までしか使えません。' : 'このスタジアムの効果は自分の番に' + maxUses + '回までしか使えません。', true);
         }
         return;
       }
@@ -7724,14 +7933,68 @@
       active._abilityUseCount = (active._abilityUseCount || 0) + 1;
       this.log('🏟️ スタジアム「' + active.name + '」の効果を発動します！');
 
-      if (window.executeCardEffectCode) {
+      const snapshot = this.createBoardSnapshot();
+      let execCtx = null;
+      const code = active.attack1Code || active.abilityCode;
+
+      if (code && window.executeCardEffectCode) {
         try {
-          await window.executeCardEffectCode(code, this.state, this.state.player, active);
-          this.render();
+          execCtx = await window.executeCardEffectCode(
+            code,
+            { players: [this.state.player, this.state.opponent], logs: this.state.logs, activeStadium: active },
+            this.state.player,
+            'onActivateStadium',
+            { card: active, stadium: active }
+          );
         } catch(e) {
-          console.error('Active stadium effect execution error:', e);
+          if (e && e.isEffectAbort) {
+            execCtx = { isCancelled: true, cancelReason: e.message ? e.message.replace(/^EFFECT_ABORTED:\s*/, '') : '' };
+          } else {
+            console.error('Active stadium effect execution error:', e);
+            this.log('⚠️ スタジアム効果実行エラー: ' + e.message);
+          }
+        }
+      } else {
+        // スクリプト未設定時のフォールバック処理
+        const desc = active.attack1Text || active.description || '';
+        if (desc.includes('たね') && (desc.includes('ベンチ') || desc.includes('山札'))) {
+          const deck = this.state.player.deck || [];
+          const seedCard = deck.find(c => String(c.category || '').includes('たね'));
+          if (seedCard && (this.state.player.bench || []).length < 5) {
+            const idx = deck.indexOf(seedCard);
+            deck.splice(idx, 1);
+            this.state.player.bench.push(seedCard);
+            this.log('🏟️ スタジアム効果で山札から「' + seedCard.name + '」をベンチに出しました！');
+          }
+        } else if (desc.includes('引く') || desc.includes('ドロー')) {
+          if (this.state.player.deck.length > 0) {
+            const drawn = this.state.player.deck.shift();
+            this.state.player.hand.push(drawn);
+            this.log('🏟️ スタジアム効果で山札から1枚引きました。（' + drawn.name + '）');
+          }
         }
       }
+
+      if (execCtx && execCtx.isCancelled) {
+        this.restoreBoardSnapshot(snapshot);
+        active._abilityUseCount = Math.max(0, (active._abilityUseCount || 1) - 1);
+        this.render();
+        return;
+      }
+
+      if (window.App && typeof window.App.toast === 'function') {
+        window.App.toast('🏟️ スタジアム「' + active.name + '」の効果を発動しました！');
+      }
+
+      if (this.state.mode === 'online') {
+        this.broadcastOnlineAction('stadium_effect', {
+          cardId: active.id,
+          name: active.name
+        });
+      }
+
+      await this.checkAllKnockouts();
+      this.render();
     },
 
     openCardActionModal(card, isBench = false, benchIdx = null) {
@@ -7778,12 +8041,20 @@
           isActivatedStadium ?
           '<button type="button" class="primary-button card-act-btn stadium-btn" data-action="stadium_effect" ' + (canUseStadium ? '' : 'disabled') + '>\n              ' + btnLabel + '\n            </button>' :
           '<span class="act-badge-passive" style="font-size: 11px; font-weight: 700; color: #94a3b8; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.12); padding: 5px 9px; border-radius: 6px; white-space: nowrap; flex-shrink: 0;">常時発動</span>'
-        ) + '\n          </div>\n        ';
+        ) + '\n          </div>\n          <div style="display:flex; justify-content: flex-end; margin-top: 10px;">\n            <button type="button" class="secondary-button card-act-btn" data-action="view_stadium_image" style="font-size: 12px; padding: 6px 14px;">\n              👁 カード画像を拡大表示\n            </button>\n          </div>\n        ';
         listEl.innerHTML = itemsHtml;
         listEl.querySelectorAll('[data-action="stadium_effect"]').forEach((btn) => {
           btn.onclick = () => {
             this.closeCardActionModal();
             this.activateActiveStadiumEffect(card);
+          };
+        });
+        listEl.querySelectorAll('[data-action="view_stadium_image"]').forEach((btn) => {
+          btn.onclick = () => {
+            this.closeCardActionModal();
+            if (window.CardSystem && typeof window.CardSystem.showDetail === 'function') {
+              window.CardSystem.showDetail(card);
+            }
           };
         });
         modal.classList.remove('hidden');
@@ -8055,12 +8326,36 @@
       if (card.isActivatedStadium !== undefined && card.isActivatedStadium !== null) {
         return !!card.isActivatedStadium;
       }
-      const rawCode = String(card.attack1Code || card.abilityCode || '');
-      if (!rawCode.trim()) return false;
-      const code = rawCode.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '');
-      return /(?:useLimit|limitPerTurn|timesPerTurn)\s*\(/i.test(code) ||
-             /limit\s*\(\s*(?:\d+|Infinity|['"]infinite['"])/i.test(code) ||
-             /\buselimit\b/i.test(code);
+      const rawCode = String(card.attack1Code || card.abilityCode || '').trim();
+      const text = String(card.attack1Text || card.abilityText || card.description || '');
+
+      // テキストから判定（「自分の番に1回」「使ってよい」「使える」「選んで」等のキーワード）
+      if (/(?:自分の番に|それぞれの番|お互いの番に|1回使|使ってよい|使ってもよい|使える|起動|ベンチに出す|手札に加える|トラッシュする)/.test(text)) {
+        return true;
+      }
+
+      if (rawCode) {
+        const codeNoComments = rawCode.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '').trim();
+        if (/(?:useLimit|limitPerTurn|timesPerTurn)\s*\(/i.test(codeNoComments) ||
+            /limit\s*\(\s*(?:\d+|Infinity|['"]infinite['"])/i.test(codeNoComments) ||
+            /\buselimit\b/i.test(codeNoComments)) {
+          return true;
+        }
+
+        // 行動系API呼び出しが存在し、純粋な受動・常時リスナーのみで構成されていない場合
+        const hasActiveApiCall = /\b(?:choiceCard|choiceCards|draw|heal|toHand|toBench|toDiscard|toDeck|toTrash|discard|shuffleDeck|lookAtDeckTop|lookAtTop|lookDeckTop|searchTopDeck|attachEnergy|moveCard|damage|coinFlip|flipCoin)\s*\(/i.test(codeNoComments);
+        const isPurePassive = /^(?:[\s;]*event\s*\.\s*(?:passive|continuous|modify|on)\s*\([^)]*\)\s*;?)+$/i.test(codeNoComments.replace(/\s+/g, ' '));
+
+        if (hasActiveApiCall && !isPurePassive) {
+          return true;
+        }
+
+        if (codeNoComments && !/(?:event\s*\.\s*(?:passive|continuous|modify|on)|modifyRetreatCost)/i.test(codeNoComments)) {
+          return true;
+        }
+      }
+
+      return false;
     },
 
     getAbilityMaxUses(card) {
@@ -8069,7 +8364,6 @@
         return Number(card._abilityMaxUses);
       }
       const rawCode = String(card.abilityCode || card.attack1Code || '');
-      if (!rawCode.trim()) return 0;
       const code = rawCode.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '');
       if (/useLimit\s*\(\s*(?:Infinity|999|'infinite'|"infinite")\s*\)/i.test(code)) {
         return Infinity;
@@ -8079,6 +8373,11 @@
         return Number(match[1]);
       }
       if (/(?:useLimit|limitPerTurn|timesPerTurn)\s*\(\s*\)/i.test(code) || /\buselimit\b/i.test(code)) {
+        return 1;
+      }
+      // スタジアムカードの場合、明示的な制限がなければポケモンカード公式ルールに基づき自分の番に1回
+      const isStadiumCard = (this.isStadium && this.isStadium(card)) || card.category === 'スタジアム' || (this.state && this.state.activeStadium && this.state.activeStadium.name === card.name);
+      if (isStadiumCard && this.hasActivatedStadiumEffect(card)) {
         return 1;
       }
       return 0;
@@ -8176,6 +8475,7 @@
         }
       }
 
+      await this.checkAllKnockouts();
       this.render();
     },
 
@@ -8241,6 +8541,8 @@
           }
           this.draggedHandIndex = idx;
           this.draggedCard = card;
+          this._isDragging = true;
+          document.body.classList.add('is-card-dragging');
           if (e.dataTransfer) {
             e.dataTransfer.setData('text/plain', String(idx));
             e.dataTransfer.effectAllowed = 'copyMove';
@@ -8300,13 +8602,16 @@
 
         el.addEventListener('dragend', () => {
           el.classList.remove('is-dragging-card');
+          document.body.classList.remove('is-card-dragging');
           document.querySelectorAll('.drop-target-active, .drop-target-field, .drag-hover, .field-drag-hover').forEach((target) => {
             target.classList.remove('drop-target-active', 'drop-target-field', 'drag-hover', 'field-drag-hover');
           });
+          this._lastDragEndTime = Date.now();
           setTimeout(() => {
             this.draggedHandIndex = null;
             this.draggedCard = null;
-          }, 100);
+            this._isDragging = false;
+          }, 300);
         });
 
         let clickTimer = null;
@@ -8317,6 +8622,9 @@
         if (pillBtn) {
           pillBtn.addEventListener('click', (e) => {
             e.stopPropagation();
+            if (this._isDragging || this.draggedHandIndex != null || (Date.now() - (this._lastDragEndTime || 0) < 350)) {
+              return;
+            }
             if (clickTimer) {
               clearTimeout(clickTimer);
               clickTimer = null;
@@ -8331,6 +8639,9 @@
         // ダブルクリック -> カードを出す / 発動
         el.addEventListener('click', (e) => {
           if (e.target.closest('.hand-play-pill-btn')) return;
+          if (this._isDragging || this.draggedHandIndex != null || (Date.now() - (this._lastDragEndTime || 0) < 350)) {
+            return;
+          }
 
           clickCount++;
           if (clickCount === 1) {
@@ -8352,6 +8663,9 @@
         // ダブルクリックイベント (dblclick)
         el.addEventListener('dblclick', (e) => {
           if (e.target.closest('.hand-play-pill-btn')) return;
+          if (this._isDragging || this.draggedHandIndex != null || (Date.now() - (this._lastDragEndTime || 0) < 350)) {
+            return;
+          }
           if (clickTimer) {
             clearTimeout(clickTimer);
             clickTimer = null;

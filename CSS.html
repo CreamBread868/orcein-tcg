@@ -1176,6 +1176,26 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
 .hand-card-wrapper.is-dragging-card {
   opacity: 0.45;
   transform: scale(0.9) rotate(-3deg);
+  pointer-events: none !important;
+}
+
+/* ドラッグ中に手札内の隣接カードや他カードがホバー・拡大・クリック等で反応するのを完全に防止 */
+body.is-card-dragging .hand-card-wrapper:not(.is-dragging-card),
+body.is-card-dragging .hand-card-item:not(.is-dragging-card) {
+  pointer-events: none !important;
+  transform: none !important;
+  transition: none !important;
+}
+
+body.is-card-dragging .hand-card-wrapper:not(.is-dragging-card):hover,
+body.is-card-dragging .hand-card-item:not(.is-dragging-card):hover {
+  transform: none !important;
+  z-index: 1 !important;
+  box-shadow: none !important;
+}
+
+body.is-card-dragging .hand-card-wrapper:not(.is-dragging-card):hover .card-size-hand {
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.65) !important;
 }
 
 .pool-in-deck-badge {
@@ -8962,6 +8982,17 @@ body.in-battle-arena #battle-arena-view,
 #battle-arena-view .hand-card-wrapper:hover {
   transform: translateY(-10px) scale(1.05) !important;
   z-index: 15 !important;
+}
+
+body.is-card-dragging #battle-arena-view .hand-card-wrapper:not(.is-dragging-card) {
+  pointer-events: none !important;
+  transform: none !important;
+  transition: none !important;
+}
+
+body.is-card-dragging #battle-arena-view .hand-card-wrapper:not(.is-dragging-card):hover {
+  transform: none !important;
+  z-index: 1 !important;
 }
 
 #battle-arena-view .card-size-hand {
