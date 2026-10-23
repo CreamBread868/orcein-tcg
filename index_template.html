@@ -1183,17 +1183,23 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   cursor: grab;
 }
 .hand-card-wrapper.is-dragging-card {
-  opacity: 0.45;
-  transform: scale(0.9) rotate(-3deg);
-  pointer-events: none !important;
+  opacity: 0.45 !important;
+  transform: scale(0.9) rotate(-3deg) !important;
+  pointer-events: auto !important;
+  cursor: grabbing !important;
 }
 
-/* ドラッグ中に手札内の隣接カードや他カードがホバー・拡大・クリック等で反応するのを完全に防止 */
+/* ドラッグ中に手札内の隣接カードや他カードがホバー・拡大・クリック等で反応するのを防止 */
 body.is-card-dragging .hand-card-wrapper:not(.is-dragging-card),
 body.is-card-dragging .hand-card-item:not(.is-dragging-card) {
   pointer-events: none !important;
   transform: none !important;
   transition: none !important;
+}
+
+body.is-card-dragging .hand-card-wrapper.is-dragging-card,
+body.is-card-dragging .hand-card-item.is-dragging-card {
+  pointer-events: auto !important;
 }
 
 body.is-card-dragging .hand-card-wrapper:not(.is-dragging-card):hover,
@@ -3438,6 +3444,30 @@ body.is-card-dragging .hand-card-wrapper:not(.is-dragging-card):hover .card-size
   font-size: 11px;
   color: var(--muted);
   font-weight: normal;
+}
+.hand-size-toggle-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #94a3b8;
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 1.5px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1.3;
+}
+.hand-size-toggle-btn:hover {
+  background: rgba(0, 229, 255, 0.22);
+  color: #fff;
+  border-color: rgba(0, 229, 255, 0.6);
+  box-shadow: 0 0 8px rgba(0, 229, 255, 0.4);
+}
+.hand-size-toggle-btn.active {
+  background: linear-gradient(135deg, #00e5ff 0%, #7000ff 100%);
+  color: #ffffff;
+  border-color: #00e5ff;
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.65);
 }
 .hand-cards-rack {
   display: flex;
@@ -8956,6 +8986,43 @@ body.in-battle-arena #battle-arena-view,
   border: 1.5px solid rgba(0, 229, 255, 0.4) !important;
   box-shadow: 0 -10px 36px rgba(0, 0, 0, 0.8), 0 0 28px rgba(0, 229, 255, 0.22) !important;
   backdrop-filter: blur(20px) !important;
+  --hand-card-w: clamp(138px, 9.8vw, 165px);
+  --hand-card-h: 220px;
+  --hand-card-art-h: 80px;
+  --hand-card-font-scale: 1;
+  --hand-rack-min-h: 250px;
+  --hand-pill-font-size: 10.5px;
+  --hand-pill-padding: 3.5px 10px;
+}
+
+#battle-arena-view .battle-hand-dock.hand-size-sm {
+  --hand-card-w: clamp(105px, 7.5vw, 122px);
+  --hand-card-h: 158px;
+  --hand-card-art-h: 52px;
+  --hand-card-font-scale: 0.82;
+  --hand-rack-min-h: 188px;
+  --hand-pill-font-size: 9px;
+  --hand-pill-padding: 2px 7px;
+}
+
+#battle-arena-view .battle-hand-dock.hand-size-md {
+  --hand-card-w: clamp(138px, 9.8vw, 165px);
+  --hand-card-h: 220px;
+  --hand-card-art-h: 80px;
+  --hand-card-font-scale: 1;
+  --hand-rack-min-h: 250px;
+  --hand-pill-font-size: 10.5px;
+  --hand-pill-padding: 3.5px 10px;
+}
+
+#battle-arena-view .battle-hand-dock.hand-size-lg {
+  --hand-card-w: clamp(170px, 12.2vw, 205px);
+  --hand-card-h: 275px;
+  --hand-card-art-h: 105px;
+  --hand-card-font-scale: 1.15;
+  --hand-rack-min-h: 310px;
+  --hand-pill-font-size: 12px;
+  --hand-pill-padding: 5px 14px;
 }
 
 #battle-arena-view .hand-dock-header {
@@ -8974,7 +9041,7 @@ body.in-battle-arena #battle-arena-view,
   overflow-x: auto !important;
   overflow-y: visible !important;
   padding: 14px 12px 10px !important;
-  min-height: 250px !important;
+  min-height: var(--hand-rack-min-h, 250px) !important;
   height: auto !important;
   align-items: flex-start !important;
 }
@@ -8999,18 +9066,22 @@ body.is-card-dragging #battle-arena-view .hand-card-wrapper:not(.is-dragging-car
   transition: none !important;
 }
 
+body.is-card-dragging #battle-arena-view .hand-card-wrapper.is-dragging-card {
+  pointer-events: auto !important;
+}
+
 body.is-card-dragging #battle-arena-view .hand-card-wrapper:not(.is-dragging-card):hover {
   transform: none !important;
   z-index: 1 !important;
 }
 
 #battle-arena-view .card-size-hand {
-  width: clamp(138px, 9.8vw, 165px) !important;
-  min-width: clamp(138px, 9.8vw, 165px) !important;
-  max-width: clamp(138px, 9.8vw, 165px) !important;
-  height: 220px !important;
-  min-height: 220px !important;
-  max-height: 220px !important;
+  width: var(--hand-card-w, clamp(138px, 9.8vw, 165px)) !important;
+  min-width: var(--hand-card-w, clamp(138px, 9.8vw, 165px)) !important;
+  max-width: var(--hand-card-w, clamp(138px, 9.8vw, 165px)) !important;
+  height: var(--hand-card-h, 220px) !important;
+  min-height: var(--hand-card-h, 220px) !important;
+  max-height: var(--hand-card-h, 220px) !important;
   aspect-ratio: auto !important;
   border-radius: 12px !important;
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.65) !important;
@@ -9020,43 +9091,43 @@ body.is-card-dragging #battle-arena-view .hand-card-wrapper:not(.is-dragging-car
 }
 
 #battle-arena-view .card-size-hand .card-top-header {
-  padding: 3px 7px !important;
+  padding: calc(3px * var(--hand-card-font-scale, 1)) calc(7px * var(--hand-card-font-scale, 1)) !important;
   flex: 0 0 auto !important;
 }
 
 #battle-arena-view .card-size-hand .card-type-badge,
 #battle-arena-view .card-size-hand .card-kind-badge {
-  font-size: 9px !important;
+  font-size: calc(9px * var(--hand-card-font-scale, 1)) !important;
   padding: 2px 5px !important;
 }
 
 #battle-arena-view .card-size-hand .card-hp-badge {
-  font-size: 10px !important;
+  font-size: calc(10px * var(--hand-card-font-scale, 1)) !important;
   padding: 2px 6px !important;
   font-weight: 800 !important;
 }
 
 #battle-arena-view .card-size-hand .card-art-area {
-  height: 80px !important;
-  min-height: 80px !important;
-  max-height: 80px !important;
-  flex: 0 0 80px !important;
+  height: var(--hand-card-art-h, 80px) !important;
+  min-height: var(--hand-card-art-h, 80px) !important;
+  max-height: var(--hand-card-art-h, 80px) !important;
+  flex: 0 0 var(--hand-card-art-h, 80px) !important;
 }
 
 #battle-arena-view .card-size-hand .card-name-bar {
-  padding: 3px 7px !important;
+  padding: calc(3px * var(--hand-card-font-scale, 1)) calc(7px * var(--hand-card-font-scale, 1)) !important;
   flex: 0 0 auto !important;
 }
 
 #battle-arena-view .card-size-hand .card-name-text {
-  font-size: 11.5px !important;
+  font-size: calc(11.5px * var(--hand-card-font-scale, 1)) !important;
   font-weight: 800 !important;
 }
 
 #battle-arena-view .card-size-hand .card-bottom-rules {
   display: flex !important;
   flex-direction: column !important;
-  padding: 4px 6px !important;
+  padding: calc(4px * var(--hand-card-font-scale, 1)) calc(6px * var(--hand-card-font-scale, 1)) !important;
   gap: 3px !important;
   flex: 1 1 0 !important;
   min-height: 0 !important;
@@ -9082,18 +9153,18 @@ body.is-card-dragging #battle-arena-view .hand-card-wrapper:not(.is-dragging-car
 }
 
 #battle-arena-view .card-size-hand .rule-name {
-  font-size: 10px !important;
+  font-size: calc(10px * var(--hand-card-font-scale, 1)) !important;
   font-weight: 800 !important;
 }
 
 #battle-arena-view .card-size-hand .rule-damage {
-  font-size: 11.5px !important;
+  font-size: calc(11.5px * var(--hand-card-font-scale, 1)) !important;
   font-weight: 900 !important;
 }
 
 /* 効果テキストを省略せず全て表示（スクロールで閲覧） */
 #battle-arena-view .card-size-hand .rule-text {
-  font-size: 9px !important;
+  font-size: calc(9px * var(--hand-card-font-scale, 1)) !important;
   line-height: 1.35 !important;
   color: #f1f5f9 !important;
   display: block !important;
@@ -9112,7 +9183,7 @@ body.is-card-dragging #battle-arena-view .hand-card-wrapper:not(.is-dragging-car
   -webkit-line-clamp: unset !important;
   overflow: visible !important;
   white-space: normal !important;
-  font-size: 9px !important;
+  font-size: calc(9px * var(--hand-card-font-scale, 1)) !important;
   line-height: 1.35 !important;
 }
 
@@ -9121,14 +9192,14 @@ body.is-card-dragging #battle-arena-view .hand-card-wrapper:not(.is-dragging-car
 }
 
 #battle-arena-view .card-size-hand .energy-pip {
-  width: 13px !important;
-  height: 13px !important;
-  font-size: 8px !important;
+  width: calc(13px * var(--hand-card-font-scale, 1)) !important;
+  height: calc(13px * var(--hand-card-font-scale, 1)) !important;
+  font-size: calc(8px * var(--hand-card-font-scale, 1)) !important;
 }
 
 #battle-arena-view .hand-play-pill-btn {
-  font-size: 10.5px !important;
-  padding: 3.5px 10px !important;
+  font-size: var(--hand-pill-font-size, 10.5px) !important;
+  padding: var(--hand-pill-padding, 3.5px 10px) !important;
   border-radius: 8px !important;
   line-height: 1.2 !important;
   font-weight: 800 !important;
@@ -11897,10 +11968,16 @@ body.is-card-dragging #battle-arena-view .hand-card-wrapper:not(.is-dragging-car
             <!-- === プレイヤー手札トレイ (最下部) === -->
             <div class="battle-hand-dock" id="battleHandDock">
               <div class="hand-dock-header">
-                <div style="display:flex; align-items:center; gap:10px;">
+                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                   <span>あなたの手札 (<span id="playerHandCount">0</span>枚)</span>
                   <button type="button" id="toggleHandDockBtn" class="secondary-button"
                     style="padding: 2px 10px; font-size: 11px; border-radius: 12px;">手札トレイ収納 ▼</button>
+                  <div class="hand-size-control-group" style="display:inline-flex; align-items:center; gap:4px; background:rgba(0,0,0,0.5); padding:2px 8px; border-radius:12px; border:1px solid rgba(0,229,255,0.25);">
+                    <span style="font-size:10.5px; color:var(--muted); font-weight:700;">サイズ:</span>
+                    <button type="button" class="hand-size-toggle-btn" data-size="sm" title="手札カードを小さく表示（盤面が広く見えます）">小</button>
+                    <button type="button" class="hand-size-toggle-btn active" data-size="md" title="手札カードを標準サイズで表示">中</button>
+                    <button type="button" class="hand-size-toggle-btn" data-size="lg" title="手札カードを大きく表示（文字が見やすくなります）">大</button>
+                  </div>
                 </div>
                 <span class="hand-tip-text">ドラッグ＆ドロップで [ベンチ出し] [エネ付け] [進化] [トレーナー発動] が可能です</span>
               </div>
@@ -15187,8 +15264,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           ctx.game.logs.push("👁️ 【" + playerName + "】は山札の上から" + topCards.length + "枚を見た。");
         }
 
-        const isHuman = (player === ctx?.self && window.BattleSystem?.state?.mode !== 'ai_vs_ai') ||
-                        (window.BattleSystem?.state?.turnPlayer === 'player');
+        const isHuman = (player === window.BattleSystem?.state?.player && window.BattleSystem?.state?.mode !== 'ai_vs_ai');
         if (isHuman && opts.showModal !== false && topCards.length > 0 && window.BattleSystem?.showChoiceModalPromise) {
           const modalCards = topCards.map((c) => ({
             name: c.name,
@@ -15969,29 +16045,47 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         });
 
         let chosen = [];
-        let isCpu = false;
-        const isRepresenting = !!(ctx?.isRepresenting || ctx?.isOpponent || window._currentExecutionContext?.isRepresenting);
-        const isOnline = window.BattleSystem?.state?.mode === 'online';
-        if (isOnline) {
-          // オンライン対戦時は両プレイヤーとも人間。
-          // 自身のブラウザで実行されている choiceCard は常にローカルプレイヤーが選択する
-          isCpu = false;
-        } else if (isRepresenting) {
-          // 相手として実行中（represent）:
-          // 「相手がやった判定として相手のUIが出る」ため、人間プレイヤーが相手側の選択を行えるようにUIを表示する
-          isCpu = false;
-        } else {
-          // AI戦の場合
-          if (ctx?.self) {
-            if (ctx.self.isCpu || ctx.self === window.BattleSystem?.state?.opponent || ctx.self.id === 'opponent' || ctx.self.id === 'cpu') {
-              isCpu = true;
-            }
-          } else if (window.BattleSystem?.state) {
-            if (window.BattleSystem.state.turnPlayer === 'opponent') {
-              isCpu = true;
-            }
+        const localPlayer = window.BattleSystem?.state?.player;
+        const opponentPlayer = window.BattleSystem?.state?.opponent;
+
+        // 選択を行う主体プレイヤー（chooser）を判定
+        let chooser = null;
+        if (options && (options.chooser || options.by || options.player)) {
+          const optP = options.chooser || options.by || options.player;
+          if (optP === 'opponent' || optP === 'cpu' || optP === opponentPlayer) {
+            chooser = opponentPlayer;
+          } else if (optP === 'player' || optP === 'self' || optP === localPlayer) {
+            chooser = localPlayer;
           }
         }
+        if (!chooser) {
+          if (ctx?.self) {
+            chooser = ctx.self;
+          } else if (window.BattleSystem?.state?.turnPlayer === 'opponent') {
+            chooser = opponentPlayer;
+          } else {
+            chooser = localPlayer;
+          }
+        }
+
+        // 対戦相手（AI、またはオンラインの相手）が選択主体の場合は、ローカルプレイヤーにモーダルを出さない
+        const isChooserOpponent = (
+          chooser === opponentPlayer ||
+          chooser?.id === 'opponent' ||
+          chooser?.id === 'cpu' ||
+          (localPlayer && chooser && chooser !== localPlayer && chooser.id !== localPlayer.id)
+        );
+
+        let isCpu = false;
+        if (isChooserOpponent) {
+          // 相手側の選択は自動処理（AI判断／自動抽出）とし、ローカルプレイヤーに選ばせない
+          isCpu = true;
+        } else if (options && options.autoPick) {
+          isCpu = true;
+        } else if (chooser && chooser.isCpu) {
+          isCpu = true;
+        }
+
         const isHuman = !isCpu && window.BattleSystem && typeof window.BattleSystem.showChoiceModalPromise === 'function';
 
         if (matched.length === 0) {
@@ -22198,6 +22292,11 @@ var EffectEditor;
 
 
 
+
+
+
+
+
   <script>
 console.log('[ORBITAL] CardSystem.js.html started execution');
 if (window.__showDebugMsg) window.__showDebugMsg('CardSystem読込開始');
@@ -22514,12 +22613,15 @@ var CardSystem;
         const key = String(c.id || c.name);
         col[key] = (col[key] || 0) + 1;
 
-        if (!this.customCards.some(x => x && String(x.id || x.name) === key)) {
-          this.customCards.push(c);
-          hasNewCustom = true;
-        }
-        if (appCards && !appCards.some(x => x && String(x.id || x.name) === key)) {
-          appCards.push(c);
+        const inMaster = appCards && appCards.some(x => x && String(x.id || x.name) === key);
+        if (!inMaster) {
+          if (!this.customCards.some(x => x && String(x.id || x.name) === key)) {
+            this.customCards.push(c);
+            hasNewCustom = true;
+          }
+          if (appCards) {
+            appCards.push(c);
+          }
         }
       });
 
@@ -24222,6 +24324,11 @@ var CardSystem;
 
 
 
+
+
+
+
+
   <script>
 console.log('[ORBITAL] DeckSystem.js.html started execution');
 window.DeckSystem = function () {
@@ -25426,6 +25533,11 @@ window.DeckSystem = function () {
 
 
 
+
+
+
+
+
   <script>
 
 (() => {
@@ -25705,6 +25817,37 @@ window.DeckSystem = function () {
           }
         }
       });
+
+      // 手札トレイのサイズ切り替え（小: sm / 中: md / 大: lg）
+      this.setHandDockSize = (size) => {
+        const validSize = ['sm', 'md', 'lg'].includes(size) ? size : 'md';
+        const dock = document.getElementById('battleHandDock');
+        if (dock) {
+          dock.classList.remove('hand-size-sm', 'hand-size-md', 'hand-size-lg');
+          dock.classList.add('hand-size-' + validSize);
+        }
+        document.querySelectorAll('.hand-size-toggle-btn').forEach((btn) => {
+          btn.classList.toggle('active', btn.dataset.size === validSize);
+        });
+        try {
+          localStorage.setItem('orbital_hand_dock_size', validSize);
+        } catch (e) {}
+      };
+
+      document.querySelectorAll('.hand-size-toggle-btn').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const sz = btn.dataset.size || 'md';
+          this.setHandDockSize(sz);
+        });
+      });
+
+      try {
+        const savedHandSize = localStorage.getItem('orbital_hand_dock_size') || 'md';
+        this.setHandDockSize(savedHandSize);
+      } catch (e) {
+        this.setHandDockSize('md');
+      }
 
       // トラッシュ確認モーダル (いつでも自分・相手どちらも開ける)
       on('playerDiscardSlot', 'click', () => this.openDiscardModal('player'));
@@ -27303,6 +27446,13 @@ window.DeckSystem = function () {
           const endTurnSettled = !self.state.online.pendingEndTurn && serverSeq >= (self.state.online.endTurnSeq || 0);
           if (isMyTurnOnServer && !currentIsMyTurn && endTurnSettled) {
             console.log('🔄 [Online Turn Recovery] Server indicates turn belongs to me! Recovering turn state...');
+            const secondPlayer = self.state.firstPlayer === 'player' ? 'opponent' : 'player';
+            if (self.state.turnPlayer === secondPlayer) {
+              self.state.turnNumber++;
+            }
+            if (res.turnNumber) {
+              self.state.turnNumber = Math.max(self.state.turnNumber, Math.floor((Number(res.turnNumber) + 1) / 2));
+            }
             self.startTurn('player');
           }
         }
@@ -27939,14 +28089,16 @@ window.DeckSystem = function () {
         }
         case 'end_turn': {
           if (this.state.turnPlayer === 'player') { break; }
-          let nextPlayer = 'player';
+          // 送信側の 'player' (送信者の追加ターン) は受信側にとって 'opponent' の番
+          // 送信側の 'opponent' (通常の交代) は受信側にとって 'player' (自分の番)
+          let isExtraTurnForOpponent = false;
           if (payload && payload.nextPlayer) {
-            nextPlayer = payload.nextPlayer === 'opponent' ? 'opponent' : 'player';
+            isExtraTurnForOpponent = (payload.nextPlayer === 'player');
           } else if (this.state.extraTurnPlayer) {
-            nextPlayer = this.state.extraTurnPlayer;
+            isExtraTurnForOpponent = (this.state.extraTurnPlayer === 'opponent');
             this.state.extraTurnPlayer = null;
           }
-          if (nextPlayer === 'opponent') {
+          if (isExtraTurnForOpponent) {
             this.log('相手の追加ターン（もう1回相手の番）が始まります！');
             this.startTurn('opponent');
           } else {
@@ -29437,8 +29589,8 @@ window.DeckSystem = function () {
         }
       });
 
-      // ドロー（先攻の最初のターンはドローなし）
-      const isVeryFirstTurn = (this.state.turnNumber === 1 && turnWho === this.state.firstPlayer);
+      // ドロー（先攻プレイヤーの最初のターンのみドローなし）
+      const isVeryFirstTurn = (turnWho === this.state.firstPlayer && (cur.turnCount || 0) <= 1 && (this.state.turnNumber || 1) <= 1);
       if (isVeryFirstTurn) {
         // 先攻1ターン目はドローなし（ポケモンカードのルール）
         this.log("【" + cur.name + "】の番（TURN " + this.state.turnNumber + "）: 先攻1ターン目のためドローなし。");
@@ -33190,12 +33342,16 @@ window.DeckSystem = function () {
             slotEl.draggable = true;
             slotEl.ondragstart = (e) => {
               this._isDragging = true;
-              document.body.classList.add('is-card-dragging');
               slotEl.classList.add('is-dragging-card');
               if (e.dataTransfer) {
                 e.dataTransfer.setData('text/plain', 'bench:' + benchIdx);
                 e.dataTransfer.effectAllowed = 'move';
               }
+              requestAnimationFrame(() => {
+                if (this._isDragging) {
+                  document.body.classList.add('is-card-dragging');
+                }
+              });
             };
             slotEl.ondragend = () => {
               slotEl.classList.remove('is-dragging-card');
@@ -33970,12 +34126,16 @@ window.DeckSystem = function () {
           this.draggedHandIndex = idx;
           this.draggedCard = card;
           this._isDragging = true;
-          document.body.classList.add('is-card-dragging');
+          el.classList.add('is-dragging-card');
           if (e.dataTransfer) {
             e.dataTransfer.setData('text/plain', String(idx));
             e.dataTransfer.effectAllowed = 'copyMove';
           }
-          el.classList.add('is-dragging-card');
+          requestAnimationFrame(() => {
+            if (this._isDragging) {
+              document.body.classList.add('is-card-dragging');
+            }
+          });
 
           // フィールド全体のハイライト (全カード共通でフィールドへのドロップを受け付ける)
           const stadium = document.querySelector('.battle-stadium');
@@ -34278,6 +34438,11 @@ window.DeckSystem = function () {
   console.log('[ORBITAL] BattleSystem.js.html finished execution. window.BattleSystem = object');
 })();
 </script>
+
+
+
+
+
 
 
 
@@ -35882,18 +36047,32 @@ console.log('[ORBITAL] App.js.html started execution');
     },
 
     getAllCards() {
-      if (window.CardSystem && window.CardSystem.state && Array.isArray(window.CardSystem.state.cards) && window.CardSystem.state.cards.length > 0) {
-        return window.CardSystem.state.cards;
+      // 1. 基本マスターカード（スプレッドシート/DBロード済みカード）
+      const base = (this.state && Array.isArray(this.state.cards)) ? [...this.state.cards] : [];
+
+      // 2. CardSystem.state.cards があればマージ
+      if (window.CardSystem && window.CardSystem.state && Array.isArray(window.CardSystem.state.cards)) {
+        window.CardSystem.state.cards.forEach((c) => {
+          if (c && !base.some((x) => x && String(x.id || x.name) === String(c.id || c.name))) {
+            base.push(c);
+          }
+        });
       }
+
+      // 3. CardSystem.customCards（自作カード等）があればマージ
+      if (window.CardSystem && Array.isArray(window.CardSystem.customCards)) {
+        window.CardSystem.customCards.forEach((c) => {
+          if (c && !base.some((x) => x && String(x.id || x.name) === String(c.id || c.name))) {
+            base.push(c);
+          }
+        });
+      }
+
+      if (base.length > 0) return base;
+
       if (window.CardSystem && typeof window.CardSystem.getCards === 'function') {
         const res = window.CardSystem.getCards();
         if (Array.isArray(res) && res.length > 0) return res;
-      }
-      if (window.CardSystem && Array.isArray(window.CardSystem.customCards) && window.CardSystem.customCards.length > 0) {
-        return window.CardSystem.customCards;
-      }
-      if (this.state && Array.isArray(this.state.cards) && this.state.cards.length > 0) {
-        return this.state.cards;
       }
       return [];
     },
@@ -37686,8 +37865,9 @@ console.log('[ORBITAL] App.js.html started execution');
       }
       if (window.CardSystem && Array.isArray(CardSystem.customCards)) {
         let customChanged = false;
+        const allKnown = this.getAllCards();
         allDrawnCards.forEach(c => {
-          if (c && !CardSystem.customCards.some(x => x && String(x.id || x.name) === String(c.id || c.name))) {
+          if (c && !allKnown.some(x => x && String(x.id || x.name) === String(c.id || c.name))) {
             CardSystem.customCards.push(c);
             customChanged = true;
           }
@@ -39835,6 +40015,11 @@ console.log('[ORBITAL] App.js.html started execution');
   console.log('[ORBITAL] App.js.html finished execution. window.App =', typeof window.App);
 })();
 </script>
+
+
+
+
+
 
 
 

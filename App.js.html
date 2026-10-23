@@ -1582,18 +1582,32 @@ console.log('[ORBITAL] App.js.html started execution');
     },
 
     getAllCards() {
-      if (window.CardSystem && window.CardSystem.state && Array.isArray(window.CardSystem.state.cards) && window.CardSystem.state.cards.length > 0) {
-        return window.CardSystem.state.cards;
+      // 1. 基本マスターカード（スプレッドシート/DBロード済みカード）
+      const base = (this.state && Array.isArray(this.state.cards)) ? [...this.state.cards] : [];
+
+      // 2. CardSystem.state.cards があればマージ
+      if (window.CardSystem && window.CardSystem.state && Array.isArray(window.CardSystem.state.cards)) {
+        window.CardSystem.state.cards.forEach((c) => {
+          if (c && !base.some((x) => x && String(x.id || x.name) === String(c.id || c.name))) {
+            base.push(c);
+          }
+        });
       }
+
+      // 3. CardSystem.customCards（自作カード等）があればマージ
+      if (window.CardSystem && Array.isArray(window.CardSystem.customCards)) {
+        window.CardSystem.customCards.forEach((c) => {
+          if (c && !base.some((x) => x && String(x.id || x.name) === String(c.id || c.name))) {
+            base.push(c);
+          }
+        });
+      }
+
+      if (base.length > 0) return base;
+
       if (window.CardSystem && typeof window.CardSystem.getCards === 'function') {
         const res = window.CardSystem.getCards();
         if (Array.isArray(res) && res.length > 0) return res;
-      }
-      if (window.CardSystem && Array.isArray(window.CardSystem.customCards) && window.CardSystem.customCards.length > 0) {
-        return window.CardSystem.customCards;
-      }
-      if (this.state && Array.isArray(this.state.cards) && this.state.cards.length > 0) {
-        return this.state.cards;
       }
       return [];
     },
@@ -3386,8 +3400,9 @@ console.log('[ORBITAL] App.js.html started execution');
       }
       if (window.CardSystem && Array.isArray(CardSystem.customCards)) {
         let customChanged = false;
+        const allKnown = this.getAllCards();
         allDrawnCards.forEach(c => {
-          if (c && !CardSystem.customCards.some(x => x && String(x.id || x.name) === String(c.id || c.name))) {
+          if (c && !allKnown.some(x => x && String(x.id || x.name) === String(c.id || c.name))) {
             CardSystem.customCards.push(c);
             customChanged = true;
           }

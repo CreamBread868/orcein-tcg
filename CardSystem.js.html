@@ -314,12 +314,15 @@ var CardSystem;
         const key = String(c.id || c.name);
         col[key] = (col[key] || 0) + 1;
 
-        if (!this.customCards.some(x => x && String(x.id || x.name) === key)) {
-          this.customCards.push(c);
-          hasNewCustom = true;
-        }
-        if (appCards && !appCards.some(x => x && String(x.id || x.name) === key)) {
-          appCards.push(c);
+        const inMaster = appCards && appCards.some(x => x && String(x.id || x.name) === key);
+        if (!inMaster) {
+          if (!this.customCards.some(x => x && String(x.id || x.name) === key)) {
+            this.customCards.push(c);
+            hasNewCustom = true;
+          }
+          if (appCards) {
+            appCards.push(c);
+          }
         }
       });
 

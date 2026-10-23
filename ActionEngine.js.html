@@ -2335,8 +2335,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           ctx.game.logs.push("👁️ 【" + playerName + "】は山札の上から" + topCards.length + "枚を見た。");
         }
 
-        const isHuman = (player === ctx?.self && window.BattleSystem?.state?.mode !== 'ai_vs_ai') ||
-                        (window.BattleSystem?.state?.turnPlayer === 'player');
+        const isHuman = (player === window.BattleSystem?.state?.player && window.BattleSystem?.state?.mode !== 'ai_vs_ai');
         if (isHuman && opts.showModal !== false && topCards.length > 0 && window.BattleSystem?.showChoiceModalPromise) {
           const modalCards = topCards.map((c) => ({
             name: c.name,
@@ -3117,29 +3116,47 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         });
 
         let chosen = [];
-        let isCpu = false;
-        const isRepresenting = !!(ctx?.isRepresenting || ctx?.isOpponent || window._currentExecutionContext?.isRepresenting);
-        const isOnline = window.BattleSystem?.state?.mode === 'online';
-        if (isOnline) {
-          // オンライン対戦時は両プレイヤーとも人間。
-          // 自身のブラウザで実行されている choiceCard は常にローカルプレイヤーが選択する
-          isCpu = false;
-        } else if (isRepresenting) {
-          // 相手として実行中（represent）:
-          // 「相手がやった判定として相手のUIが出る」ため、人間プレイヤーが相手側の選択を行えるようにUIを表示する
-          isCpu = false;
-        } else {
-          // AI戦の場合
-          if (ctx?.self) {
-            if (ctx.self.isCpu || ctx.self === window.BattleSystem?.state?.opponent || ctx.self.id === 'opponent' || ctx.self.id === 'cpu') {
-              isCpu = true;
-            }
-          } else if (window.BattleSystem?.state) {
-            if (window.BattleSystem.state.turnPlayer === 'opponent') {
-              isCpu = true;
-            }
+        const localPlayer = window.BattleSystem?.state?.player;
+        const opponentPlayer = window.BattleSystem?.state?.opponent;
+
+        // 選択を行う主体プレイヤー（chooser）を判定
+        let chooser = null;
+        if (options && (options.chooser || options.by || options.player)) {
+          const optP = options.chooser || options.by || options.player;
+          if (optP === 'opponent' || optP === 'cpu' || optP === opponentPlayer) {
+            chooser = opponentPlayer;
+          } else if (optP === 'player' || optP === 'self' || optP === localPlayer) {
+            chooser = localPlayer;
           }
         }
+        if (!chooser) {
+          if (ctx?.self) {
+            chooser = ctx.self;
+          } else if (window.BattleSystem?.state?.turnPlayer === 'opponent') {
+            chooser = opponentPlayer;
+          } else {
+            chooser = localPlayer;
+          }
+        }
+
+        // 対戦相手（AI、またはオンラインの相手）が選択主体の場合は、ローカルプレイヤーにモーダルを出さない
+        const isChooserOpponent = (
+          chooser === opponentPlayer ||
+          chooser?.id === 'opponent' ||
+          chooser?.id === 'cpu' ||
+          (localPlayer && chooser && chooser !== localPlayer && chooser.id !== localPlayer.id)
+        );
+
+        let isCpu = false;
+        if (isChooserOpponent) {
+          // 相手側の選択は自動処理（AI判断／自動抽出）とし、ローカルプレイヤーに選ばせない
+          isCpu = true;
+        } else if (options && options.autoPick) {
+          isCpu = true;
+        } else if (chooser && chooser.isCpu) {
+          isCpu = true;
+        }
+
         const isHuman = !isCpu && window.BattleSystem && typeof window.BattleSystem.showChoiceModalPromise === 'function';
 
         if (matched.length === 0) {

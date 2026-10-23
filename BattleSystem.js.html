@@ -278,6 +278,37 @@
         }
       });
 
+      // 手札トレイのサイズ切り替え（小: sm / 中: md / 大: lg）
+      this.setHandDockSize = (size) => {
+        const validSize = ['sm', 'md', 'lg'].includes(size) ? size : 'md';
+        const dock = document.getElementById('battleHandDock');
+        if (dock) {
+          dock.classList.remove('hand-size-sm', 'hand-size-md', 'hand-size-lg');
+          dock.classList.add('hand-size-' + validSize);
+        }
+        document.querySelectorAll('.hand-size-toggle-btn').forEach((btn) => {
+          btn.classList.toggle('active', btn.dataset.size === validSize);
+        });
+        try {
+          localStorage.setItem('orbital_hand_dock_size', validSize);
+        } catch (e) {}
+      };
+
+      document.querySelectorAll('.hand-size-toggle-btn').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const sz = btn.dataset.size || 'md';
+          this.setHandDockSize(sz);
+        });
+      });
+
+      try {
+        const savedHandSize = localStorage.getItem('orbital_hand_dock_size') || 'md';
+        this.setHandDockSize(savedHandSize);
+      } catch (e) {
+        this.setHandDockSize('md');
+      }
+
       // トラッシュ確認モーダル (いつでも自分・相手どちらも開ける)
       on('playerDiscardSlot', 'click', () => this.openDiscardModal('player'));
       on('oppDiscardSlot', 'click', () => this.openDiscardModal('opponent'));
@@ -1875,6 +1906,13 @@
           const endTurnSettled = !self.state.online.pendingEndTurn && serverSeq >= (self.state.online.endTurnSeq || 0);
           if (isMyTurnOnServer && !currentIsMyTurn && endTurnSettled) {
             console.log('🔄 [Online Turn Recovery] Server indicates turn belongs to me! Recovering turn state...');
+            const secondPlayer = self.state.firstPlayer === 'player' ? 'opponent' : 'player';
+            if (self.state.turnPlayer === secondPlayer) {
+              self.state.turnNumber++;
+            }
+            if (res.turnNumber) {
+              self.state.turnNumber = Math.max(self.state.turnNumber, Math.floor((Number(res.turnNumber) + 1) / 2));
+            }
             self.startTurn('player');
           }
         }
@@ -2511,14 +2549,16 @@
         }
         case 'end_turn': {
           if (this.state.turnPlayer === 'player') { break; }
-          let nextPlayer = 'player';
+          // 送信側の 'player' (送信者の追加ターン) は受信側にとって 'opponent' の番
+          // 送信側の 'opponent' (通常の交代) は受信側にとって 'player' (自分の番)
+          let isExtraTurnForOpponent = false;
           if (payload && payload.nextPlayer) {
-            nextPlayer = payload.nextPlayer === 'opponent' ? 'opponent' : 'player';
+            isExtraTurnForOpponent = (payload.nextPlayer === 'player');
           } else if (this.state.extraTurnPlayer) {
-            nextPlayer = this.state.extraTurnPlayer;
+            isExtraTurnForOpponent = (this.state.extraTurnPlayer === 'opponent');
             this.state.extraTurnPlayer = null;
           }
-          if (nextPlayer === 'opponent') {
+          if (isExtraTurnForOpponent) {
             this.log('相手の追加ターン（もう1回相手の番）が始まります！');
             this.startTurn('opponent');
           } else {
@@ -4009,8 +4049,8 @@
         }
       });
 
-      // ドロー（先攻の最初のターンはドローなし）
-      const isVeryFirstTurn = (this.state.turnNumber === 1 && turnWho === this.state.firstPlayer);
+      // ドロー（先攻プレイヤーの最初のターンのみドローなし）
+      const isVeryFirstTurn = (turnWho === this.state.firstPlayer && (cur.turnCount || 0) <= 1 && (this.state.turnNumber || 1) <= 1);
       if (isVeryFirstTurn) {
         // 先攻1ターン目はドローなし（ポケモンカードのルール）
         this.log("【" + cur.name + "】の番（TURN " + this.state.turnNumber + "）: 先攻1ターン目のためドローなし。");
@@ -7762,12 +7802,16 @@
             slotEl.draggable = true;
             slotEl.ondragstart = (e) => {
               this._isDragging = true;
-              document.body.classList.add('is-card-dragging');
               slotEl.classList.add('is-dragging-card');
               if (e.dataTransfer) {
                 e.dataTransfer.setData('text/plain', 'bench:' + benchIdx);
                 e.dataTransfer.effectAllowed = 'move';
               }
+              requestAnimationFrame(() => {
+                if (this._isDragging) {
+                  document.body.classList.add('is-card-dragging');
+                }
+              });
             };
             slotEl.ondragend = () => {
               slotEl.classList.remove('is-dragging-card');
@@ -8542,12 +8586,16 @@
           this.draggedHandIndex = idx;
           this.draggedCard = card;
           this._isDragging = true;
-          document.body.classList.add('is-card-dragging');
+          el.classList.add('is-dragging-card');
           if (e.dataTransfer) {
             e.dataTransfer.setData('text/plain', String(idx));
             e.dataTransfer.effectAllowed = 'copyMove';
           }
-          el.classList.add('is-dragging-card');
+          requestAnimationFrame(() => {
+            if (this._isDragging) {
+              document.body.classList.add('is-card-dragging');
+            }
+          });
 
           // フィールド全体のハイライト (全カード共通でフィールドへのドロップを受け付ける)
           const stadium = document.querySelector('.battle-stadium');
