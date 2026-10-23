@@ -7543,6 +7543,135 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   padding: 6px 14px;
 }
 
+/* メンションメッセージ & タグスタイル */
+.chat-msg-row.chat-msg-mentioned {
+  position: relative;
+}
+
+.chat-msg-row.chat-msg-mentioned .chat-msg-text {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.22), rgba(217, 119, 6, 0.32));
+  border: 1.5px solid #f59e0b;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.35);
+  animation: mentionPulse 2s infinite ease-in-out;
+}
+
+@keyframes mentionPulse {
+  0%, 100% { box-shadow: 0 0 14px rgba(245, 158, 11, 0.35); }
+  50% { box-shadow: 0 0 22px rgba(245, 158, 11, 0.65); }
+}
+
+.chat-mention-tag {
+  display: inline-block;
+  padding: 1px 6px;
+  margin: 0 2px;
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.chat-mention-tag.is-me {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #0b0f19;
+  border-color: #fbbf24;
+  font-weight: 900;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+}
+
+.chat-mention-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 800;
+  background: #f59e0b;
+  color: #0b0f19;
+  border-radius: 10px;
+  margin-left: 6px;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.3);
+}
+
+/* メンション通知ポップアップカード */
+.mention-notification-popup {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 99999;
+  background: rgba(15, 23, 42, 0.95);
+  border: 1.5px solid #f59e0b;
+  border-radius: 14px;
+  padding: 14px 18px;
+  max-width: 380px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5), 0 0 24px rgba(245, 158, 11, 0.35);
+  backdrop-filter: blur(12px);
+  cursor: pointer;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  animation: mentionSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.mention-notification-popup:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.6), 0 0 30px rgba(245, 158, 11, 0.5);
+}
+
+@keyframes mentionSlideIn {
+  from { opacity: 0; transform: translateX(60px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.mention-notification-popup .mention-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+  animation: mentionBellRing 1s ease-in-out infinite;
+}
+
+@keyframes mentionBellRing {
+  0%, 100% { transform: rotate(0); }
+  20%, 60% { transform: rotate(15deg); }
+  40%, 80% { transform: rotate(-15deg); }
+}
+
+.mention-notification-content {
+  flex: 1;
+}
+
+.mention-notification-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #fbbf24;
+  margin-bottom: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mention-notification-body {
+  font-size: 12px;
+  color: #f1f5f9;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.mention-notification-close {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.mention-notification-close:hover {
+  color: #fff;
+}
+
 /* クイック絵文字パレット */
 .chat-quick-emojis {
   display: flex;

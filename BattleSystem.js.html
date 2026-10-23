@@ -8476,7 +8476,11 @@
 
       const bubbleEl = document.createElement('div');
       bubbleEl.className = 'chat-msg-bubble';
-      bubbleEl.textContent = msgObj.text;
+      if (window.App && typeof window.App.formatChatMentionText === 'function') {
+        bubbleEl.innerHTML = window.App.formatChatMentionText(msgObj.text);
+      } else {
+        bubbleEl.textContent = msgObj.text;
+      }
 
       row.appendChild(senderEl);
       row.appendChild(bubbleEl);
@@ -8484,9 +8488,25 @@
 
       this.scrollChatToBottom();
 
-      if (!isMyMsg && !this.state.online.isChatOpen) {
-        this.state.online.unreadChatCount = (this.state.online.unreadChatCount || 0) + 1;
-        this.updateChatUnreadBadge();
+      if (!isMyMsg) {
+        if (!this.state.online.isChatOpen) {
+          this.state.online.unreadChatCount = (this.state.online.unreadChatCount || 0) + 1;
+          this.updateChatUnreadBadge();
+        }
+
+        // バトルチャットのメンション検知と通知
+        if (window.App && typeof window.App.isMentionedToMe === 'function') {
+          const mentionPayload = {
+            id: 'battle_msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+            displayName: msgObj.senderName || '対戦相手',
+            text: msgObj.text,
+            avatar: '⚔️'
+          };
+          if (window.App.isMentionedToMe(mentionPayload)) {
+            row.classList.add('chat-msg-mentioned');
+            window.App.notifyMention(mentionPayload);
+          }
+        }
       }
     },
 

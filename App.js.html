@@ -744,10 +744,22 @@ console.log('[ORBITAL] App.js.html started execution');
       const applyMessages = (res) => {
         if (res && Array.isArray(res.messages)) {
           const prevLen = (this.state.globalChatMessages || []).length;
+          const prevIds = new Set((this.state.globalChatMessages || []).map(m => m.id));
+          const newMsgs = res.messages.filter(m => !prevIds.has(m.id));
+
           this.state.globalChatMessages = res.messages;
           this.renderGlobalChatMessages();
           if (res.messages.length > prevLen) {
             this.scrollChatToBottom();
+          }
+
+          // 初回ロードを除き、新着メッセージの中で自分宛てメンションがあれば通知
+          if (prevLen > 0 && newMsgs.length > 0) {
+            newMsgs.forEach(msg => {
+              if (this.isMentionedToMe(msg)) {
+                this.notifyMention(msg);
+              }
+            });
           }
         }
       };
@@ -809,6 +821,11 @@ console.log('[ORBITAL] App.js.html started execution');
       } else {
         this.incrementUnreadChatBadge();
       }
+
+      // メンション判定と通知のトリガー
+      if (this.isMentionedToMe(msg)) {
+        this.notifyMention(msg);
+      }
     },
 
     incrementUnreadChatBadge() {
@@ -849,11 +866,211 @@ console.log('[ORBITAL] App.js.html started execution');
 
     mentionUser(displayName) {
       this.switchChatTab('messages');
+      this.requestNotificationPermission();
       const input = document.getElementById('globalChatInput');
       if (input) {
         input.value = `@${displayName} ` + (input.value || '');
         input.focus();
       }
+    },
+
+    isMentionedToMe(msg) {
+      if (!msg || !msg.text) return false;
+      const myEmail = (this.getUserEmail() || '').toLowerCase().trim();
+      const senderEmail = (msg.email || '').toLowerCase().trim();
+      if (myEmail && senderEmail && myEmail === senderEmail) return false;
+
+      const myDisplayName = (this.getUserDisplayName() || '').trim();
+      const myNameFromEmail = myEmail ? myEmail.split('@')[0] : '';
+
+      const candidates = [];
+      if (myDisplayName) candidates.push(myDisplayName);
+      if (myNameFromEmail && myNameFromEmail !== myDisplayName) candidates.push(myNameFromEmail);
+      if (myEmail) candidates.push(myEmail);
+
+      const text = String(msg.text);
+
+      // 全員宛てメンション (@all, @everyone, @全員)
+      if (/(?:^|[\s　])@(all|everyone|全員)(?=[\s　、。!?！？]|$)/i.test(text)) {
+        return true;
+      }
+
+      // 個別ユーザーメンション (@名前)
+      for (const name of candidates) {
+        if (!name) continue;
+        const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`@${escaped}(?=[\\s　、。!?！？]|$)`, 'i');
+        if (regex.test(text) || text.toLowerCase().includes('@' + name.toLowerCase())) {
+          return true;
+        }
+      }
+      return false;
+    },
+
+    notifyMention(msg) {
+      if (!msg || !msg.id) return;
+      if (!this._notifiedMentionIds) this._notifiedMentionIds = new Set();
+      if (this._notifiedMentionIds.has(msg.id)) return;
+      this._notifiedMentionIds.add(msg.id);
+
+      const senderName = msg.displayName || msg.email?.split('@')[0] || '誰か';
+      const previewText = msg.text ? (msg.text.length > 60 ? msg.text.substring(0, 57) + '...' : msg.text) : '';
+
+      // 1. チャイム音再生（Web Audio API ピロリン♪）
+      this.playMentionSound();
+
+      // 2. ブラウザデスクトップ通知（バックグラウンド時でも到達）
+      this.showBrowserNotification(
+        `🔔 @メンション: ${senderName}さん`,
+        previewText,
+        () => {
+          this.toggleGlobalChat(true);
+          this.switchChatTab('messages');
+          this.scrollChatToBottom();
+        }
+      );
+
+      // 3. アプリ内フローティング通知カード
+      this.showMentionNotificationPopup(senderName, previewText, msg.avatar || '💬');
+
+      // 4. チャットフローティングボタン・未読バッジ強調
+      this.incrementUnreadChatBadge();
+      const floatBtn = document.getElementById('globalChatFloatBtn');
+      if (floatBtn) {
+        floatBtn.classList.add('chat-float-mention-pulse');
+        setTimeout(() => floatBtn.classList.remove('chat-float-mention-pulse'), 5000);
+      }
+    },
+
+    showMentionNotificationPopup(sender, text, avatar) {
+      try {
+        const existing = document.getElementById('mentionNotificationCard');
+        if (existing) existing.remove();
+
+        const popup = document.createElement('div');
+        popup.id = 'mentionNotificationCard';
+        popup.className = 'mention-notification-popup';
+        popup.innerHTML = `
+          <div class="mention-icon">${avatar || '🔔'}</div>
+          <div class="mention-notification-content">
+            <div class="mention-notification-title">
+              <span>🔔 @メンションが届きました</span>
+              <button type="button" class="mention-notification-close" title="閉じる" onclick="event.stopPropagation(); this.closest('.mention-notification-popup').remove();">&times;</button>
+            </div>
+            <div class="mention-notification-body">
+              <strong>${this.escapeHtml(sender)}:</strong> ${this.escapeHtml(text)}
+            </div>
+          </div>
+        `;
+
+        popup.onclick = () => {
+          popup.remove();
+          this.toggleGlobalChat(true);
+          this.switchChatTab('messages');
+          this.scrollChatToBottom();
+        };
+
+        document.body.appendChild(popup);
+
+        setTimeout(() => {
+          if (popup && popup.parentNode) {
+            popup.style.animation = 'mentionSlideIn 0.3s reverse forwards';
+            setTimeout(() => popup.remove(), 300);
+          }
+        }, 7000);
+      } catch (e) {
+        console.warn('Error showing mention popup:', e);
+      }
+    },
+
+    playMentionSound() {
+      try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        if (!this._audioCtx) {
+          this._audioCtx = new AudioContext();
+        }
+        if (this._audioCtx.state === 'suspended') {
+          this._audioCtx.resume();
+        }
+        const ctx = this._audioCtx;
+        const now = ctx.currentTime;
+
+        // 心地よい2音アルペジオ (D5 587.33Hz -> A5 880.00Hz)
+        const osc1 = ctx.createOscillator();
+        const gain1 = ctx.createGain();
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(587.33, now);
+        gain1.gain.setValueAtTime(0.18, now);
+        gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+        osc1.connect(gain1);
+        gain1.connect(ctx.destination);
+        osc1.start(now);
+        osc1.stop(now + 0.32);
+
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(880.00, now + 0.11);
+        gain2.gain.setValueAtTime(0.22, now + 0.11);
+        gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+        osc2.connect(gain2);
+        gain2.connect(ctx.destination);
+        osc2.start(now + 0.11);
+        osc2.stop(now + 0.55);
+      } catch (e) {
+        console.warn('Audio playback error:', e);
+      }
+    },
+
+    requestNotificationPermission() {
+      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+        try {
+          Notification.requestPermission();
+        } catch(e) {}
+      }
+    },
+
+    showBrowserNotification(title, body, onClick) {
+      if (typeof window === 'undefined' || !('Notification' in window)) return;
+      if (Notification.permission === 'granted') {
+        try {
+          const n = new Notification(title, {
+            body: body,
+            icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🔔</text></svg>'
+          });
+          if (typeof onClick === 'function') {
+            n.onclick = () => {
+              window.focus();
+              onClick();
+              n.close();
+            };
+          }
+        } catch(e) {}
+      }
+    },
+
+    formatChatMentionText(rawText) {
+      if (!rawText) return '';
+      let escaped = this.escapeHtml(rawText);
+      const myDisplayName = (this.getUserDisplayName() || '').trim();
+      const myEmail = (this.getUserEmail() || '').trim();
+      const myNameFromEmail = myEmail ? myEmail.split('@')[0] : '';
+
+      // @all, @everyone, @全員 をタグ化
+      escaped = escaped.replace(/(^|[\s　])@(all|everyone|全員)(?=[\s　、。!?！？]|$)/gi, (match, prefix, tag) => {
+        return prefix + `<span class="chat-mention-tag is-me">@${tag}</span>`;
+      });
+
+      // @ユーザー名 をタグ化
+      escaped = escaped.replace(/(^|[\s　])@([^\s　、。!?！？@]{1,30})/g, (match, prefix, targetName) => {
+        const isMe = (myDisplayName && targetName.toLowerCase() === myDisplayName.toLowerCase()) ||
+                     (myNameFromEmail && targetName.toLowerCase() === myNameFromEmail.toLowerCase()) ||
+                     (myEmail && targetName.toLowerCase() === myEmail.toLowerCase());
+        return prefix + `<span class="chat-mention-tag ${isMe ? 'is-me' : ''}">@${targetName}</span>`;
+      });
+
+      return escaped;
     },
 
     handleSendChatMessage(e) {
@@ -941,21 +1158,24 @@ console.log('[ORBITAL] App.js.html started execution');
           `;
         }
 
+        const isMentioned = this.isMentionedToMe(m);
         const isSelf = m.email && m.email.toLowerCase() === currentEmail;
         const name = this.escapeHtml(m.displayName || m.email?.split('@')[0] || 'プレイヤー');
         const icon = this.escapeHtml(m.avatar || '⚡');
         const timeStr = m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-        const text = this.escapeHtml(m.text);
+        const formattedText = this.formatChatMentionText(m.text);
+        const mentionBadge = isMentioned ? '<span class="chat-mention-pill">🔔 あなた宛</span>' : '';
 
         return `
-          <div class="chat-msg-row ${isSelf ? 'chat-msg-self' : 'chat-msg-other'}">
+          <div class="chat-msg-row ${isSelf ? 'chat-msg-self' : 'chat-msg-other'} ${isMentioned ? 'chat-msg-mentioned' : ''}" data-msg-id="${this.escapeHtml(m.id || '')}">
             <div class="chat-msg-avatar" title="${name}">${icon}</div>
             <div class="chat-msg-body">
               <div class="chat-msg-header">
                 <span class="chat-msg-sender">${name}</span>
+                ${mentionBadge}
                 <span class="chat-msg-time">${timeStr}</span>
               </div>
-              <div class="chat-msg-text">${text}</div>
+              <div class="chat-msg-text">${formattedText}</div>
             </div>
           </div>
         `;
@@ -1388,7 +1608,35 @@ console.log('[ORBITAL] App.js.html started execution');
           google.script.run
             .withSuccessHandler((cards) => {
               console.log('✅ Received cards from Spreadsheet:', cards);
-              this.state.cards = this.normalizeCardData(cards);
+              const remoteNormalized = this.normalizeCardData(cards);
+
+              // スプレッドシート側の書き込み反映遅延対策: ローカルキャッシュにのみ存在する新カードを保護・マージ
+              const localCandidates = [];
+              try {
+                const c1 = JSON.parse(localStorage.getItem('ORBITAL_CUSTOM_CARDS') || '[]');
+                const c2 = JSON.parse(localStorage.getItem('orbital_cards') || '[]');
+                const c3 = JSON.parse(localStorage.getItem('orbital_cards_mock') || '[]');
+                const mergedCandidates = [...c1, ...c2, ...c3];
+                mergedCandidates.forEach(c => {
+                  if (c && (c.id || c.name)) {
+                    if (!localCandidates.some(x => String(x.id || x.name) === String(c.id || c.name))) {
+                      localCandidates.push(c);
+                    }
+                  }
+                });
+              } catch(e) {}
+
+              const mergedList = [...remoteNormalized];
+              localCandidates.forEach(lc => {
+                const key = String(lc.id || lc.name);
+                const exists = mergedList.some(r => String(r.id || r.name) === key);
+                if (!exists) {
+                  console.log('✨ Merging newly saved local card not yet in Sheets query:', lc.name || lc.id);
+                  mergedList.push(lc);
+                }
+              });
+
+              this.state.cards = mergedList;
               const el = this.el('homeCardCount');
               if (el) el.textContent = this.state.cards.length + '枚のカード';
               if (window.CardSystem) {
@@ -1570,16 +1818,33 @@ console.log('[ORBITAL] App.js.html started execution');
     },
 
     loadDefaultLocalCards() {
-      if (!Array.isArray(this.state.cards) || this.state.cards.length === 0) {
-        try {
-          const raw = localStorage.getItem('orbital_cards_mock') || localStorage.getItem('orbital_cards');
-          if (raw) {
-            const parsed = JSON.parse(raw);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              this.state.cards = parsed;
+      try {
+        const rawCustom = localStorage.getItem('ORBITAL_CUSTOM_CARDS');
+        const rawMock = localStorage.getItem('orbital_cards_mock');
+        const rawCards = localStorage.getItem('orbital_cards');
+        const listCustom = rawCustom ? JSON.parse(rawCustom) : [];
+        const listMock = rawMock ? JSON.parse(rawMock) : [];
+        const listCards = rawCards ? JSON.parse(rawCards) : [];
+        const combined = [
+          ...(Array.isArray(this.state.cards) ? this.state.cards : []),
+          ...(Array.isArray(listCustom) ? listCustom : []),
+          ...(Array.isArray(listCards) ? listCards : []),
+          ...(Array.isArray(listMock) ? listMock : [])
+        ];
+        const unique = [];
+        combined.forEach(c => {
+          if (c && (c.id || c.name)) {
+            const key = String(c.id || c.name);
+            if (!unique.some(x => String(x.id || x.name) === key)) {
+              unique.push(c);
             }
           }
-        } catch (e) {}
+        });
+        if (unique.length > 0) {
+          this.state.cards = unique;
+        }
+      } catch (e) {
+        console.error('Error loading default local cards:', e);
       }
 
       this.state.cards = Array.isArray(this.state.cards) ? this.state.cards : [];

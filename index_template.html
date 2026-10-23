@@ -7552,6 +7552,135 @@ body.font-size-xlarge .card-action-sheet { font-size: 18px; }
   padding: 6px 14px;
 }
 
+/* メンションメッセージ & タグスタイル */
+.chat-msg-row.chat-msg-mentioned {
+  position: relative;
+}
+
+.chat-msg-row.chat-msg-mentioned .chat-msg-text {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.22), rgba(217, 119, 6, 0.32));
+  border: 1.5px solid #f59e0b;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.35);
+  animation: mentionPulse 2s infinite ease-in-out;
+}
+
+@keyframes mentionPulse {
+  0%, 100% { box-shadow: 0 0 14px rgba(245, 158, 11, 0.35); }
+  50% { box-shadow: 0 0 22px rgba(245, 158, 11, 0.65); }
+}
+
+.chat-mention-tag {
+  display: inline-block;
+  padding: 1px 6px;
+  margin: 0 2px;
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.chat-mention-tag.is-me {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #0b0f19;
+  border-color: #fbbf24;
+  font-weight: 900;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+}
+
+.chat-mention-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 800;
+  background: #f59e0b;
+  color: #0b0f19;
+  border-radius: 10px;
+  margin-left: 6px;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.3);
+}
+
+/* メンション通知ポップアップカード */
+.mention-notification-popup {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 99999;
+  background: rgba(15, 23, 42, 0.95);
+  border: 1.5px solid #f59e0b;
+  border-radius: 14px;
+  padding: 14px 18px;
+  max-width: 380px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5), 0 0 24px rgba(245, 158, 11, 0.35);
+  backdrop-filter: blur(12px);
+  cursor: pointer;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  animation: mentionSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.mention-notification-popup:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.6), 0 0 30px rgba(245, 158, 11, 0.5);
+}
+
+@keyframes mentionSlideIn {
+  from { opacity: 0; transform: translateX(60px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.mention-notification-popup .mention-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+  animation: mentionBellRing 1s ease-in-out infinite;
+}
+
+@keyframes mentionBellRing {
+  0%, 100% { transform: rotate(0); }
+  20%, 60% { transform: rotate(15deg); }
+  40%, 80% { transform: rotate(-15deg); }
+}
+
+.mention-notification-content {
+  flex: 1;
+}
+
+.mention-notification-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #fbbf24;
+  margin-bottom: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mention-notification-body {
+  font-size: 12px;
+  color: #f1f5f9;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.mention-notification-close {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.mention-notification-close:hover {
+  color: #fff;
+}
+
 /* クイック絵文字パレット */
 .chat-quick-emojis {
   display: flex;
@@ -9528,17 +9657,21 @@ body.in-battle-arena #battle-arena-view,
 
         function getLocalCards() {
           try {
-            var raw = localStorage.getItem('orbital_cards_mock');
+            var raw = localStorage.getItem('orbital_cards_mock') || localStorage.getItem('orbital_cards') || localStorage.getItem('ORBITAL_CUSTOM_CARDS');
             if (raw) {
               var parsed = JSON.parse(raw);
-              if (Array.isArray(parsed)) return parsed;
+              if (Array.isArray(parsed) && parsed.length > 0) return parsed;
             }
           } catch (e) { }
           return DEFAULT_SAMPLE_CARDS;
         }
 
         function saveLocalCards(cards) {
-          try { localStorage.setItem('orbital_cards_mock', JSON.stringify(cards)); } catch (e) { }
+          try {
+            localStorage.setItem('orbital_cards_mock', JSON.stringify(cards));
+            localStorage.setItem('orbital_cards', JSON.stringify(cards));
+            localStorage.setItem('ORBITAL_CUSTOM_CARDS', JSON.stringify(cards));
+          } catch (e) { }
         }
 
         function getLocalDecks() {
@@ -22008,6 +22141,8 @@ var EffectEditor;
 
 
 
+
+
   <script>
 console.log('[ORBITAL] CardSystem.js.html started execution');
 if (window.__showDebugMsg) window.__showDebugMsg('CardSystem読込開始');
@@ -23313,43 +23448,103 @@ var CardSystem;
         saveBtn.textContent = '保存中…';
       }
 
-      google.script.run.
-      withSuccessHandler((res) => {
-        this._isSaving = false;
-        if (saveBtn) {
-          saveBtn.disabled = false;
-          saveBtn.textContent = '保存する';
-        }
-        if (!res.ok) {
-          App.toast(res.message || '保存できませんでした。', true);
-          return;
-        }
-        App.toast(res.mode === 'created' ? 'カードを作成しました。' : 'カードを更新しました。');
-        // ローカルキャッシュにも即時反映
+      const applyLocalSave = () => {
         try {
+          // 1. App.state.cards の更新
           const list = (window.App && Array.isArray(window.App.state?.cards)) ? window.App.state.cards : [];
           const idx = list.findIndex(c => c && String(c.id) === String(card.id));
           if (idx >= 0) {
             list[idx] = Object.assign({}, list[idx], card);
           } else {
-            list.push(card);
+            list.unshift(card);
           }
           if (window.App && window.App.state) window.App.state.cards = list;
+
+          // 2. localStorage キャッシュの同期
           localStorage.setItem('orbital_cards', JSON.stringify(list));
-        } catch(e) {}
-        this.resetEditor();
-        App.loadCards();
-        App.showPage('cards');
-      }).
-      withFailureHandler((err) => {
+          localStorage.setItem('orbital_cards_mock', JSON.stringify(list));
+
+          // 3. CardSystem.customCards (図鑑・デッキ・パック等のマスタープール) への登録
+          if (!Array.isArray(this.customCards)) {
+            try { this.customCards = JSON.parse(localStorage.getItem('ORBITAL_CUSTOM_CARDS') || '[]'); } catch(e) { this.customCards = []; }
+          }
+          const cIdx = this.customCards.findIndex(x => x && String(x.id) === String(card.id));
+          if (cIdx >= 0) {
+            this.customCards[cIdx] = Object.assign({}, this.customCards[cIdx], card);
+          } else {
+            this.customCards.unshift(card);
+          }
+          try { localStorage.setItem('ORBITAL_CUSTOM_CARDS', JSON.stringify(this.customCards)); } catch(e) {}
+
+          // 4. 作成したカードを作者の所持カード（1枚）にも自動付与（デッキや図鑑で即時使用可能にする）
+          const col = this.getUserCollection();
+          const colKey = String(card.id || card.name);
+          if (!col[colKey] || col[colKey] < 1) {
+            col[colKey] = 1;
+            this.saveUserCollection(col);
+          }
+
+          // 5. デッキシステムのカードプールも即座に同期
+          if (window.DeckSystem && typeof DeckSystem.syncCardPool === 'function') {
+            DeckSystem.syncCardPool();
+          }
+        } catch(e) {
+          console.error('Error applying local card save:', e);
+        }
+      };
+
+      // 即座にローカルへ反映（通信失敗や再読み込みでも絶対カードを失わない）
+      applyLocalSave();
+
+      const finishSave = () => {
         this._isSaving = false;
         if (saveBtn) {
           saveBtn.disabled = false;
           saveBtn.textContent = '保存する';
         }
-        App.toast("保存失敗: " + (err.message || err), true);
-      }).
-      saveCard(card, App.state.adminToken);
+        this.resetEditor();
+        if (window.App && typeof App.loadCards === 'function') {
+          App.loadCards();
+        }
+        if (window.App && typeof App.showPage === 'function') {
+          App.showPage('cards');
+        }
+      };
+
+      if (window.google && google.script && google.script.run && !window._is_mock_gas) {
+        google.script.run
+          .withSuccessHandler((res) => {
+            if (!res || !res.ok) {
+              App.toast(res?.message || 'スプレッドシートへの保存に失敗しましたが、ローカルには保存されました。', true);
+            } else {
+              App.toast(res.mode === 'created' ? 'カードを作成・保存しました！' : 'カードを更新・保存しました！');
+            }
+            finishSave();
+          })
+          .withFailureHandler((err) => {
+            console.error('GAS saveCard error:', err);
+            App.toast("サーバー同期失敗（ローカルには保存されました）: " + (err.message || err), true);
+            finishSave();
+          })
+          .saveCard(card, App.state.adminToken);
+      } else {
+        // ローカル環境 / モック環境
+        if (window.google && google.script && google.script.run) {
+          google.script.run
+            .withSuccessHandler((res) => {
+              App.toast('カードを保存しました。');
+              finishSave();
+            })
+            .withFailureHandler((err) => {
+              App.toast('カードを保存しました（ローカル）。');
+              finishSave();
+            })
+            .saveCard(card, App.state.adminToken);
+        } else {
+          App.toast('カードを保存しました。');
+          finishSave();
+        }
+      }
     },
 
     uploadImage() {
@@ -23937,6 +24132,8 @@ var CardSystem;
   }, true);
 })();
 </script>
+
+
 
 
 
@@ -25135,6 +25332,8 @@ window.DeckSystem = function () {
   console.log('[ORBITAL] DeckSystem.js.html finished execution. window.DeckSystem =', typeof window.DeckSystem);
 }();
 </script>
+
+
 
 
 
@@ -33627,7 +33826,11 @@ window.DeckSystem = function () {
 
       const bubbleEl = document.createElement('div');
       bubbleEl.className = 'chat-msg-bubble';
-      bubbleEl.textContent = msgObj.text;
+      if (window.App && typeof window.App.formatChatMentionText === 'function') {
+        bubbleEl.innerHTML = window.App.formatChatMentionText(msgObj.text);
+      } else {
+        bubbleEl.textContent = msgObj.text;
+      }
 
       row.appendChild(senderEl);
       row.appendChild(bubbleEl);
@@ -33635,9 +33838,25 @@ window.DeckSystem = function () {
 
       this.scrollChatToBottom();
 
-      if (!isMyMsg && !this.state.online.isChatOpen) {
-        this.state.online.unreadChatCount = (this.state.online.unreadChatCount || 0) + 1;
-        this.updateChatUnreadBadge();
+      if (!isMyMsg) {
+        if (!this.state.online.isChatOpen) {
+          this.state.online.unreadChatCount = (this.state.online.unreadChatCount || 0) + 1;
+          this.updateChatUnreadBadge();
+        }
+
+        // バトルチャットのメンション検知と通知
+        if (window.App && typeof window.App.isMentionedToMe === 'function') {
+          const mentionPayload = {
+            id: 'battle_msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+            displayName: msgObj.senderName || '対戦相手',
+            text: msgObj.text,
+            avatar: '⚔️'
+          };
+          if (window.App.isMentionedToMe(mentionPayload)) {
+            row.classList.add('chat-msg-mentioned');
+            window.App.notifyMention(mentionPayload);
+          }
+        }
       }
     },
 
@@ -33667,6 +33886,8 @@ window.DeckSystem = function () {
   console.log('[ORBITAL] BattleSystem.js.html finished execution. window.BattleSystem = object');
 })();
 </script>
+
+
 
 
 
@@ -34427,10 +34648,22 @@ console.log('[ORBITAL] App.js.html started execution');
       const applyMessages = (res) => {
         if (res && Array.isArray(res.messages)) {
           const prevLen = (this.state.globalChatMessages || []).length;
+          const prevIds = new Set((this.state.globalChatMessages || []).map(m => m.id));
+          const newMsgs = res.messages.filter(m => !prevIds.has(m.id));
+
           this.state.globalChatMessages = res.messages;
           this.renderGlobalChatMessages();
           if (res.messages.length > prevLen) {
             this.scrollChatToBottom();
+          }
+
+          // 初回ロードを除き、新着メッセージの中で自分宛てメンションがあれば通知
+          if (prevLen > 0 && newMsgs.length > 0) {
+            newMsgs.forEach(msg => {
+              if (this.isMentionedToMe(msg)) {
+                this.notifyMention(msg);
+              }
+            });
           }
         }
       };
@@ -34492,6 +34725,11 @@ console.log('[ORBITAL] App.js.html started execution');
       } else {
         this.incrementUnreadChatBadge();
       }
+
+      // メンション判定と通知のトリガー
+      if (this.isMentionedToMe(msg)) {
+        this.notifyMention(msg);
+      }
     },
 
     incrementUnreadChatBadge() {
@@ -34532,11 +34770,211 @@ console.log('[ORBITAL] App.js.html started execution');
 
     mentionUser(displayName) {
       this.switchChatTab('messages');
+      this.requestNotificationPermission();
       const input = document.getElementById('globalChatInput');
       if (input) {
         input.value = `@${displayName} ` + (input.value || '');
         input.focus();
       }
+    },
+
+    isMentionedToMe(msg) {
+      if (!msg || !msg.text) return false;
+      const myEmail = (this.getUserEmail() || '').toLowerCase().trim();
+      const senderEmail = (msg.email || '').toLowerCase().trim();
+      if (myEmail && senderEmail && myEmail === senderEmail) return false;
+
+      const myDisplayName = (this.getUserDisplayName() || '').trim();
+      const myNameFromEmail = myEmail ? myEmail.split('@')[0] : '';
+
+      const candidates = [];
+      if (myDisplayName) candidates.push(myDisplayName);
+      if (myNameFromEmail && myNameFromEmail !== myDisplayName) candidates.push(myNameFromEmail);
+      if (myEmail) candidates.push(myEmail);
+
+      const text = String(msg.text);
+
+      // 全員宛てメンション (@all, @everyone, @全員)
+      if (/(?:^|[\s　])@(all|everyone|全員)(?=[\s　、。!?！？]|$)/i.test(text)) {
+        return true;
+      }
+
+      // 個別ユーザーメンション (@名前)
+      for (const name of candidates) {
+        if (!name) continue;
+        const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`@${escaped}(?=[\\s　、。!?！？]|$)`, 'i');
+        if (regex.test(text) || text.toLowerCase().includes('@' + name.toLowerCase())) {
+          return true;
+        }
+      }
+      return false;
+    },
+
+    notifyMention(msg) {
+      if (!msg || !msg.id) return;
+      if (!this._notifiedMentionIds) this._notifiedMentionIds = new Set();
+      if (this._notifiedMentionIds.has(msg.id)) return;
+      this._notifiedMentionIds.add(msg.id);
+
+      const senderName = msg.displayName || msg.email?.split('@')[0] || '誰か';
+      const previewText = msg.text ? (msg.text.length > 60 ? msg.text.substring(0, 57) + '...' : msg.text) : '';
+
+      // 1. チャイム音再生（Web Audio API ピロリン♪）
+      this.playMentionSound();
+
+      // 2. ブラウザデスクトップ通知（バックグラウンド時でも到達）
+      this.showBrowserNotification(
+        `🔔 @メンション: ${senderName}さん`,
+        previewText,
+        () => {
+          this.toggleGlobalChat(true);
+          this.switchChatTab('messages');
+          this.scrollChatToBottom();
+        }
+      );
+
+      // 3. アプリ内フローティング通知カード
+      this.showMentionNotificationPopup(senderName, previewText, msg.avatar || '💬');
+
+      // 4. チャットフローティングボタン・未読バッジ強調
+      this.incrementUnreadChatBadge();
+      const floatBtn = document.getElementById('globalChatFloatBtn');
+      if (floatBtn) {
+        floatBtn.classList.add('chat-float-mention-pulse');
+        setTimeout(() => floatBtn.classList.remove('chat-float-mention-pulse'), 5000);
+      }
+    },
+
+    showMentionNotificationPopup(sender, text, avatar) {
+      try {
+        const existing = document.getElementById('mentionNotificationCard');
+        if (existing) existing.remove();
+
+        const popup = document.createElement('div');
+        popup.id = 'mentionNotificationCard';
+        popup.className = 'mention-notification-popup';
+        popup.innerHTML = `
+          <div class="mention-icon">${avatar || '🔔'}</div>
+          <div class="mention-notification-content">
+            <div class="mention-notification-title">
+              <span>🔔 @メンションが届きました</span>
+              <button type="button" class="mention-notification-close" title="閉じる" onclick="event.stopPropagation(); this.closest('.mention-notification-popup').remove();">&times;</button>
+            </div>
+            <div class="mention-notification-body">
+              <strong>${this.escapeHtml(sender)}:</strong> ${this.escapeHtml(text)}
+            </div>
+          </div>
+        `;
+
+        popup.onclick = () => {
+          popup.remove();
+          this.toggleGlobalChat(true);
+          this.switchChatTab('messages');
+          this.scrollChatToBottom();
+        };
+
+        document.body.appendChild(popup);
+
+        setTimeout(() => {
+          if (popup && popup.parentNode) {
+            popup.style.animation = 'mentionSlideIn 0.3s reverse forwards';
+            setTimeout(() => popup.remove(), 300);
+          }
+        }, 7000);
+      } catch (e) {
+        console.warn('Error showing mention popup:', e);
+      }
+    },
+
+    playMentionSound() {
+      try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        if (!this._audioCtx) {
+          this._audioCtx = new AudioContext();
+        }
+        if (this._audioCtx.state === 'suspended') {
+          this._audioCtx.resume();
+        }
+        const ctx = this._audioCtx;
+        const now = ctx.currentTime;
+
+        // 心地よい2音アルペジオ (D5 587.33Hz -> A5 880.00Hz)
+        const osc1 = ctx.createOscillator();
+        const gain1 = ctx.createGain();
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(587.33, now);
+        gain1.gain.setValueAtTime(0.18, now);
+        gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+        osc1.connect(gain1);
+        gain1.connect(ctx.destination);
+        osc1.start(now);
+        osc1.stop(now + 0.32);
+
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(880.00, now + 0.11);
+        gain2.gain.setValueAtTime(0.22, now + 0.11);
+        gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+        osc2.connect(gain2);
+        gain2.connect(ctx.destination);
+        osc2.start(now + 0.11);
+        osc2.stop(now + 0.55);
+      } catch (e) {
+        console.warn('Audio playback error:', e);
+      }
+    },
+
+    requestNotificationPermission() {
+      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+        try {
+          Notification.requestPermission();
+        } catch(e) {}
+      }
+    },
+
+    showBrowserNotification(title, body, onClick) {
+      if (typeof window === 'undefined' || !('Notification' in window)) return;
+      if (Notification.permission === 'granted') {
+        try {
+          const n = new Notification(title, {
+            body: body,
+            icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🔔</text></svg>'
+          });
+          if (typeof onClick === 'function') {
+            n.onclick = () => {
+              window.focus();
+              onClick();
+              n.close();
+            };
+          }
+        } catch(e) {}
+      }
+    },
+
+    formatChatMentionText(rawText) {
+      if (!rawText) return '';
+      let escaped = this.escapeHtml(rawText);
+      const myDisplayName = (this.getUserDisplayName() || '').trim();
+      const myEmail = (this.getUserEmail() || '').trim();
+      const myNameFromEmail = myEmail ? myEmail.split('@')[0] : '';
+
+      // @all, @everyone, @全員 をタグ化
+      escaped = escaped.replace(/(^|[\s　])@(all|everyone|全員)(?=[\s　、。!?！？]|$)/gi, (match, prefix, tag) => {
+        return prefix + `<span class="chat-mention-tag is-me">@${tag}</span>`;
+      });
+
+      // @ユーザー名 をタグ化
+      escaped = escaped.replace(/(^|[\s　])@([^\s　、。!?！？@]{1,30})/g, (match, prefix, targetName) => {
+        const isMe = (myDisplayName && targetName.toLowerCase() === myDisplayName.toLowerCase()) ||
+                     (myNameFromEmail && targetName.toLowerCase() === myNameFromEmail.toLowerCase()) ||
+                     (myEmail && targetName.toLowerCase() === myEmail.toLowerCase());
+        return prefix + `<span class="chat-mention-tag ${isMe ? 'is-me' : ''}">@${targetName}</span>`;
+      });
+
+      return escaped;
     },
 
     handleSendChatMessage(e) {
@@ -34624,21 +35062,24 @@ console.log('[ORBITAL] App.js.html started execution');
           `;
         }
 
+        const isMentioned = this.isMentionedToMe(m);
         const isSelf = m.email && m.email.toLowerCase() === currentEmail;
         const name = this.escapeHtml(m.displayName || m.email?.split('@')[0] || 'プレイヤー');
         const icon = this.escapeHtml(m.avatar || '⚡');
         const timeStr = m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-        const text = this.escapeHtml(m.text);
+        const formattedText = this.formatChatMentionText(m.text);
+        const mentionBadge = isMentioned ? '<span class="chat-mention-pill">🔔 あなた宛</span>' : '';
 
         return `
-          <div class="chat-msg-row ${isSelf ? 'chat-msg-self' : 'chat-msg-other'}">
+          <div class="chat-msg-row ${isSelf ? 'chat-msg-self' : 'chat-msg-other'} ${isMentioned ? 'chat-msg-mentioned' : ''}" data-msg-id="${this.escapeHtml(m.id || '')}">
             <div class="chat-msg-avatar" title="${name}">${icon}</div>
             <div class="chat-msg-body">
               <div class="chat-msg-header">
                 <span class="chat-msg-sender">${name}</span>
+                ${mentionBadge}
                 <span class="chat-msg-time">${timeStr}</span>
               </div>
-              <div class="chat-msg-text">${text}</div>
+              <div class="chat-msg-text">${formattedText}</div>
             </div>
           </div>
         `;
@@ -35071,7 +35512,35 @@ console.log('[ORBITAL] App.js.html started execution');
           google.script.run
             .withSuccessHandler((cards) => {
               console.log('✅ Received cards from Spreadsheet:', cards);
-              this.state.cards = this.normalizeCardData(cards);
+              const remoteNormalized = this.normalizeCardData(cards);
+
+              // スプレッドシート側の書き込み反映遅延対策: ローカルキャッシュにのみ存在する新カードを保護・マージ
+              const localCandidates = [];
+              try {
+                const c1 = JSON.parse(localStorage.getItem('ORBITAL_CUSTOM_CARDS') || '[]');
+                const c2 = JSON.parse(localStorage.getItem('orbital_cards') || '[]');
+                const c3 = JSON.parse(localStorage.getItem('orbital_cards_mock') || '[]');
+                const mergedCandidates = [...c1, ...c2, ...c3];
+                mergedCandidates.forEach(c => {
+                  if (c && (c.id || c.name)) {
+                    if (!localCandidates.some(x => String(x.id || x.name) === String(c.id || c.name))) {
+                      localCandidates.push(c);
+                    }
+                  }
+                });
+              } catch(e) {}
+
+              const mergedList = [...remoteNormalized];
+              localCandidates.forEach(lc => {
+                const key = String(lc.id || lc.name);
+                const exists = mergedList.some(r => String(r.id || r.name) === key);
+                if (!exists) {
+                  console.log('✨ Merging newly saved local card not yet in Sheets query:', lc.name || lc.id);
+                  mergedList.push(lc);
+                }
+              });
+
+              this.state.cards = mergedList;
               const el = this.el('homeCardCount');
               if (el) el.textContent = this.state.cards.length + '枚のカード';
               if (window.CardSystem) {
@@ -35253,16 +35722,33 @@ console.log('[ORBITAL] App.js.html started execution');
     },
 
     loadDefaultLocalCards() {
-      if (!Array.isArray(this.state.cards) || this.state.cards.length === 0) {
-        try {
-          const raw = localStorage.getItem('orbital_cards_mock') || localStorage.getItem('orbital_cards');
-          if (raw) {
-            const parsed = JSON.parse(raw);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              this.state.cards = parsed;
+      try {
+        const rawCustom = localStorage.getItem('ORBITAL_CUSTOM_CARDS');
+        const rawMock = localStorage.getItem('orbital_cards_mock');
+        const rawCards = localStorage.getItem('orbital_cards');
+        const listCustom = rawCustom ? JSON.parse(rawCustom) : [];
+        const listMock = rawMock ? JSON.parse(rawMock) : [];
+        const listCards = rawCards ? JSON.parse(rawCards) : [];
+        const combined = [
+          ...(Array.isArray(this.state.cards) ? this.state.cards : []),
+          ...(Array.isArray(listCustom) ? listCustom : []),
+          ...(Array.isArray(listCards) ? listCards : []),
+          ...(Array.isArray(listMock) ? listMock : [])
+        ];
+        const unique = [];
+        combined.forEach(c => {
+          if (c && (c.id || c.name)) {
+            const key = String(c.id || c.name);
+            if (!unique.some(x => String(x.id || x.name) === key)) {
+              unique.push(c);
             }
           }
-        } catch (e) {}
+        });
+        if (unique.length > 0) {
+          this.state.cards = unique;
+        }
+      } catch (e) {
+        console.error('Error loading default local cards:', e);
       }
 
       this.state.cards = Array.isArray(this.state.cards) ? this.state.cards : [];
@@ -38953,6 +39439,8 @@ console.log('[ORBITAL] App.js.html started execution');
   console.log('[ORBITAL] App.js.html finished execution. window.App =', typeof window.App);
 })();
 </script>
+
+
 
 
 

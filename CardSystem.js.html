@@ -1303,43 +1303,103 @@ var CardSystem;
         saveBtn.textContent = '保存中…';
       }
 
-      google.script.run.
-      withSuccessHandler((res) => {
-        this._isSaving = false;
-        if (saveBtn) {
-          saveBtn.disabled = false;
-          saveBtn.textContent = '保存する';
-        }
-        if (!res.ok) {
-          App.toast(res.message || '保存できませんでした。', true);
-          return;
-        }
-        App.toast(res.mode === 'created' ? 'カードを作成しました。' : 'カードを更新しました。');
-        // ローカルキャッシュにも即時反映
+      const applyLocalSave = () => {
         try {
+          // 1. App.state.cards の更新
           const list = (window.App && Array.isArray(window.App.state?.cards)) ? window.App.state.cards : [];
           const idx = list.findIndex(c => c && String(c.id) === String(card.id));
           if (idx >= 0) {
             list[idx] = Object.assign({}, list[idx], card);
           } else {
-            list.push(card);
+            list.unshift(card);
           }
           if (window.App && window.App.state) window.App.state.cards = list;
+
+          // 2. localStorage キャッシュの同期
           localStorage.setItem('orbital_cards', JSON.stringify(list));
-        } catch(e) {}
-        this.resetEditor();
-        App.loadCards();
-        App.showPage('cards');
-      }).
-      withFailureHandler((err) => {
+          localStorage.setItem('orbital_cards_mock', JSON.stringify(list));
+
+          // 3. CardSystem.customCards (図鑑・デッキ・パック等のマスタープール) への登録
+          if (!Array.isArray(this.customCards)) {
+            try { this.customCards = JSON.parse(localStorage.getItem('ORBITAL_CUSTOM_CARDS') || '[]'); } catch(e) { this.customCards = []; }
+          }
+          const cIdx = this.customCards.findIndex(x => x && String(x.id) === String(card.id));
+          if (cIdx >= 0) {
+            this.customCards[cIdx] = Object.assign({}, this.customCards[cIdx], card);
+          } else {
+            this.customCards.unshift(card);
+          }
+          try { localStorage.setItem('ORBITAL_CUSTOM_CARDS', JSON.stringify(this.customCards)); } catch(e) {}
+
+          // 4. 作成したカードを作者の所持カード（1枚）にも自動付与（デッキや図鑑で即時使用可能にする）
+          const col = this.getUserCollection();
+          const colKey = String(card.id || card.name);
+          if (!col[colKey] || col[colKey] < 1) {
+            col[colKey] = 1;
+            this.saveUserCollection(col);
+          }
+
+          // 5. デッキシステムのカードプールも即座に同期
+          if (window.DeckSystem && typeof DeckSystem.syncCardPool === 'function') {
+            DeckSystem.syncCardPool();
+          }
+        } catch(e) {
+          console.error('Error applying local card save:', e);
+        }
+      };
+
+      // 即座にローカルへ反映（通信失敗や再読み込みでも絶対カードを失わない）
+      applyLocalSave();
+
+      const finishSave = () => {
         this._isSaving = false;
         if (saveBtn) {
           saveBtn.disabled = false;
           saveBtn.textContent = '保存する';
         }
-        App.toast("保存失敗: " + (err.message || err), true);
-      }).
-      saveCard(card, App.state.adminToken);
+        this.resetEditor();
+        if (window.App && typeof App.loadCards === 'function') {
+          App.loadCards();
+        }
+        if (window.App && typeof App.showPage === 'function') {
+          App.showPage('cards');
+        }
+      };
+
+      if (window.google && google.script && google.script.run && !window._is_mock_gas) {
+        google.script.run
+          .withSuccessHandler((res) => {
+            if (!res || !res.ok) {
+              App.toast(res?.message || 'スプレッドシートへの保存に失敗しましたが、ローカルには保存されました。', true);
+            } else {
+              App.toast(res.mode === 'created' ? 'カードを作成・保存しました！' : 'カードを更新・保存しました！');
+            }
+            finishSave();
+          })
+          .withFailureHandler((err) => {
+            console.error('GAS saveCard error:', err);
+            App.toast("サーバー同期失敗（ローカルには保存されました）: " + (err.message || err), true);
+            finishSave();
+          })
+          .saveCard(card, App.state.adminToken);
+      } else {
+        // ローカル環境 / モック環境
+        if (window.google && google.script && google.script.run) {
+          google.script.run
+            .withSuccessHandler((res) => {
+              App.toast('カードを保存しました。');
+              finishSave();
+            })
+            .withFailureHandler((err) => {
+              App.toast('カードを保存しました（ローカル）。');
+              finishSave();
+            })
+            .saveCard(card, App.state.adminToken);
+        } else {
+          App.toast('カードを保存しました。');
+          finishSave();
+        }
+      }
     },
 
     uploadImage() {
