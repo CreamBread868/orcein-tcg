@@ -46,8 +46,8 @@ var EffectEditor;
       category: 'func',
       badge: '相手視点実行',
       desc: 'コードを相手プレイヤーの視点（selfとopponentを反転、choiceCard等は相手UIモード）で実行します',
-      snippet: 'await represent(async (self, opponent) => {\n  // 相手としてコードを実行（selfは相手、opponentは自分）\n  ${1:// 相手の行動}\n});',
-      targets: ['attack1', 'attack2', 'ability', 'trainer']
+      snippet: 'await represent(async (self, opponent) => {\n  // 相手としてコードを実行（selfは相手、opponentは自分）\n  // 相手の行動\n});',
+      targets: ['trainer', 'ability']
     },
     {
       keyword: 'getOwner',
@@ -4262,6 +4262,10 @@ var EffectEditor;
         if (aFit !== bFit) return bFit - aFit;
 
         if (wordLower) {
+          const aKeyHas = a.keyword.toLowerCase().includes(wordLower) ? 1 : 0;
+          const bKeyHas = b.keyword.toLowerCase().includes(wordLower) ? 1 : 0;
+          if (aKeyHas !== bKeyHas) return bKeyHas - aKeyHas;
+
           const aStarts = a.keyword.toLowerCase().startsWith(wordLower) ? 1 : 0;
           const bStarts = b.keyword.toLowerCase().startsWith(wordLower) ? 1 : 0;
           if (aStarts !== bStarts) return bStarts - aStarts;
@@ -4483,24 +4487,26 @@ var EffectEditor;
       const editor = document.getElementById('effectCodeEditor');
       if (!editor) return;
       editor.focus();
-            const pos = editor.selectionStart || 0;
+      const pos = editor.selectionStart || 0;
       const before = editor.value.slice(0, pos);
+      let snippetText = item.snippet || '';
+      snippetText = snippetText.replace(/\$\{\d+:([^}]+)\}/g, '$1').replace(/\$\d+/g, '');
 
       if (this.effectEditor.completionMode === 'member') {
         const propLen = Number(this.effectEditor.memberPropLength || 0);
         const start = Math.max(0, pos - propLen);
-        editor.setRangeText(item.snippet, start, pos, 'end');
+        editor.setRangeText(snippetText, start, pos, 'end');
       } else if (this.effectEditor.completionMode === 'arg') {
         const lastSep = Number(this.effectEditor.argLastSepIndex || 0);
         const afterSep = before.slice(lastSep + 1);
         const leadingSpaces = (afterSep.match(/^\s*/) || [''])[0];
         const start = lastSep + 1 + leadingSpaces.length;
-        editor.setRangeText(item.snippet, start, pos, 'end');
+        editor.setRangeText(snippetText, start, pos, 'end');
       } else {
         const reEndWord = new RegExp('([A-Za-z0-9_\\u3040-\\u309F\\u30A0-\\u30FF\\u4E00-\\u9FAF]+)' + String.fromCharCode(36));
         const match = before.match(reEndWord);
         const start = match ? pos - match[1].length : pos;
-        editor.setRangeText(item.snippet, start, pos, 'end');
+        editor.setRangeText(snippetText, start, pos, 'end');
       }
 
       const popup = document.getElementById('effectCompletion');
@@ -4514,7 +4520,7 @@ var EffectEditor;
     },
 
     handleEditorKeydown(e) {
-            const now = Date.now();
+      const now = Date.now();
       // 日本語IME変換中、または確定直後(200ms以内)は横取りしない
       if (e.isComposing || e.keyCode === 229 || (now - (this.effectEditor.lastCompositionEndTime || 0) < 200)) {
         return;
@@ -4537,10 +4543,26 @@ var EffectEditor;
           return;
         }
         if (e.key === 'Tab') {
-          // Tabキーで補完確定
-          e.preventDefault();
-          this.applySelectedCompletion();
-          return;
+          // Tabキーは矢印キー等で明示的に候補を選んだ場合のみ補完確定
+          // それ以外は通常のエディタ動作（2スペースインデント）を行い補完を閉じる（意図しないスニペット挿入を防止）
+          if (this.effectEditor.userNavigated) {
+            e.preventDefault();
+            this.applySelectedCompletion();
+            return;
+          } else {
+            e.preventDefault();
+            popup.style.display = 'none';
+            this.effectEditor.currentCandidates = [];
+            this.effectEditor.userNavigated = false;
+            const ed = document.getElementById('effectCodeEditor');
+            if (ed) {
+              const start = ed.selectionStart || 0;
+              const end = ed.selectionEnd || 0;
+              ed.setRangeText('  ', start, end, 'end');
+              this.updateCodePreview();
+            }
+            return;
+          }
         }
         if (e.key === 'Enter') {
           // ユーザーが上下矢印キーで明示的に候補を選んだ時だけEnterで確定

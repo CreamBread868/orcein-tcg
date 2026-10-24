@@ -374,6 +374,18 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           if (window.App && typeof window.App.toast === 'function') {
             window.App.toast((t.name || 'ポケモン') + " のHPを回復しました！(HP: " + t.hp + "/" + t.maxHp + ")");
           }
+          if (window.BattleSystem && window.BattleSystem.state?.mode === 'online' && !window.BattleSystem._suppressOnlineBroadcast) {
+            const loc = this._findTargetSlot(ctx, t);
+            if (loc) {
+              window.BattleSystem.broadcastOnlineAction('heal', {
+                targetWho: loc.targetWho,
+                slotType: loc.slotType,
+                benchIdx: loc.benchIdx,
+                amount: healed,
+                newHp: t.hp
+              });
+            }
+          }
         };
         if (Array.isArray(target)) {
           target.forEach(applyHeal);
@@ -434,6 +446,19 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           t.energy = Math.max(0, (t.energy || 0) - n);
           if (Array.isArray(t.attachedEnergies)) {
             for (let i = 0; i < n; i++) t.attachedEnergies.pop();
+          }
+          if (window.BattleSystem && window.BattleSystem.state?.mode === 'online' && !window.BattleSystem._suppressOnlineBroadcast) {
+            const loc = this._findTargetSlot(ctx, t);
+            if (loc) {
+              window.BattleSystem.broadcastOnlineAction('discard_energy', {
+                targetWho: loc.targetWho,
+                slotType: loc.slotType,
+                benchIdx: loc.benchIdx,
+                amount: n,
+                newEnergy: t.energy,
+                attachedEnergies: Array.isArray(t.attachedEnergies) ? [...t.attachedEnergies] : []
+              });
+            }
           }
         };
         if (Array.isArray(target)) {
@@ -518,6 +543,19 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
             }
             t.energy = Math.max(0, (t.energy || 0) - n);
             if (ctx?.game?.logs) ctx.game.logs.push("⚡ 【" + (t.name || 'カード') + "】のエネルギーが " + n + " 個トラッシュされました。(残り: " + t.energy + ")");
+            if (window.BattleSystem && window.BattleSystem.state?.mode === 'online' && !window.BattleSystem._suppressOnlineBroadcast) {
+              const loc = this._findTargetSlot(ctx, t);
+              if (loc) {
+                window.BattleSystem.broadcastOnlineAction('discard_energy', {
+                  targetWho: loc.targetWho,
+                  slotType: loc.slotType,
+                  benchIdx: loc.benchIdx,
+                  amount: n,
+                  newEnergy: t.energy,
+                  attachedEnergies: Array.isArray(t.attachedEnergies) ? [...t.attachedEnergies] : []
+                });
+              }
+            }
           }
         });
       },
@@ -537,8 +575,16 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         if (card && ctx.self) {
           card.owner = ctx.self.id;
         }
-        if (window.BattleSystem && typeof window.BattleSystem.updateStadiumUI === 'function') {
-          window.BattleSystem.updateStadiumUI();
+        if (window.BattleSystem) {
+          if (window.BattleSystem.state) {
+            window.BattleSystem.state.activeStadium = card;
+          }
+          if (typeof window.BattleSystem.updateStadiumUI === 'function') {
+            window.BattleSystem.updateStadiumUI();
+          }
+          if (window.BattleSystem.state?.mode === 'online' && !window.BattleSystem._suppressOnlineBroadcast) {
+            window.BattleSystem.broadcastOnlineAction('set_stadium', { card: card });
+          }
         }
         return card;
       },
@@ -552,8 +598,16 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           }
         }
         ctx.game.activeStadium = null;
-        if (window.BattleSystem && typeof window.BattleSystem.updateStadiumUI === 'function') {
-          window.BattleSystem.updateStadiumUI();
+        if (window.BattleSystem) {
+          if (window.BattleSystem.state) {
+            window.BattleSystem.state.activeStadium = null;
+          }
+          if (typeof window.BattleSystem.updateStadiumUI === 'function') {
+            window.BattleSystem.updateStadiumUI();
+          }
+          if (window.BattleSystem.state?.mode === 'online' && !window.BattleSystem._suppressOnlineBroadcast) {
+            window.BattleSystem.broadcastOnlineAction('discard_stadium', {});
+          }
         }
         return s;
       },
@@ -599,6 +653,18 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         }
         let newActive = target;
         if (Array.isArray(newActive)) newActive = newActive[0];
+
+        // BattleSystemのswitchActiveが存在する場合、そちらに委譲してUI描画およびオンライン通信を自動実行
+        if (window.BattleSystem && typeof window.BattleSystem.switchActive === 'function') {
+          const bs = window.BattleSystem;
+          const isOpp = (p === ctx?.opponent || p?.id === 'opponent' || (bs.state && p === bs.state.opponent));
+          const targetPlayer = isOpp ? bs.state?.opponent : bs.state?.player;
+          if (targetPlayer) {
+            bs.switchActive(targetPlayer, newActive);
+            return;
+          }
+        }
+
         if (newActive && Array.isArray(p.bench)) {
           const idx = p.bench.indexOf(newActive);
           if (idx >= 0) p.bench.splice(idx, 1);
@@ -1310,6 +1376,17 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         if (ctx?.game?.logs) {
           ctx.game.logs.push('🧰 【' + (tgt.name || 'ポケモン') + '】の「' + tool.name + '」をトラッシュしました。');
         }
+        if (window.BattleSystem && window.BattleSystem.state?.mode === 'online' && !window.BattleSystem._suppressOnlineBroadcast) {
+          const loc = this._findTargetSlot(ctx, tgt);
+          if (loc) {
+            window.BattleSystem.broadcastOnlineAction('discard_tool', {
+              targetWho: loc.targetWho,
+              slotType: loc.slotType,
+              benchIdx: loc.benchIdx,
+              tool: tool
+            });
+          }
+        }
         return tool;
       },
       normalizeStatusName(status) {
@@ -1343,6 +1420,30 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           return String(target.status).split(/[・,\s/]+/).map(s => this.normalizeStatusName(s)).filter(Boolean);
         }
         return [];
+      },
+      _findTargetSlot(ctx, target) {
+        if (!target) return null;
+        const bs = window.BattleSystem;
+        const pPlayer = bs?.state?.player || ctx?.self;
+        const pOpponent = bs?.state?.opponent || ctx?.opponent;
+
+        const checkPlayer = (pl, who) => {
+          if (!pl) return null;
+          if (target === pl.active || (pl.active && target.id && pl.active.id === target.id)) {
+            return { targetWho: who, slotType: 'active', benchIdx: -1, pokemon: pl.active };
+          }
+          if (Array.isArray(pl.bench)) {
+            const idx = pl.bench.indexOf(target);
+            if (idx >= 0) return { targetWho: who, slotType: 'bench', benchIdx: idx, pokemon: pl.bench[idx] };
+            const idIdx = target.id ? pl.bench.findIndex(c => c && c.id === target.id) : -1;
+            if (idIdx >= 0) return { targetWho: who, slotType: 'bench', benchIdx: idIdx, pokemon: pl.bench[idIdx] };
+            const nameIdx = target.name ? pl.bench.findIndex(c => c && c.name === target.name && c.hp === target.hp) : -1;
+            if (nameIdx >= 0) return { targetWho: who, slotType: 'bench', benchIdx: nameIdx, pokemon: pl.bench[nameIdx] };
+          }
+          return null;
+        };
+
+        return checkPlayer(pPlayer, 'self') || checkPlayer(pOpponent, 'opponent');
       },
       isProtectedFromAttackEffects(ctx, target) {
         if (!target) return false;
@@ -1421,6 +1522,19 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         if (window.App && typeof window.App.toast === 'function') {
           window.App.toast(icon + " " + pkName + " は「" + norm + "」状態になった！");
         }
+        if (window.BattleSystem && window.BattleSystem.state?.mode === 'online' && !window.BattleSystem._suppressOnlineBroadcast) {
+          const loc = this._findTargetSlot(ctx, target);
+          if (loc) {
+            window.BattleSystem.broadcastOnlineAction('apply_status', {
+              targetWho: loc.targetWho,
+              slotType: loc.slotType,
+              benchIdx: loc.benchIdx,
+              status: norm,
+              statuses: [...current],
+              fullStatus: target.status
+            });
+          }
+        }
         if (window.BattleSystem && typeof window.BattleSystem.render === 'function') {
           window.BattleSystem.render();
         }
@@ -1447,6 +1561,19 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
             const msg = "✨ 【" + (target.name || 'ポケモン') + "】の「" + norm + "」が回復した！";
             if (ctx?.game?.logs) ctx.game.logs.push(msg);
             if (window.BattleSystem?.log) window.BattleSystem.log(msg);
+          }
+        }
+        if (window.BattleSystem && window.BattleSystem.state?.mode === 'online' && !window.BattleSystem._suppressOnlineBroadcast) {
+          const loc = this._findTargetSlot(ctx, target);
+          if (loc) {
+            window.BattleSystem.broadcastOnlineAction('clear_status', {
+              targetWho: loc.targetWho,
+              slotType: loc.slotType,
+              benchIdx: loc.benchIdx,
+              statusName: statusName ? this.normalizeStatusName(statusName) : null,
+              statuses: [...(target.statuses || [])],
+              fullStatus: target.status || ''
+            });
           }
         }
         if (window.BattleSystem && typeof window.BattleSystem.render === 'function') {
@@ -1479,6 +1606,14 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
               }
             }
           });
+          if (window.BattleSystem && window.BattleSystem.state?.mode === 'online' && !window.BattleSystem._suppressOnlineBroadcast) {
+            const isSelf = (p === ctx?.self || (window.BattleSystem.state && p === window.BattleSystem.state.player));
+            window.BattleSystem.broadcastOnlineAction('bench_damage', {
+              targetWho: isSelf ? 'self' : 'opponent',
+              amount: dmg,
+              benchHps: (p.bench || []).map(b => ({ id: b ? b.id : '', name: b ? b.name : '', hp: b ? b.hp : 0 }))
+            });
+          }
           if (window.BattleSystem && typeof window.BattleSystem.render === 'function') {
             window.BattleSystem.render();
           }
@@ -1609,6 +1744,18 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         const logs = this._getLogs(ctx);
         if (logs) {
           logs.push('💔 【' + (tgt.name || 'ポケモン') + '】のHPが ' + sub + ' 減少し ' + tgt.hp + ' になった！');
+        }
+        if (window.BattleSystem && window.BattleSystem.state?.mode === 'online' && !window.BattleSystem._suppressOnlineBroadcast) {
+          const loc = this._findTargetSlot(ctx, tgt);
+          if (loc) {
+            window.BattleSystem.broadcastOnlineAction('modify_hp', {
+              targetWho: loc.targetWho,
+              slotType: loc.slotType,
+              benchIdx: loc.benchIdx,
+              delta: -sub,
+              newHp: tgt.hp
+            });
+          }
         }
         return sub;
       },
@@ -3139,8 +3286,19 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           }
         }
 
+        // 相手視点（represent）モードの厳密判定:
+        // ctx.isOpponent は関数 api.isOpponent のため truthy 判定に使ってはいけない！
+        // options や ctx の isRepresenting フラグが明示的に true の場合のみ相手行動モードとする
+        const isRepresenting = Boolean(
+          options?.isRepresenting === true ||
+          options?.represent === true ||
+          ctx?.isRepresenting === true ||
+          (window._currentExecutionContext && window._currentExecutionContext.isRepresenting === true)
+        );
+
         // 対戦相手（AI、またはオンラインの相手）が選択主体の場合は、ローカルプレイヤーにモーダルを出さない
-        const isChooserOpponent = (
+        // ただし、represent() 実行中の場合はローカルプレイヤーが相手の代理として選択UIを操作できるようにする
+        const isChooserOpponent = !isRepresenting && (
           chooser === opponentPlayer ||
           chooser?.id === 'opponent' ||
           chooser?.id === 'cpu' ||
@@ -3338,9 +3496,12 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         const pk = target || ctx?.card || ctx?.thisPokemon || ctx?.self?.active;
         if (!pk || typeof pk !== 'object') return 0;
         const game = ctx?.game || window.BattleSystem?.state;
-        const curTurn = game?.turnNumber != null ? game.turnNumber : 1;
-        const playedTurn = pk._turnPlayed != null ? pk._turnPlayed : 1;
-        return Math.max(0, curTurn - playedTurn);
+        const curTurn = (game?.turnNumber != null) ? game.turnNumber : ((window.BattleSystem?.state?.turnNumber != null) ? window.BattleSystem.state.turnNumber : 1);
+        if (pk._turnPlayed != null) {
+          if (pk._turnPlayed === 0) return Math.max(1, curTurn);
+          return Math.max(1, curTurn - pk._turnPlayed + 1);
+        }
+        return Math.max(1, curTurn);
       },
       requireTurnsInPlay(ctx, minTurns = 7, options = {}) {
         let turns = minTurns;
@@ -4108,20 +4269,16 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
               enumerable: false
             });
           }
-          if (!Object.getOwnPropertyDescriptor(pk, 'turnsInPlay')) {
-            Object.defineProperty(pk, 'turnsInPlay', {
-              get: () => api.getTurnsInPlay(ctx, pk),
-              configurable: true,
-              enumerable: false
-            });
-          }
-          if (!Object.getOwnPropertyDescriptor(pk, 'turnNumber')) {
-            Object.defineProperty(pk, 'turnNumber', {
-              get: () => (game?.turnNumber != null) ? game.turnNumber : ((window.BattleSystem?.state?.turnNumber != null) ? window.BattleSystem.state.turnNumber : 1),
-              configurable: true,
-              enumerable: false
-            });
-          }
+          Object.defineProperty(pk, 'turnsInPlay', {
+            get: () => api.getTurnsInPlay(ctx, pk),
+            configurable: true,
+            enumerable: false
+          });
+          Object.defineProperty(pk, 'turnNumber', {
+            get: () => (game?.turnNumber != null) ? game.turnNumber : ((window.BattleSystem?.state?.turnNumber != null) ? window.BattleSystem.state.turnNumber : 1),
+            configurable: true,
+            enumerable: false
+          });
           if (!Object.getOwnPropertyDescriptor(pk, 'owner')) {
             Object.defineProperty(pk, 'owner', {
               get: () => api.getOwner(ctx, pk),

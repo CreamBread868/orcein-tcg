@@ -1962,6 +1962,7 @@
         attachedCards: cleanAttachedCards,
         attachedTool: cleanTool,
         status: c.status || null,
+        statuses: Array.isArray(c.statuses) ? [...c.statuses] : (c.status ? String(c.status).split(/[・,\s/]+/).filter(Boolean) : []),
         isEx: !!c.isEx,
         isAceSpec: !!c.isAceSpec,
         retreat: Number(c.retreat) || 0,
@@ -2042,6 +2043,9 @@
           opp.active.energy = snapshot.active.energy;
           opp.active.attachedEnergies = snapshot.active.attachedEnergies || [];
           opp.active.status = snapshot.active.status;
+          opp.active.statuses = Array.isArray(snapshot.active.statuses)
+            ? [...snapshot.active.statuses]
+            : (snapshot.active.status ? String(snapshot.active.status).split(/[・,\s/]+/).filter(Boolean) : []);
           if (snapshot.active.attachedTool !== undefined) opp.active.attachedTool = snapshot.active.attachedTool;
           if (Array.isArray(snapshot.active.attachedCards)) opp.active.attachedCards = snapshot.active.attachedCards;
           if (snapshot.active.abilityName) opp.active.abilityName = snapshot.active.abilityName;
@@ -2065,6 +2069,9 @@
           existing.energy = b.energy;
           existing.attachedEnergies = b.attachedEnergies || [];
           existing.status = b.status;
+          existing.statuses = Array.isArray(b.statuses)
+            ? [...b.statuses]
+            : (b.status ? String(b.status).split(/[・,\s/]+/).filter(Boolean) : []);
           if (b.attachedTool !== undefined) existing.attachedTool = b.attachedTool;
           if (Array.isArray(b.attachedCards)) existing.attachedCards = b.attachedCards;
           if (b.abilityName) existing.abilityName = b.abilityName;
@@ -2508,7 +2515,16 @@
             } else if (numericDmg > 0) {
               defender.hp = Math.max(0, (defender.hp || 0) - numericDmg);
             }
-            if (payload.status != null) defender.status = payload.status;
+            if (payload.status != null) {
+              defender.status = payload.status;
+              if (Array.isArray(payload.statuses)) {
+                defender.statuses = [...payload.statuses];
+              } else if (payload.status) {
+                defender.statuses = String(payload.status).split(/[・,\s/]+/).filter(Boolean);
+              } else {
+                defender.statuses = [];
+              }
+            }
           }
           if (attacker && payload.attackerHp != null) {
             attacker.hp = payload.attackerHp;
@@ -2526,6 +2542,220 @@
             await this.checkAllKnockouts();
             this.render();
           }, 300);
+          break;
+        }
+        case 'switch_active': {
+          const targetWho = payload.targetWho || 'self';
+          // 送信側の 'self' (送信者が自分のポケモンを入れ替え) は受信側にとって 'opponent'
+          // 送信側の 'opponent' (送信者が相手のポケモンを入れ替え = ボスの指令等) は受信側にとって 'player'
+          const targetPlayer = (targetWho === 'self') ? this.state.opponent : this.state.player;
+          if (!targetPlayer || !targetPlayer.bench || !targetPlayer.bench.length) break;
+
+          let benchTarget = null;
+          let bIdx = Number(payload.benchIdx);
+          if (!isNaN(bIdx) && bIdx >= 0 && targetPlayer.bench[bIdx]) {
+            benchTarget = targetPlayer.bench[bIdx];
+          } else if (payload.newActiveId) {
+            benchTarget = targetPlayer.bench.find(c => c && c.id === payload.newActiveId);
+          } else if (payload.newActiveName) {
+            benchTarget = targetPlayer.bench.find(c => c && c.name === payload.newActiveName);
+          }
+          if (!benchTarget && targetPlayer.bench.length > 0) {
+            benchTarget = targetPlayer.bench[0];
+          }
+
+          this._suppressOnlineBroadcast = true;
+          try {
+            this.switchActive(targetPlayer, benchTarget);
+          } finally {
+            this._suppressOnlineBroadcast = false;
+          }
+          this.log('🔄 通信同期: 【' + (targetPlayer.name || (targetPlayer === this.state.player ? 'あなた' : '相手')) + '】のバトル場が「' + (targetPlayer.active ? targetPlayer.active.name : 'ポケモン') + '」に入れ替わりました。');
+          this.render();
+          break;
+        }
+        case 'apply_status': {
+          const targetWho = payload.targetWho;
+          const targetPlayer = (targetWho === 'self') ? this.state.opponent : this.state.player;
+          if (!targetPlayer) break;
+          const target = (payload.slotType === 'bench' && Array.isArray(targetPlayer.bench) && payload.benchIdx >= 0)
+            ? targetPlayer.bench[payload.benchIdx]
+            : targetPlayer.active;
+          if (!target) break;
+
+          this._suppressOnlineBroadcast = true;
+          try {
+            if (window.ORBITAL_EFFECT_API && typeof window.ORBITAL_EFFECT_API.applyStatus === 'function') {
+              window.ORBITAL_EFFECT_API.applyStatus(null, target, payload.status);
+            } else {
+              target.status = payload.fullStatus || payload.status;
+              target.statuses = Array.isArray(payload.statuses) ? [...payload.statuses] : [payload.status];
+            }
+            if (Array.isArray(payload.statuses)) {
+              target.statuses = [...payload.statuses];
+            }
+            if (payload.fullStatus !== undefined) {
+              target.status = payload.fullStatus;
+            }
+          } finally {
+            this._suppressOnlineBroadcast = false;
+          }
+          this.log('⚠️ 通信同期: 【' + (target.name || 'ポケモン') + '】が「' + (payload.status || '特殊状態') + '」状態になりました。');
+          this.render();
+          break;
+        }
+        case 'clear_status': {
+          const targetWho = payload.targetWho;
+          const targetPlayer = (targetWho === 'self') ? this.state.opponent : this.state.player;
+          if (!targetPlayer) break;
+          const target = (payload.slotType === 'bench' && Array.isArray(targetPlayer.bench) && payload.benchIdx >= 0)
+            ? targetPlayer.bench[payload.benchIdx]
+            : targetPlayer.active;
+          if (!target) break;
+
+          this._suppressOnlineBroadcast = true;
+          try {
+            if (window.ORBITAL_EFFECT_API && typeof window.ORBITAL_EFFECT_API.clearStatus === 'function') {
+              window.ORBITAL_EFFECT_API.clearStatus(null, target, payload.statusName);
+            } else {
+              if (!payload.statusName) {
+                target.status = null;
+                target.statuses = [];
+              }
+            }
+            if (Array.isArray(payload.statuses)) {
+              target.statuses = [...payload.statuses];
+            }
+            if (payload.fullStatus !== undefined) {
+              target.status = payload.fullStatus;
+            }
+          } finally {
+            this._suppressOnlineBroadcast = false;
+          }
+          this.log('✨ 通信同期: 【' + (target.name || 'ポケモン') + '】の' + (payload.statusName ? '「' + payload.statusName + '」' : 'すべての特殊状態') + 'が回復しました。');
+          this.render();
+          break;
+        }
+        case 'bench_damage': {
+          const targetWho = payload.targetWho || 'opponent';
+          const targetPlayer = (targetWho === 'opponent') ? this.state.player : this.state.opponent;
+          if (!targetPlayer || !Array.isArray(targetPlayer.bench)) break;
+          const dmg = Number(payload.amount) || 0;
+          if (Array.isArray(payload.benchHps)) {
+            payload.benchHps.forEach(bh => {
+              const bp = targetPlayer.bench.find(c => c && (c.id === bh.id || c.name === bh.name));
+              if (bp && bh.hp != null) bp.hp = bh.hp;
+            });
+          } else if (dmg > 0) {
+            targetPlayer.bench.forEach(c => {
+              if (c) c.hp = Math.max(0, (c.hp || 0) - dmg);
+            });
+          }
+          this.log('💥 通信同期: ベンチのポケモンが ' + dmg + ' ダメージを受けました。');
+          setTimeout(async () => {
+            await this.checkAllKnockouts();
+            this.render();
+          }, 300);
+          break;
+        }
+        case 'modify_hp': {
+          const targetWho = payload.targetWho;
+          const targetPlayer = (targetWho === 'self') ? this.state.opponent : this.state.player;
+          if (!targetPlayer) break;
+          const target = (payload.slotType === 'bench' && Array.isArray(targetPlayer.bench) && payload.benchIdx >= 0)
+            ? targetPlayer.bench[payload.benchIdx]
+            : targetPlayer.active;
+          if (!target) break;
+          if (payload.newHp != null) {
+            target.hp = payload.newHp;
+          } else if (payload.delta != null) {
+            target.hp = Math.max(0, (target.hp || 0) + Number(payload.delta));
+          }
+          this.log('💔 通信同期: 【' + (target.name || 'ポケモン') + '】のHPが変化しました。(残りHP: ' + target.hp + ')');
+          setTimeout(async () => {
+            await this.checkAllKnockouts();
+            this.render();
+          }, 300);
+          break;
+        }
+        case 'heal': {
+          const targetWho = payload.targetWho;
+          const targetPlayer = (targetWho === 'self') ? this.state.opponent : this.state.player;
+          if (!targetPlayer) break;
+          const target = (payload.slotType === 'bench' && Array.isArray(targetPlayer.bench) && payload.benchIdx >= 0)
+            ? targetPlayer.bench[payload.benchIdx]
+            : targetPlayer.active;
+          if (!target) break;
+          if (payload.newHp != null) {
+            target.hp = payload.newHp;
+          } else if (payload.amount != null) {
+            target.hp = Math.min(target.maxHp || target.hp, (target.hp || 0) + Number(payload.amount));
+          }
+          this.log('💚 通信同期: 【' + (target.name || 'ポケモン') + '】のHPが ' + (payload.amount || '') + ' 回復しました。(残りHP: ' + target.hp + '/' + (target.maxHp || '') + ')');
+          this.render();
+          break;
+        }
+        case 'discard_energy': {
+          const targetWho = payload.targetWho;
+          const targetPlayer = (targetWho === 'self') ? this.state.opponent : this.state.player;
+          if (!targetPlayer) break;
+          const target = (payload.slotType === 'bench' && Array.isArray(targetPlayer.bench) && payload.benchIdx >= 0)
+            ? targetPlayer.bench[payload.benchIdx]
+            : targetPlayer.active;
+          if (!target) break;
+          const amt = Number(payload.amount) || 1;
+          target.energy = payload.newEnergy != null ? payload.newEnergy : Math.max(0, (target.energy || 0) - amt);
+          if (Array.isArray(payload.attachedEnergies)) {
+            target.attachedEnergies = [...payload.attachedEnergies];
+          } else if (Array.isArray(target.attachedEnergies)) {
+            for (let i = 0; i < amt; i++) target.attachedEnergies.pop();
+          }
+          this.log('⚡ 通信同期: 【' + (target.name || 'ポケモン') + '】のエネルギーが ' + amt + ' 個トラッシュされました。');
+          this.render();
+          break;
+        }
+        case 'set_stadium': {
+          const card = payload.card;
+          if (this.state.activeStadium) {
+            const oldStadium = this.state.activeStadium;
+            const oldOwner = (oldStadium.owner === this.state.player.id) ? this.state.player : this.state.opponent;
+            if (oldOwner && Array.isArray(oldOwner.discard)) {
+              oldOwner.discard.push(oldStadium);
+            }
+          }
+          this.state.activeStadium = Object.assign({}, card, { owner: this.state.opponent.id });
+          this.log('🏟️ 通信同期: スタジアム「' + (card ? card.name : '') + '」が出現しました！');
+          if (typeof this.updateStadiumUI === 'function') this.updateStadiumUI();
+          this.render();
+          break;
+        }
+        case 'discard_stadium': {
+          if (this.state.activeStadium) {
+            const s = this.state.activeStadium;
+            const ownerPlayer = (this.state.players || [this.state.player, this.state.opponent]).find(p => p && p.id === s.owner);
+            if (ownerPlayer && Array.isArray(ownerPlayer.discard)) {
+              ownerPlayer.discard.push(s);
+            }
+          }
+          this.state.activeStadium = null;
+          this.log('🏟️ 通信同期: スタジアムがトラッシュされました。');
+          if (typeof this.updateStadiumUI === 'function') this.updateStadiumUI();
+          this.render();
+          break;
+        }
+        case 'discard_tool': {
+          const targetWho = payload.targetWho;
+          const targetPlayer = (targetWho === 'self') ? this.state.opponent : this.state.player;
+          if (!targetPlayer) break;
+          const target = (payload.slotType === 'bench' && Array.isArray(targetPlayer.bench) && payload.benchIdx >= 0)
+            ? targetPlayer.bench[payload.benchIdx]
+            : targetPlayer.active;
+          if (!target || !target.attachedTool) break;
+          const tool = target.attachedTool;
+          target.attachedTool = null;
+          if (Array.isArray(targetPlayer.discard)) targetPlayer.discard.push(tool);
+          this.log('🧰 通信同期: 【' + (target.name || 'ポケモン') + '】の「' + (tool ? tool.name : 'ポケモンのどうぐ') + '」がトラッシュされました。');
+          this.render();
           break;
         }
         case 'init_board': {
@@ -3295,6 +3525,7 @@
           return [...cards];
         },
         status: base.status || null,
+        statuses: Array.isArray(base.statuses) ? [...base.statuses] : (base.status ? String(base.status).split(/[・,\s/]+/).filter(Boolean) : []),
         damageReduction: Number(base.damageReduction) || 0
       };
     },
@@ -4848,24 +5079,48 @@
       const p = player || this.state.player;
       if (!p || !p.active || !p.bench || !p.bench.length) return false;
       let newActive = target;
+      let idx = -1;
       if (newActive) {
-        const idx = p.bench.indexOf(newActive);
+        idx = p.bench.indexOf(newActive);
+        if (idx < 0 && newActive.id) {
+          idx = p.bench.findIndex(c => c && c.id === newActive.id);
+        }
+        if (idx < 0 && newActive.name) {
+          idx = p.bench.findIndex(c => c && c.name === newActive.name);
+        }
         if (idx >= 0) {
-          p.bench.splice(idx, 1);
+          newActive = p.bench.splice(idx, 1)[0];
         } else {
           newActive = p.bench.shift();
+          idx = 0;
         }
       } else {
         newActive = p.bench.shift();
+        idx = 0;
       }
       if (newActive) {
         if (p.active) {
           p.active.usedLastTurn = false;
-          this.clearStatus(p.active);
+          const wasSuppressed = this._suppressOnlineBroadcast;
+          this._suppressOnlineBroadcast = true;
+          try {
+            this.clearStatus(p.active);
+          } finally {
+            this._suppressOnlineBroadcast = wasSuppressed;
+          }
         }
         p.bench.push(p.active);
         p.active = newActive;
         this.log("🔄 【" + (p.name || 'プレイヤー') + "】のバトル場が「" + newActive.name + "」に入れ替わりました。");
+        if (this.state.mode === 'online' && !this._suppressOnlineBroadcast) {
+          const isSelf = (p === this.state.player);
+          this.broadcastOnlineAction('switch_active', {
+            targetWho: isSelf ? 'self' : 'opponent',
+            benchIdx: idx,
+            newActiveName: newActive.name,
+            newActiveId: newActive.id || ''
+          });
+        }
         this.render();
         return true;
       }
@@ -5919,7 +6174,7 @@
           try {
             execCtx = await window.executeCardEffectCode(
               atkCode,
-              { players: [this.state.player, this.state.opponent], logs: this.state.logs },
+              { ...this.state, players: [this.state.player, this.state.opponent], logs: this.state.logs, turnNumber: this.state.turnNumber },
               this.state.player,
               'attack',
               { card: currentAttacker, pokemon: currentAttacker, attackIndex: attackIndex }
@@ -5966,6 +6221,7 @@
           defenderHp: defHpAfter,
           attackerHp: postAtk ? postAtk.hp : 0,
           status: postDef ? postDef.status : null,
+          statuses: postDef && Array.isArray(postDef.statuses) ? [...postDef.statuses] : (postDef && postDef.status ? [postDef.status] : []),
           benchHps: (this.state.opponent?.bench || []).map(b => ({ id: b.id, name: b.name, hp: b.hp }))
         });
 
@@ -6853,7 +7109,7 @@
           try {
             execCtx = await window.executeCardEffectCode(
               atkCode,
-              { players: [this.state.opponent, this.state.player], logs: this.state.logs },
+              { ...this.state, players: [this.state.opponent, this.state.player], logs: this.state.logs, turnNumber: this.state.turnNumber },
               this.state.opponent,
               'attack',
               { card: ai.active, pokemon: ai.active }
@@ -7117,7 +7373,7 @@
         return;
       }
 
-      const isOpponent = !!(options?.isOpponent || options?.isRepresenting);
+      const isOpponent = Boolean(options?.isOpponent === true || options?.isRepresenting === true);
       if (isOpponent) {
         modal.classList.add('opponent-choice-mode');
         if (eyebrow) {
