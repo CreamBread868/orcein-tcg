@@ -369,6 +369,10 @@ var CardSystem;
         statsBadge.textContent = '全 ' + totalCards + ' 種類中 ' + ownedTypeCount + ' 種類 獲得済み (' + percentage + '%)';
       }
 
+      if (window.App && typeof window.App.updateCollectionManualSaveStatus === 'function') {
+        window.App.updateCollectionManualSaveStatus();
+      }
+
       const filtered = allCards.filter((card) => {
         const key = String(card.id || card.name);
         const count = colMap[key] || 0;

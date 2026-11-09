@@ -5061,6 +5061,133 @@ console.log('[ORBITAL] App.js.html started execution');
       }
     },
 
+    updateCollectionManualSaveStatus() {
+      const statusEl = document.getElementById('manualSaveCollectionStatus');
+      if (!statusEl || this._isManualSavingCollection) return;
+      try {
+        const lastSaved = localStorage.getItem('ORBITAL_COLLECTION_LAST_SAVED');
+        if (lastSaved) {
+          const d = new Date(lastSaved);
+          if (!isNaN(d.getTime())) {
+            const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+            statusEl.textContent = `最終保存: ${timeStr}`;
+            return;
+          }
+        }
+        statusEl.textContent = '';
+      } catch (e) {}
+    },
+
+    manualSaveUserCollection() {
+      if (this._isManualSavingCollection) return;
+      const btn = document.getElementById('manualSaveCollectionBtn');
+      const icon = document.getElementById('manualSaveCollectionIcon');
+      const text = document.getElementById('manualSaveCollectionText');
+      const statusEl = document.getElementById('manualSaveCollectionStatus');
+
+      const col = this.getUserCollection();
+      if (!col || typeof col !== 'object') {
+        this.toast('保存対象のカードデータがありません。', true);
+        return;
+      }
+
+      // 1. ローカルストレージに即時反映
+      try {
+        localStorage.setItem('ORBITAL_USER_COLLECTION', JSON.stringify(col));
+      } catch (e) {}
+
+      let email = this.getUserEmail();
+      if (!email || email === 'player@gmail.com') {
+        email = (this.state.userProfile && this.state.userProfile.email) ||
+                (window.DeckSystem && window.DeckSystem.state && window.DeckSystem.state.currentUser && window.DeckSystem.state.currentUser.email) ||
+                localStorage.getItem('orbital_mock_user_email') ||
+                localStorage.getItem('ORBITAL_USER_EMAIL') ||
+                'player@gmail.com';
+      }
+
+      this._isManualSavingCollection = true;
+      if (btn) {
+        btn.disabled = true;
+        btn.style.opacity = '0.7';
+        btn.style.cursor = 'wait';
+      }
+      if (icon) icon.textContent = '⏳';
+      if (text) text.textContent = 'DB保存中…';
+      if (statusEl) statusEl.textContent = '同期処理中…';
+
+      const resetBtnState = (isSuccess, timeStr) => {
+        this._isManualSavingCollection = false;
+        if (btn) {
+          btn.disabled = false;
+          btn.style.opacity = '1';
+          btn.style.cursor = 'pointer';
+        }
+        if (isSuccess) {
+          if (icon) icon.textContent = '✅';
+          if (text) text.textContent = '保存完了！';
+          if (statusEl && timeStr) statusEl.textContent = `最終保存: ${timeStr}`;
+          setTimeout(() => {
+            if (icon) icon.textContent = '💾';
+            if (text) text.textContent = 'カードデータを手動保存';
+          }, 2500);
+        } else {
+          if (icon) icon.textContent = '💾';
+          if (text) text.textContent = 'カードデータを手動保存';
+          if (statusEl) statusEl.textContent = '保存失敗';
+        }
+      };
+
+      const onSuccess = (res) => {
+        console.log('✅ [Manual Sync Success] saveUserCollection:', res);
+        const now = new Date();
+        const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+        try {
+          localStorage.setItem('ORBITAL_COLLECTION_LAST_SAVED', now.toISOString());
+        } catch (e) {}
+
+        let cardCount = 0;
+        let typeCount = 0;
+        if (col && typeof col === 'object') {
+          Object.keys(col).forEach(k => {
+            const cnt = Number(col[k]) || 0;
+            if (cnt > 0) {
+              typeCount++;
+              cardCount += cnt;
+            }
+          });
+        }
+
+        resetBtnState(true, timeStr);
+        this.toast(`✅ 所持カードデータ（${typeCount}種類・計${cardCount}枚）をスプレッドシートに保存しました！`);
+
+        if (this.state && this.state.userProfile) {
+          this.state.userProfile.userCollection = col;
+        }
+      };
+
+      const onError = (err) => {
+        console.error('❌ [Manual Sync Failed] saveUserCollection:', err);
+        resetBtnState(false);
+        this.toast(`⚠️ スプレッドシートへの手動保存に失敗しました: ${err && (err.message || err)}`, true);
+      };
+
+      if (window.google && google.script && google.script.run && typeof google.script.run.saveUserCollection === 'function') {
+        try {
+          console.log('📡 [Manual Sync] Saving user collection to GAS spreadsheet for:', email);
+          google.script.run
+            .withSuccessHandler(onSuccess)
+            .withFailureHandler(onError)
+            .saveUserCollection(col, email, true);
+        } catch (e) {
+          onError(e);
+        }
+      } else {
+        setTimeout(() => {
+          onSuccess({ ok: true, userCollection: col, email: email, message: 'ローカルDBに保存しました' });
+        }, 400);
+      }
+    },
+
     addCardToCollection(cardId) {
       let col = this.getUserCollection();
       col[cardId] = (col[cardId] || 0) + 1;
