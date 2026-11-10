@@ -22481,6 +22481,9 @@ var EffectEditor;
 
 
 
+
+
+
   <script>
 console.log('[ORBITAL] CardSystem.js.html started execution');
 if (window.__showDebugMsg) window.__showDebugMsg('CardSystem読込開始');
@@ -24524,6 +24527,9 @@ var CardSystem;
 
 
 
+
+
+
   <script>
 console.log('[ORBITAL] DeckSystem.js.html started execution');
 window.DeckSystem = function () {
@@ -25708,6 +25714,9 @@ window.DeckSystem = function () {
   console.log('[ORBITAL] DeckSystem.js.html finished execution. window.DeckSystem =', typeof window.DeckSystem);
 }();
 </script>
+
+
+
 
 
 
@@ -29915,7 +29924,11 @@ window.DeckSystem = function () {
       // 番を進める: AIの攻撃できぜつ(AI戦) / 自分の番中の自爆きぜつ(オンライン) の交代後はそのまま終了
       if (this.state.phase === 'battle') {
         if (this.state.mode === 'ai' && this.state.turnPlayer === 'opponent') {
-          setTimeout(() => this.endTurn(), 600);
+          setTimeout(() => {
+            if (this.state.mode === 'ai' && this.state.turnPlayer === 'opponent') {
+              this.endTurn();
+            }
+          }, 600);
         } else if (this.state.mode === 'online' && this.state.turnPlayer === 'player' && this.state.online.attackedThisTurn) {
           setTimeout(() => this.endTurn(), 600);
         }
@@ -29945,6 +29958,7 @@ window.DeckSystem = function () {
     },
 
     async startTurn(turnWho) {
+      this._turnEndingLock = false;
       this.state.turnPlayer = turnWho;
       if (this.state.online) this.state.online.attackedThisTurn = false;
       this.showTurnBanner(turnWho);
@@ -30056,8 +30070,14 @@ window.DeckSystem = function () {
 
     async endTurn() {
       if (this.state.phase === 'ended') return;
+      if (this._turnEndingLock) {
+        console.warn('⚠️ [endTurn] スキップされました: ターン終了処理が既に進行中です。');
+        return;
+      }
+      this._turnEndingLock = true;
       if (this.state.mode === 'online' && this.state.turnPlayer !== 'player') {
         console.warn('⚠️ [endTurn] スキップされました: 自分のターンではありません。');
+        this._turnEndingLock = false;
         return;
       }
       const curEnding = this.state.turnPlayer === 'player' ? this.state.player : this.state.opponent;
@@ -31878,8 +31898,15 @@ window.DeckSystem = function () {
           this.render();
           if (attacker.hp <= 0) {
             await this.checkAllKnockouts();
+            if (!this.state.winner) {
+              setTimeout(() => {
+                if (this.state.turnPlayer === 'player') this.endTurn();
+              }, 800);
+            }
           } else {
-            setTimeout(() => this.endTurn(), 800);
+            setTimeout(() => {
+              if (this.state.turnPlayer === 'player') this.endTurn();
+            }, 800);
           }
           return;
         } else {
@@ -31972,12 +31999,16 @@ window.DeckSystem = function () {
         if (!hadKo) {
           this.render();
           // 攻撃宣言後はターン終了
-          setTimeout(() => this.endTurn(), 800);
+          setTimeout(() => {
+            if (this.state.turnPlayer === 'player') this.endTurn();
+          }, 800);
         } else if (!this.state.winner) {
           // バトル場が両者とも健在（ベンチきぜつのみ）の場合はターン終了へ
           if (this.state.opponent?.active && this.state.player?.active) {
             this.render();
-            setTimeout(() => this.endTurn(), 800);
+            setTimeout(() => {
+              if (this.state.turnPlayer === 'player') this.endTurn();
+            }, 800);
           }
         }
       }, 350);
@@ -32376,7 +32407,6 @@ window.DeckSystem = function () {
           victim.active = victim.bench.shift();
           this.log("🔄 AIライバルは「" + victim.active.name + "」をバトル場に出しました。");
           this.render();
-          setTimeout(() => this.endTurn(), 600);
         }
       } else {
         // ベンチポケモンがきぜつした場合はバトル場は健在なので交代プロンプト不要
@@ -32825,6 +32855,10 @@ window.DeckSystem = function () {
             await this.wait(800);
             if (ai.active.hp <= 0) {
               await this.checkAllKnockouts();
+              if (!this.state.winner) {
+                await this.wait(400);
+                if (this.state.turnPlayer === 'opponent') this.endTurn();
+              }
             } else {
               this.endTurn();
             }
@@ -32891,10 +32925,10 @@ window.DeckSystem = function () {
         const hadKo = await this.checkAllKnockouts();
         if (!hadKo && !this.state.winner) {
           await this.wait(400);
-          this.endTurn();
+          if (this.state.turnPlayer === 'opponent') this.endTurn();
         } else if (!this.state.winner && this.state.player?.active && this.state.opponent?.active) {
           await this.wait(400);
-          this.endTurn();
+          if (this.state.turnPlayer === 'opponent') this.endTurn();
         }
       } else {
         this.log("🤖 AIライバル: 攻撃エネルギーが不足しているためターンを終了します。");
@@ -34896,6 +34930,9 @@ window.DeckSystem = function () {
   console.log('[ORBITAL] BattleSystem.js.html finished execution. window.BattleSystem = object');
 })();
 </script>
+
+
+
 
 
 
@@ -40607,6 +40644,9 @@ console.log('[ORBITAL] App.js.html started execution');
   console.log('[ORBITAL] App.js.html finished execution. window.App =', typeof window.App);
 })();
 </script>
+
+
+
 
 
 
