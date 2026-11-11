@@ -35,6 +35,7 @@
       turnNumber: 1,
       turnPlayer: 'player', // 'player' | 'opponent'
       firstPlayer: 'player',
+      activeLocks: [],
       prizeCountRule: 6,
       selectedHandIndex: null,
       player: {
@@ -1750,6 +1751,7 @@
       this.state.mode = 'online';
       this.state.phase = 'battle';
       this.state.turnNumber = 1;
+      this.state.activeLocks = [];
       this.state.prizeCountRule = prizeCount || 6;
       this.state.online.lastSeq = Number(startSeq) || 1;
       this.state.online.chatMessages = [];
@@ -3661,6 +3663,7 @@
       this.state.turnNumber = 1;
       this.state.prizeCountRule = prizeCount;
       this.state.logs = [];
+      this.state.activeLocks = [];
       this.state.delayedEffects = [];
       this.state.extraTurnPlayer = null;
       const coin = Math.random() >= 0.5 ? 1 : 0;
@@ -3947,11 +3950,31 @@
       }
     },
 
-    isBlocked(actionType, target = null, player = null) {
+    isBlocked(actionType, target = null, player = null, opt = {}) {
       if (window.ORBITAL_EFFECT_API && window.ORBITAL_EFFECT_API.isBlocked) {
-        return window.ORBITAL_EFFECT_API.isBlocked({ game: this.state, self: player || (this.state.turnPlayer === 'player' ? this.state.player : this.state.opponent), opponent: player === this.state.opponent ? this.state.player : this.state.opponent }, actionType, target, player);
+        return window.ORBITAL_EFFECT_API.isBlocked(
+          {
+            game: this.state,
+            self: player || (this.state.turnPlayer === 'player' ? this.state.player : this.state.opponent),
+            opponent: player === this.state.opponent ? this.state.player : this.state.opponent
+          },
+          actionType,
+          target,
+          player,
+          opt
+        );
       }
       return false;
+    },
+
+    unblockPokemonAttackLocks(pokemon) {
+      if (!pokemon || !Array.isArray(this.state.activeLocks)) return;
+      this.state.activeLocks = this.state.activeLocks.filter((lock) => {
+        if (lock.actionType === 'attack' && (lock.target === pokemon || (pokemon.name && lock.target?.name === pokemon.name))) {
+          return false;
+        }
+        return true;
+      });
     },
 
     updateLocksOnTurnChange(curTurnWho) {
@@ -3995,18 +4018,25 @@
 
         let shouldDecrement = false;
         const prevTurnWho = curTurnWho === 'player' ? 'opponent' : 'player';
-        const isCreatedTurn = (lock.createdTurn != null && lock.createdTurn === this.state.turnNumber);
 
-        if (!isCreatedTurn) {
-          if (lock.countBy === 'opponent' || !lock.countBy) {
-            const isOpponentFinished = (lock.sourcePlayer === 'player' && prevTurnWho === 'opponent') ||
-                                       (lock.sourcePlayer === 'opponent' && prevTurnWho === 'player');
-            if (isOpponentFinished) shouldDecrement = true;
-          } else if (lock.countBy === 'self') {
-            const isSelfFinished = (lock.sourcePlayer === 'player' && prevTurnWho === 'player') ||
-                                   (lock.sourcePlayer === 'opponent' && prevTurnWho === 'opponent');
-            if (isSelfFinished) shouldDecrement = true;
-          } else if (lock.countBy === 'both' || lock.countBy === 'turn') {
+        if (lock.countBy === 'self') {
+          const sourcePlayerObj = lock.sourcePlayer === 'player' ? this.state.player : this.state.opponent;
+          const sourceTurnCount = sourcePlayerObj?.turnCount || 0;
+          const createdCount = lock.createdTurnCount != null ? lock.createdTurnCount : lock.createdTurn;
+          if (prevTurnWho === lock.sourcePlayer && sourceTurnCount > createdCount) {
+            shouldDecrement = true;
+          }
+        } else if (lock.countBy === 'opponent' || !lock.countBy) {
+          const oppWho = lock.sourcePlayer === 'player' ? 'opponent' : 'player';
+          const oppPlayerObj = oppWho === 'player' ? this.state.player : this.state.opponent;
+          const oppTurnCount = oppPlayerObj?.turnCount || 0;
+          const createdOppCount = lock.createdOpponentTurnCount != null ? lock.createdOpponentTurnCount : (lock.createdTurn != null ? lock.createdTurn : 0);
+          if (prevTurnWho === oppWho && oppTurnCount > createdOppCount) {
+            shouldDecrement = true;
+          }
+        } else if (lock.countBy === 'both' || lock.countBy === 'turn') {
+          const totalTurnSwitches = ((this.state.player?.turnCount || 0) + (this.state.opponent?.turnCount || 0));
+          if (lock.createdHalfTurn == null || totalTurnSwitches > lock.createdHalfTurn) {
             shouldDecrement = true;
           }
         }
@@ -4018,7 +4048,8 @@
         if (lock.turnsRemaining > 0) {
           remainingLocks.push(lock);
         } else {
-          this.log('🔓 【' + (actLabels[lock.actionType] || lock.actionType) + '】の禁止効果が終了しました。');
+          const atkDetail = lock.attackName ? ('「' + lock.attackName + '」') : (lock.attackIndex ? ('ワザ' + lock.attackIndex) : 'ワザ');
+          this.log('🔓 【' + (lock.actionType === 'attack' ? atkDetail : (actLabels[lock.actionType] || lock.actionType)) + '】の禁止効果が終了しました。');
         }
       }
       this.state.activeLocks = remainingLocks;
@@ -5116,6 +5147,7 @@
           this._suppressOnlineBroadcast = true;
           try {
             this.clearStatus(p.active);
+            this.unblockPokemonAttackLocks(p.active);
           } finally {
             this._suppressOnlineBroadcast = wasSuppressed;
           }
@@ -6069,6 +6101,7 @@
         if (p.active) {
           p.active.usedLastTurn = false;
           this.clearStatus(p.active);
+          this.unblockPokemonAttackLocks(p.active);
         }
         const nextActive = p.bench.splice(idx, 1)[0];
         p.bench.push(p.active);
@@ -6091,8 +6124,13 @@
 
       if (!attacker || !defender) return;
 
-      if (this.isBlocked('attack', attacker, this.state.player)) {
-        App.toast('効果によりワザの使用は禁止されています。', true);
+      const atkName = attackIndex === 1 ? attacker.attack1Name : attacker.attack2Name;
+      const atkDamage = attackIndex === 1 ? attacker.attack1Damage : attacker.attack2Damage;
+      const atkEnergy = attackIndex === 1 ? attacker.attack1Energy : attacker.attack2Energy;
+      const atkCode = attackIndex === 1 ? attacker.attack1Code : attacker.attack2Code;
+
+      if (this.isBlocked('attack', attacker, this.state.player, { attackIndex: attackIndex, attackName: atkName })) {
+        App.toast('効果によりこのワザの使用は禁止されています。', true);
         return;
       }
 
@@ -6112,11 +6150,6 @@
         App.toast('先攻の最初の番はワザを使うことができません。', true);
         return;
       }
-
-      const atkName = attackIndex === 1 ? attacker.attack1Name : attacker.attack2Name;
-      const atkDamage = attackIndex === 1 ? attacker.attack1Damage : attacker.attack2Damage;
-      const atkEnergy = attackIndex === 1 ? attacker.attack1Energy : attacker.attack2Energy;
-      const atkCode = attackIndex === 1 ? attacker.attack1Code : attacker.attack2Code;
 
       // エネルギーコストチェック
       const energyCheck = this.checkEnergyRequirement(attacker, atkEnergy);
@@ -6192,11 +6225,14 @@
           try {
             execCtx = await window.executeCardEffectCode(
               atkCode,
-              { ...this.state, players: [this.state.player, this.state.opponent], logs: this.state.logs, turnNumber: this.state.turnNumber },
+              { ...this.state, players: [this.state.player, this.state.opponent], logs: this.state.logs, turnNumber: this.state.turnNumber, activeLocks: this.state.activeLocks },
               this.state.player,
               'attack',
-              { card: currentAttacker, pokemon: currentAttacker, attackIndex: attackIndex }
+              { card: currentAttacker, pokemon: currentAttacker, attackIndex: attackIndex, atkName: atkName, attackName: atkName }
             );
+            if (execCtx && execCtx.game && Array.isArray(execCtx.game.activeLocks)) {
+              this.state.activeLocks = execCtx.game.activeLocks;
+            }
           } catch (e) {
             if (e && e.isEffectAbort) {
               execCtx = { isCancelled: true, cancelReason: e.message };
@@ -7060,13 +7096,15 @@
       const defender = this.state.player.active;
       const atk2Check = this.checkEnergyRequirement(ai.active, ai.active.attack2Energy);
       const atk1Check = this.checkEnergyRequirement(ai.active, ai.active.attack1Energy);
+      const canAtk1 = atk1Check.canAttack && !this.isBlocked('attack', ai.active, ai, { attackIndex: 1, attackName: ai.active.attack1Name });
+      const canAtk2 = atk2Check.canAttack && !this.isBlocked('attack', ai.active, ai, { attackIndex: 2, attackName: ai.active.attack2Name });
 
       let attackChoice = 0;
       const dmg1 = Number(ai.active.attack1Damage) || 0;
       const dmg2 = Number(ai.active.attack2Damage) || 0;
       const defHp = Number(defender.hp) || 0;
 
-      if (atk1Check.canAttack && atk2Check.canAttack) {
+      if (canAtk1 && canAtk2) {
         if (dmg1 >= defHp && dmg1 > 0) {
           attackChoice = 1;
         } else if (dmg2 >= dmg1) {
@@ -7074,9 +7112,9 @@
         } else {
           attackChoice = 1;
         }
-      } else if (atk2Check.canAttack && ai.active.attack2Name) {
+      } else if (canAtk2 && ai.active.attack2Name) {
         attackChoice = 2;
-      } else if (atk1Check.canAttack && ai.active.attack1Name) {
+      } else if (canAtk1 && ai.active.attack1Name) {
         attackChoice = 1;
       }
 
@@ -7134,11 +7172,14 @@
           try {
             execCtx = await window.executeCardEffectCode(
               atkCode,
-              { ...this.state, players: [this.state.opponent, this.state.player], logs: this.state.logs, turnNumber: this.state.turnNumber },
+              { ...this.state, players: [this.state.opponent, this.state.player], logs: this.state.logs, turnNumber: this.state.turnNumber, activeLocks: this.state.activeLocks },
               this.state.opponent,
               'attack',
-              { card: ai.active, pokemon: ai.active }
+              { card: ai.active, pokemon: ai.active, attackIndex: attackChoice, atkName: atkName, attackName: atkName }
             );
+            if (execCtx && execCtx.game && Array.isArray(execCtx.game.activeLocks)) {
+              this.state.activeLocks = execCtx.game.activeLocks;
+            }
           } catch (e) {
             if (e && e.isEffectAbort) {
               execCtx = { isCancelled: true, cancelReason: e.message };
@@ -8448,7 +8489,7 @@
       if (card.attack1Name) {
         const energyCheck = this.checkEnergyRequirement(card, card.attack1Energy);
         const hasEnergy = energyCheck.canAttack;
-        const isAtkBlocked = this.isBlocked('attack', card, p);
+        const isAtkBlocked = this.isBlocked('attack', card, p, { attackIndex: 1, attackName: card.attack1Name });
         const isAsleep = this.hasStatus(card, 'ねむり');
         const isParalyzed = this.hasStatus(card, 'マヒ');
         const canAttack = !isBench && isMyTurn && !isFirstTurnFirstPlayer && hasEnergy && !isAtkBlocked && !isAsleep && !isParalyzed;
@@ -8476,7 +8517,7 @@
       if (card.attack2Name) {
         const energyCheck = this.checkEnergyRequirement(card, card.attack2Energy);
         const hasEnergy = energyCheck.canAttack;
-        const isAtkBlocked = this.isBlocked('attack', card, p);
+        const isAtkBlocked = this.isBlocked('attack', card, p, { attackIndex: 2, attackName: card.attack2Name });
         const isAsleep = this.hasStatus(card, 'ねむり');
         const isParalyzed = this.hasStatus(card, 'マヒ');
         const canAttack = !isBench && isMyTurn && !isFirstTurnFirstPlayer && hasEnergy && !isAtkBlocked && !isAsleep && !isParalyzed;

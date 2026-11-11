@@ -2155,6 +2155,8 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         let reason = '';
         let activeOnly = false;
         let sourceCard = ctx?.self?.active || null;
+        let attackIndex = null;
+        let attackName = null;
 
         if (optionsOrTurns === 'always') {
           isAlways = true;
@@ -2168,6 +2170,8 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           if (optionsOrTurns.reason) reason = optionsOrTurns.reason;
           if (optionsOrTurns.source) sourceCard = optionsOrTurns.source;
           if (optionsOrTurns.activeOnly || optionsOrTurns.onlyActive || optionsOrTurns.whileActive) activeOnly = true;
+          if (optionsOrTurns.attackIndex != null) attackIndex = optionsOrTurns.attackIndex;
+          if (optionsOrTurns.attackName) attackName = optionsOrTurns.attackName;
         }
 
         let targetObj = target;
@@ -2209,28 +2213,43 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         if (actType === 'エネルギー' || actType === 'attachenergy') actType = 'energy';
         if (actType === '進化' || actType === 'evolutions') actType = 'evolution';
 
+        const sourceIsOpponent = (ctx?.self === ctx?.game?.opponent);
+        const sourceTurnCount = (ctx?.self && ctx.self.turnCount != null) ? ctx.self.turnCount : ((ctx?.game && ctx.game[sourceIsOpponent ? 'opponent' : 'player']?.turnCount) || 1);
+        const oppTurnCount = (ctx?.opponent && ctx.opponent.turnCount != null) ? ctx.opponent.turnCount : ((ctx?.game && ctx.game[sourceIsOpponent ? 'player' : 'opponent']?.turnCount) || 0);
+
         const lock = {
           id: 'lock_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
           actionType: actType,
           target: targetObj,
           targetPlayer: targetPlayer,
           targetType: targetType,
-          sourcePlayer: (ctx?.self === ctx?.game?.opponent) ? 'opponent' : 'player',
+          sourcePlayer: sourceIsOpponent ? 'opponent' : 'player',
           sourceCard: sourceCard,
           activeOnly: activeOnly,
+          attackIndex: attackIndex,
+          attackName: attackName,
           turnsRemaining: isAlways ? Infinity : turns,
           initialTurns: turns,
           always: isAlways,
           countBy: countBy,
           reason: reason,
           createdTurn: (ctx?.game && ctx?.game?.turnNumber) || (window.BattleSystem?.state?.turnNumber) || 1,
-          createdPlayer: (ctx?.self && ctx?.self?.id) || (ctx?.self === ctx?.game?.opponent ? 'opponent' : 'player')
+          createdPlayer: (ctx?.self && ctx?.self?.id) || (sourceIsOpponent ? 'opponent' : 'player'),
+          createdTurnCount: sourceTurnCount,
+          createdOpponentTurnCount: oppTurnCount,
+          createdHalfTurn: ((ctx?.game?.player?.turnCount || 0) + (ctx?.game?.opponent?.turnCount || 0))
         };
 
         const game = ctx?.game || window.BattleSystem?.state;
         if (game) {
           game.activeLocks = game.activeLocks || [];
           game.activeLocks.push(lock);
+        }
+        if (window.BattleSystem?.state && window.BattleSystem.state !== game) {
+          window.BattleSystem.state.activeLocks = window.BattleSystem.state.activeLocks || [];
+          if (!window.BattleSystem.state.activeLocks.includes(lock)) {
+            window.BattleSystem.state.activeLocks.push(lock);
+          }
         }
 
         const actLabels = {
@@ -2264,25 +2283,78 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
       disable(ctx, actionType, target, opt) { return this.block(ctx, actionType, target, opt); },
       blockAbility(ctx, target, opt) { return this.block(ctx, 'ability', target, opt); },
       blockAttack(ctx, target, opt) { return this.block(ctx, 'attack', target, opt); },
-      cantAttackNextTurn(ctx, target = null, turns = 1) {
+      cantAttackNextTurn(ctx, target = null, turns = 1, options = {}) {
         let tgt = target;
         let tCount = turns;
+        let opts = options;
         if (typeof target === 'number') {
           tCount = target;
           tgt = null;
         }
+        if (typeof turns === 'object' && turns !== null) {
+          opts = turns;
+          tCount = 1;
+        }
         tgt = tgt || ctx?.thisPokemon || ctx?.self?.active || ctx?.card;
         if (!tgt) return null;
-        return this.block(ctx, 'attack', tgt, { countBy: 'self', turns: tCount, reason: '次の自分の番、このポケモンはワザを使えません。' });
+        if (opts && (opts.thisAttackOnly || opts.thisMoveOnly || opts.onlyThisAttack)) {
+          return this.cantUseThisAttackNextTurn(ctx, tgt, tCount, opts);
+        }
+        const isSelf = !target || target === ctx?.self?.active || target === ctx?.thisPokemon || target === ctx?.card;
+        const countBy = isSelf ? 'self' : 'opponent';
+        return this.block(ctx, 'attack', tgt, {
+          countBy: countBy,
+          turns: tCount,
+          activeOnly: true,
+          reason: isSelf ? '次の自分の番、このポケモンはワザを使えません。' : '次の相手の番、このポケモンはワザを使えません。'
+        });
       },
-      cannotAttackNextTurn(ctx, target = null, turns = 1) {
-        return this.cantAttackNextTurn(ctx, target, turns);
+      cannotAttackNextTurn(ctx, target = null, turns = 1, options = {}) {
+        return this.cantAttackNextTurn(ctx, target, turns, options);
       },
-      nextTurnCantAttack(ctx, target = null, turns = 1) {
-        return this.cantAttackNextTurn(ctx, target, turns);
+      nextTurnCantAttack(ctx, target = null, turns = 1, options = {}) {
+        return this.cantAttackNextTurn(ctx, target, turns, options);
       },
-      nextTurnCannotAttack(ctx, target = null, turns = 1) {
-        return this.cantAttackNextTurn(ctx, target, turns);
+      nextTurnCannotAttack(ctx, target = null, turns = 1, options = {}) {
+        return this.cantAttackNextTurn(ctx, target, turns, options);
+      },
+      cantUseThisAttackNextTurn(ctx, target = null, turns = 1, options = {}) {
+        let tgt = target;
+        let tCount = turns;
+        let opts = options;
+        if (typeof target === 'number') {
+          tCount = target;
+          tgt = null;
+        }
+        if (typeof turns === 'object' && turns !== null) {
+          opts = turns;
+          tCount = 1;
+        }
+        tgt = tgt || ctx?.thisPokemon || ctx?.self?.active || ctx?.card;
+        if (!tgt) return null;
+        const attackIndex = opts?.attackIndex != null ? opts.attackIndex : (ctx?.currentEvent?.attackIndex != null ? ctx.currentEvent.attackIndex : (ctx?.attackIndex != null ? ctx.attackIndex : null));
+        const attackName = opts?.attackName || ctx?.currentEvent?.atkName || ctx?.currentEvent?.attackName || null;
+        const atkLabel = attackName ? ('「' + attackName + '」') : (attackIndex ? ('ワザ' + attackIndex) : 'このワザ');
+        return this.block(ctx, 'attack', tgt, {
+          countBy: 'self',
+          turns: tCount,
+          activeOnly: true,
+          attackIndex: attackIndex,
+          attackName: attackName,
+          reason: '次の自分の番、このポケモンは' + atkLabel + 'を使えません。'
+        });
+      },
+      cannotUseThisAttackNextTurn(ctx, target = null, turns = 1, options = {}) {
+        return this.cantUseThisAttackNextTurn(ctx, target, turns, options);
+      },
+      cantThisAttackNextTurn(ctx, target = null, turns = 1, options = {}) {
+        return this.cantUseThisAttackNextTurn(ctx, target, turns, options);
+      },
+      nextTurnCantUseThisAttack(ctx, target = null, turns = 1, options = {}) {
+        return this.cantUseThisAttackNextTurn(ctx, target, turns, options);
+      },
+      cantUseThisMoveNextTurn(ctx, target = null, turns = 1, options = {}) {
+        return this.cantUseThisAttackNextTurn(ctx, target, turns, options);
       },
       blockRetreat(ctx, target, opt) { return this.block(ctx, 'retreat', target, opt); },
       blockItem(ctx, target, opt) { return this.block(ctx, 'item', target, opt); },
@@ -2341,28 +2413,40 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
       limitPerTurn(ctx, count = 1) { return this.useLimit(ctx, count); },
       timesPerTurn(ctx, count = 1) { return this.useLimit(ctx, count); },
       unblock(ctx, actionType = null, target = null) {
-        const game = ctx?.game || window.BattleSystem?.state;
-        if (!game || !Array.isArray(game.activeLocks)) return;
-        if (!actionType && !target) {
-          game.activeLocks = [];
-          if (ctx?.game?.logs) ctx.game.logs.push('🔓 すべての禁止効果が解除されました。');
-          return;
+        const games = [ctx?.game, window.BattleSystem?.state].filter(Boolean);
+        let removedAny = false;
+        for (const game of games) {
+          if (!Array.isArray(game.activeLocks)) continue;
+          if (!actionType && !target) {
+            if (game.activeLocks.length > 0) removedAny = true;
+            game.activeLocks = [];
+            continue;
+          }
+          const before = game.activeLocks.length;
+          game.activeLocks = game.activeLocks.filter((lock) => {
+            if (actionType && lock.actionType !== actionType && lock.actionType !== 'all') return true;
+            if (target && lock.target !== target && (!target.name || lock.target?.name !== target.name)) return true;
+            return false;
+          });
+          if (game.activeLocks.length < before) removedAny = true;
         }
-        const beforeCount = game.activeLocks.length;
-        game.activeLocks = game.activeLocks.filter((lock) => {
-          if (actionType && lock.actionType !== actionType && lock.actionType !== 'all') return true;
-          if (target && lock.target !== target) return true;
-          return false;
-        });
-        if (ctx?.game?.logs && game.activeLocks.length < beforeCount) {
+        if (removedAny && ctx?.game?.logs) {
           ctx.game.logs.push('🔓 禁止効果が解除されました。');
         }
       },
-      isBlocked(ctx, actionType, target = null, player = null) {
+      isBlocked(ctx, actionType, target = null, player = null, opt = {}) {
         const game = ctx?.game || window.BattleSystem?.state;
         if (!game || !Array.isArray(game.activeLocks) || game.activeLocks.length === 0) {
           return false;
         }
+
+        let checkOpt = opt;
+        let checkPlayer = player;
+        if (player && typeof player === 'object' && (player.attackIndex !== undefined || player.attackName !== undefined)) {
+          checkOpt = player;
+          checkPlayer = null;
+        }
+        checkPlayer = checkPlayer || (target && target.hand ? target : null) || ctx?.self;
 
         let actType = String(actionType || '').toLowerCase();
         if (actType === '特性' || actType === 'abilities') actType = 'ability';
@@ -2374,8 +2458,6 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         if (actType === 'トレーナーズ' || actType === 'trainers') actType = 'trainer';
         if (actType === 'エネルギー' || actType === 'attachenergy') actType = 'energy';
         if (actType === '進化' || actType === 'evolutions') actType = 'evolution';
-
-        const checkPlayer = player || (target && target.hand ? target : null) || ctx?.self;
 
         for (let i = 0; i < game.activeLocks.length; i++) {
           const lock = game.activeLocks[i];
@@ -2415,6 +2497,22 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
             actionMatches = true;
           }
           if (!actionMatches) continue;
+
+          // 2b. ワザ特定ロック判定 (attackIndex / attackName)
+          if (actType === 'attack') {
+            const checkAttackIndex = checkOpt?.attackIndex != null ? checkOpt.attackIndex : null;
+            const checkAttackName = checkOpt?.attackName || null;
+            if (lock.attackIndex != null && checkAttackIndex != null) {
+              if (Number(lock.attackIndex) !== Number(checkAttackIndex)) {
+                continue; // 別のワザ番号なのでブロック対象外
+              }
+            }
+            if (lock.attackName && checkAttackName) {
+              if (String(lock.attackName).trim() !== String(checkAttackName).trim()) {
+                continue; // 別のワザ名なのでブロック対象外
+              }
+            }
+          }
 
           // 3. 対象の一致確認
           let targetMatches = false;
@@ -4172,6 +4270,11 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         cannotAttackNextTurn: (tgt, opt) => api.cannotAttackNextTurn(ctx, tgt, opt),
         nextTurnCantAttack: (tgt, opt) => api.nextTurnCantAttack(ctx, tgt, opt),
         nextTurnCannotAttack: (tgt, opt) => api.nextTurnCannotAttack(ctx, tgt, opt),
+        cantUseThisAttackNextTurn: (tgt, opt) => api.cantUseThisAttackNextTurn(ctx, tgt, opt),
+        cannotUseThisAttackNextTurn: (tgt, opt) => api.cannotUseThisAttackNextTurn(ctx, tgt, opt),
+        cantThisAttackNextTurn: (tgt, opt) => api.cantThisAttackNextTurn(ctx, tgt, opt),
+        nextTurnCantUseThisAttack: (tgt, opt) => api.nextTurnCantUseThisAttack(ctx, tgt, opt),
+        cantUseThisMoveNextTurn: (tgt, opt) => api.cantUseThisMoveNextTurn(ctx, tgt, opt),
         cant: (r) => api.cant(ctx, r),
         cannot: (r) => api.cannot(ctx, r),
         cancelAttack: (r) => api.cancelAttack(ctx, r),
@@ -4513,6 +4616,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
         'block', 'lock', 'ban', 'disable', 'unblock', 'isBlocked',
         'blockAbility', 'blockAttack', 'blockRetreat', 'blockItem', 'blockSupporter', 'blockTrainer', 'blockEnergy', 'blockEvolution', 'blockEffect',
         'cantAttackNextTurn', 'cannotAttackNextTurn', 'nextTurnCantAttack', 'nextTurnCannotAttack',
+        'cantUseThisAttackNextTurn', 'cannotUseThisAttackNextTurn', 'cantThisAttackNextTurn', 'nextTurnCantUseThisAttack', 'cantUseThisMoveNextTurn',
         'cant', 'cannot', 'cancelAttack', 'fail', 'abort',
         'useLimit', 'limitPerTurn', 'timesPerTurn',
         'isFirstTurn', 'isFirstPlayerFirstTurn', 'isJustPlayed', 'requireTurns', 'requireTurnsInPlay', 'getTurnsInPlay',
@@ -4550,6 +4654,7 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
           ctx.block, ctx.lock, ctx.ban, ctx.disable, ctx.unblock, ctx.isBlocked,
           ctx.blockAbility, ctx.blockAttack, ctx.blockRetreat, ctx.blockItem, ctx.blockSupporter, ctx.blockTrainer, ctx.blockEnergy, ctx.blockEvolution, ctx.blockEffect,
           ctx.cantAttackNextTurn, ctx.cannotAttackNextTurn, ctx.nextTurnCantAttack, ctx.nextTurnCannotAttack,
+          ctx.cantUseThisAttackNextTurn, ctx.cannotUseThisAttackNextTurn, ctx.cantThisAttackNextTurn, ctx.nextTurnCantUseThisAttack, ctx.cantUseThisMoveNextTurn,
           ctx.cant, ctx.cannot, ctx.cancelAttack, ctx.fail, ctx.abort,
           ctx.useLimit, ctx.limitPerTurn, ctx.timesPerTurn,
           ctx.isFirstTurn, ctx.isFirstPlayerFirstTurn, ctx.isJustPlayed, ctx.requireTurns, ctx.requireTurnsInPlay, ctx.getTurnsInPlay,
@@ -4631,10 +4736,15 @@ console.log('[ORBITAL] ActionEngine.js.html started execution');
     window.isBlocked = (act, tgt, p) => window.ORBITAL_EFFECT_API.isBlocked(null, act, tgt, p);
     window.blockAbility = (tgt, opt) => window.ORBITAL_EFFECT_API.blockAbility(null, tgt, opt);
     window.blockAttack = (tgt, opt) => window.ORBITAL_EFFECT_API.blockAttack(null, tgt, opt);
-    window.cantAttackNextTurn = (t, n) => window.ORBITAL_EFFECT_API.cantAttackNextTurn(null, t, n);
-    window.cannotAttackNextTurn = (t, n) => window.ORBITAL_EFFECT_API.cannotAttackNextTurn(null, t, n);
-    window.nextTurnCantAttack = (t, n) => window.ORBITAL_EFFECT_API.nextTurnCantAttack(null, t, n);
-    window.nextTurnCannotAttack = (t, n) => window.ORBITAL_EFFECT_API.nextTurnCannotAttack(null, t, n);
+    window.cantAttackNextTurn = (t, n, o) => window.ORBITAL_EFFECT_API.cantAttackNextTurn(null, t, n, o);
+    window.cannotAttackNextTurn = (t, n, o) => window.ORBITAL_EFFECT_API.cannotAttackNextTurn(null, t, n, o);
+    window.nextTurnCantAttack = (t, n, o) => window.ORBITAL_EFFECT_API.nextTurnCantAttack(null, t, n, o);
+    window.nextTurnCannotAttack = (t, n, o) => window.ORBITAL_EFFECT_API.nextTurnCannotAttack(null, t, n, o);
+    window.cantUseThisAttackNextTurn = (t, n, o) => window.ORBITAL_EFFECT_API.cantUseThisAttackNextTurn(null, t, n, o);
+    window.cannotUseThisAttackNextTurn = (t, n, o) => window.ORBITAL_EFFECT_API.cannotUseThisAttackNextTurn(null, t, n, o);
+    window.cantThisAttackNextTurn = (t, n, o) => window.ORBITAL_EFFECT_API.cantThisAttackNextTurn(null, t, n, o);
+    window.nextTurnCantUseThisAttack = (t, n, o) => window.ORBITAL_EFFECT_API.nextTurnCantUseThisAttack(null, t, n, o);
+    window.cantUseThisMoveNextTurn = (t, n, o) => window.ORBITAL_EFFECT_API.cantUseThisMoveNextTurn(null, t, n, o);
     window.blockRetreat = (tgt, opt) => window.ORBITAL_EFFECT_API.blockRetreat(null, tgt, opt);
     window.blockItem = (tgt, opt) => window.ORBITAL_EFFECT_API.blockItem(null, tgt, opt);
     window.blockSupporter = (tgt, opt) => window.ORBITAL_EFFECT_API.blockSupporter(null, tgt, opt);

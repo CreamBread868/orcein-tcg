@@ -823,6 +823,15 @@ var EffectEditor;
       targets: ['attack1', 'attack2', 'ability']
     },
     {
+      keyword: 'cantUseThisAttackNextTurn',
+      label: 'cantUseThisAttackNextTurn()',
+      category: 'func',
+      badge: 'このワザ不可',
+      desc: '次の番、このポケモンはこのワザを使えなくする（他のワザは使用可能）',
+      snippet: 'cantUseThisAttackNextTurn();',
+      targets: ['attack1', 'attack2']
+    },
+    {
       keyword: 'switchActive',
       label: 'switchActive(player)',
       category: 'func',
@@ -1102,6 +1111,15 @@ var EffectEditor;
       desc: '次の番ワザを使えない（省略時は自身。相手を指定して相手のワザ封じも可能）',
       snippet: 'cantAttackNextTurn();',
       targets: ['attack1', 'attack2', 'ability', 'trainer']
+    },
+    {
+      keyword: 'cantUseThisAttackNextTurn',
+      label: 'cantUseThisAttackNextTurn();',
+      category: 'action',
+      badge: '次回このワザ不可',
+      desc: '次の自分の番、このポケモンはこのワザを使えない（他のワザは使用可能）',
+      snippet: 'cantUseThisAttackNextTurn();',
+      targets: ['attack1', 'attack2']
     },
     {
       keyword: 'hasTool',
@@ -2650,6 +2668,21 @@ var EffectEditor;
         ],
         example: '// 120ダメージを与え、次の自分の番ワザを使えない\ndamage(opponent.active, 120);\ncantAttackNextTurn();',
         snippet: 'cantAttackNextTurn();'
+      },
+      {
+        name: 'cantUseThisAttackNextTurn',
+        signature: 'cantUseThisAttackNextTurn(target?, turns?)',
+        category: 'battle',
+        catLabel: '行動禁止・ロック',
+        badge: '特定ワザ禁止',
+        returns: 'object',
+        desc: '次の自分の番、このポケモンはこのワザを使えなくなります（他のワザは使えます）。',
+        params: [
+          { name: 'target', type: 'card | pokemon', desc: '（省略可）対象ポケモン（デフォルト: thisPokemon）' },
+          { name: 'turns', type: 'number', desc: '（省略可）禁止ターン数（デフォルト: 1）' }
+        ],
+        example: '// 140ダメージを与え、次の自分の番このワザを使えない\ndamage(opponent.active, 140);\ncantUseThisAttackNextTurn();',
+        snippet: 'cantUseThisAttackNextTurn();'
       },
       {
         name: 'blockAttack',
@@ -4690,7 +4723,7 @@ var EffectEditor;
       }
 
       // APIコール解析
-      const re = /(requireTurns|requireTurnsInPlay|lookAtDeckTop|lookAtTop|lookDeckTop|searchTopDeck|putBackDeckTop|putBackDeckBottom|shuffleDeck|damage|benchDamage|heal|draw|attachEnergy|discardEnergy|applyStatus|clearStatus|switchActive|discardCards|searchCards|reduceDamage|takePrize|toHand|toDiscard|toDeck|toBench|reduceOpponentAttackNextTurn|nextTurnReduceOpponentAttack|reduceDamageNextTurn|nextTurnReduceDamage|nextTurnDamage|boostDamageNextTurn|reduceHp|reduceOpponentHp|reduceSelfHp|subHp|reduceMaxHp|lowerMaxHp|increaseMaxHp|addMaxHp|setHp|cantAttackNextTurn|nextTurnCantAttack)\s*\(([^)]*)\)/g;
+      const re = /(requireTurns|requireTurnsInPlay|lookAtDeckTop|lookAtTop|lookDeckTop|searchTopDeck|putBackDeckTop|putBackDeckBottom|shuffleDeck|damage|benchDamage|heal|draw|attachEnergy|discardEnergy|applyStatus|clearStatus|switchActive|discardCards|searchCards|reduceDamage|takePrize|toHand|toDiscard|toDeck|toBench|reduceOpponentAttackNextTurn|nextTurnReduceOpponentAttack|reduceDamageNextTurn|nextTurnReduceDamage|nextTurnDamage|boostDamageNextTurn|reduceHp|reduceOpponentHp|reduceSelfHp|subHp|reduceMaxHp|lowerMaxHp|increaseMaxHp|addMaxHp|setHp|cantAttackNextTurn|nextTurnCantAttack|cantUseThisAttackNextTurn|cannotUseThisAttackNextTurn|cantThisAttackNextTurn|nextTurnCantUseThisAttack|cantUseThisMoveNextTurn)\s*\(([^)]*)\)/g;
       let m;
       while (m = re.exec(code)) {
         const fn = m[1];
@@ -4747,7 +4780,8 @@ var EffectEditor;
         if (fn === 'reduceMaxHp' || fn === 'lowerMaxHp') lines.push(this.codeTarget(args) + "の最大HPを" + (this.codeNumber(args) || 20) + "減少させる。");else
         if (fn === 'increaseMaxHp' || fn === 'addMaxHp') lines.push(this.codeTarget(args) + "の最大HPを" + (this.codeNumber(args) || 30) + "増加させる。");else
         if (fn === 'setHp') lines.push(this.codeTarget(args) + "のHPを" + (this.codeNumber(args) || 100) + "に設定する。");else
-        if (fn === 'cantAttackNextTurn' || fn === 'nextTurnCantAttack') lines.push("次の自分の番、このポケモンはワザを使えない。");
+        if (fn === 'cantAttackNextTurn' || fn === 'nextTurnCantAttack') lines.push("次の自分の番、このポケモンはワザを使えない。");else
+        if (fn === 'cantUseThisAttackNextTurn' || fn === 'cannotUseThisAttackNextTurn' || fn === 'cantThisAttackNextTurn' || fn === 'nextTurnCantUseThisAttack' || fn === 'cantUseThisMoveNextTurn') lines.push("次の自分の番、このポケモンはこのワザを使えない。");
       }
 
       // choiceCard / choiceCards の解析
